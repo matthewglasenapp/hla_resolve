@@ -6,6 +6,11 @@ import time
 import pysam
 import argparse
 from preprocess_methods import convert_bam_to_fastq, mark_duplicates, trim_adapters, run_fastqc, align_to_reference_minimap, align_to_reference_vg, reassign_mapq, filter_reads, call_variants, call_structural_variants_pbsv, call_structural_variants_sniffles, genotype_tandem_repeats, phase_genotypes_hiphase, merge_hiphase_vcfs, phase_genotypes_whatshap, phase_genotypes_longphase, merge_longphase_vcfs
+from investigate_haploblocks_methods import parse_haploblocks, evaluate_gene_haploblocks
+from reconstruct_fasta_methods import filter_vcf, run_vcf2fasta, parse_fastas
+
+# genes_of_interest = ("HLA-A", "HLA-B", "HLA-C", "HLA-DRB1", "HLA-DRB5", "HLA-DQA1", "HLA-DQA2", "HLA-DQB1", "HLA-DQB2", "HLA-DPA1", "HLA-DPB1")
+genes_of_interest = ("HLA-A", "HLA-B", "HLA-C")
 
 # Minimum reads per sample
 # DeepVariant is stalling and not exiting for samples with very few BAM records (e.g., HG01891: 35 mapped reads to chr6)
@@ -71,14 +76,20 @@ class Samples:
 		self.pbtrgt_dir = os.path.join(self.output_dir, "pbtrgt_vcf")
 		self.merged_vcf_dir = os.path.join(self.output_dir, "merged_vcf")
 		self.hiphase_phased_vcf_dir = os.path.join(self.output_dir, "phased_vcf_hiphase")
+		self.parsed_haploblock_dir = os.path.join(self.output_dir, "haploblocks")
 		self.whatshap_phased_vcf_dir = os.path.join(self.output_dir, "phased_vcf_whatshap")
 		self.longphase_phased_vcf_dir = os.path.join(self.output_dir, "phased_vcf_longphase")
+		self.filtered_vcf_dir = os.path.join(self.output_dir, "filtered_vcf")
+		self.vcf2fasta_out_dir = os.path.join(self.output_dir, "vcf2fasta_out")
+		self.hla_fasta_dir = os.path.join(self.output_dir, "hla_fasta_haplotypes")
 
 		for directory in [
 			self.fastq_raw_dir, self.fastq_rmdup_dir, self.fastq_rmdup_cutadapt_dir,
 			self.mapped_bam_dir, self.deepvariant_dir, self.pbsv_dir, self.sniffles_dir,
-			self.pbtrgt_dir, self.merged_vcf_dir, self.hiphase_phased_vcf_dir,
-			self.whatshap_phased_vcf_dir, self.longphase_phased_vcf_dir
+			self.pbtrgt_dir, self.merged_vcf_dir, self.hiphase_phased_vcf_dir, 
+			self.parsed_haploblock_dir, self.whatshap_phased_vcf_dir, 
+			self.longphase_phased_vcf_dir, self.filtered_vcf_dir,
+			self.vcf2fasta_out_dir, self.hla_fasta_dir
 		]:
 			os.makedirs(directory, exist_ok=True)
 
@@ -114,6 +125,11 @@ Samples.merge_hiphase_vcfs = merge_hiphase_vcfs
 Samples.phase_genotypes_whatshap = phase_genotypes_whatshap
 Samples.phase_genotypes_longphase = phase_genotypes_longphase
 Samples.merge_longphase_vcfs = merge_longphase_vcfs
+Samples.parse_haploblocks = parse_haploblocks
+Samples.evaluate_gene_haploblocks = evaluate_gene_haploblocks
+Samples.filter_vcf = filter_vcf
+Samples.run_vcf2fasta = run_vcf2fasta
+Samples.parse_fastas = parse_fastas
 
 def main():
 	parser = argparse.ArgumentParser(description="Process HiFi BAM for variant calling pipeline.")
@@ -130,9 +146,9 @@ def main():
 	sample = Samples(unmapped_bam=args.input_bam, sample_name=args.sample_name, read_group_string=args.read_group_string, output_dir=args.output_dir, threads=args.threads)
 	sample.convert_bam_to_fastq()
 	sample.mark_duplicates()
-	# sample.run_fastqc(os.path.join(self.fastq_rmdup_dir, sample_ID + ".dedup.fastq.gz"))
+	sample.run_fastqc(os.path.join(sample.fastq_rmdup_dir, sample.sample_ID + ".dedup.fastq.gz"))
 	sample.trim_adapters()
-	# sample.run_fastqc(os.path.join(self.fastq_rmdup_cutadapt_dir, sample_ID + ".dedup.trimmed.fastq.gz"))
+	sample.run_fastqc(os.path.join(sample.fastq_rmdup_cutadapt_dir, sample.sample_ID + ".dedup.trimmed.fastq.gz"))
 	sample.align_to_reference_minimap()
 	sample.align_to_reference_vg()
 	sample.reassign_mapq()
@@ -149,6 +165,14 @@ def main():
 		#sample.phase_genotypes_whatshap()
 		#sample.phase_genotypes_longphase()
 		#sample.merge_longphase_vcfs()
+		heterozygous_sites, haploblock_list = sample.parse_haploblocks()
+		phased_genes = sample.evaluate_gene_haploblocks(heterozygous_sites, haploblock_list)
+		sample.filter_vcf()
+		for gene in phased_genes:
+			if gene in genes_of_interest:
+				sample.run_vcf2fasta(gene, "gene")
+				sample.run_vcf2fasta(gene, "CDS")
+		sample.parse_fastas()
 		end_time = time.time()
 		elapsed_time = end_time - start_time
 		minutes, seconds = divmod(elapsed_time,60)
