@@ -49,22 +49,65 @@ me_rc = "CTGTCTCTTATACACATCT"
 
 longphase = "/hb/home/mglasena/software/longphase/longphase_linux-x64"
 
+clair3_model_path = "/hb/home/mglasena/.conda/envs/clair3/bin/models/r941_prom_sup_g5014"
+
 # Convert BAM file of unmapped HiFi (ccs) reads to FASTQ format for marking duplicates and trimming adapters
 def convert_bam_to_fastq(self):
-	print("Converting HiFi ccs reads to fastq format using pbtk bam2fastq!")
-	print("bam2fastq input file: {}".format(self.unmapped_bam))
+	if self.platform == "PACBIO":
+		print("Converting HiFi ccs reads to fastq format using pbtk bam2fastq!")
+		print("bam2fastq input file: {}".format(self.unmapped_bam))
+		
+		os.chdir(self.fastq_raw_dir)
+		
+		bam2fastq_cmd = "bam2fastq -j {threads} {input_file} -o {output_prefix}".format(threads = self.threads, input_file = self.unmapped_bam, output_prefix = self.sample_ID)
+		
+		subprocess.run(bam2fastq_cmd, shell=True, check=True)
+				
+		print("Raw fastq reads written to: {}".format(os.path.join(self.fastq_raw_dir, self.sample_ID + ".fastq.gz")))
+		print("\n\n")
 	
-	os.chdir(self.fastq_raw_dir)
+	elif self.platform == "ONT":
+		print("Converting ONT raw reads to fastq format using Picard SamToFastq!")
+		print("SamToFastq input file: {}".format(self.unmapped_bam))
+
+		output_fastq = os.path.join(self.fastq_raw_dir, self.sample_ID + ".fastq")
+
+		gatk_SamToFastq_cmd = "gatk SamToFastq -I {input_file} -F {output_file}".format(input_file = self.unmapped_bam, output_file = output_fastq)
+		
+		subprocess.run(gatk_SamToFastq_cmd, shell=True, check=True)
+
+# Adapter/barcode trimming for ONT data
+def run_porechop_abi(self):
+	print("Removing adapters and barcodes with porechop_abi!")
 	
-	bam2fastq_cmd = "bam2fastq -j {threads} {input_file} -o {output_prefix}".format(threads = self.threads, input_file = self.unmapped_bam, output_prefix = self.sample_ID)
+	input_fastq = os.path.join(self.fastq_raw_dir, self.sample_ID + ".fastq")
 	
-	subprocess.run(bam2fastq_cmd, shell=True, check=True)
-			
-	print("Raw fastq reads written to: {}".format(os.path.join(self.fastq_raw_dir, self.sample_ID + ".fastq.gz")))
-	print("\n\n")
+	print("porechop_abi input file: {}".format(input_fastq))
+
+	output_fastq = os.path.join(self.fastq_porechop_dir, self.sample_ID + ".porechop.fastq")
+	
+	porechop_cmd = "porechop_abi --ab_initio -i {input_file} -t {threads} -o {output_file} --format fastq".format(input_file = input_fastq, threads = self.threads, output_file = output_fastq)
+
+	subprocess.run(porechop_cmd, shell=True, check=True)
+
+# Quality trimming step for ONT data 
+def trim_reads(self):
+	print("Trimiming reads with ProwlerTrimmer!")
+	
+	input_fastq_dir = self.fastq_porechop_dir + "/"
+	input_fastq_file = self.sample_ID + ".porechop.fastq"
+	output_dir = self.fastq_prowler_dir + "/"
+
+	prowler_trimmer_cmd = 'python3 {prowler_trimmer} -i {input_dir} -f {input_file} -o {output_dir} -m "D" -q 20'.format(prowler_trimmer = prowler_trimmer, input_dir = input_fastq_dir, input_file = input_fastq_file, output_dir = output_dir)
+
+	subprocess.run(prowler_trimmer_cmd, shell=True, check=True)
+
+	trimmed_fastq = os.path.join(self.fastq_prowler_dir, self.sample_ID + ".porechopTrimLT-U0-D20W100L100R0.fastq")
+	pigz_cmd = "pigz -f -p {threads} {input_file}".format(threads = self.threads, input_file = trimmed_fastq)
+	subprocess.run(pigz_cmd, shell=True, check=True)
 
 # Mark PCR duplicates with pbmarkdup
-def mark_duplicates(self):
+def mark_duplicates_pbmarkdup(self):
 	print("Removing PCR duplicates using pbmarkdup!")
 	
 	input_fastq = os.path.join(self.fastq_raw_dir, self.sample_ID + ".fastq.gz")
@@ -118,11 +161,16 @@ def trim_adapters(self):
 def align_to_reference_minimap(self):
 	print("Aligning reads to GRCh38 reference genome with minimap2!")
 	
-	input_fastq = os.path.join(self.fastq_rmdup_cutadapt_dir, self.sample_ID + ".dedup.trimmed.fastq.gz")
+	if self.platform == "PACBIO":
+		input_fastq = os.path.join(self.fastq_rmdup_cutadapt_dir, self.sample_ID + ".dedup.trimmed.fastq.gz")
+		output_bam = os.path.join(self.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.hg38.bam")
+		platform_string = "map-hifi"
+	elif self.platform == "ONT":
+		input_fastq = os.path.join(Samples.fastq_prowler_dir, self.sample_ID + ".porechopTrimLT-U0-D20W100L100R0.fastq.gz")
+		output_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".porechop.trimmed.hg38.bam")
+		platform_string = "map-ont"
 
 	print("minimap2 input file: {}".format(input_fastq))
-	
-	output_bam = os.path.join(self.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.hg38.bam")
 
 	# Deprecate pbmm2. Moving forward with minimap2 for ease of comparison with ONT data.
 	# print("Aligning reads to GRCh38 reference genome with pbmm2!")
@@ -134,8 +182,7 @@ def align_to_reference_minimap(self):
 	samtools_threads = self.threads - minimap_threads
 	minimap_rg_string = "'{}'".format(self.read_group_string.replace("\t", "\\t"))
 
-	minimap2_cmd = "minimap2 -t {minimap_threads} -ax map-hifi {reference_genome} {input_file} -R {rg_string} | samtools sort -@ {samtools_threads} -o {output_file}".format(minimap_threads = minimap_threads, reference_genome = reference_fasta, input_file = input_fastq, rg_string = minimap_rg_string, samtools_threads = samtools_threads, output_file = output_bam)
-
+	minimap2_cmd = "minimap2 -t {minimap_threads} -ax {platform_string} {reference_genome} {input_file} -R {rg_string} | samtools sort -@ {samtools_threads} -o {output_file}".format(minimap_threads = minimap_threads, platform_string = platform_string, reference_genome = reference_fasta, input_file = input_fastq, rg_string = minimap_rg_string, samtools_threads = samtools_threads, output_file = output_bam)
 	index_bam = "samtools index {input_file}".format(input_file = output_bam)
 	
 	subprocess.run(minimap2_cmd, shell=True, check=True)
@@ -143,6 +190,17 @@ def align_to_reference_minimap(self):
 
 	print("Mapped bam written to: {}".format(output_bam))
 	print("\n\n")
+
+def mark_duplicates_picard(self):
+	input_bam = os.path.join(self.mapped_bam_dir, self.sample_ID + ".porechop.trimmed.hg38.bam")
+	output_bam = os.path.join(self.mapped_bam_dir, self.sample_ID + ".porechop.trimmed.hg38.mrkdup.bam")
+	metrics_file = os.path.join(self.mapped_bam_dir, self.sample_ID + ".porechop.trimmed.hg38.mrkdup.metrics.txt")
+	temp_dir = os.path.join(output_dir, "mark_duplicates")
+	os.makedirs(temp_dir, exist_ok=True)
+	
+	mark_duplicates_cmd = "gatk MarkDuplicates -I {input_file} -O {output_file} --TMP_DIR {temp_dir} -M {metrics_file} --CREATE_INDEX true".format(input_file = input_bam, output_file = output_bam, temp_dir = temp_dir, metrics_file = metrics_file)
+	
+	subprocess.run(mark_duplicates_cmd, shell=True, check=True)
 
 def align_to_reference_vg(self):
 	print("Aligning reads to pangenome reference genome with vg giraffe!")
@@ -219,21 +277,22 @@ def reassign_mapq(self):
 # Filer reads that did not map to chromosome 6
 def filter_reads(self):
 	print("Excluding BAM records that don't map to chromosome 6!")
-	
-	input_bam = os.path.join(self.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.pg.mapq_reassign.bam")
+
+	if self.platform == "PACBIO":
+		input_bam = os.path.join(self.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.pg.mapq_reassign.bam")
+		output_bam = os.path.join(self.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.bam")
+	elif self.platform == "ONT":
+		input_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".porechop.trimmed.hg38.mrkdup.bam")
+		output_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".porechop.trimmed.hg38.rmdup.chr6.bam")
 
 	print("Samtools input file: {}".format(input_bam))
-
-	output_bam = os.path.join(self.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.bam")
 
 	# Extract chromosome 6 and exclude secondary and supplementary alignments
 	#samtools_cmd = "samtools view -@ {threads} -F 2304 -b {input_file} chr6 > '{output_file}'".format(threads = self.threads, input_file = input_bam, output_file = output_bam)
 	samtools_cmd = "samtools view -@ {threads} -F 2048 -b {input_file} chr6 > '{output_file}'".format(threads = self.threads, input_file = input_bam, output_file = output_bam)
-
-	subprocess.run(samtools_cmd, shell=True, check=True)
-
 	index_cmd = "samtools index {input_file}".format(input_file = output_bam)
 
+	subprocess.run(samtools_cmd, shell=True, check=True)
 	subprocess.run(index_cmd, shell=True, check=True)
 
 	count_reads_cmd = "samtools view -c {input_file}".format(input_file = output_bam)
@@ -246,7 +305,7 @@ def filter_reads(self):
 	return read_count
 
 # Call SNV with DeepVariant
-def call_variants(self):
+def call_variants_deepvariant(self):
 	print("Calling SNVs and small INDELS with DeepVariant!")
 
 	input_bam = os.path.join(self.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.bam")
@@ -288,6 +347,20 @@ def call_variants(self):
 
 	print("VCF written to {}".format(output_vcf))
 	print("GVCF written to {}".format(output_gvcf))
+	print("\n\n")
+
+def call_variants_clair3(self):
+	print("Calling SNVs and small INDELS with Clair3!")
+
+	input_bam = os.path.join(self.mapped_bam_dir, self.sample_ID + ".porechop.trimmed.hg38.rmdup.chr6.bam")
+	output_dir = os.path.join(self.clair3_dir, self.sample_ID)
+	os.makedirs(output_dir, exist_ok=True)
+
+	clair3_cmd = "run_clair3.sh --bam_fn={input_file} --ref_fn={reference_genome} --platform=ont --model_path={clair3_model} --output={output_dir} --threads={threads} --sample_name={sample} --bed_fn={bed_file}".format(input_file = input_bam, reference_genome = reference_fasta, clair3_model = clair3_model_path, output_dir = output_dir, threads = self.threads, sample = self.sample_ID, bed_file = chr6_bed)
+	
+	subprocess.run(clair3_cmd, shell=True, check=True)
+
+	print("VCF written to {}".format(os.path.join(Samples.clair3_dir, self.sample_ID, "merge_output.vcf.gz")))
 	print("\n\n")
 
 # Call SNV with bcftools

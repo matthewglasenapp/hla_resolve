@@ -52,15 +52,16 @@ def check_required_commands():
 		print("\n\n")
 
 class Samples:
-	def __init__(self, unmapped_bam, output_dir, threads, sample_name=None, read_group_string=None):
+	def __init__(self, unmapped_bam, sample_name, platform, output_dir, threads, read_group_string=None):
 		self.unmapped_bam = unmapped_bam
+		self.sample_ID = sample_name
+		self.platform = platform.upper()
 		self.threads = threads
 
-		if sample_name and read_group_string:
-			self.sample_ID = sample_name
+		if read_group_string:
 			self.read_group_string = read_group_string
 		else:
-			self.sample_ID, self.read_group_string = self.parse_unmapped_bam(unmapped_bam)
+			self.read_group_string = self.parse_unmapped_bam(unmapped_bam)
 
 		self.output_dir = os.path.join(output_dir, self.sample_ID)
 		os.makedirs(self.output_dir, exist_ok=True)
@@ -94,19 +95,27 @@ class Samples:
 			os.makedirs(directory, exist_ok=True)
 
 		print(f"Processing Sample {self.sample_ID}!\n\n")
+		print(f"Sample ID: {self.sample_ID}")
+		print(f"Read Group: {self.read_group_string}")
 
 	def parse_unmapped_bam(self, bam_path):
 		import pysam
+
 		with pysam.AlignmentFile(bam_path, "rb", check_sq=False) as bamfile:
-			for line in bamfile.text.splitlines():
-				if line.startswith("@RG"):
-					fields = line.split("\t")
-					field_dict = {kv.split(":", 1)[0]: kv.split(":", 1)[1] for kv in fields[1:] if ":" in kv}
-					sample = field_dict.get("SM")
-					platform_unit = field_dict.get("PU")
-					if sample and platform_unit:
-						return sample, f"@RG\tID:{platform_unit}\tSM:{sample}"
-		raise ValueError("Could not extract sample name and read group info from BAM header.")
+			header = bamfile.header.to_dict()
+			rg_list = header.get("RG", [])
+			if not rg_list:
+				raise ValueError(f"No @RG entry found in BAM header for {bam_path}")
+
+			rg = rg_list[0]
+			rg_id = rg.get("ID") or f"{self.sample_ID}_RG"
+			rg_pl = self.platform
+			rg_sm = self.sample_ID
+			rg_lb = rg.get("LB", self.sample_ID)
+			rg_pu = rg.get("PU", f"{self.sample_ID}_PU")
+
+			rg_string = f"@RG\\tID:{rg_id}\\tSM:{rg_sm}\\tPL:{rg_pl}\\tLB:{rg_lb}\\tPU:{rg_pu}"
+			return rg_string
 
 Samples.convert_bam_to_fastq = convert_bam_to_fastq
 Samples.mark_duplicates = mark_duplicates
@@ -132,55 +141,57 @@ Samples.run_vcf2fasta = run_vcf2fasta
 Samples.parse_fastas = parse_fastas
 
 def main():
-	parser = argparse.ArgumentParser(description="Process HiFi BAM for variant calling pipeline.")
+	parser = argparse.ArgumentParser(description="Run HLA-Resolve")
 	parser.add_argument("--input_bam", required=True, help="Path to the unmapped HiFi BAM file")
+	parser.add_argument("--sample_name", required=True, help="Override the parsed sample name", default=None)
+	parser.add_argument("--platform", choices=["pacbio", "ont"], required=True, help="Specify sequencing platform (pacbio, ont)")
 	parser.add_argument("--output_dir", required=True, help="Output Directory", default=None)
-	parser.add_argument("--threads", type=int, required=False, help="Number of threds to use", default=6)
-	parser.add_argument("--sample_name", required=False, help="Override the parsed sample name", default=None)
+	parser.add_argument("--threads", type=int, required=False, help="Number of threads to use", default=6)
 	parser.add_argument("--read_group_string", required=False, help="Override the parsed read group string", default=None)
 	args = parser.parse_args()
 
 	# Check that all required tools are installed
-	check_required_commands()
-	start_time = time.time()
-	sample = Samples(unmapped_bam=args.input_bam, sample_name=args.sample_name, read_group_string=args.read_group_string, output_dir=args.output_dir, threads=args.threads)
-	sample.convert_bam_to_fastq()
-	sample.mark_duplicates()
-	sample.run_fastqc(os.path.join(sample.fastq_rmdup_dir, sample.sample_ID + ".dedup.fastq.gz"))
-	sample.trim_adapters()
-	sample.run_fastqc(os.path.join(sample.fastq_rmdup_cutadapt_dir, sample.sample_ID + ".dedup.trimmed.fastq.gz"))
-	sample.align_to_reference_minimap()
-	sample.align_to_reference_vg()
-	sample.reassign_mapq()
+	# check_required_commands()
+	# start_time = time.time()
+	sample = Samples(unmapped_bam=args.input_bam, sample_name=args.sample_name, platform =args.platform, output_dir=args.output_dir, threads=args.threads, read_group_string=args.read_group_string)
 	
-	chr6_reads = sample.filter_reads()
+	# sample.convert_bam_to_fastq()
+	# sample.mark_duplicates()
+	# sample.run_fastqc(os.path.join(sample.fastq_rmdup_dir, sample.sample_ID + ".dedup.fastq.gz"))
+	# sample.trim_adapters()
+	# sample.run_fastqc(os.path.join(sample.fastq_rmdup_cutadapt_dir, sample.sample_ID + ".dedup.trimmed.fastq.gz"))
+	# sample.align_to_reference_minimap()
+	# sample.align_to_reference_vg()
+	# sample.reassign_mapq()
+	
+	# chr6_reads = sample.filter_reads()
 
-	if chr6_reads > min_reads_sample:
-		sample.call_variants()
-		sample.call_structural_variants_pbsv()
-		# sample.call_structural_variants_sniffles()
-		sample.genotype_tandem_repeats()
-		sample.phase_genotypes_hiphase()
-		sample.merge_hiphase_vcfs()
-		#sample.phase_genotypes_whatshap()
-		#sample.phase_genotypes_longphase()
-		#sample.merge_longphase_vcfs()
-		heterozygous_sites, haploblock_list = sample.parse_haploblocks()
-		phased_genes = sample.evaluate_gene_haploblocks(heterozygous_sites, haploblock_list)
-		sample.filter_vcf()
-		for gene in phased_genes:
-			if gene in genes_of_interest:
-				sample.run_vcf2fasta(gene, "gene")
-				sample.run_vcf2fasta(gene, "CDS")
-		sample.parse_fastas()
-		end_time = time.time()
-		elapsed_time = end_time - start_time
-		minutes, seconds = divmod(elapsed_time,60)
-		print("Processed sampled in {}:{:.2f}!".format(int(minutes), seconds))
+	# if chr6_reads > min_reads_sample:
+	# 	sample.call_variants()
+	# 	sample.call_structural_variants_pbsv()
+	# 	# sample.call_structural_variants_sniffles()
+	# 	sample.genotype_tandem_repeats()
+	# 	sample.phase_genotypes_hiphase()
+	# 	sample.merge_hiphase_vcfs()
+	# 	#sample.phase_genotypes_whatshap()
+	# 	#sample.phase_genotypes_longphase()
+	# 	#sample.merge_longphase_vcfs()
+	# 	heterozygous_sites, haploblock_list = sample.parse_haploblocks()
+	# 	phased_genes = sample.evaluate_gene_haploblocks(heterozygous_sites, haploblock_list)
+	# 	sample.filter_vcf()
+	# 	for gene in phased_genes:
+	# 		if gene in genes_of_interest:
+	# 			sample.run_vcf2fasta(gene, "gene")
+	# 			sample.run_vcf2fasta(gene, "CDS")
+	# 	sample.parse_fastas()
+	# 	end_time = time.time()
+	# 	elapsed_time = end_time - start_time
+	# 	minutes, seconds = divmod(elapsed_time,60)
+	# 	print("Processed sampled in {}:{:.2f}!".format(int(minutes), seconds))
 	
-	else:
-		print("Insufficient reads for variant calling")
-		print("Sample {sample_id} had {num_reads} reads!".format(sample_id = sample.sample_ID, num_reads = chr6_reads))
+	# else:
+	# 	print("Insufficient reads for variant calling")
+	# 	print("Sample {sample_id} had {num_reads} reads!".format(sample_id = sample.sample_ID, num_reads = chr6_reads))
 
 if __name__ == "__main__":
 	main()
