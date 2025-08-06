@@ -5,7 +5,7 @@ import sys
 import time
 import pysam
 import argparse
-from preprocess_methods import convert_bam_to_fastq, mark_duplicates_pbmarkdup, mark_duplicates_picard, trim_adapters, run_fastqc, align_to_reference_minimap, align_to_reference_vg, reassign_mapq, filter_reads, call_variants_deepvariant, call_variants_clair3, call_structural_variants_pbsv, call_structural_variants_sniffles, genotype_tandem_repeats, phase_genotypes_hiphase, merge_hiphase_vcfs, phase_genotypes_whatshap, phase_genotypes_longphase, merge_longphase_vcfs, run_porechop_abi
+from preprocess_methods import convert_bam_to_fastq, mark_duplicates_pbmarkdup, mark_duplicates_picard, trim_adapters, run_fastqc, trim_reads, align_to_reference_minimap, align_to_reference_vg, reassign_mapq, filter_reads, call_variants_deepvariant, call_variants_clair3, call_structural_variants_pbsv, call_structural_variants_sniffles, genotype_tandem_repeats, phase_genotypes_hiphase, merge_hiphase_vcfs, phase_genotypes_whatshap, phase_genotypes_longphase, merge_longphase_vcfs, run_porechop_abi
 from investigate_haploblocks_methods import parse_haploblocks, evaluate_gene_haploblocks
 from reconstruct_fasta_methods import filter_vcf, run_vcf2fasta, parse_fastas
 
@@ -95,14 +95,14 @@ class Samples:
 		# ONT-specific directories
 		elif self.platform == "ONT":
 			self.fastq_porechop_dir = os.path.join(self.output_dir, "fastq_porechop")
-			self.fastq_prowler_dir = os.path.join(output_dir, "fastq_prowler")
+			self.fastq_prowler_dir = os.path.join(self.output_dir, "fastq_prowler")
 			self.clair3_dir = os.path.join(self.output_dir, "clair3_vcf")
 			self.sniffles_dir = os.path.join(self.output_dir, "sniffles")
 			self.merged_vcf_dir = os.path.join(self.output_dir, "merged_vcf")
 			self.longphase_phased_vcf_dir = os.path.join(self.output_dir, "phased_vcf_longphase")
 
 			platform_dirs.extend([
-				self.fastq_porechop_dir, self.clair3_dir, self.sniffles_dir,
+				self.fastq_porechop_dir, self.fastq_prowler_dir, self.clair3_dir, self.sniffles_dir,
 				self.merged_vcf_dir, self.longphase_phased_vcf_dir
 			])
 
@@ -143,6 +143,7 @@ Samples.mark_duplicates_pbmarkdup = mark_duplicates_pbmarkdup
 Samples.mark_duplicates_picard = mark_duplicates_picard
 Samples.trim_adapters = trim_adapters
 Samples.run_porechop_abi = run_porechop_abi
+Samples.trim_reads = trim_reads
 Samples.run_fastqc = run_fastqc
 Samples.align_to_reference_minimap = align_to_reference_minimap
 Samples.align_to_reference_vg = align_to_reference_vg
@@ -179,7 +180,7 @@ def main():
 	print("=============================")
 
 	# Check that all required tools are installed
-	# check_required_commands()
+	check_required_commands()
 	start_time = time.time()
 	sample = Samples(unmapped_bam=args.input_bam, sample_name=args.sample_name, platform =args.platform, output_dir=args.output_dir, threads=args.threads, read_group_string=args.read_group_string)
 
@@ -205,8 +206,8 @@ def main():
 			print("Sample {sample_id} had {num_reads} reads!".format(sample_id = sample.sample_ID, num_reads = chr6_reads))
 
 	elif args.platform.upper() == "ONT":
-		sample.convert_bam_to_fastq()
-		sample.run_porechop_abi()
+		# sample.convert_bam_to_fastq()
+		# sample.run_porechop_abi()
 		sample.trim_reads()
 		sample.align_to_reference_minimap()
 		sample.align_to_reference_vg()
