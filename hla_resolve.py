@@ -208,10 +208,11 @@ def main():
 	elif args.platform.upper() == "ONT":
 		# sample.convert_bam_to_fastq()
 		# sample.run_porechop_abi()
-		sample.trim_reads()
-		sample.align_to_reference_minimap()
-		sample.align_to_reference_vg()
-		sample.reassign_mapq()
+		# sample.trim_reads()
+		# sample.align_to_reference_minimap()
+		# sample.align_to_reference_vg()
+		# sample.reassign_mapq()
+		sample.mark_duplicates_picard()
 		
 		chr6_reads = sample.filter_reads()
 		if chr6_reads > min_reads_sample:
