@@ -5,7 +5,6 @@ from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio import SeqIO
 
-
 vcf2fasta_script = "/hb/scratch/mglasena/vcf2fasta/vcf2fasta.py"
 reference_genome = "/hb/groups/cornejo_lab/matt/hla_capture/input_data/reference/GCA_000001405.15_GRCh38_no_alt_analysis_set.fa"
 gff_dir = "/hb/groups/cornejo_lab/matt/hla_capture/input_data/hla_gff/"
@@ -14,9 +13,14 @@ DNA_bases = {"A", "T", "G", "C"}
 stop_codons = ["TAA", "TAG", "TGA"]
 
 def filter_vcf(self):
-	input_vcf = os.path.join(self.hiphase_phased_vcf_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.phased.joint.vcf.gz")
-	pass_vcf = os.path.join(self.filtered_vcf_dir, f"{self.sample_ID}_PASS.vcf.gz")
-	filtered_vcf = os.path.join(self.filtered_vcf_dir, f"{self.sample_ID}_filtered.vcf.gz")
+	if self.platform == "PACBIO":
+		input_vcf = os.path.join(self.hiphase_phased_vcf_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.phased.joint.vcf.gz")
+		pass_vcf = os.path.join(self.filtered_vcf_dir, f"{self.sample_ID}_PASS.vcf.gz")
+		filtered_vcf = os.path.join(self.filtered_vcf_dir, f"{self.sample_ID}_filtered.vcf.gz")
+	elif self.platform == "ONT":
+		input_vcf = os.path.join(self.longphase_phased_vcf_dir, self.sample_ID + ".porechop.trimmed.hg38.rmdup.chr6.longphase.merged.vcf.gz")
+		pass_vcf = os.path.join(self.longphase_phased_vcf_dir, f"{self.sample_ID}_PASS.vcf.gz")
+		filtered_vcf = os.path.join(self.filtered_vcf_dir, f"{self.sample_ID}_filtered.vcf.gz")
 
 	# Step 1: Filter for PASS variants and remove unphased hets and unsupported variant types
 	#filter_expr = '(GT="hom" || GT~"\\|") && (TYPE="snp" || TYPE="indel" || SVTYPE="INS" || SVTYPE="DEL") && ALT!~"^<"'

@@ -178,6 +178,7 @@ def main():
 	print("=============================")
 	print("         HLA-RESOLVE         ")
 	print("=============================")
+	print("\n")
 
 	# Check that all required tools are installed
 	check_required_commands()
@@ -206,12 +207,13 @@ def main():
 			print("Sample {sample_id} had {num_reads} reads!".format(sample_id = sample.sample_ID, num_reads = chr6_reads))
 
 	elif args.platform.upper() == "ONT":
-		# sample.convert_bam_to_fastq()
-		# sample.run_porechop_abi()
-		# sample.trim_reads()
-		# sample.align_to_reference_minimap()
-		# sample.align_to_reference_vg()
-		# sample.reassign_mapq()
+		print(" ")
+		sample.convert_bam_to_fastq()
+		sample.run_porechop_abi()
+		sample.trim_reads()
+		sample.align_to_reference_minimap()
+		sample.align_to_reference_vg()
+		sample.reassign_mapq()
 		sample.mark_duplicates_picard()
 		
 		chr6_reads = sample.filter_reads()

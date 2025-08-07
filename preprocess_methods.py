@@ -193,13 +193,15 @@ def align_to_reference_minimap(self):
 	print("\n\n")
 
 def mark_duplicates_picard(self):
-	input_bam = os.path.join(self.mapped_bam_dir, self.sample_ID + ".porechop.trimmed.hg38.bam")
-	output_bam = os.path.join(self.mapped_bam_dir, self.sample_ID + ".porechop.trimmed.hg38.mrkdup.bam")
-	metrics_file = os.path.join(self.mapped_bam_dir, self.sample_ID + ".porechop.trimmed.hg38.mrkdup.metrics.txt")
+	# input_bam = os.path.join(self.mapped_bam_dir, self.sample_ID + ".porechop.trimmed.hg38.bam")
+	input_bam = os.path.join(self.mapped_bam_dir, self.sample_ID + ".porechop.trimmed.pg.mapq_reassign.bam")
+	# output_bam = os.path.join(self.mapped_bam_dir, self.sample_ID + ".porechop.trimmed.hg38.mrkdup.bam")
+	output_bam = os.path.join(self.mapped_bam_dir, self.sample_ID + ".porechop.trimmed.pg.mapq_reassign.mrkdup.bam")
+	metrics_file = os.path.join(self.mapped_bam_dir, self.sample_ID + ".porechop.trimmed.pg.mapq_reassign.mrkdup.metrics.txt")
 	temp_dir = os.path.join(self.mapped_bam_dir, "mark_duplicates")
 	os.makedirs(temp_dir, exist_ok=True)
 	
-	mark_duplicates_cmd = "gatk MarkDuplicates -I {input_file} -O {output_file} --TMP_DIR {temp_dir} -M {metrics_file} --CREATE_INDEX true".format(input_file = input_bam, output_file = output_bam, temp_dir = temp_dir, metrics_file = metrics_file)
+	mark_duplicates_cmd = "gatk MarkDuplicates -I {input_file} -O {output_file} --TMP_DIR {temp_dir} -M {metrics_file} --CREATE_INDEX true --VALIDATION_STRINGENCY LENIENT".format(input_file = input_bam, output_file = output_bam, temp_dir = temp_dir, metrics_file = metrics_file)
 	
 	subprocess.run(mark_duplicates_cmd, shell=True, check=True)
 
@@ -303,7 +305,7 @@ def filter_reads(self):
 		input_bam = os.path.join(self.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.pg.mapq_reassign.bam")
 		output_bam = os.path.join(self.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.bam")
 	elif self.platform == "ONT":
-		input_bam = os.path.join(self.mapped_bam_dir, self.sample_ID + ".porechop.trimmed.hg38.mrkdup.bam")
+		input_bam = os.path.join(self.mapped_bam_dir, self.sample_ID + ".porechop.trimmed.pg.mapq_reassign.mrkdup.bam")
 		output_bam = os.path.join(self.mapped_bam_dir, self.sample_ID + ".porechop.trimmed.hg38.rmdup.chr6.bam")
 
 	print("Samtools input file: {}".format(input_bam))

@@ -16,8 +16,12 @@ def parse_haploblocks(self):
 	heterozygous_sites = []
 	haploblock_list = []
 
-	vcf_file = os.path.join(self.hiphase_phased_vcf_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.phased.joint.vcf.gz")
-	haploblock_file = os.path.join(self.hiphase_phased_vcf_dir, self.sample_ID + ".phased.blocks.txt")
+	if self.platform == "PACBIO":
+		vcf_file = os.path.join(self.hiphase_phased_vcf_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.phased.joint.vcf.gz")
+		haploblock_file = os.path.join(self.hiphase_phased_vcf_dir, self.sample_ID + ".phased.blocks.txt")
+	elif self.platform == "ONT":
+		vcf_file = os.path.join(self.longphase_phased_vcf_dir, self.sample_ID + ".porechop.trimmed.hg38.rmdup.chr6.longphase.merged.vcf.gz")
+		haploblock_file = os.path.join(self.longphase_phased_vcf_dir, self.sample_ID + ".phased.haploblocks.txt")
 	
 	vcf = pysam.VariantFile(vcf_file)
 
@@ -44,7 +48,12 @@ def parse_haploblocks(self):
 
 	for line in haploblocks[1:]:
 		fields = line.split("\t")
-		chromosome, start, stop = "chr6", int(fields[4]) - 1, int(fields[5])
+		
+		# HiPhase and Longphase have slightly differently formatted haploblock tsv files. 
+		if self.platform == "PACBIO":
+			chromosome, start, stop = "chr6", int(fields[4]) - 1, int(fields[5])
+		elif self.platform == "ONT":
+			chromosome, start, stop = "chr6", int(fields[3]) - 1, int(fields[4])
 
 		if chromosome == "chr6" and stop > mhc_start:
 			haploblock_list.append([start,stop])
