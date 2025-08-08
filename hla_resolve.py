@@ -60,12 +60,24 @@ def check_required_commands():
 
 class Samples:
 	def __init__(self, input_file, sample_name, platform, output_dir, threads, read_group_string=None):
-		self.input_file = os.path.abspath(input_file)
+		self.input_file = os.path.realpath(os.path.abspath(input_file))
 		self.sample_ID = sample_name
 		self.platform = platform.upper()
 		self.threads = threads
 
-		self.output_dir = os.path.abspath(os.path.join(output_dir, self.sample_ID))
+		output_dir_abs = os.path.realpath(os.path.abspath(os.path.join(output_dir, self.sample_ID)))
+
+		try:
+			inside = os.path.commonpath([self.input_file, output_dir_abs]) == output_dir_abs
+		except ValueError:
+			inside = False  # different drives etc.
+		if inside:
+			raise ValueError(
+				f"Input file {self.input_file} is inside the output directory {output_dir_abs}. "
+				"Please place the input file outside the output directory."
+			)
+
+		self.output_dir = output_dir_abs
 		os.makedirs(self.output_dir, exist_ok=True)
 
 		# Platform-agnostic output directories
@@ -117,17 +129,18 @@ class Samples:
 		for directory in combined_dirs:
 			os.makedirs(directory, exist_ok=True)
 
-		if read_group_string:
-			self.read_group_string = read_group_string
+		parsed_rg = self.parse_input_file(self.input_file)
+
+		if read_group_string is not None and str(read_group_string).strip():
+			self.read_group_string = str(read_group_string).strip()
 		else:
-			self.read_group_string = self.parse_input_file(self.input_file)
+			self.read_group_string = parsed_rg
 
 		print(f"Processing Sample {self.sample_ID}!\n\n")
 		print(f"Sample ID: {self.sample_ID}")
 		print(f"Read Group: {self.read_group_string}")
 
-		if not os.listdir(self.fastq_raw_dir):
-			self.prepare_raw_fastq()
+		self.prepare_raw_fastq()
 
 	def parse_input_file(self, input_path):
 		if input_path.endswith(".bam"):
