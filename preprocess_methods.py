@@ -87,7 +87,7 @@ def run_porechop_abi(self):
 
 	output_fastq = os.path.join(self.fastq_porechop_dir, self.sample_ID + ".porechop.fastq")
 	
-	porechop_cmd = "porechop_abi --ab_initio -i {input_file} -t {threads} -o {output_file} --format fastq".format(input_file = input_fastq, threads = self.threads, output_file = output_fastq)
+	porechop_cmd = "porechop_abi --ab_initio -v 1 -i {input_file} -t {threads} -o {output_file} --format fastq".format(input_file = input_fastq, threads = self.threads, output_file = output_fastq)
 
 	subprocess.run(porechop_cmd, shell=True, check=True)
 
@@ -101,7 +101,7 @@ def trim_reads(self):
 
 	prowler_trimmer_cmd = 'python3 {prowler_trimmer} -i {input_dir} -f {input_file} -o {output_dir} -m "D" -q 20'.format(prowler_trimmer = prowler_trimmer, input_dir = input_fastq_dir, input_file = input_fastq_file, output_dir = output_dir)
 
-	subprocess.run(prowler_trimmer_cmd, shell=True, check=True)
+	subprocess.run(prowler_trimmer_cmd, shell=True, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 	trimmed_fastq = os.path.join(self.fastq_prowler_dir, self.sample_ID + ".porechopTrimLT-U0-D20W100L100R0.fastq")
 	pigz_cmd = "pigz -f -p {threads} {input_file}".format(threads = self.threads, input_file = trimmed_fastq)
