@@ -65,11 +65,6 @@ class Samples:
 		self.platform = platform.upper()
 		self.threads = threads
 
-		if read_group_string:
-			self.read_group_string = read_group_string
-		else:
-			self.read_group_string = self.parse_input_file(self.input_file)
-
 		self.output_dir = os.path.abspath(os.path.join(output_dir, self.sample_ID))
 		os.makedirs(self.output_dir, exist_ok=True)
 
@@ -121,6 +116,11 @@ class Samples:
 
 		for directory in combined_dirs:
 			os.makedirs(directory, exist_ok=True)
+
+		if read_group_string:
+			self.read_group_string = read_group_string
+		else:
+			self.read_group_string = self.parse_input_file(self.input_file)
 
 		print(f"Processing Sample {self.sample_ID}!\n\n")
 		print(f"Sample ID: {self.sample_ID}")
