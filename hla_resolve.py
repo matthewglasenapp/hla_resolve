@@ -67,7 +67,10 @@ class Samples:
 		if not os.access(self.input_file, os.R_OK):
 			raise OSError(f"Input file is not readable: {self.input_file}")
 
-		self.sample_ID = sample_name
+		self.sample_ID = str(sample_name).strip()
+		if not self.sample_ID:
+			raise ValueError("Sample name cannot be empty or only whitespace.")
+
 		self.platform = platform.upper()
 		self.threads = threads
 
