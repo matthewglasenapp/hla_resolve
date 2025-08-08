@@ -6,7 +6,7 @@ HLA typing from long reads
 Usage
 ```
 hla_resolve.py \
---input_bam INPUT_BAM \
+--input_file INPUT_FILE \
 --sample_name SAMPLE_NAME \
 --platform {pacbio,ont} \
 --output_dir OUTPUT_DIR \
