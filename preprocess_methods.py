@@ -68,14 +68,14 @@ def convert_bam_to_fastq(self):
 		print("\n\n")
 	
 	elif self.platform == "ONT":
-		print("Converting ONT raw reads to fastq format using Picard SamToFastq!")
-		print("SamToFastq input file: {}".format(self.input_file))
+		print("Converting ONT raw reads to fastq format using Samtools fastq!")
+		print("Samtools fastq input file: {}".format(self.input_file))
 
 		output_fastq = os.path.join(self.fastq_raw_dir, self.sample_ID + ".fastq")
 
-		gatk_SamToFastq_cmd = "gatk SamToFastq -I {input_file} -F {output_file}".format(input_file = self.input_file, output_file = output_fastq)
+		samtools_fq_cmd = "samtools fastq -@ {threads} {input_file} > {output_file}".format(threads = self.threads, input_file = self.input_file, output_file = output_fastq)
 		
-		subprocess.run(gatk_SamToFastq_cmd, shell=True, check=True)
+		subprocess.run(samtools_fq_cmd, shell=True, check=True)
 
 # Adapter/barcode trimming for ONT data
 def run_porechop_abi(self):
