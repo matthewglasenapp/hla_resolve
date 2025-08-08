@@ -56,11 +56,11 @@ clair3_model_path = "/hb/home/mglasena/.conda/envs/clair3/bin/models/r941_prom_s
 def convert_bam_to_fastq(self):
 	if self.platform == "PACBIO":
 		print("Converting HiFi ccs reads to fastq format using pbtk bam2fastq!")
-		print("bam2fastq input file: {}".format(self.unmapped_bam))
+		print("bam2fastq input file: {}".format(self.input_file))
 		
 		os.chdir(self.fastq_raw_dir)
 		
-		bam2fastq_cmd = "bam2fastq -j {threads} {input_file} -o {output_prefix}".format(threads = self.threads, input_file = self.unmapped_bam, output_prefix = self.sample_ID)
+		bam2fastq_cmd = "bam2fastq -j {threads} {input_file} -o {output_prefix}".format(threads = self.threads, input_file = self.input_file, output_prefix = self.sample_ID)
 		
 		subprocess.run(bam2fastq_cmd, shell=True, check=True)
 				
@@ -69,11 +69,11 @@ def convert_bam_to_fastq(self):
 	
 	elif self.platform == "ONT":
 		print("Converting ONT raw reads to fastq format using Picard SamToFastq!")
-		print("SamToFastq input file: {}".format(self.unmapped_bam))
+		print("SamToFastq input file: {}".format(self.input_file))
 
 		output_fastq = os.path.join(self.fastq_raw_dir, self.sample_ID + ".fastq")
 
-		gatk_SamToFastq_cmd = "gatk SamToFastq -I {input_file} -F {output_file}".format(input_file = self.unmapped_bam, output_file = output_fastq)
+		gatk_SamToFastq_cmd = "gatk SamToFastq -I {input_file} -F {output_file}".format(input_file = self.input_file, output_file = output_fastq)
 		
 		subprocess.run(gatk_SamToFastq_cmd, shell=True, check=True)
 

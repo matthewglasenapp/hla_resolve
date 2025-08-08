@@ -5,6 +5,7 @@ import sys
 import time
 import pysam
 import argparse
+import json
 from preprocess_methods import convert_bam_to_fastq, mark_duplicates_pbmarkdup, mark_duplicates_picard, trim_adapters, run_fastqc, trim_reads, align_to_reference_minimap, align_to_reference_vg, reassign_mapq, filter_reads, call_variants_deepvariant, call_variants_clair3, call_structural_variants_pbsv, call_structural_variants_sniffles, genotype_tandem_repeats, phase_genotypes_hiphase, merge_hiphase_vcfs, phase_genotypes_whatshap, phase_genotypes_longphase, merge_longphase_vcfs, run_porechop_abi
 from investigate_haploblocks_methods import parse_haploblocks, evaluate_gene_haploblocks
 from reconstruct_fasta_methods import filter_vcf, run_vcf2fasta, parse_fastas
@@ -52,8 +53,8 @@ def check_required_commands():
 		print("\n\n")
 
 class Samples:
-	def __init__(self, unmapped_bam, sample_name, platform, output_dir, threads, read_group_string=None):
-		self.unmapped_bam = unmapped_bam
+	def __init__(self, input_file, sample_name, platform, output_dir, threads, read_group_string=None):
+		self.input_file = input_file = os.path.abspath(input_file)
 		self.sample_ID = sample_name
 		self.platform = platform.upper()
 		self.threads = threads
@@ -61,9 +62,9 @@ class Samples:
 		if read_group_string:
 			self.read_group_string = read_group_string
 		else:
-			self.read_group_string = self.parse_unmapped_bam(unmapped_bam)
+			self.read_group_string = self.parse_input_file(self.input_file)
 
-		self.output_dir = os.path.join(output_dir, self.sample_ID)
+		self.output_dir = os.path.abspath(os.path.join(output_dir, self.sample_ID))
 		os.makedirs(self.output_dir, exist_ok=True)
 
 		# Platform-agnostic output directories
@@ -119,24 +120,108 @@ class Samples:
 		print(f"Sample ID: {self.sample_ID}")
 		print(f"Read Group: {self.read_group_string}")
 
-	def parse_unmapped_bam(self, bam_path):
-		import pysam
+		self.prepare_raw_fastq()
 
-		with pysam.AlignmentFile(bam_path, "rb", check_sq=False) as bamfile:
-			header = bamfile.header.to_dict()
-			rg_list = header.get("RG", [])
-			if not rg_list:
-				raise ValueError(f"No @RG entry found in BAM header for {bam_path}")
+	def parse_input_file(self, input_path):
+		if input_path.endswith(".bam"):
+			self.format = "BAM"
+			self.verify_bam_integrity(input_path)
+			read_count = self.count_bam_reads(input_path)
 
-			rg = rg_list[0]
-			rg_id = rg.get("ID") or f"{self.sample_ID}_RG"
+			if read_count < min_reads_sample:
+				raise ValueError("Input BAM file {input_path} contains too few reads: {read_count:,}".format(input_path = input_path, read_count = read_count))
+
+			with pysam.AlignmentFile(input_path, "rb", check_sq=False) as bamfile:
+				header = bamfile.header.to_dict()
+				rg_list = header.get("RG", [])
+				if not rg_list:
+					raise ValueError(f"No @RG entry found in BAM header for {input_path}")
+				if len(rg_list) > 1:
+					raise ValueError(f"BAM file {input_path} contains multiple @RG entries. Only one read group is supported per file/sample.")
+
+				rg = rg_list[0]
+				rg_id = rg.get("ID") or f"{self.sample_ID}_RG"
+				rg_pl = self.platform
+				rg_sm = self.sample_ID
+				rg_lb = rg.get("LB", self.sample_ID)
+				rg_pu = rg.get("PU", f"{self.sample_ID}_PU")
+
+		elif input_path.endswith((".fastq", ".fq", ".fastq.gz", ".fq.gz")):
+			if input_path.endswith(".gz"):
+				self.format = "FASTQ.GZ"
+			else:
+				self.format = "FASTQ"
+
+			read_count = self.run_fastplong(input_path)
+			if read_count < min_reads_sample:
+				raise ValueError("Input fastq file {input_path} contains too few reads: {read_count:,}".format(input_path = input_path, read_count = read_count))
+
+			rg_id = "{sample_ID}_RG".format(sample_ID = self.sample_ID)
 			rg_pl = self.platform
 			rg_sm = self.sample_ID
-			rg_lb = rg.get("LB", self.sample_ID)
-			rg_pu = rg.get("PU", f"{self.sample_ID}_PU")
+			rg_lb = self.sample_ID
+			rg_pu = "{sample_ID}_PU".format(sample_ID = self.sample_ID)
 
-			rg_string = f"@RG\\tID:{rg_id}\\tSM:{rg_sm}\\tPL:{rg_pl}\\tLB:{rg_lb}\\tPU:{rg_pu}"
-			return rg_string
+		else:
+			raise ValueError("Unsupported input file format: {input_file}".format(input_file = input_path))
+
+		rg_string = f"@RG\\tID:{rg_id}\\tSM:{rg_sm}\\tPL:{rg_pl}\\tLB:{rg_lb}\\tPU:{rg_pu}"
+
+		return rg_string
+
+	def verify_bam_integrity(self, bam_path):
+		quickcheck_cmd = "samtools quickcheck -u -v {input_file}".format(input_file = bam_path)
+		result = subprocess.run(quickcheck_cmd, shell=True, capture_output=True, text=True)
+		if result.returncode != 0:
+			raise ValueError(f"Input BAM is corrupt. Samtools quickcheck failed for {bam_path}:\n{result.stderr}")
+
+	def count_bam_reads(self, bam_path):
+		count_cmd = "samtools view -@ {threads} -c {input_file}".format(threads = self.threads, input_file = bam_path)
+		result = subprocess.run(count_cmd, shell=True, capture_output=True, text=True, check=True)
+		count = int(result.stdout.strip())
+		print(f"Total BAM records in {bam_path}: {count:,}")
+		return count
+
+	def run_fastplong(self, fq_path):
+		html_path = os.path.join(os.path.dirname(fq_path), self.sample_ID + ".fastplong.html")
+		json_path = os.path.join(os.path.dirname(fq_path), self.sample_ID + ".fastplong.json")
+
+		fastplong_cmd = "fastplong -i {input_file} -h {html_file} -j {json_file} -w {threads} -A -Q -L -m 0 -n 100000".format(input_file = fq_path, html_file = html_path, json_file = json_path, threads = self.threads)
+
+		result = subprocess.run(fastplong_cmd, shell=True, check=False, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+		if result.returncode != 0:
+			raise ValueError(f"Input fastq is corrupt. Fastplong failed for {fq_path}:\n{result.stderr}")
+
+		with open(json_path) as f:
+			data = json.load(f)
+		total_reads = data["summary"]["after_filtering"]["total_reads"]
+		print(f"Total FASTQ records in {fq_path}: {total_reads:,}")
+		return total_reads
+
+	def prepare_raw_fastq(self):
+		if self.platform == "PACBIO":
+			if self.format == "BAM":
+				self.convert_bam_to_fastq()
+			elif self.format == "FASTQ":
+				new_fq = os.path.join(self.fastq_raw_dir, self.sample_ID + ".fastq")
+				shutil.copy(self.input_file, new_fq)
+				pigz_cmd = "pigz -p {threads} {file}".format(threads = self.threads, file = new_fq)
+				subprocess.run(pigz_cmd, shell=True, check=True)
+			elif self.format == "FASTQ.GZ":
+				new_fq = os.path.join(self.fastq_raw_dir, self.sample_ID + ".fastq.gz")
+				shutil.copy(self.input_file, new_fq)
+		
+		elif self.platform == "ONT":
+			if self.format == "BAM":
+				self.convert_bam_to_fastq()
+			elif self.format == "FASTQ":
+				new_fq = os.path.join(self.fastq_raw_dir, self.sample_ID + ".fastq")
+				shutil.copy(self.input_file, new_fq)
+			elif self.format == "FASTQ.GZ":
+				new_fq = os.path.join(self.fastq_raw_dir, self.sample_ID + ".fastq.gz")
+				shutil.copy(self.input_file, new_fq)
+				pigz_cmd = "pigz -d -p {threads} {file}".format(threads = self.threads, file = new_fq)
+				subprocess.run(pigz_cmd, shell=True, check=True)
 
 Samples.convert_bam_to_fastq = convert_bam_to_fastq
 Samples.mark_duplicates_pbmarkdup = mark_duplicates_pbmarkdup
@@ -167,7 +252,7 @@ Samples.parse_fastas = parse_fastas
 
 def main():
 	parser = argparse.ArgumentParser(description="Run HLA-Resolve")
-	parser.add_argument("--input_bam", required=True, help="Path to the unmapped HiFi BAM file")
+	parser.add_argument("--input_file", required=True, help="Path to the raw sequencing reads file")
 	parser.add_argument("--sample_name", required=True, help="Override the parsed sample name", default=None)
 	parser.add_argument("--platform", choices=["pacbio", "ont"], required=True, help="Specify sequencing platform (pacbio, ont)")
 	parser.add_argument("--output_dir", required=True, help="Output Directory", default=None)
@@ -183,10 +268,9 @@ def main():
 	# Check that all required tools are installed
 	check_required_commands()
 	start_time = time.time()
-	sample = Samples(unmapped_bam=args.input_bam, sample_name=args.sample_name, platform =args.platform, output_dir=args.output_dir, threads=args.threads, read_group_string=args.read_group_string)
+	sample = Samples(input_file=args.input_file, sample_name=args.sample_name, platform =args.platform, output_dir=args.output_dir, threads=args.threads, read_group_string=args.read_group_string)
 
-	if args.platform.upper() == "PACBIO":
-		sample.convert_bam_to_fastq()
+	if sample.platform == "PACBIO":	
 		sample.mark_duplicates_pbmarkdup()
 		sample.run_fastqc(os.path.join(sample.fastq_rmdup_dir, sample.sample_ID + ".dedup.fastq.gz"))
 		sample.trim_adapters()
@@ -194,47 +278,35 @@ def main():
 		sample.align_to_reference_minimap()
 		sample.align_to_reference_vg()
 		sample.reassign_mapq()
+		sample.filter_reads()
+		sample.call_variants_deepvariant()
+		sample.call_structural_variants_pbsv()
+		sample.genotype_tandem_repeats()
+		sample.phase_genotypes_hiphase()
+		sample.merge_hiphase_vcfs()
 
-		chr6_reads = sample.filter_reads()
-		if chr6_reads > min_reads_sample:
-			sample.call_variants_deepvariant()
-			sample.call_structural_variants_pbsv()
-			sample.genotype_tandem_repeats()
-			sample.phase_genotypes_hiphase()
-			sample.merge_hiphase_vcfs()
-		else:
-			print("Insufficient reads for variant calling")
-			print("Sample {sample_id} had {num_reads} reads!".format(sample_id = sample.sample_ID, num_reads = chr6_reads))
-
-	elif args.platform.upper() == "ONT":
-		print(" ")
-		sample.convert_bam_to_fastq()
+	elif sample.platform == "ONT":
 		sample.run_porechop_abi()
 		sample.trim_reads()
 		sample.align_to_reference_minimap()
 		sample.align_to_reference_vg()
 		sample.reassign_mapq()
 		sample.mark_duplicates_picard()
-		
-		chr6_reads = sample.filter_reads()
-		if chr6_reads > min_reads_sample:
-			sample.call_variants_clair3()
-			sample.call_structural_variants_sniffles()
-			sample.phase_genotypes_whatshap()
-			sample.phase_genotypes_longphase()
-			sample.merge_longphase_vcfs()
-		else:
-			print("Insufficient reads for variant calling")
-			print("Sample {sample_id} had {num_reads} reads!".format(sample_id = sample.sample_ID, num_reads = chr6_reads))
+		sample.filter_reads()
+	# 	sample.call_variants_clair3()
+	# 	sample.call_structural_variants_sniffles()
+	# 	sample.phase_genotypes_whatshap()
+	# 	sample.phase_genotypes_longphase()
+	# 	sample.merge_longphase_vcfs()
 			
-	heterozygous_sites, haploblock_list = sample.parse_haploblocks()
-	phased_genes = sample.evaluate_gene_haploblocks(heterozygous_sites, haploblock_list)
-	sample.filter_vcf()
-	for gene in phased_genes:
-		if gene in genes_of_interest:
-			sample.run_vcf2fasta(gene, "gene")
-			sample.run_vcf2fasta(gene, "CDS")
-	sample.parse_fastas()
+	# heterozygous_sites, haploblock_list = sample.parse_haploblocks()
+	# phased_genes = sample.evaluate_gene_haploblocks(heterozygous_sites, haploblock_list)
+	# sample.filter_vcf()
+	# for gene in phased_genes:
+	# 	if gene in genes_of_interest:
+	# 		sample.run_vcf2fasta(gene, "gene")
+	# 		sample.run_vcf2fasta(gene, "CDS")
+	# sample.parse_fastas()
 	
 	end_time = time.time()
 	elapsed_time = end_time - start_time
