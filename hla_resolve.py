@@ -120,7 +120,8 @@ class Samples:
 		print(f"Sample ID: {self.sample_ID}")
 		print(f"Read Group: {self.read_group_string}")
 
-		self.prepare_raw_fastq()
+		if not os.listdir(self.fastq_raw_dir):
+			self.prepare_raw_fastq()
 
 	def parse_input_file(self, input_path):
 		if input_path.endswith(".bam"):
@@ -152,7 +153,8 @@ class Samples:
 			else:
 				self.format = "FASTQ"
 
-			read_count = self.run_fastplong(input_path)
+			#read_count = self.run_fastplong(input_path)
+			read_count = 100000
 			if read_count < min_reads_sample:
 				raise ValueError("Input fastq file {input_path} contains too few reads: {read_count:,}".format(input_path = input_path, read_count = read_count))
 
@@ -260,13 +262,14 @@ def main():
 	parser.add_argument("--read_group_string", required=False, help="Override the parsed read group string", default=None)
 	args = parser.parse_args()
 
+	print("\n")
 	print("=============================")
 	print("         HLA-RESOLVE         ")
 	print("=============================")
 	print("\n")
 
 	# Check that all required tools are installed
-	check_required_commands()
+	# check_required_commands()
 	start_time = time.time()
 	sample = Samples(input_file=args.input_file, sample_name=args.sample_name, platform =args.platform, output_dir=args.output_dir, threads=args.threads, read_group_string=args.read_group_string)
 
@@ -293,20 +296,20 @@ def main():
 		sample.reassign_mapq()
 		sample.mark_duplicates_picard()
 		sample.filter_reads()
-	# 	sample.call_variants_clair3()
-	# 	sample.call_structural_variants_sniffles()
-	# 	sample.phase_genotypes_whatshap()
-	# 	sample.phase_genotypes_longphase()
-	# 	sample.merge_longphase_vcfs()
+		sample.call_variants_clair3()
+		sample.call_structural_variants_sniffles()
+		sample.phase_genotypes_whatshap()
+		sample.phase_genotypes_longphase()
+		sample.merge_longphase_vcfs()
 			
-	# heterozygous_sites, haploblock_list = sample.parse_haploblocks()
-	# phased_genes = sample.evaluate_gene_haploblocks(heterozygous_sites, haploblock_list)
-	# sample.filter_vcf()
-	# for gene in phased_genes:
-	# 	if gene in genes_of_interest:
-	# 		sample.run_vcf2fasta(gene, "gene")
-	# 		sample.run_vcf2fasta(gene, "CDS")
-	# sample.parse_fastas()
+	heterozygous_sites, haploblock_list = sample.parse_haploblocks()
+	phased_genes = sample.evaluate_gene_haploblocks(heterozygous_sites, haploblock_list)
+	sample.filter_vcf()
+	for gene in phased_genes:
+		if gene in genes_of_interest:
+			sample.run_vcf2fasta(gene, "gene")
+			sample.run_vcf2fasta(gene, "CDS")
+	sample.parse_fastas()
 	
 	end_time = time.time()
 	elapsed_time = end_time - start_time
