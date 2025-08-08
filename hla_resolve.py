@@ -18,6 +18,10 @@ genes_of_interest = ("HLA-A", "HLA-B", "HLA-C")
 # Set mapped chr6 reads threshold at which variant calling should not proceed
 min_reads_sample = 100
 
+# This program is for long-read data only. 
+# Require that mean read length is at least 300 bp or higher
+min_read_length = 300
+
 # Ensure all required tools are installed and executable
 def check_required_commands():    
 	print("Checking the installation status of the required bioinformatics tools!")
@@ -27,7 +31,9 @@ def check_required_commands():
 		"bcftools",
 		"bgzip",
 		"cutadapt",
+		"fastplong",
 		"fastqc",
+		"gatk",
 		"hiphase",
 		"pbmarkdup",
 		"pbmm2",
@@ -54,7 +60,7 @@ def check_required_commands():
 
 class Samples:
 	def __init__(self, input_file, sample_name, platform, output_dir, threads, read_group_string=None):
-		self.input_file = input_file = os.path.abspath(input_file)
+		self.input_file = os.path.abspath(input_file)
 		self.sample_ID = sample_name
 		self.platform = platform.upper()
 		self.threads = threads
@@ -153,10 +159,11 @@ class Samples:
 			else:
 				self.format = "FASTQ"
 
-			#read_count = self.run_fastplong(input_path)
-			read_count = 100000
+			read_count, mean_read_length = self.run_fastplong(input_path)
 			if read_count < min_reads_sample:
 				raise ValueError("Input fastq file {input_path} contains too few reads: {read_count:,}".format(input_path = input_path, read_count = read_count))
+			if mean_read_length < min_read_length:
+				raise ValueError("Input fastq file {input_path} contains short-read data. Mean read length: {mean_length}".format(input_path = input_path, mean_length = mean_read_length))
 
 			rg_id = "{sample_ID}_RG".format(sample_ID = self.sample_ID)
 			rg_pl = self.platform
@@ -185,8 +192,8 @@ class Samples:
 		return count
 
 	def run_fastplong(self, fq_path):
-		html_path = os.path.join(os.path.dirname(fq_path), self.sample_ID + ".fastplong.html")
-		json_path = os.path.join(os.path.dirname(fq_path), self.sample_ID + ".fastplong.json")
+		html_path = os.path.join(self.fastq_raw_dir, self.sample_ID + ".fastplong.html")
+		json_path = os.path.join(self.fastq_raw_dir, self.sample_ID + ".fastplong.json")
 
 		fastplong_cmd = "fastplong -i {input_file} -h {html_file} -j {json_file} -w {threads} -A -Q -L -m 0 -n 100000".format(input_file = fq_path, html_file = html_path, json_file = json_path, threads = self.threads)
 
@@ -197,8 +204,9 @@ class Samples:
 		with open(json_path) as f:
 			data = json.load(f)
 		total_reads = data["summary"]["after_filtering"]["total_reads"]
+		mean_read_length = int(data["summary"]["after_filtering"]["read_mean_length"])
 		print(f"Total FASTQ records in {fq_path}: {total_reads:,}")
-		return total_reads
+		return total_reads, mean_read_length
 
 	def prepare_raw_fastq(self):
 		if self.platform == "PACBIO":
@@ -207,8 +215,12 @@ class Samples:
 			elif self.format == "FASTQ":
 				new_fq = os.path.join(self.fastq_raw_dir, self.sample_ID + ".fastq")
 				shutil.copy(self.input_file, new_fq)
-				pigz_cmd = "pigz -p {threads} {file}".format(threads = self.threads, file = new_fq)
+				pigz_cmd = "pigz -f -p {threads} {file}".format(threads = self.threads, file = new_fq)
 				subprocess.run(pigz_cmd, shell=True, check=True)
+				expected_output = os.path.join(self.fastq_raw_dir, self.sample_ID + ".fastq.gz")
+				if not os.path.exists(expected_output):
+					raise RuntimeError(f"Compression failed: {expected_output} not found")
+
 			elif self.format == "FASTQ.GZ":
 				new_fq = os.path.join(self.fastq_raw_dir, self.sample_ID + ".fastq.gz")
 				shutil.copy(self.input_file, new_fq)
@@ -222,8 +234,11 @@ class Samples:
 			elif self.format == "FASTQ.GZ":
 				new_fq = os.path.join(self.fastq_raw_dir, self.sample_ID + ".fastq.gz")
 				shutil.copy(self.input_file, new_fq)
-				pigz_cmd = "pigz -d -p {threads} {file}".format(threads = self.threads, file = new_fq)
+				pigz_cmd = "pigz -f -d -p {threads} {file}".format(threads = self.threads, file = new_fq)
 				subprocess.run(pigz_cmd, shell=True, check=True)
+				expected_output = os.path.join(self.fastq_raw_dir, self.sample_ID + ".fastq")
+				if not os.path.exists(expected_output):
+					raise RuntimeError(f"Compression failed: {expected_output} not found")
 
 Samples.convert_bam_to_fastq = convert_bam_to_fastq
 Samples.mark_duplicates_pbmarkdup = mark_duplicates_pbmarkdup
@@ -269,47 +284,47 @@ def main():
 	print("\n")
 
 	# Check that all required tools are installed
-	# check_required_commands()
+	check_required_commands()
 	start_time = time.time()
 	sample = Samples(input_file=args.input_file, sample_name=args.sample_name, platform =args.platform, output_dir=args.output_dir, threads=args.threads, read_group_string=args.read_group_string)
 
-	if sample.platform == "PACBIO":	
-		sample.mark_duplicates_pbmarkdup()
-		sample.run_fastqc(os.path.join(sample.fastq_rmdup_dir, sample.sample_ID + ".dedup.fastq.gz"))
-		sample.trim_adapters()
-		sample.run_fastqc(os.path.join(sample.fastq_rmdup_cutadapt_dir, sample.sample_ID + ".dedup.trimmed.fastq.gz"))
-		sample.align_to_reference_minimap()
-		sample.align_to_reference_vg()
-		sample.reassign_mapq()
-		sample.filter_reads()
-		sample.call_variants_deepvariant()
-		sample.call_structural_variants_pbsv()
-		sample.genotype_tandem_repeats()
-		sample.phase_genotypes_hiphase()
-		sample.merge_hiphase_vcfs()
+	# if sample.platform == "PACBIO":	
+	# 	sample.mark_duplicates_pbmarkdup()
+	# 	sample.run_fastqc(os.path.join(sample.fastq_rmdup_dir, sample.sample_ID + ".dedup.fastq.gz"))
+	# 	sample.trim_adapters()
+	# 	sample.run_fastqc(os.path.join(sample.fastq_rmdup_cutadapt_dir, sample.sample_ID + ".dedup.trimmed.fastq.gz"))
+	# 	sample.align_to_reference_minimap()
+	# 	sample.align_to_reference_vg()
+	# 	sample.reassign_mapq()
+	# 	sample.filter_reads()
+	# 	sample.call_variants_deepvariant()
+	# 	sample.call_structural_variants_pbsv()
+	# 	sample.genotype_tandem_repeats()
+	# 	sample.phase_genotypes_hiphase()
+	# 	sample.merge_hiphase_vcfs()
 
-	elif sample.platform == "ONT":
-		sample.run_porechop_abi()
-		sample.trim_reads()
-		sample.align_to_reference_minimap()
-		sample.align_to_reference_vg()
-		sample.reassign_mapq()
-		sample.mark_duplicates_picard()
-		sample.filter_reads()
-		sample.call_variants_clair3()
-		sample.call_structural_variants_sniffles()
-		sample.phase_genotypes_whatshap()
-		sample.phase_genotypes_longphase()
-		sample.merge_longphase_vcfs()
+	# elif sample.platform == "ONT":
+	# 	sample.run_porechop_abi()
+	# 	sample.trim_reads()
+	# 	sample.align_to_reference_minimap()
+	# 	sample.align_to_reference_vg()
+	# 	sample.reassign_mapq()
+	# 	sample.mark_duplicates_picard()
+	# 	sample.filter_reads()
+	# 	sample.call_variants_clair3()
+	# 	sample.call_structural_variants_sniffles()
+	# 	sample.phase_genotypes_whatshap()
+	# 	sample.phase_genotypes_longphase()
+	# 	sample.merge_longphase_vcfs()
 			
-	heterozygous_sites, haploblock_list = sample.parse_haploblocks()
-	phased_genes = sample.evaluate_gene_haploblocks(heterozygous_sites, haploblock_list)
-	sample.filter_vcf()
-	for gene in phased_genes:
-		if gene in genes_of_interest:
-			sample.run_vcf2fasta(gene, "gene")
-			sample.run_vcf2fasta(gene, "CDS")
-	sample.parse_fastas()
+	# heterozygous_sites, haploblock_list = sample.parse_haploblocks()
+	# phased_genes = sample.evaluate_gene_haploblocks(heterozygous_sites, haploblock_list)
+	# sample.filter_vcf()
+	# for gene in phased_genes:
+	# 	if gene in genes_of_interest:
+	# 		sample.run_vcf2fasta(gene, "gene")
+	# 		sample.run_vcf2fasta(gene, "CDS")
+	# sample.parse_fastas()
 	
 	end_time = time.time()
 	elapsed_time = end_time - start_time

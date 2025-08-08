@@ -121,7 +121,7 @@ def mark_duplicates_pbmarkdup(self):
 	
 	subprocess.run(pbmarkdup_cmd, shell=True, check=True)
 
-	gzip_cmd = "pigz -p {threads} {input_file}".format(threads = self.threads, input_file = output_fastq)
+	gzip_cmd = "pigz -f -p {threads} {input_file}".format(threads = self.threads, input_file = output_fastq)
 	subprocess.run(gzip_cmd, shell=True, check=True)
 	
 	print("De-duplicated reads written to: {}!".format(output_fastq))
