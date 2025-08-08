@@ -61,6 +61,12 @@ def check_required_commands():
 class Samples:
 	def __init__(self, input_file, sample_name, platform, output_dir, threads, read_group_string=None):
 		self.input_file = os.path.realpath(os.path.abspath(input_file))
+
+		if not os.path.exists(self.input_file):
+			raise FileNotFoundError(f"Input file not found: {self.input_file}")
+		if not os.access(self.input_file, os.R_OK):
+			raise OSError(f"Input file is not readable: {self.input_file}")
+
 		self.sample_ID = sample_name
 		self.platform = platform.upper()
 		self.threads = threads
