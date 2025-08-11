@@ -11,8 +11,7 @@ from investigate_haploblocks_methods import parse_haploblocks, evaluate_gene_hap
 from reconstruct_fasta_methods import filter_vcf, run_vcf2fasta, parse_fastas
 from hla_typer import main as classify_hla_alleles
 
-# genes_of_interest = ("HLA-A", "HLA-B", "HLA-C", "HLA-DRB1", "HLA-DRB5", "HLA-DQA1", "HLA-DQA2", "HLA-DQB1", "HLA-DQB2", "HLA-DPA1", "HLA-DPB1")
-genes_of_interest = ("HLA-A", "HLA-B", "HLA-C")
+genes_of_interest = ("HLA-A", "HLA-B", "HLA-C", "HLA-DRB1", "HLA-DQA1", "HLA-DQA2", "HLA-DQB1", "HLA-DQB2", "HLA-DPA1", "HLA-DPB1")
 
 # Minimum reads per sample
 # DeepVariant is stalling and not exiting for samples with very few BAM records (e.g., HG01891: 35 mapped reads to chr6)
