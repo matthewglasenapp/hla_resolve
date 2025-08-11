@@ -11,7 +11,7 @@ from investigate_haploblocks_methods import parse_haploblocks, evaluate_gene_hap
 from reconstruct_fasta_methods import filter_vcf, run_vcf2fasta, parse_fastas
 from hla_typer import main as classify_hla_alleles
 
-genes_of_interest = ("HLA-A", "HLA-B", "HLA-C", "HLA-DRB1", "HLA-DQA1", "HLA-DQA2", "HLA-DQB1", "HLA-DQB2", "HLA-DPA1", "HLA-DPB1")
+genes_of_interest = ("HLA-A", "HLA-B", "HLA-C", "HLA-DRB1", "HLA-DQA1", "HLA-DQB1", "HLA-DPA1", "HLA-DPB1")
 
 # Minimum reads per sample
 # DeepVariant is stalling and not exiting for samples with very few BAM records (e.g., HG01891: 35 mapped reads to chr6)
@@ -155,7 +155,7 @@ class Samples:
 		print(f"Sample ID: {self.sample_ID}")
 		print(f"Read Group: {self.read_group_string}")
 
-		self.prepare_raw_fastq()
+		# self.prepare_raw_fastq()
 
 	def parse_input_file(self, input_path):
 		if input_path.endswith(".bam"):
@@ -316,38 +316,39 @@ def main():
 	start_time = time.time()
 	sample = Samples(input_file=args.input_file, sample_name=args.sample_name, platform =args.platform, output_dir=args.output_dir, threads=args.threads, read_group_string=args.read_group_string)
 
-	if sample.platform == "PACBIO":	
-		sample.mark_duplicates_pbmarkdup()
-		# sample.run_fastqc(os.path.join(sample.fastq_rmdup_dir, sample.sample_ID + ".dedup.fastq.gz"))
-		sample.trim_adapters()
-		# sample.run_fastqc(os.path.join(sample.fastq_rmdup_cutadapt_dir, sample.sample_ID + ".dedup.trimmed.fastq.gz"))
-		sample.align_to_reference_minimap()
-		sample.align_to_reference_vg()
-		sample.reassign_mapq()
-		sample.filter_reads()
-		sample.call_variants_deepvariant()
-		sample.call_structural_variants_pbsv()
-		sample.genotype_tandem_repeats()
-		sample.phase_genotypes_hiphase()
-		sample.merge_hiphase_vcfs()
+	# if sample.platform == "PACBIO":	
+	# 	sample.mark_duplicates_pbmarkdup()
+	# 	# sample.run_fastqc(os.path.join(sample.fastq_rmdup_dir, sample.sample_ID + ".dedup.fastq.gz"))
+	# 	sample.trim_adapters()
+	# 	# sample.run_fastqc(os.path.join(sample.fastq_rmdup_cutadapt_dir, sample.sample_ID + ".dedup.trimmed.fastq.gz"))
+	# 	sample.align_to_reference_minimap()
+	# 	sample.align_to_reference_vg()
+	# 	sample.reassign_mapq()
+	# 	sample.filter_reads()
+	# 	sample.call_variants_deepvariant()
+	# 	sample.call_structural_variants_pbsv()
+	# 	sample.genotype_tandem_repeats()
+	# 	sample.phase_genotypes_hiphase()
+	# 	sample.merge_hiphase_vcfs()
 
-	elif sample.platform == "ONT":
-		sample.run_porechop_abi()
-		sample.trim_reads()
-		sample.align_to_reference_minimap()
-		sample.align_to_reference_vg()
-		sample.reassign_mapq()
-		sample.mark_duplicates_picard()
-		sample.filter_reads()
-		sample.call_variants_clair3()
-		sample.call_structural_variants_sniffles()
-		sample.phase_genotypes_whatshap()
-		sample.phase_genotypes_longphase()
-		sample.merge_longphase_vcfs()
+	# elif sample.platform == "ONT":
+	# 	sample.run_porechop_abi()
+	# 	sample.trim_reads()
+	# 	sample.align_to_reference_minimap()
+	# 	sample.align_to_reference_vg()
+	# 	sample.reassign_mapq()
+	# 	sample.mark_duplicates_picard()
+	# 	sample.filter_reads()
+	# 	sample.call_variants_clair3()
+	# 	sample.call_structural_variants_sniffles()
+	# 	sample.phase_genotypes_whatshap()
+	# 	sample.phase_genotypes_longphase()
+	# 	sample.merge_longphase_vcfs()
 			
 	heterozygous_sites, haploblock_list = sample.parse_haploblocks()
 	phased_genes = sample.evaluate_gene_haploblocks(heterozygous_sites, haploblock_list)
 	sample.filter_vcf()
+	
 	for gene in phased_genes:
 		if gene in genes_of_interest:
 			sample.run_vcf2fasta(gene, "gene")
