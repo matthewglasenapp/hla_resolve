@@ -268,6 +268,14 @@ class Samples:
 				if not os.path.exists(expected_output):
 					raise RuntimeError(f"Compression failed: {expected_output} not found")
 
+	def print_results(self):
+		results_file = os.path.join(self.hla_typing_dir, "refined_allele_output.csv")
+		with open(results_file, "r") as f:
+			results = f.read().splitlines()[1].split(",")[1:]
+		print("{sample} HLA Star Allele Calls".format(sample = self.sample_ID))
+		for item in results:
+			print(item)
+
 Samples.convert_bam_to_fastq = convert_bam_to_fastq
 Samples.mark_duplicates_pbmarkdup = mark_duplicates_pbmarkdup
 Samples.mark_duplicates_picard = mark_duplicates_picard
@@ -357,6 +365,7 @@ def main():
 
 	os.chdir(sample.hla_typing_dir)
 	classify_hla_alleles(IMGT_XML, sample.hla_fasta_dir, sample.sample_ID)
+	sample.print_results()
 	
 	end_time = time.time()
 	elapsed_time = end_time - start_time
