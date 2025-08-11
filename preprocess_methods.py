@@ -66,6 +66,8 @@ def convert_bam_to_fastq(self):
 				
 		print("Raw fastq reads written to: {}".format(os.path.join(self.fastq_raw_dir, self.sample_ID + ".fastq.gz")))
 		print("\n\n")
+
+		os.chdir(self.ORIGINAL_CWD)
 	
 	elif self.platform == "ONT":
 		print("Converting ONT raw reads to fastq format using Samtools fastq!")
@@ -492,6 +494,8 @@ def genotype_tandem_repeats(self):
 
 	print("TR VCF written to {}".format(os.path.join(self.pbtrgt_dir, output_prefix + ".vcf.gz")))
 	print("\n\n")
+
+	os.chdir(self.ORIGINAL_CWD)
 
 # Phase genotypes with HiPhase
 def phase_genotypes_hiphase(self):
