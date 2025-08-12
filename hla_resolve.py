@@ -356,7 +356,7 @@ def main():
 			sample.align_to_reference_vg()
 			sample.reassign_mapq()
 		# sample.mark_duplicates_picard()
-		sample.filter_reads()
+		# sample.filter_reads()
 		if sample.genotyper == "bcftools":
 			sample.call_variants_bcftools()
 		elif sample.genotyper == "deepvariant":

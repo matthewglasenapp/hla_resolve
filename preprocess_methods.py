@@ -712,12 +712,12 @@ def phase_genotypes_longphase(self):
 	print("Input SNV VCF: {}".format(input_SNV_vcf))
 	print("Input SV VCF: {}".format(input_SV_vcf))
 
-	haplotagged_bam = os.path.join(self.mapped_bam_dir, self.sample_ID + ".hg38.rmdup.chr6.haplotag.bam")
 
 	output_blocks_file = os.path.join(self.phased_vcf_dir, self.sample_ID + ".phased.haploblocks.txt")
 	output_gtf_file = os.path.join(self.phased_vcf_dir, self.sample_ID + ".phased.haploblocks.gtf")
 
-	phased_vcf_prefix = input_SNV_vcf.split(".vcf.gz")[0]
+	phased_vcf = os.path.join(self.phased_vcf_dir, self.sample_ID + ".longphase.vcf.gz")
+	phased_vcf_prefix = phased_vcf.split(".vcf.gz")[0]
 	longphase_phase_cmd = "{longphase} phase -s {input_snv_vcf} --sv {input_sv_vcf} -b {input_bam} -r {reference_genome} -t {threads} -o {phased_prefix} --ont".format(longphase = longphase, input_snv_vcf = input_SNV_vcf, input_sv_vcf = input_SV_vcf, input_bam = input_bam, reference_genome = reference_fasta, threads = self.threads, phased_prefix = phased_vcf_prefix)
 
 	# Compress and index SNV VCF
@@ -732,6 +732,7 @@ def phase_genotypes_longphase(self):
 	index_SV_cmd = "bcftools index {input_file}".format(input_file = phased_SV_vcf)
 	tabix_SV_cmd = "tabix {input_file}".format(input_file = phased_SV_vcf)
 
+	haplotagged_bam = os.path.join(self.mapped_bam_dir, self.sample_ID + ".hg38.rmdup.chr6.haplotag.bam")
 	haplotagged_bam_prefix = haplotagged_bam.split(".bam")[0]
 	longphase_haplotag_cmd = "{longphase} haplotag -r {reference_genome} -s {input_snv_vcf} --sv-file {input_sv_vcf} -b {input_bam} -t {threads} -o {prefix}".format(longphase = longphase, reference_genome = reference_fasta, input_snv_vcf = phased_vcf, input_sv_vcf = input_SV_vcf, input_bam = input_bam, threads = self.threads, prefix = haplotagged_bam_prefix)
 
