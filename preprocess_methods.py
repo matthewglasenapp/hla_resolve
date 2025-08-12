@@ -453,10 +453,10 @@ def call_variants_clair3(self):
 
 	if self.platform == "ONT":
 		platform = "ont"
-		clair3_model = clair3_ont_model_path
+		clair3_model_path = clair3_ont_model_path
 	elif self.platform == "PACBIO":
 		platform = "hifi"
-		clair3_model = clair3_hifi_model_path
+		clair3_model_path = clair3_hifi_model_path
 
 	print("Calling SNVs and small INDELS with Clair3!")
 
