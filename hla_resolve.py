@@ -36,7 +36,6 @@ def check_required_commands():
 		"cutadapt",
 		"fastplong",
 		"fastqc",
-		"gatk",
 		"hiphase",
 		"pbmarkdup",
 		"pbmm2",
@@ -157,6 +156,7 @@ class Samples:
 		print(f"Processing Sample {self.sample_ID}!\n\n")
 		print(f"Sample ID: {self.sample_ID}")
 		print(f"Read Group: {self.read_group_string}")
+		print("\n\n")
 
 		# self.prepare_raw_fastq()
 
@@ -290,6 +290,8 @@ Samples.align_to_reference_minimap = align_to_reference_minimap
 Samples.align_to_reference_vg = align_to_reference_vg
 Samples.reassign_mapq = reassign_mapq
 Samples.filter_reads = filter_reads
+Samples.run_mosdepth = run_mosdepth
+Samples.parse_mosdepth = parse_mosdepth
 Samples.call_variants_deepvariant = call_variants_deepvariant
 Samples.call_variants_clair3 = call_variants_clair3
 Samples.call_structural_variants_pbsv = call_structural_variants_pbsv
@@ -365,7 +367,7 @@ def main():
 	sample.filter_vcf()
 	
 	for gene in phased_genes:
-		if gene in genes_of_interest and gene in self.sufficient_coverage_genes:
+		if gene in genes_of_interest and gene in sample.sufficient_coverage_genes:
 			sample.run_vcf2fasta(gene, "gene")
 			sample.run_vcf2fasta(gene, "CDS")
 	sample.parse_fastas()

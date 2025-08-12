@@ -1,6 +1,7 @@
 import os
 import subprocess
 import pysam
+import gzip
 
 # Absolute path to the directory containing this script
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -53,6 +54,11 @@ longphase = "/hb/home/mglasena/software/longphase/longphase_linux-x64"
 prowler_trimmer = "/hb/home/mglasena/software/ProwlerTrimmer/TrimmerLarge.py"
 
 clair3_model_path = "/hb/home/mglasena/.conda/envs/clair3/bin/models/r941_prom_sup_g5014"
+
+# Coverage Thresholds
+depth_thresh = 30
+prop_20x_thresh = 0.9
+prop_30x_thresh = 0.9 
 
 # Convert BAM file of unmapped HiFi (ccs) reads to FASTQ format for marking duplicates and trimming adapters
 def convert_bam_to_fastq(self):
@@ -333,15 +339,19 @@ def filter_reads(self):
 
 def run_mosdepth(self):
 	input_file = os.path.join(self.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.bam")
+	print("Running mosdepth on {file}".format(file = input_file))
 	prefix = os.path.join(self.mosdepth_dir, self.sample_ID)
 	# --flag 3328 excludes duplicates and secondary/supplementary alignments
 	mosdepth = "mosdepth --flag 3328 --by {regions_file} --thresholds 20,30 -t {threads} {prefix} {bam_file}".format(regions_file = mosdepth_regions_file, threads = self.threads, prefix = prefix, bam_file = input_file)
 	subprocess.run(mosdepth, shell=True, check=True)
+	print("\n\n")
 
 def parse_mosdepth(self):
+	print("Parsing mosdepth results!")
+	print("\n\n")
 	coverage_dict = dict()
 	regions_file = os.path.join(self.mosdepth_dir, self.sample_ID + ".regions.bed.gz")
-	thresholds_file = os.path.join(self.mosdepth_dir, self.sample_ID + "*.thresholds.bed.gz")
+	thresholds_file = os.path.join(self.mosdepth_dir, self.sample_ID + ".thresholds.bed.gz")
 	
 	print("Gene,mean_depth,prop_20x,prop_30x")
 
@@ -364,10 +374,11 @@ def parse_mosdepth(self):
 
 			print(gene, coverage_depth, prop_20x, prop_30x)
 
-			if coverage_depth >= 30 and prop_20x >= 0.9 and prop_30x >= 0.9:
+			if coverage_depth >= depth_thresh and prop_20x >= prop_20x_thresh and prop_30x >= prop_30x_thresh:
 				self.sufficient_coverage_genes.append(gene)
 			else:
 				print("Gene {gene} has insufficient coverage for haplotyping and star allele calling".format(gene = gene))
+	print("\n\n")
 
 # Call SNV with DeepVariant
 def call_variants_deepvariant(self):
