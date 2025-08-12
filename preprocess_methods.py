@@ -37,6 +37,8 @@ tandem_repeat_bed = os.path.join(DATA_DIR, "repeats_bed/human_GRCh38_no_alt_anal
 
 chr6_bed = os.path.join(DATA_DIR, "reference/chr6.bed")
 
+mosdepth_regions_file = "/hb/scratch/mglasena/hla_resolve/hla_genes.bed"
+
 # GRCh38 tandem repeat definition file for pbtrgt
 # Downloaded from https://zenodo.org/records/8329210
 pbtrgt_repeat_file = os.path.join(DATA_DIR, "repeats_bed/polymorphic_repeats.hg38.bed")
@@ -328,6 +330,44 @@ def filter_reads(self):
 	print("\n\n")
 
 	return read_count
+
+def run_mosdepth(self):
+	input_file = os.path.join(self.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.bam")
+	prefix = os.path.join(self.mosdepth_dir, self.sample_ID)
+	# --flag 3328 excludes duplicates and secondary/supplementary alignments
+	mosdepth = "mosdepth --flag 3328 --by {regions_file} --thresholds 20,30 -t {threads} {prefix} {bam_file}".format(regions_file = mosdepth_regions_file, threads = self.threads, prefix = prefix, bam_file = input_file)
+	subprocess.run(mosdepth, shell=True, check=True)
+
+def parse_mosdepth(self):
+	coverage_dict = dict()
+	regions_file = os.path.join(self.mosdepth_dir, self.sample_ID + ".regions.bed.gz")
+	thresholds_file = os.path.join(self.mosdepth_dir, self.sample_ID + "*.thresholds.bed.gz")
+	
+	print("Gene,mean_depth,prop_20x,prop_30x")
+
+	with gzip.open(regions_file, "rt") as f1, gzip.open(thresholds_file,"rt") as f2:
+		regions = f1.read().splitlines()
+		thresholds = f2.read().splitlines()[1:]
+
+		for regions_line, thresholds_line in zip(regions,thresholds):
+			regions_fields = regions_line.split("\t")
+			gene = regions_fields[3].split("_")[0]
+			start = regions_fields[1]
+			stop = regions_fields[2]
+			length = int(stop) - int(start)
+			coverage_depth = float(regions_fields[4])
+			threshold_fields = thresholds_line.split("\t")
+			num_20x = int(threshold_fields[4])
+			num_30x = int(threshold_fields[5])
+			prop_20x = num_20x / length
+			prop_30x = num_30x / length
+
+			print(gene, coverage_depth, prop_20x, prop_30x)
+
+			if coverage_depth >= 30 and prop_20x >= 0.9 and prop_30x >= 0.9:
+				self.sufficient_coverage_genes.append(gene)
+			else:
+				print("Gene {gene} has insufficient coverage for haplotyping and star allele calling".format(gene = gene))
 
 # Call SNV with DeepVariant
 def call_variants_deepvariant(self):

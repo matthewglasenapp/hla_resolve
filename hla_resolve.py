@@ -6,7 +6,7 @@ import time
 import pysam
 import argparse
 import json
-from preprocess_methods import convert_bam_to_fastq, mark_duplicates_pbmarkdup, mark_duplicates_picard, trim_adapters, run_fastqc, trim_reads, align_to_reference_minimap, align_to_reference_vg, reassign_mapq, filter_reads, call_variants_deepvariant, call_variants_clair3, call_structural_variants_pbsv, call_structural_variants_sniffles, genotype_tandem_repeats, phase_genotypes_hiphase, merge_hiphase_vcfs, phase_genotypes_whatshap, phase_genotypes_longphase, merge_longphase_vcfs, run_porechop_abi
+from preprocess_methods import convert_bam_to_fastq, mark_duplicates_pbmarkdup, mark_duplicates_picard, trim_adapters, run_fastqc, trim_reads, align_to_reference_minimap, align_to_reference_vg, reassign_mapq, filter_reads, run_mosdepth, parse_mosdepth, call_variants_deepvariant, call_variants_clair3, call_structural_variants_pbsv, call_structural_variants_sniffles, genotype_tandem_repeats, phase_genotypes_hiphase, merge_hiphase_vcfs, phase_genotypes_whatshap, phase_genotypes_longphase, merge_longphase_vcfs, run_porechop_abi
 from investigate_haploblocks_methods import parse_haploblocks, evaluate_gene_haploblocks
 from reconstruct_fasta_methods import filter_vcf, run_vcf2fasta, parse_fastas
 from hla_typer import main as classify_hla_alleles
@@ -77,6 +77,7 @@ class Samples:
 
 		self.platform = platform.upper()
 		self.threads = threads
+		self.sufficient_coverage_genes = []
 
 		output_dir_abs = os.path.realpath(os.path.abspath(os.path.join(output_dir, self.sample_ID)))
 
@@ -102,6 +103,7 @@ class Samples:
 		self.vcf2fasta_out_dir = os.path.join(self.output_dir, "vcf2fasta_out")
 		self.hla_fasta_dir = os.path.join(self.output_dir, "hla_fasta_haplotypes")
 		self.hla_typing_dir = os.path.join(self.output_dir, "hla_typing_results")
+		self.mosdepth_dir = os.path.join(self.output_dir, "mosdepth")
 
 		platform_dirs = []
 
@@ -138,7 +140,8 @@ class Samples:
 			self.fastq_raw_dir, self.mapped_bam_dir,
 			self.parsed_haploblock_dir, self.whatshap_phased_vcf_dir,
 			self.filtered_vcf_dir, self.vcf2fasta_out_dir, 
-			self.hla_fasta_dir, self.hla_typing_dir
+			self.hla_fasta_dir, self.hla_typing_dir,
+			self.mosdepth_dir
 		] + platform_dirs
 
 		for directory in combined_dirs:
@@ -324,20 +327,22 @@ def main():
 	start_time = time.time()
 	sample = Samples(input_file=args.input_file, sample_name=args.sample_name, platform =args.platform, output_dir=args.output_dir, threads=args.threads, read_group_string=args.read_group_string)
 
-	# if sample.platform == "PACBIO":	
-	# 	sample.mark_duplicates_pbmarkdup()
-	# 	# sample.run_fastqc(os.path.join(sample.fastq_rmdup_dir, sample.sample_ID + ".dedup.fastq.gz"))
-	# 	sample.trim_adapters()
-	# 	# sample.run_fastqc(os.path.join(sample.fastq_rmdup_cutadapt_dir, sample.sample_ID + ".dedup.trimmed.fastq.gz"))
-	# 	sample.align_to_reference_minimap()
-	# 	sample.align_to_reference_vg()
-	# 	sample.reassign_mapq()
-	# 	sample.filter_reads()
-	# 	sample.call_variants_deepvariant()
-	# 	sample.call_structural_variants_pbsv()
-	# 	sample.genotype_tandem_repeats()
-	# 	sample.phase_genotypes_hiphase()
-	# 	sample.merge_hiphase_vcfs()
+	if sample.platform == "PACBIO":	
+		# sample.mark_duplicates_pbmarkdup()
+		# # sample.run_fastqc(os.path.join(sample.fastq_rmdup_dir, sample.sample_ID + ".dedup.fastq.gz"))
+		# sample.trim_adapters()
+		# # sample.run_fastqc(os.path.join(sample.fastq_rmdup_cutadapt_dir, sample.sample_ID + ".dedup.trimmed.fastq.gz"))
+		# sample.align_to_reference_minimap()
+		# sample.align_to_reference_vg()
+		# sample.reassign_mapq()
+		# sample.filter_reads()
+		sample.run_mosdepth()
+		sample.parse_mosdepth()
+		# sample.call_variants_deepvariant()
+		# sample.call_structural_variants_pbsv()
+		# sample.genotype_tandem_repeats()
+		# sample.phase_genotypes_hiphase()
+		# sample.merge_hiphase_vcfs()
 
 	# elif sample.platform == "ONT":
 	# 	sample.run_porechop_abi()
@@ -347,6 +352,8 @@ def main():
 	# 	sample.reassign_mapq()
 	# 	sample.mark_duplicates_picard()
 	# 	sample.filter_reads()
+	# 	sample.run_mosdepth()
+	# 	sample.parse_mosdepth()
 	# 	sample.call_variants_clair3()
 	# 	sample.call_structural_variants_sniffles()
 	# 	sample.phase_genotypes_whatshap()
@@ -358,7 +365,7 @@ def main():
 	sample.filter_vcf()
 	
 	for gene in phased_genes:
-		if gene in genes_of_interest:
+		if gene in genes_of_interest and gene in self.sufficient_coverage_genes:
 			sample.run_vcf2fasta(gene, "gene")
 			sample.run_vcf2fasta(gene, "CDS")
 	sample.parse_fastas()
