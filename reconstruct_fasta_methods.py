@@ -41,7 +41,7 @@ def filter_vcf(self):
 
 	# small variants: (optionally PASS) + non-symbolic ALT + phased or hom-ALT (not 0/0), not missing
 	# SVs (INS/DEL): ignore FILTER, same genotype requirement
-	keep_expr = fr'(({pass_req}ALT!~"^<" && GT!="./." && (GT~"\|" || (GT="hom" && GT!="0/0")))) || ((SVTYPE="INS" || SVTYPE="DEL") && GT!="./." && (GT~"\|" || (GT="hom" && GT!="0/0")))'
+	keep_expr = rf'(({pass_req}ALT!~"^<" && GT!~"\." && GT!~"\*" && (GT~"\|" || (GT="hom" && GT!="0/0")))) || ((SVTYPE="INS" || SVTYPE="DEL") && GT!~"\." && GT!~"\*" && (GT~"\|" || (GT="hom" && GT!="0/0")))'
 
 	# Retained variant records
 	subprocess.run(["bcftools", "view", "-i", keep_expr, input_vcf, "-Oz", "-o", pass_vcf], check=True)
