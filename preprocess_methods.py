@@ -54,7 +54,8 @@ me_rc = "CTGTCTCTTATACACATCT"
 longphase = "/hb/home/mglasena/software/longphase/longphase_linux-x64"
 prowler_trimmer = "/hb/home/mglasena/software/ProwlerTrimmer/TrimmerLarge.py"
 
-clair3_model_path = "/hb/home/mglasena/.conda/envs/clair3/bin/models/r941_prom_sup_g5014"
+clair3_ont_model_path = "/hb/home/mglasena/.conda/envs/clair3/bin/models/r941_prom_sup_g5014"
+clair3_hifi_model_path = "/hb/home/mglasena/.conda/envs/clair3/bin/models/hifi_revio"
 
 # Coverage Thresholds
 depth_thresh = 30
@@ -399,6 +400,11 @@ def parse_mosdepth(self):
 # Call SNV with DeepVariant
 def call_variants_deepvariant(self):
 	input_file = os.path.join(self.mapped_bam_dir, self.sample_ID +".hg38.rmdup.chr6.bam")
+
+	if self.platform == "PACBIO":
+		model_type = "PACBIO"
+	elif self.platform == "ONT":
+		model_type = "ONT_R104"
 	
 	print("Calling SNVs and small INDELS with DeepVariant!")
 	print("DeepVariant input file: {}".format(input_file))
@@ -416,7 +422,7 @@ def call_variants_deepvariant(self):
 
 	deepvariant_cmd = """
 		singularity exec {binds} {sif} /opt/deepvariant/bin/run_deepvariant \
-			--model_type=PACBIO \
+			--model_type={model_type} \
 			--ref=/reference/{ref_filename} \
 			--reads=/input/{sample}.hg38.rmdup.chr6.bam \
 			--output_vcf=/data/{sample}.vcf.gz \
@@ -426,6 +432,7 @@ def call_variants_deepvariant(self):
 		""".format(
 			binds=bind_flags,
 			sif=deepvariant_sif,
+			model_type=model_type,
 			ref_filename=os.path.basename(reference_fasta),
 			sample=self.sample_ID
 			)
@@ -444,12 +451,19 @@ def call_variants_deepvariant(self):
 def call_variants_clair3(self):
 	input_file = os.path.join(self.mapped_bam_dir, self.sample_ID +".hg38.rmdup.chr6.bam")
 
+	if self.platform == "ONT":
+		platform = "ont"
+		clair3_model = clair3_ont_model_path
+	elif self.platform == "PACBIO":
+		platform = "hifi"
+		clair3_model = clair3_hifi_model_path
+
 	print("Calling SNVs and small INDELS with Clair3!")
 
 	output_dir = os.path.join(self.genotypes_dir, self.sample_ID)
 	os.makedirs(output_dir, exist_ok=True)
 
-	clair3_cmd = "run_clair3.sh --bam_fn={input_file} --ref_fn={reference_genome} --platform=ont --model_path={clair3_model} --output={output_dir} --threads={threads} --sample_name={sample} --bed_fn={bed_file}".format(input_file = input_file, reference_genome = reference_fasta, clair3_model = clair3_model_path, output_dir = output_dir, threads = self.threads, sample = self.sample_ID, bed_file = chr6_bed)
+	clair3_cmd = "run_clair3.sh --bam_fn={input_file} --ref_fn={reference_genome} --platform={platform} --model_path={clair3_model} --output={output_dir} --threads={threads} --sample_name={sample} --bed_fn={bed_file}".format(input_file = input_file, reference_genome = reference_fasta, platform = platform, clair3_model = clair3_model_path, output_dir = output_dir, threads = self.threads, sample = self.sample_ID, bed_file = chr6_bed)
 	
 	subprocess.run(clair3_cmd, shell=True, check=True)
 
@@ -465,6 +479,11 @@ def call_variants_clair3(self):
 def call_variants_bcftools(self):
 	input_file = os.path.join(self.mapped_bam_dir, self.sample_ID +".hg38.rmdup.chr6.bam")
 
+	if self.platform == "PACBIO":
+		config = "pacbio-ccs-1.20"
+	elif self.platform == "ONT":
+		config = "ont-sup-1.20"
+
 	print("Calling SNVs and small INDELS with bcftools!")
 
 	print("Bcftools input file: {}".format(input_file))
@@ -475,12 +494,13 @@ def call_variants_bcftools(self):
 	call_threads = str(self.threads // 2)
 
 	bcftools_command = (
-		"bcftools mpileup --config pacbio-ccs-1.20 --threads {pileup_threads} "
+		"bcftools mpileup --config {config} --threads {pileup_threads} "
 		"-f {reference_genome} -d 1000000 -r chr6:28000000-34000000 "
 		"-a FORMAT/DP,AD,ADF,ADR,SP {input_bam} | "
 		"bcftools call -mv -f GQ --threads {call_threads} -Ou | "
 		"bcftools view -i '(TYPE=\"snp\" && GQ>=20 && QUAL>=10) || (TYPE=\"indel\" && GQ>=10)' "
 		"-Oz -o {output_vcf}").format(
+		config = config,
 		pileup_threads=pileup_threads,
 		reference_genome=reference_fasta,
 		input_bam=input_file,

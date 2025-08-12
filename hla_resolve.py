@@ -36,6 +36,7 @@ def check_required_commands():
 		"cutadapt",
 		"fastplong",
 		"fastqc",
+		"gatk",
 		"hiphase",
 		"pbmarkdup",
 		"pbmm2",
@@ -354,8 +355,8 @@ def main():
 		if sample.aligner == "vg":
 			sample.align_to_reference_vg()
 			sample.reassign_mapq()
-		sample.mark_duplicates_picard()
-		sample.parse_mosdepth()
+		# sample.mark_duplicates_picard()
+		sample.filter_reads()
 		if sample.genotyper == "bcftools":
 			sample.call_variants_bcftools()
 		elif sample.genotyper == "deepvariant":
@@ -366,7 +367,7 @@ def main():
 		sample.phase_genotypes_longphase()
 		sample.merge_longphase_vcfs()
 			
-	# sample.run_mosdepth()
+	sample.run_mosdepth()
 	sample.parse_mosdepth()
 	heterozygous_sites, haploblock_list = sample.parse_haploblocks()
 	phased_genes = sample.evaluate_gene_haploblocks(heterozygous_sites, haploblock_list)
