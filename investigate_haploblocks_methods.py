@@ -17,11 +17,11 @@ def parse_haploblocks(self):
 	haploblock_list = []
 
 	if self.platform == "PACBIO":
-		vcf_file = os.path.join(self.hiphase_phased_vcf_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.phased.joint.vcf.gz")
-		haploblock_file = os.path.join(self.hiphase_phased_vcf_dir, self.sample_ID + ".phased.blocks.txt")
+		vcf_file = os.path.join(self.phased_vcf_dir, self.sample_ID + ".hiphase.joint.vcf.gz")
+		haploblock_file = os.path.join(self.phased_vcf_dir, self.sample_ID + ".phased.blocks.txt")
 	elif self.platform == "ONT":
-		vcf_file = os.path.join(self.longphase_phased_vcf_dir, self.sample_ID + ".porechop.trimmed.hg38.rmdup.chr6.longphase.merged.vcf.gz")
-		haploblock_file = os.path.join(self.longphase_phased_vcf_dir, self.sample_ID + ".phased.haploblocks.txt")
+		vcf_file = os.path.join(self.phased_vcf_dir, self.sample_ID + ".longphase.vcf.gz")
+		haploblock_file = os.path.join(self.phased_vcf_dir, self.sample_ID + ".phased.haploblocks.txt")
 	
 	vcf = pysam.VariantFile(vcf_file)
 
@@ -41,7 +41,7 @@ def parse_haploblocks(self):
 
 	print(f"Sample {sample_name} has {len(heterozygous_sites)} heterozygous extended MHC genotypes")
 
-	print(f"Parsing {sample_name} haploblock file!")
+	print(f"Parsing {sample_name} haploblock file: {haploblock_file}")
 
 	with open(haploblock_file, "r") as f:
 		haploblocks = f.read().splitlines()

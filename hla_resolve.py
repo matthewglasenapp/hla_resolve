@@ -6,7 +6,7 @@ import time
 import pysam
 import argparse
 import json
-from preprocess_methods import convert_bam_to_fastq, mark_duplicates_pbmarkdup, mark_duplicates_picard, trim_adapters, run_fastqc, trim_reads, align_to_reference_minimap, align_to_reference_vg, reassign_mapq, filter_reads, run_mosdepth, parse_mosdepth, call_variants_deepvariant, call_variants_clair3, call_structural_variants_pbsv, call_structural_variants_sniffles, genotype_tandem_repeats, phase_genotypes_hiphase, merge_hiphase_vcfs, phase_genotypes_whatshap, phase_genotypes_longphase, merge_longphase_vcfs, run_porechop_abi
+from preprocess_methods import convert_bam_to_fastq, mark_duplicates_pbmarkdup, mark_duplicates_picard, trim_adapters, run_fastqc, trim_reads, align_to_reference_minimap, align_to_reference_vg, reassign_mapq, filter_reads, run_mosdepth, parse_mosdepth, call_variants_bcftools, call_variants_deepvariant, call_variants_clair3, call_structural_variants_pbsv, call_structural_variants_sniffles, genotype_tandem_repeats, phase_genotypes_hiphase, merge_hiphase_vcfs, phase_genotypes_longphase, merge_longphase_vcfs, run_porechop_abi
 from investigate_haploblocks_methods import parse_haploblocks, evaluate_gene_haploblocks
 from reconstruct_fasta_methods import filter_vcf, run_vcf2fasta, parse_fastas
 from hla_typer import main as classify_hla_alleles
@@ -46,7 +46,6 @@ def check_required_commands():
 		"sniffles",
 		"tabix",
 		"trgt",
-		"whatshap"
 	]
 
 	missing_commands = []
@@ -61,7 +60,7 @@ def check_required_commands():
 		print("\n\n")
 
 class Samples:
-	def __init__(self, input_file, sample_name, platform, output_dir, threads, read_group_string=None):
+	def __init__(self, input_file, sample_name, platform, output_dir, aligner, genotyper, threads, read_group_string=None):
 		self.ORIGINAL_CWD = os.getcwd()
 		self.input_file = os.path.realpath(os.path.abspath(input_file))
 
@@ -77,6 +76,8 @@ class Samples:
 		self.platform = platform.upper()
 		self.threads = threads
 		self.sufficient_coverage_genes = []
+		self.aligner = aligner
+		self.genotyper = genotyper
 
 		output_dir_abs = os.path.realpath(os.path.abspath(os.path.join(output_dir, self.sample_ID)))
 
@@ -97,12 +98,14 @@ class Samples:
 		self.fastq_raw_dir = os.path.join(self.output_dir, "fastq_raw")
 		self.mapped_bam_dir = os.path.join(self.output_dir, "mapped_bam")
 		self.parsed_haploblock_dir = os.path.join(self.output_dir, "haploblocks")
-		self.whatshap_phased_vcf_dir = os.path.join(self.output_dir, "phased_vcf_whatshap")
+		self.genotypes_dir = os.path.join(self.output_dir, "genotype_calls")
+		self.sv_dir = os.path.join(self.output_dir, "structural_variant_vcf")
 		self.filtered_vcf_dir = os.path.join(self.output_dir, "filtered_vcf")
 		self.vcf2fasta_out_dir = os.path.join(self.output_dir, "vcf2fasta_out")
 		self.hla_fasta_dir = os.path.join(self.output_dir, "hla_fasta_haplotypes")
 		self.hla_typing_dir = os.path.join(self.output_dir, "hla_typing_results")
 		self.mosdepth_dir = os.path.join(self.output_dir, "mosdepth")
+		self.phased_vcf_dir = os.path.join(self.output_dir, "phased_vcf")
 
 		platform_dirs = []
 
@@ -110,37 +113,28 @@ class Samples:
 		if self.platform == "PACBIO":
 			self.fastq_rmdup_dir = os.path.join(self.output_dir, "fastq_rmdup")
 			self.fastq_rmdup_cutadapt_dir = os.path.join(self.output_dir, "fastq_rmdup_cutadapt")
-			self.deepvariant_dir = os.path.join(self.output_dir, "deepvariant_vcf")
-			self.pbsv_dir = os.path.join(self.output_dir, "pbsv_vcf")
 			self.pbtrgt_dir = os.path.join(self.output_dir, "pbtrgt_vcf")
-			self.hiphase_phased_vcf_dir = os.path.join(self.output_dir, "phased_vcf_hiphase")
 
 			platform_dirs.extend([
 				self.fastq_rmdup_dir, self.fastq_rmdup_cutadapt_dir,
-				self.deepvariant_dir, self.pbsv_dir, self.pbtrgt_dir,
-				self.hiphase_phased_vcf_dir
+				self.pbtrgt_dir,
 			])
 
 		# ONT-specific directories
 		elif self.platform == "ONT":
 			self.fastq_porechop_dir = os.path.join(self.output_dir, "fastq_porechop")
 			self.fastq_prowler_dir = os.path.join(self.output_dir, "fastq_prowler")
-			self.clair3_dir = os.path.join(self.output_dir, "clair3_vcf")
-			self.sniffles_dir = os.path.join(self.output_dir, "sniffles")
-			self.merged_vcf_dir = os.path.join(self.output_dir, "merged_vcf")
-			self.longphase_phased_vcf_dir = os.path.join(self.output_dir, "phased_vcf_longphase")
 
 			platform_dirs.extend([
-				self.fastq_porechop_dir, self.fastq_prowler_dir, self.clair3_dir, self.sniffles_dir,
-				self.merged_vcf_dir, self.longphase_phased_vcf_dir
+				self.fastq_porechop_dir, self.fastq_prowler_dir
 			])
 
 		combined_dirs = [
 			self.fastq_raw_dir, self.mapped_bam_dir,
-			self.parsed_haploblock_dir, self.whatshap_phased_vcf_dir,
-			self.filtered_vcf_dir, self.vcf2fasta_out_dir, 
+			self.parsed_haploblock_dir, self.genotypes_dir,
+			self.sv_dir, self.filtered_vcf_dir, self.vcf2fasta_out_dir, 
 			self.hla_fasta_dir, self.hla_typing_dir,
-			self.mosdepth_dir
+			self.mosdepth_dir, self.phased_vcf_dir
 		] + platform_dirs
 
 		for directory in combined_dirs:
@@ -292,6 +286,7 @@ Samples.reassign_mapq = reassign_mapq
 Samples.filter_reads = filter_reads
 Samples.run_mosdepth = run_mosdepth
 Samples.parse_mosdepth = parse_mosdepth
+Samples.call_variants_bcftools = call_variants_bcftools
 Samples.call_variants_deepvariant = call_variants_deepvariant
 Samples.call_variants_clair3 = call_variants_clair3
 Samples.call_structural_variants_pbsv = call_structural_variants_pbsv
@@ -299,7 +294,6 @@ Samples.call_structural_variants_sniffles = call_structural_variants_sniffles
 Samples.genotype_tandem_repeats = genotype_tandem_repeats
 Samples.phase_genotypes_hiphase = phase_genotypes_hiphase
 Samples.merge_hiphase_vcfs = merge_hiphase_vcfs
-Samples.phase_genotypes_whatshap = phase_genotypes_whatshap
 Samples.phase_genotypes_longphase = phase_genotypes_longphase
 Samples.merge_longphase_vcfs = merge_longphase_vcfs
 Samples.parse_haploblocks = parse_haploblocks
@@ -314,6 +308,8 @@ def main():
 	parser.add_argument("--sample_name", required=True, help="Override the parsed sample name", default=None)
 	parser.add_argument("--platform", choices=["pacbio", "ont"], required=True, help="Specify sequencing platform (pacbio, ont)")
 	parser.add_argument("--output_dir", required=True, help="Output Directory", default=None)
+	parser.add_argument("--aligner", choices=["minimap2", "vg"], required=True, help="Tool for reference genome alignment", default=None)
+	parser.add_argument("--genotyper", choices=["bcftools", "clair3", "deepvariant"], required=False, help="Tool for genotyping", default="deepvariant")
 	parser.add_argument("--threads", type=int, required=False, help="Number of threads to use", default=6)
 	parser.add_argument("--read_group_string", required=False, help="Override the parsed read group string", default=None)
 	args = parser.parse_args()
@@ -325,49 +321,65 @@ def main():
 	print("\n")
 
 	# Check that all required tools are installed
-	check_required_commands()
+	# check_required_commands()
 	start_time = time.time()
-	sample = Samples(input_file=args.input_file, sample_name=args.sample_name, platform =args.platform, output_dir=args.output_dir, threads=args.threads, read_group_string=args.read_group_string)
+	sample = Samples(input_file=args.input_file, sample_name=args.sample_name, platform=args.platform, output_dir=args.output_dir, aligner=args.aligner, genotyper=args.genotyper, threads=args.threads, read_group_string=args.read_group_string)
 
 	if sample.platform == "PACBIO":	
-		# sample.mark_duplicates_pbmarkdup()
-		# # sample.run_fastqc(os.path.join(sample.fastq_rmdup_dir, sample.sample_ID + ".dedup.fastq.gz"))
-		# sample.trim_adapters()
-		# # sample.run_fastqc(os.path.join(sample.fastq_rmdup_cutadapt_dir, sample.sample_ID + ".dedup.trimmed.fastq.gz"))
-		# sample.align_to_reference_minimap()
-		# sample.align_to_reference_vg()
-		# sample.reassign_mapq()
-		# sample.filter_reads()
-		sample.run_mosdepth()
-		sample.parse_mosdepth()
-		# sample.call_variants_deepvariant()
-		# sample.call_structural_variants_pbsv()
-		# sample.genotype_tandem_repeats()
-		# sample.phase_genotypes_hiphase()
-		# sample.merge_hiphase_vcfs()
+		sample.mark_duplicates_pbmarkdup()
+		# sample.run_fastqc(os.path.join(sample.fastq_rmdup_dir, sample.sample_ID + ".pbmarkdup.fastq.gz"))
+		sample.trim_adapters()
+		# sample.run_fastqc(os.path.join(sample.fastq_rmdup_cutadapt_dir, sample.sample_ID + ".pbmarkdup.cutadapt.fastq.gz"))
+		sample.align_to_reference_minimap()
+		if sample.aligner == "vg":
+			sample.align_to_reference_vg()
+			sample.reassign_mapq()
+		sample.filter_reads()
 
-	# elif sample.platform == "ONT":
-	# 	sample.run_porechop_abi()
-	# 	sample.trim_reads()
-	# 	sample.align_to_reference_minimap()
-	# 	sample.align_to_reference_vg()
-	# 	sample.reassign_mapq()
-	# 	sample.mark_duplicates_picard()
-	# 	sample.filter_reads()
-	# 	sample.run_mosdepth()
-	# 	sample.parse_mosdepth()
-	# 	sample.call_variants_clair3()
-	# 	sample.call_structural_variants_sniffles()
-	# 	sample.phase_genotypes_whatshap()
-	# 	sample.phase_genotypes_longphase()
-	# 	sample.merge_longphase_vcfs()
+		if sample.genotyper == "bcftools":
+			sample.call_variants_bcftools()
+		elif sample.genotyper == "deepvariant":
+			sample.call_variants_deepvariant()
+		elif sample.genotyper == "clair3":
+			sample.call_variants_clair3()
+		sample.call_structural_variants_pbsv()
+		sample.genotype_tandem_repeats()
+		sample.phase_genotypes_hiphase()
+		sample.merge_hiphase_vcfs()
+
+	elif sample.platform == "ONT":
+		# sample.run_porechop_abi()
+		# sample.trim_reads()
+		# sample.align_to_reference_minimap()
+		if sample.aligner == "vg":
+			sample.align_to_reference_vg()
+			sample.reassign_mapq()
+		sample.mark_duplicates_picard()
+		sample.parse_mosdepth()
+		if sample.genotyper == "bcftools":
+			sample.call_variants_bcftools()
+		elif sample.genotyper == "deepvariant":
+			sample.call_variants_deepvariant()
+		elif sample.genotyper == "clair3":
+			sample.call_variants_clair3()
+		sample.call_structural_variants_sniffles()
+		sample.phase_genotypes_longphase()
+		sample.merge_longphase_vcfs()
 			
+	# sample.run_mosdepth()
+	sample.parse_mosdepth()
 	heterozygous_sites, haploblock_list = sample.parse_haploblocks()
 	phased_genes = sample.evaluate_gene_haploblocks(heterozygous_sites, haploblock_list)
 	sample.filter_vcf()
 	
+	# Reset self.vcf2fasta_out_dir for sequential runs 
+	if any(os.scandir(sample.vcf2fasta_out_dir)):
+		shutil.rmtree(sample.vcf2fasta_out_dir)
+		os.makedirs(sample.vcf2fasta_out_dir, exist_ok=True)
+
 	for gene in phased_genes:
 		if gene in genes_of_interest and gene in sample.sufficient_coverage_genes:
+			print(gene)
 			sample.run_vcf2fasta(gene, "gene")
 			sample.run_vcf2fasta(gene, "CDS")
 	sample.parse_fastas()

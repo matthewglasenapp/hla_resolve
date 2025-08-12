@@ -14,26 +14,42 @@ stop_codons = ["TAA", "TAG", "TGA"]
 
 def filter_vcf(self):
 	if self.platform == "PACBIO":
-		input_vcf = os.path.join(self.hiphase_phased_vcf_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.phased.joint.vcf.gz")
-		pass_vcf = os.path.join(self.filtered_vcf_dir, f"{self.sample_ID}_PASS.vcf.gz")
-		filtered_vcf = os.path.join(self.filtered_vcf_dir, f"{self.sample_ID}_filtered.vcf.gz")
+		input_vcf = os.path.join(self.phased_vcf_dir, self.sample_ID + ".hiphase.joint.vcf.gz")
 	elif self.platform == "ONT":
-		input_vcf = os.path.join(self.longphase_phased_vcf_dir, self.sample_ID + ".porechop.trimmed.hg38.rmdup.chr6.longphase.merged.vcf.gz")
-		pass_vcf = os.path.join(self.longphase_phased_vcf_dir, f"{self.sample_ID}_PASS.vcf.gz")
-		filtered_vcf = os.path.join(self.filtered_vcf_dir, f"{self.sample_ID}_filtered.vcf.gz")
+		input_vcf = os.path.join(self.phased_vcf_dir, self.sample_ID + ".longphase.vcf.gz")
+	
+	pass_vcf = os.path.join(self.phased_vcf_dir, f"{self.sample_ID}_PASS.vcf.gz")
+	fail_vcf = os.path.join(self.phased_vcf_dir, f"{self.sample_ID}_FAIL.vcf.gz")
+	filtered_vcf = os.path.join(self.filtered_vcf_dir, f"{self.sample_ID}_filtered.vcf.gz")
 
 	# Step 1: Filter for PASS variants and remove unphased hets and unsupported variant types
 	#filter_expr = '(GT="hom" || GT~"\\|") && (TYPE="snp" || TYPE="indel" || SVTYPE="INS" || SVTYPE="DEL") && ALT!~"^<"'
 	# New filter expression, deal with ./. genotypes
-	filter_expr = '(GT="hom" || GT~"\\|") && GT!="./." && (TYPE="snp" || TYPE="indel" || SVTYPE="INS" || SVTYPE="DEL") && ALT!~"^<"'
+	# filter_expr = '(GT="hom" || GT~"\\|") && GT!="./." && (TYPE="snp" || TYPE="indel" || SVTYPE="INS" || SVTYPE="DEL") && ALT!~"^<"'
 	
-	# Use for DeepVariant
-	subprocess.run(f'bcftools view -f PASS -i \'{filter_expr}\' {input_vcf} -Oz -o {pass_vcf}', shell=True, check=True)
-	
-	# Use for bcftools 
-	# subprocess.run(f'bcftools view -i \'{filter_expr}\' {input_vcf} -Oz -o {pass_vcf}', shell=True, check=True)
+	# if self.genotyper == "deepvariant" or self.genotyper == "clair3":
+	# 	subprocess.run(f'bcftools view -f PASS -i \'{filter_expr}\' {input_vcf} -Oz -o {pass_vcf}', shell=True, check=True)
+	# elif self.genotyper == "bcftools":
+	# 	subprocess.run(f'bcftools view -i \'{filter_expr}\' {input_vcf} -Oz -o {pass_vcf}', shell=True, check=True)
 
-	subprocess.run(f"bcftools index {pass_vcf}", shell=True, check=True)
+	# subprocess.run(f"bcftools index {pass_vcf}", shell=True, check=True)
+
+	if self.genotyper in ("deepvariant", "clair3"):
+		pass_req = 'FILTER="PASS" && '
+	else:
+		pass_req = ""
+
+	# small variants: (optionally PASS) + non-symbolic ALT + phased or hom-ALT (not 0/0), not missing
+	# SVs (INS/DEL): ignore FILTER, same genotype requirement
+	keep_expr = fr'(({pass_req}ALT!~"^<" && GT!="./." && (GT~"\|" || (GT="hom" && GT!="0/0")))) || ((SVTYPE="INS" || SVTYPE="DEL") && GT!="./." && (GT~"\|" || (GT="hom" && GT!="0/0")))'
+
+	# Retained variant records
+	subprocess.run(["bcftools", "view", "-i", keep_expr, input_vcf, "-Oz", "-o", pass_vcf], check=True)
+	subprocess.run(["bcftools", "index", "-f", pass_vcf], check=True)
+
+	# Excluded variant records
+	subprocess.run(["bcftools", "view", "-e", keep_expr, input_vcf, "-Oz", "-o", fail_vcf], check=True)
+	subprocess.run(["bcftools", "index", "-f", fail_vcf], check=True)
 
 	# Step 2: Find first phased variant
 	vcf = pysam.VariantFile(pass_vcf)
