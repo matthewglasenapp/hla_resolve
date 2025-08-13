@@ -6,6 +6,7 @@ import time
 import pysam
 import argparse
 import json
+import textwrap
 from preprocess_methods import convert_bam_to_fastq, mark_duplicates_pbmarkdup, mark_duplicates_picard, trim_adapters, run_fastqc, trim_reads, align_to_reference_minimap, align_to_reference_vg, reassign_mapq, filter_reads, run_mosdepth, parse_mosdepth, call_variants_bcftools, call_variants_deepvariant, call_variants_clair3, call_structural_variants_pbsv, call_structural_variants_sniffles, genotype_tandem_repeats, phase_genotypes_hiphase, merge_hiphase_vcfs, phase_genotypes_longphase, merge_longphase_vcfs, run_porechop_abi
 from investigate_haploblocks_methods import parse_haploblocks, evaluate_gene_haploblocks
 from reconstruct_fasta_methods import filter_vcf, run_vcf2fasta, parse_fastas
@@ -304,7 +305,14 @@ Samples.run_vcf2fasta = run_vcf2fasta
 Samples.parse_fastas = parse_fastas
 
 def main():
-	parser = argparse.ArgumentParser(description="Run HLA-Resolve")
+	parser = argparse.ArgumentParser(
+	description="Run HLA-Resolve",
+	formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+	epilog=textwrap.dedent("""\
+		Examples:
+		  python3 script.py --input_file reads.bam --sample_name HG002 --platform pacbio --output_dir out --aligner minimap2 --genotyper deepvariant --threads 10
+	"""),
+)
 	parser.add_argument("--input_file", required=True, help="Path to the raw sequencing reads file")
 	parser.add_argument("--sample_name", required=True, help="Override the parsed sample name", default=None)
 	parser.add_argument("--platform", choices=["pacbio", "ont"], required=True, help="Specify sequencing platform (pacbio, ont)")
@@ -313,6 +321,11 @@ def main():
 	parser.add_argument("--genotyper", choices=["bcftools", "clair3", "deepvariant"], required=False, help="Tool for genotyping", default="deepvariant")
 	parser.add_argument("--threads", type=int, required=False, help="Number of threads to use", default=6)
 	parser.add_argument("--read_group_string", required=False, help="Override the parsed read group string", default=None)
+	# Show help and exit if no arguments were provided
+	if len(sys.argv) == 1:
+		parser.print_help()
+		parser.exit()
+
 	args = parser.parse_args()
 
 	print("\n")
