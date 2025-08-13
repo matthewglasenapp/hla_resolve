@@ -42,6 +42,7 @@ def parse_haploblocks(self):
 	print(f"Sample {sample_name} has {len(heterozygous_sites)} heterozygous extended MHC genotypes")
 
 	print(f"Parsing {sample_name} haploblock file: {haploblock_file}")
+	print("\n")
 
 	with open(haploblock_file, "r") as f:
 		haploblocks = f.read().splitlines()

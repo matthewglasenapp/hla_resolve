@@ -9,6 +9,8 @@ vcf2fasta_script = "/hb/scratch/mglasena/vcf2fasta/vcf2fasta.py"
 reference_genome = "/hb/groups/cornejo_lab/matt/hla_capture/input_data/reference/GCA_000001405.15_GRCh38_no_alt_analysis_set.fa"
 gff_dir = "/hb/groups/cornejo_lab/matt/hla_capture/input_data/hla_gff/"
 
+hla_genes_regions_file = "/hb/scratch/mglasena/hla_resolve/hla_genes.bed"
+
 DNA_bases = {"A", "T", "G", "C"}
 stop_codons = ["TAA", "TAG", "TGA"]
 
@@ -20,36 +22,85 @@ def filter_vcf(self):
 	
 	pass_vcf = os.path.join(self.phased_vcf_dir, f"{self.sample_ID}_PASS.vcf.gz")
 	fail_vcf = os.path.join(self.phased_vcf_dir, f"{self.sample_ID}_FAIL.vcf.gz")
+	pass_unphased = os.path.join(self.phased_vcf_dir, f"{self.sample_ID}_PASS_UNPHASED.vcf.gz")
 	filtered_vcf = os.path.join(self.filtered_vcf_dir, f"{self.sample_ID}_filtered.vcf.gz")
 
-	# Step 1: Filter for PASS variants and remove unphased hets and unsupported variant types
-	#filter_expr = '(GT="hom" || GT~"\\|") && (TYPE="snp" || TYPE="indel" || SVTYPE="INS" || SVTYPE="DEL") && ALT!~"^<"'
-	# New filter expression, deal with ./. genotypes
-	filter_expr = '(GT="hom" || GT~"\\|") && GT!="./." && (TYPE="snp" || TYPE="indel" || SVTYPE="INS" || SVTYPE="DEL") && ALT!~"^<"'
+	if self.genotyper == "bcftools":
+		kept_expr = (
+			'(ALT!~"^<") && '
+			'(GT="1/1" || GT="2/2" || GT="3/3" || GT="4/4" || GT="5/5" || '
+			' GT="0|1" || GT="1|0" || GT="1|2" || GT="2|1" || GT="2|3" || GT="3|2")'
+		)
+	else:
+		kept_expr = (
+			'(FILTER="PASS") && '
+			'(ALT!~"^<") && '
+			'(GT="1/1" || GT="2/2" || GT="3/3" || GT="4/4" || GT="5/5" || '
+			' GT="0|1" || GT="1|0" || GT="1|2" || GT="2|1" || GT="2|3" || GT="3|2")'
+		)
+
+	# Retained variant records
+	subprocess.run(
+		f'bcftools view -i \'{kept_expr}\' {input_vcf} -Oz -o {pass_vcf}',
+		shell=True, check=True
+	)
+	subprocess.run(f"bcftools index -f {pass_vcf}", shell=True, check=True)
+
+	# Excluded variant records
+	subprocess.run(
+		f'bcftools view -e \'{kept_expr}\' {input_vcf} -Oz -o {fail_vcf}',
+		shell=True, check=True
+	)
+	subprocess.run(f"bcftools index -f {fail_vcf}", shell=True, check=True)
+
+
+	# Step 1b: Extract PASS + unphased hets from fail_vcf
+	if self.genotyper == "bcftools":
+		unphased_expr = '(GT="0/1" || GT="1/0" || GT="1/2" || GT="2/1" || GT="2/3" || GT="3/2")'
+	else:
+		unphased_expr = '(FILTER="PASS") && (GT="0/1" || GT="1/0" || GT="1/2" || GT="2/1" || GT="2/3" || GT="3/2")'
+
+	subprocess.run(
+		f'bcftools view -i \'{unphased_expr}\' {fail_vcf} -Oz -o {pass_unphased}',
+		shell=True, check=True
+	)
+	subprocess.run(f"bcftools index -f {pass_unphased}", shell=True, check=True)
+
+	# Step 1c: Intersect with HLA BED
+	unphased_overlap_tsv = os.path.join(self.phased_vcf_dir, self.sample_ID + ".unphased.tsv")
+	subprocess.run(
+		f'bedtools intersect -a {pass_unphased} -b {hla_genes_regions_file} -wa -wb -header > {unphased_overlap_tsv}',
+		shell=True, check=True
+	)
 	
-	if self.genotyper == "deepvariant" or self.genotyper == "clair3":
-		subprocess.run(f'bcftools view -f PASS -i \'{filter_expr}\' {input_vcf} -Oz -o {pass_vcf}', shell=True, check=True)
-	elif self.genotyper == "bcftools":
-		subprocess.run(f'bcftools view -i \'{filter_expr}\' {input_vcf} -Oz -o {pass_vcf}', shell=True, check=True)
+	with open(unphased_overlap_tsv, "r") as f:
+		overlap_lines = f.read().splitlines()
 
-	subprocess.run(f"bcftools index {pass_vcf}", shell=True, check=True)
+	counter = 0
+	header = ""
+	overlap_dict = dict()
+	for line in overlap_lines:
+		if line.startswith("#CHROM"):
+			header = line
+		if not line.startswith("chr6"):
+			continue
+		counter += 1
+		gene = line.split("\t")[-1].split("_")[0]
+		record = line.split("\t")[:-4]
+		new_record = "\t".join(record)
+		if not gene in overlap_dict:
+			overlap_dict[gene] = [new_record]
+		else:
+			overlap_dict[gene].append(new_record)
 
-	# if self.genotyper in ("deepvariant", "clair3"):
-	# 	pass_req = 'FILTER="PASS" && '
-	# else:
-	# 	pass_req = ""
-
-	# # small variants: (optionally PASS) + non-symbolic ALT + phased or hom-ALT (not 0/0), not missing
-	# # SVs (INS/DEL): ignore FILTER, same genotype requirement
-	# keep_expr = rf'(({pass_req}ALT!~"^<" && GT!~"\." && GT!~"\*" && (GT~"\|" || (GT="hom" && GT!="0/0")))) || ((SVTYPE="INS" || SVTYPE="DEL") && GT!~"\." && GT!~"\*" && (GT~"\|" || (GT="hom" && GT!="0/0")))'
-
-	# # Retained variant records
-	# subprocess.run(["bcftools", "view", "-i", keep_expr, input_vcf, "-Oz", "-o", pass_vcf], check=True)
-	# subprocess.run(["bcftools", "index", "-f", pass_vcf], check=True)
-
-	# # Excluded variant records
-	# subprocess.run(["bcftools", "view", "-e", keep_expr, input_vcf, "-Oz", "-o", fail_vcf], check=True)
-	# subprocess.run(["bcftools", "index", "-f", fail_vcf], check=True)
+	print("The following {count} unphased variants overlapped with an HLA gene and could not be applied".format(count=counter))
+	print("\n")
+	for gene, records in overlap_dict.items():
+		print(gene)
+		print(header)
+		for record in records:
+			print(record)
+		print("\n")
 
 	# Step 2: Find first phased variant
 	vcf = pysam.VariantFile(pass_vcf)
