@@ -25,40 +25,52 @@ def filter_vcf(self):
 	pass_unphased = os.path.join(self.phased_vcf_dir, f"{self.sample_ID}_PASS_UNPHASED.vcf.gz")
 	filtered_vcf = os.path.join(self.filtered_vcf_dir, f"{self.sample_ID}_filtered.vcf.gz")
 
+	# bcftools call does not have a FILTER=PASS annotation, so drop that from the filtering expression
+	# Include homozygous ALT (both biallelic and multiallelic) and phased heterozygous
+	# Exclude symbolic variants 
+	# Note: both pbsv and sniffles have the FILTER=PASS annotation and normal GT fields for INS/DEL. DUP,BND,INV are symbolic and will be excluded but reported
 	if self.genotyper == "bcftools":
-		kept_expr = (
+		keep_expr = (
 			'(ALT!~"^<") && '
 			'(GT="1/1" || GT="2/2" || GT="3/3" || GT="4/4" || GT="5/5" || '
-			' GT="0|1" || GT="1|0" || GT="1|2" || GT="2|1" || GT="2|3" || GT="3|2")'
+			'GT="0|1" || GT="1|0" || GT="1|2" || GT="2|1" || GT="2|3" || GT="3|2") && '
+			'((TYPE="snp" && GQ>=20 && QUAL>=10) || (TYPE="indel" && GQ>=10))'
 		)
 	else:
-		kept_expr = (
+		keep_expr = (
 			'(FILTER="PASS") && '
 			'(ALT!~"^<") && '
 			'(GT="1/1" || GT="2/2" || GT="3/3" || GT="4/4" || GT="5/5" || '
 			' GT="0|1" || GT="1|0" || GT="1|2" || GT="2|1" || GT="2|3" || GT="3|2")'
 		)
 
-	# Retained variant records
+	# Create new pass-filter VCF
 	subprocess.run(
-		f'bcftools view -i \'{kept_expr}\' {input_vcf} -Oz -o {pass_vcf}',
+		f'bcftools view -i \'{keep_expr}\' {input_vcf} -Oz -o {pass_vcf}',
 		shell=True, check=True
 	)
 	subprocess.run(f"bcftools index -f {pass_vcf}", shell=True, check=True)
 
-	# Excluded variant records
+	# Create new fail-filter vcf
 	subprocess.run(
-		f'bcftools view -e \'{kept_expr}\' {input_vcf} -Oz -o {fail_vcf}',
+		f'bcftools view -e \'{keep_expr}\' {input_vcf} -Oz -o {fail_vcf}',
 		shell=True, check=True
 	)
 	subprocess.run(f"bcftools index -f {fail_vcf}", shell=True, check=True)
 
 
-	# Step 1b: Extract PASS + unphased hets from fail_vcf
+	# Extract unphased PASS heterozygous genotypes from the fail-filter vcf
 	if self.genotyper == "bcftools":
-		unphased_expr = '(GT="0/1" || GT="1/0" || GT="1/2" || GT="2/1" || GT="2/3" || GT="3/2")'
+		unphased_expr = (
+			'((GT="0/1" || GT="1/0" || GT="1/2" || GT="2/1" || '
+			'GT="2/3" || GT="3/2") || TRID!="") && '
+			'((TYPE="snp" && GQ>=20 && QUAL>=10) || (TYPE="indel" && GQ>=10))'
+		)
 	else:
-		unphased_expr = '(FILTER="PASS") && (GT="0/1" || GT="1/0" || GT="1/2" || GT="2/1" || GT="2/3" || GT="3/2")'
+		unphased_expr = (
+			'((FILTER="PASS") && (GT="0/1" || GT="1/0" || '
+			'GT="1/2" || GT="2/1" || GT="2/3" || GT="3/2")) || TRID!=""'
+		)
 
 	subprocess.run(
 		f'bcftools view -i \'{unphased_expr}\' {fail_vcf} -Oz -o {pass_unphased}',
@@ -66,13 +78,14 @@ def filter_vcf(self):
 	)
 	subprocess.run(f"bcftools index -f {pass_unphased}", shell=True, check=True)
 
-	# Step 1c: Intersect with HLA BED
+	# Intersect unphased PASS heterozygous genotypes from the fail-filter vcf with HLA BED to get overlapping variants that could not bee applied
 	unphased_overlap_tsv = os.path.join(self.phased_vcf_dir, self.sample_ID + ".unphased.tsv")
 	subprocess.run(
 		f'bedtools intersect -a {pass_unphased} -b {hla_genes_regions_file} -wa -wb -header > {unphased_overlap_tsv}',
 		shell=True, check=True
 	)
 	
+	# Report overlapping variants that could not be applied 
 	with open(unphased_overlap_tsv, "r") as f:
 		overlap_lines = f.read().splitlines()
 

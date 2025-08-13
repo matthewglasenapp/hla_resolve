@@ -339,27 +339,27 @@ def main():
 	start_time = time.time()
 	sample = Samples(input_file=args.input_file, sample_name=args.sample_name, platform=args.platform, output_dir=args.output_dir, aligner=args.aligner, genotyper=args.genotyper, threads=args.threads, read_group_string=args.read_group_string)
 
-	# if sample.platform == "PACBIO":	
-	# 	sample.mark_duplicates_pbmarkdup()
-	# 	# sample.run_fastqc(os.path.join(sample.fastq_rmdup_dir, sample.sample_ID + ".pbmarkdup.fastq.gz"))
-	# 	sample.trim_adapters()
-	# 	# sample.run_fastqc(os.path.join(sample.fastq_rmdup_cutadapt_dir, sample.sample_ID + ".pbmarkdup.cutadapt.fastq.gz"))
-	# 	sample.align_to_reference_minimap()
-	# 	if sample.aligner == "vg":
-	# 		sample.align_to_reference_vg()
-	# 		sample.reassign_mapq()
-	# 	sample.filter_reads()
+	if sample.platform == "PACBIO":	
+		# sample.mark_duplicates_pbmarkdup()
+		# sample.run_fastqc(os.path.join(sample.fastq_rmdup_dir, sample.sample_ID + ".pbmarkdup.fastq.gz"))
+		# sample.trim_adapters()
+		# sample.run_fastqc(os.path.join(sample.fastq_rmdup_cutadapt_dir, sample.sample_ID + ".pbmarkdup.cutadapt.fastq.gz"))
+		# sample.align_to_reference_minimap()
+		# if sample.aligner == "vg":
+		# 	sample.align_to_reference_vg()
+		# 	sample.reassign_mapq()
+		# sample.filter_reads()
 
-	# 	if sample.genotyper == "bcftools":
-	# 		sample.call_variants_bcftools()
-	# 	elif sample.genotyper == "deepvariant":
-	# 		sample.call_variants_deepvariant()
-	# 	elif sample.genotyper == "clair3":
-	# 		sample.call_variants_clair3()
-	# 	sample.call_structural_variants_pbsv()
-	# 	sample.genotype_tandem_repeats()
-	# 	sample.phase_genotypes_hiphase()
-	# 	sample.merge_hiphase_vcfs()
+		if sample.genotyper == "bcftools":
+			sample.call_variants_bcftools()
+		elif sample.genotyper == "deepvariant":
+			sample.call_variants_deepvariant()
+		elif sample.genotyper == "clair3":
+			sample.call_variants_clair3()
+		# sample.call_structural_variants_pbsv()
+		# sample.genotype_tandem_repeats()
+		sample.phase_genotypes_hiphase()
+		sample.merge_hiphase_vcfs()
 
 	# elif sample.platform == "ONT":
 	# 	sample.run_porechop_abi()
