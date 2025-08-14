@@ -536,7 +536,7 @@ def call_structural_variants_pbsv(self):
 	
 	subprocess.run(index_svsig_cmd, shell=True, check=True)
 
-	pbsv_call_cmd = "pbsv call -j {threads} --region chr6 --hifi {reference_genome} {input_file} {output_file}".format(threads = self.threads, reference_genome = reference_fasta, input_file = output_svsig, output_file = output_vcf)
+	pbsv_call_cmd = "pbsv call -j {threads} --min-sv-length 51 --region chr6 --hifi {reference_genome} {input_file} {output_file}".format(threads = self.threads, reference_genome = reference_fasta, input_file = output_svsig, output_file = output_vcf)
 	
 	subprocess.run(pbsv_call_cmd, shell=True, check=True)
 
