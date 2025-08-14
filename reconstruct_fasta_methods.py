@@ -31,10 +31,12 @@ def filter_vcf(self):
 	# Note: both pbsv and sniffles have the FILTER=PASS annotation and normal GT fields for INS/DEL. DUP,BND,INV are symbolic and will be excluded but reported
 	if self.genotyper == "bcftools":
 		keep_expr = (
-			'(ALT!~"^<") && '
+			'TRID=="" && '
 			'(GT="1/1" || GT="2/2" || GT="3/3" || GT="4/4" || GT="5/5" || '
 			'GT="0|1" || GT="1|0" || GT="1|2" || GT="2|1" || GT="2|3" || GT="3|2") && '
-			'((TYPE="snp" && GQ>=20 && QUAL>=10) || (TYPE="indel" && GQ>=10))'
+			'(ALT!~"^<") && '
+			'((REF~"^[ACGT]$" && ALT~"^[ACGT]$" && (GQ="." || (GQ>=20 && QUAL>=10))) || '
+			'((REF!~"^[ACGT]$" || ALT!~"^[ACGT]$") && (GQ="." || GQ>=10)))'
 		)
 	else:
 		keep_expr = (
@@ -62,9 +64,10 @@ def filter_vcf(self):
 	# Extract unphased PASS heterozygous genotypes from the fail-filter vcf
 	if self.genotyper == "bcftools":
 		unphased_expr = (
-			'((GT="0/1" || GT="1/0" || GT="1/2" || GT="2/1" || '
-			'GT="2/3" || GT="3/2") || TRID!="") && '
-			'((TYPE="snp" && GQ>=20 && QUAL>=10) || (TYPE="indel" && GQ>=10))'
+			'(TRID!="" || ALT~"^<" || '
+			'((GT="0/1" || GT="1/0" || GT="1/2" || GT="2/1" || GT="2/3" || GT="3/2") && '
+			'((REF~"^[ACGT]$" && ALT~"^[ACGT]$" && (GQ="." || (GQ>=20 && QUAL>=10))) || '
+			'((REF!~"^[ACGT]$" || ALT!~"^[ACGT]$") && (GQ="." || GQ>=10)))))'
 		)
 	else:
 		unphased_expr = (
