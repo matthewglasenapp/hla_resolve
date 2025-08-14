@@ -35,7 +35,8 @@ vg = "/hb/scratch/ogarci12/hybridcapture_pangenome/vg"
 
 # GRCh38 tandem repeat mask file for pbsv
 # Downloaded from https://github.com/PacificBiosciences/pbsv/blob/master/annotations/human_GRCh38_no_alt_analysis_set.trf.bed
-tandem_repeat_bed = os.path.join(DATA_DIR, "repeats_bed/human_GRCh38_no_alt_analysis_set.trf.bed")
+# tandem_repeat_bed = os.path.join(DATA_DIR, "repeats_bed/human_GRCh38_no_alt_analysis_set.trf.bed")
+tandem_repeat_bed = os.path.join(DATA_DIR, "repeats_bed/test_chr6_trf.bed")
 
 chr6_bed = os.path.join(DATA_DIR, "reference/chr6.bed")
 
