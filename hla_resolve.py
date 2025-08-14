@@ -350,12 +350,12 @@ def main():
 		# 	sample.reassign_mapq()
 		# sample.filter_reads()
 
-		if sample.genotyper == "bcftools":
-			sample.call_variants_bcftools()
-		elif sample.genotyper == "deepvariant":
-			sample.call_variants_deepvariant()
-		elif sample.genotyper == "clair3":
-			sample.call_variants_clair3()
+		# if sample.genotyper == "bcftools":
+		# 	sample.call_variants_bcftools()
+		# elif sample.genotyper == "deepvariant":
+		# 	sample.call_variants_deepvariant()
+		# elif sample.genotyper == "clair3":
+		# 	sample.call_variants_clair3()
 		# sample.call_structural_variants_pbsv()
 		sample.genotype_tandem_repeats()
 		sample.phase_genotypes_hiphase()

@@ -35,8 +35,7 @@ vg = "/hb/scratch/ogarci12/hybridcapture_pangenome/vg"
 
 # GRCh38 tandem repeat mask file for pbsv
 # Downloaded from https://github.com/PacificBiosciences/pbsv/blob/master/annotations/human_GRCh38_no_alt_analysis_set.trf.bed
-# tandem_repeat_bed = os.path.join(DATA_DIR, "repeats_bed/human_GRCh38_no_alt_analysis_set.trf.bed")
-tandem_repeat_bed = os.path.join(DATA_DIR, "repeats_bed/test_chr6_trf.bed")
+tandem_repeat_bed = os.path.join(DATA_DIR, "repeats_bed/human_GRCh38_no_alt_analysis_set.trf.bed")
 
 chr6_bed = os.path.join(DATA_DIR, "reference/chr6.bed")
 
@@ -44,7 +43,8 @@ mosdepth_regions_file = "/hb/scratch/mglasena/hla_resolve/hla_genes.bed"
 
 # GRCh38 tandem repeat definition file for pbtrgt
 # Downloaded from https://zenodo.org/records/8329210
-pbtrgt_repeat_file = os.path.join(DATA_DIR, "repeats_bed/polymorphic_repeats.hg38.bed")
+# pbtrgt_repeat_file = os.path.join(DATA_DIR, "repeats_bed/polymorphic_repeats.hg38.bed")
+pbtrgt_repeat_file = os.path.join(DATA_DIR, "repeats_bed/test_chr6_polymorphic_repeats.hg38.bed")
 
 # Transposase mosaic end binding sequence
 # The TE sequence (and its reverse complement) introduced during tagmentation still needs to be removed
@@ -334,8 +334,7 @@ def filter_reads(self):
 	print("Samtools input file: {}".format(input_bam))
 
 	# Extract chromosome 6 and exclude secondary and supplementary alignments
-	#samtools_cmd = "samtools view -@ {threads} -F 2304 -b {input_file} chr6 > '{output_file}'".format(threads = self.threads, input_file = input_bam, output_file = output_bam)
-	samtools_cmd = "samtools view -@ {threads} -F 2048 -b {input_file} chr6 > '{output_file}'".format(threads = self.threads, input_file = input_bam, output_file = output_bam)
+	samtools_cmd = "samtools view -@ {threads} -F 2304 -b {input_file} chr6 > '{output_file}'".format(threads = self.threads, input_file = input_bam, output_file = output_bam)
 	index_cmd = "samtools index {input_file}".format(input_file = output_bam)
 
 	subprocess.run(samtools_cmd, shell=True, check=True)
