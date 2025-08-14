@@ -7,7 +7,7 @@ import pysam
 import argparse
 import json
 import textwrap
-from preprocess_methods import convert_bam_to_fastq, mark_duplicates_pbmarkdup, mark_duplicates_picard, trim_adapters, run_fastqc, trim_reads, align_to_reference_minimap, align_to_reference_vg, reassign_mapq, filter_reads, run_mosdepth, parse_mosdepth, call_variants_bcftools, call_variants_deepvariant, call_variants_clair3, call_structural_variants_pbsv, call_structural_variants_sniffles, genotype_tandem_repeats, phase_genotypes_hiphase, merge_hiphase_vcfs, phase_genotypes_longphase, merge_longphase_vcfs, run_porechop_abi
+from preprocess_methods import convert_bam_to_fastq, mark_duplicates_pbmarkdup, mark_duplicates_picard, trim_adapters, run_fastqc, trim_reads, align_to_reference_minimap, align_to_reference_vg, reassign_mapq, filter_reads, run_mosdepth, parse_mosdepth, call_variants_bcftools, call_variants_deepvariant, call_variants_clair3, call_structural_variants_pbsv, call_structural_variants_sawfish, call_structural_variants_sniffles, genotype_tandem_repeats, phase_genotypes_hiphase, merge_hiphase_vcfs, phase_genotypes_longphase, merge_longphase_vcfs, run_porechop_abi
 from investigate_haploblocks_methods import parse_haploblocks, evaluate_gene_haploblocks
 from reconstruct_fasta_methods import filter_vcf, run_vcf2fasta, parse_fastas
 from hla_typer import main as classify_hla_alleles
@@ -292,6 +292,7 @@ Samples.call_variants_bcftools = call_variants_bcftools
 Samples.call_variants_deepvariant = call_variants_deepvariant
 Samples.call_variants_clair3 = call_variants_clair3
 Samples.call_structural_variants_pbsv = call_structural_variants_pbsv
+Samples.call_structural_variants_sawfish = call_structural_variants_sawfish
 Samples.call_structural_variants_sniffles = call_structural_variants_sniffles
 Samples.genotype_tandem_repeats = genotype_tandem_repeats
 Samples.phase_genotypes_hiphase = phase_genotypes_hiphase
@@ -357,7 +358,8 @@ def main():
 		# elif sample.genotyper == "clair3":
 		# 	sample.call_variants_clair3()
 		# sample.call_structural_variants_pbsv()
-		sample.genotype_tandem_repeats()
+		sample.call_structural_variants_sawfish()
+		# sample.genotype_tandem_repeats()
 		sample.phase_genotypes_hiphase()
 		sample.merge_hiphase_vcfs()
 
@@ -380,7 +382,7 @@ def main():
 		sample.phase_genotypes_longphase()
 		sample.merge_longphase_vcfs()
 			
-	# sample.run_mosdepth()
+	sample.run_mosdepth()
 	sample.parse_mosdepth()
 	heterozygous_sites, haploblock_list = sample.parse_haploblocks()
 	phased_genes = sample.evaluate_gene_haploblocks(heterozygous_sites, haploblock_list)

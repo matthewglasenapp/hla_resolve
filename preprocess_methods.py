@@ -54,6 +54,7 @@ me_rc = "CTGTCTCTTATACACATCT"
 
 longphase = "/hb/home/mglasena/software/longphase/longphase_linux-x64"
 prowler_trimmer = "/hb/home/mglasena/software/ProwlerTrimmer/TrimmerLarge.py"
+sawfish = "/hb/home/mglasena/software/sawfish-v2.0.3-x86_64-unknown-linux-gnu/bin/sawfish"
 
 clair3_ont_model_path = "/hb/home/mglasena/.conda/envs/clair3/bin/models/r941_prom_sup_g5014"
 clair3_hifi_model_path = "/hb/home/mglasena/.conda/envs/clair3/bin/models/hifi_revio"
@@ -334,7 +335,8 @@ def filter_reads(self):
 	print("Samtools input file: {}".format(input_bam))
 
 	# Extract chromosome 6 and exclude secondary and supplementary alignments
-	samtools_cmd = "samtools view -@ {threads} -F 2304 -b {input_file} chr6 > '{output_file}'".format(threads = self.threads, input_file = input_bam, output_file = output_bam)
+	# samtools_cmd = "samtools view -@ {threads} -F 2304 -b {input_file} chr6 > '{output_file}'".format(threads = self.threads, input_file = input_bam, output_file = output_bam)
+	samtools_cmd = "samtools view -@ {threads} -b {input_file} chr6 > '{output_file}'".format(threads = self.threads, input_file = input_bam, output_file = output_bam)
 	index_cmd = "samtools index {input_file}".format(input_file = output_bam)
 
 	subprocess.run(samtools_cmd, shell=True, check=True)
@@ -545,6 +547,40 @@ def call_structural_variants_pbsv(self):
 	subprocess.run(index_vcf_cmd, shell=True, check=True)
 
 	print("pbsv SV VCF written to: {}".format(output_vcf))
+	print("\n\n")
+
+# Run sawfish to call structural variants (SV)
+def call_structural_variants_sawfish(self):
+	print("Calling structural variants with sawfish!")
+
+	# Hardcode threads because discover needs 8GB RAM per thread
+	# 4 threads is plenty for target capture, sawfish is wicked fast
+	threads = 4
+
+	input_bam = os.path.join(self.mapped_bam_dir, self.sample_ID +".hg38.rmdup.chr6.bam")
+	small_variant_calls = os.path.join(self.genotypes_dir, self.sample_ID + ".vcf.gz")
+	discover_dir = os.path.join(self.sv_dir, "discover")
+
+	print("Sawfish input file: {}".format(input_bam))
+
+	sawfish_discover_cmd = "{sawfish} discover --threads {threads} --ref {reference_genome} --bam {input_file} --disable-cnv --maf {small_variant_file} --output-dir {outdir} --min-indel-size 51 --min-sv-mapq 0".format(sawfish = sawfish, threads = threads, reference_genome = reference_fasta, input_file = input_bam, small_variant_file = small_variant_calls, outdir = discover_dir)
+	
+	subprocess.run(sawfish_discover_cmd, shell=True, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+	
+	sawfish_call_cmd = "{sawfish} joint-call --threads {threads} --sample {indir} --output-dir {outdir} --min-sv-mapq 0".format(sawfish = sawfish, threads = threads, indir = discover_dir, outdir=self.sv_dir)
+	
+	subprocess.run(sawfish_call_cmd, shell=True, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+	sawfish_output_file = os.path.join(self.sv_dir, "genotyped.sv.vcf.gz")
+	renamed_file = os.path.join(self.sv_dir, self.sample_ID + ".SV.vcf.gz")
+	if os.path.exists(sawfish_output_file):
+		shutil.move(sawfish_output_file, renamed_file)
+		index_cmd = "tabix -p vcf {input_file}".format(input_file = renamed_file)
+		subprocess.run(index_cmd, shell=True, check=True)
+		print("Sawfish SV VCF written to: {}".format(renamed_file))
+	else:
+		print("Sawfish failed!")
+	
 	print("\n\n")
 
 def call_structural_variants_sniffles(self):
