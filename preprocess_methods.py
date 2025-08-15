@@ -3,6 +3,7 @@ import subprocess
 import pysam
 import gzip
 import shutil
+from Bio import SeqIO
 
 # Absolute path to the directory containing this script
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -60,9 +61,10 @@ clair3_ont_model_path = "/hb/home/mglasena/.conda/envs/clair3/bin/models/r941_pr
 clair3_hifi_model_path = "/hb/home/mglasena/.conda/envs/clair3/bin/models/hifi_revio"
 
 # Coverage Thresholds
+# Might have to relax if you didn't get the flanking regions of the gene (i.e., UTR)
 depth_thresh = 30
-prop_20x_thresh = 0.9
-prop_30x_thresh = 0.9 
+prop_20x_thresh = 0.8
+prop_30x_thresh = 0.8 
 
 # Convert BAM file of unmapped HiFi (ccs) reads to FASTQ format for marking duplicates and trimming adapters
 def convert_bam_to_fastq(self):
@@ -123,26 +125,6 @@ def trim_reads(self):
 	pigz_cmd = "pigz -f -p {threads} {input_file}".format(threads = self.threads, input_file = renamed_trimmed_fastq)
 	subprocess.run(pigz_cmd, shell=True, check=True)
 
-# Mark PCR duplicates with pbmarkdup
-def mark_duplicates_pbmarkdup(self):
-	print("Removing PCR duplicates using pbmarkdup!")
-	
-	input_fastq = os.path.join(self.fastq_raw_dir, self.sample_ID + ".fastq.gz")
-	
-	print("pbmarkdup input file: {}".format(input_fastq))
-
-	output_fastq = os.path.join(self.fastq_rmdup_dir, self.sample_ID + ".pbmarkdup.fastq")
-
-	pbmarkdup_cmd = "pbmarkdup -j {threads} --rmdup {input_file} {output_file}".format(threads = self.threads, input_file = input_fastq, output_file = output_fastq)
-	
-	subprocess.run(pbmarkdup_cmd, shell=True, check=True)
-
-	gzip_cmd = "pigz -f -p {threads} {input_file}".format(threads = self.threads, input_file = output_fastq)
-	subprocess.run(gzip_cmd, shell=True, check=True)
-	
-	print("De-duplicated reads written to: {}!".format(output_fastq))
-	print("\n\n")
-
 # Run fastqc on fastq file
 def run_fastqc(self, fastqc_file):
 	print("Running fastqc on {}".format(fastqc_file))
@@ -155,7 +137,7 @@ def run_fastqc(self, fastqc_file):
 
 # Trim Adapter Sequences and polyA tails
 # Customize this command based on the fastqc output
-def trim_adapters(self):
+def legacy_trim_adapters(self):
 	print("Trimming adapter sequences with cutadapt!")
 	
 	input_file = os.path.join(self.fastq_rmdup_dir, self.sample_ID + ".pbmarkdup.fastq.gz")
@@ -174,15 +156,70 @@ def trim_adapters(self):
 	print("Deduplicated trimmed reads written to: {}".format(output_file))
 	print("\n\n")
 
+def trim_adapters(self):
+	input_file = os.path.join(self.fastq_raw_dir, self.sample_ID + ".fastq.gz")
+	output_file = os.path.join(self.fastq_trimmed_dir, self.sample_ID + ".trimmed.fastq.gz")
+
+	if self.adapters:
+
+		if self.adapter_file:
+			print("Trimming adapter sequences with cutadapt!")
+			print("cutadapt input file: {}".format(input_file))
+
+			cutadapt_cmd = "cutadapt -j {threads} --minimum-length 21 --quiet -n {num_cuts_allowed} -g {five_prime_adapter} -a {three_prime_adapter} -o {output_fastq} {input_fastq}".format(threads = self.threads, num_cuts_allowed = 2, five_prime_adapter = self.five_prime_adapter, three_prime_adapter = self.three_prime_adapter, output_fastq = output_file, input_fastq = input_file)
+
+			subprocess.run(cutadapt_cmd, shell=True, check=True)
+	
+			print("Trimmed reads written to: {}".format(output_file))
+			print("\n\n")
+
+		else:
+			print("Trimming adapter sequences with fastplong in AUTO mode!")
+			print("fastplong input file: {}".format(input_file))
+
+			html_path = os.path.join(self.fastq_trimmed_dir, self.sample_ID + ".fastplong.html")
+			json_path = os.path.join(self.fastq_trimmed_dir, self.sample_ID + ".fastplong.json")
+
+			fastplong_cmd = "fastplong -i {input_file} -h {html_file} -j {json_file} -w {threads} -n 100000 -o {output_file}".format(input_file = input_file, html_file = html_path, json_file = json_path, threads = self.threads, output_file = output_file)
+			
+			subprocess.run(fastplong_cmd, shell=True, check=False)
+
+			print("Trimmed reads written to: {}".format(output_file))
+
+	else:
+		print("Users specified no adapters present")
+		print("Skipping adapter trimming and transfering raw fastq file {infile} to {out}".format(infile=input_file, out=output_file))
+		shutil.copy(input_file, output_file)
+
+# Mark PCR duplicates with pbmarkdup
+def mark_duplicates_pbmarkdup(self):
+	print("Removing PCR duplicates using pbmarkdup!")
+	
+	input_fastq = os.path.join(self.fastq_trimmed_dir, self.sample_ID + ".trimmed.fastq.gz")
+	
+	print("pbmarkdup input file: {}".format(input_fastq))
+
+	output_fastq = os.path.join(self.fastq_trimmed_dir, self.sample_ID + ".trimmed.pbmarkdup.fastq")
+
+	pbmarkdup_cmd = "pbmarkdup -j {threads} --rmdup {input_file} {output_file}".format(threads = self.threads, input_file = input_fastq, output_file = output_fastq)
+	
+	subprocess.run(pbmarkdup_cmd, shell=True, check=True)
+
+	gzip_cmd = "pigz -f -p {threads} {input_file}".format(threads = self.threads, input_file = output_fastq)
+	subprocess.run(gzip_cmd, shell=True, check=True)
+	
+	print("De-duplicated reads written to: {}.gz!".format(output_fastq))
+	print("\n\n")
+
 # Align to GRCh38 reference genome with pbmm2
 def align_to_reference_minimap(self):
 	print("Aligning reads to GRCh38 reference genome with minimap2!")
 	
 	if self.platform == "PACBIO":
-		input_fastq = os.path.join(self.fastq_rmdup_cutadapt_dir, self.sample_ID + ".pbmarkdup.cutadapt.fastq.gz")
+		input_fastq = os.path.join(self.fastq_trimmed_dir, self.sample_ID + ".trimmed.pbmarkdup.fastq.gz")
 		platform_string = "map-hifi"
 	elif self.platform == "ONT":
-		input_fastq = os.path.join(self.fastq_prowler_dir, self.sample_ID + ".porechop.prowler.fastq.gz")
+		input_fastq = os.path.join(self.fastq_trimmed_dir, self.sample_ID + ".trimmed.fastq.gz")
 		platform_string = "map-ont"
 
 	output_bam = os.path.join(self.mapped_bam_dir, self.sample_ID + ".hg38.bam")
@@ -199,7 +236,7 @@ def align_to_reference_minimap(self):
 	samtools_threads = self.threads - minimap_threads
 	minimap_rg_string = "'{}'".format(self.read_group_string.replace("\t", "\\t"))
 
-	minimap2_cmd = "minimap2 -t {minimap_threads} -ax {platform_string} {reference_genome} {input_file} -R {rg_string} | samtools sort -@ {samtools_threads} -o {output_file}".format(minimap_threads = minimap_threads, platform_string = platform_string, reference_genome = reference_fasta, input_file = input_fastq, rg_string = minimap_rg_string, samtools_threads = samtools_threads, output_file = output_bam)
+	minimap2_cmd = "minimap2 -Y -t {minimap_threads} -ax {platform_string} {reference_genome} {input_file} -R {rg_string} | samtools sort -@ {samtools_threads} -o {output_file}".format(minimap_threads = minimap_threads, platform_string = platform_string, reference_genome = reference_fasta, input_file = input_fastq, rg_string = minimap_rg_string, samtools_threads = samtools_threads, output_file = output_bam)
 	index_bam = "samtools index {input_file}".format(input_file = output_bam)
 	
 	subprocess.run(minimap2_cmd, shell=True, check=True)
@@ -212,11 +249,11 @@ def align_to_reference_vg(self):
 	print("Aligning reads to pangenome reference genome with vg giraffe!")
 	
 	if self.platform == "PACBIO":
-		input_fastq = os.path.join(self.fastq_rmdup_cutadapt_dir, self.sample_ID + ".pbmarkdup.cutadapt.fastq.gz")
+		input_fastq = os.path.join(self.fastq_trimmed_dir, self.sample_ID + ".trimmed.pbmarkdup.fastq.gz")
 		parameter_preset = "hifi"
 
 	elif self.platform == "ONT":
-		input_fastq = os.path.join(self.fastq_prowler_dir, self.sample_ID + ".porechop.prowler.fastq.gz")
+		input_fastq = os.path.join(self.fastq_prowler_dir, self.sample_ID + ".trimmed.fastq.gz")
 		parameter_preset = "r10"
 	
 	output_bam = os.path.join(self.mapped_bam_dir, self.sample_ID + ".pangenome.bam")
@@ -336,7 +373,7 @@ def filter_reads(self):
 
 	# Extract chromosome 6 and exclude secondary and supplementary alignments
 	# samtools_cmd = "samtools view -@ {threads} -F 2304 -b {input_file} chr6 > '{output_file}'".format(threads = self.threads, input_file = input_bam, output_file = output_bam)
-	samtools_cmd = "samtools view -@ {threads} -b {input_file} chr6 > '{output_file}'".format(threads = self.threads, input_file = input_bam, output_file = output_bam)
+	samtools_cmd = "samtools view -F 1024 -@ {threads} -b {input_file} chr6 > '{output_file}'".format(threads = self.threads, input_file = input_bam, output_file = output_bam)
 	index_cmd = "samtools index {input_file}".format(input_file = output_bam)
 
 	subprocess.run(samtools_cmd, shell=True, check=True)
@@ -565,11 +602,13 @@ def call_structural_variants_sawfish(self):
 
 	sawfish_discover_cmd = "{sawfish} discover --threads {threads} --ref {reference_genome} --bam {input_file} --disable-cnv --maf {small_variant_file} --output-dir {outdir} --min-indel-size 51 --min-sv-mapq 0".format(sawfish = sawfish, threads = threads, reference_genome = reference_fasta, input_file = input_bam, small_variant_file = small_variant_calls, outdir = discover_dir)
 	
-	subprocess.run(sawfish_discover_cmd, shell=True, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+	# subprocess.run(sawfish_discover_cmd, shell=True, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+	subprocess.run(sawfish_discover_cmd, shell=True, check=True)
 	
 	sawfish_call_cmd = "{sawfish} joint-call --threads {threads} --sample {indir} --output-dir {outdir} --min-sv-mapq 0".format(sawfish = sawfish, threads = threads, indir = discover_dir, outdir=self.sv_dir)
 	
-	subprocess.run(sawfish_call_cmd, shell=True, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+	# subprocess.run(sawfish_call_cmd, shell=True, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+	subprocess.run(sawfish_call_cmd, shell=True, check=True)
 
 	sawfish_output_file = os.path.join(self.sv_dir, "genotyped.sv.vcf.gz")
 	renamed_file = os.path.join(self.sv_dir, self.sample_ID + ".SV.vcf.gz")

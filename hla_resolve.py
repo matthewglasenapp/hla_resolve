@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import os
 import shutil
 import subprocess
@@ -7,6 +9,7 @@ import pysam
 import argparse
 import json
 import textwrap
+from Bio import SeqIO
 from preprocess_methods import convert_bam_to_fastq, mark_duplicates_pbmarkdup, mark_duplicates_picard, trim_adapters, run_fastqc, trim_reads, align_to_reference_minimap, align_to_reference_vg, reassign_mapq, filter_reads, run_mosdepth, parse_mosdepth, call_variants_bcftools, call_variants_deepvariant, call_variants_clair3, call_structural_variants_pbsv, call_structural_variants_sawfish, call_structural_variants_sniffles, genotype_tandem_repeats, phase_genotypes_hiphase, merge_hiphase_vcfs, phase_genotypes_longphase, merge_longphase_vcfs, run_porechop_abi
 from investigate_haploblocks_methods import parse_haploblocks, evaluate_gene_haploblocks
 from reconstruct_fasta_methods import filter_vcf, run_vcf2fasta, parse_fastas
@@ -62,7 +65,7 @@ def check_required_commands():
 		print("\n\n")
 
 class Samples:
-	def __init__(self, input_file, sample_name, platform, output_dir, aligner, genotyper, threads, read_group_string=None):
+	def __init__(self, input_file, sample_name, platform, output_dir, aligner, genotyper, trim_adapters=False, adapter_file=None, threads=1, read_group_string=None):
 		self.ORIGINAL_CWD = os.getcwd()
 		self.input_file = os.path.realpath(os.path.abspath(input_file))
 
@@ -75,6 +78,30 @@ class Samples:
 		if not self.sample_ID:
 			raise ValueError("Sample name cannot be empty or only whitespace.")
 
+		self.adapters = trim_adapters
+		self.adapter_file = adapter_file
+
+		# Validate adapter file if specified by user
+		if self.adapters and self.adapter_file:
+			if not os.path.exists(self.adapter_file):
+				raise FileNotFoundError(f"Adapter file not found: {self.adapter_file}")
+			if not os.access(self.adapter_file, os.R_OK):
+				raise OSError(f"Adapter file is not readable: {self.adapter_file}")
+
+			with open(self.adapter_file) as f:
+				sequences = [str(record.seq).strip().upper() for record in SeqIO.parse(f, "fasta")]
+
+			if len(sequences) != 2:
+				raise ValueError(
+					f"Adapter file must contain exactly two sequences (forward, reverse), found {len(sequences)}."
+				)
+
+			self.five_prime_adapter, self.three_prime_adapter = sequences[:2]
+		
+		else:
+			self.five_prime_adapter = None
+			self.three_prime_adapter = None
+
 		self.platform = platform.upper()
 		self.threads = threads
 		self.sufficient_coverage_genes = []
@@ -83,10 +110,11 @@ class Samples:
 
 		output_dir_abs = os.path.realpath(os.path.abspath(os.path.join(output_dir, self.sample_ID)))
 
+		# Ensure input dir is not inside the output directory 
 		try:
 			inside = os.path.commonpath([self.input_file, output_dir_abs]) == output_dir_abs
 		except ValueError:
-			inside = False  # different drives etc.
+			inside = False
 		if inside:
 			raise ValueError(
 				f"Input file {self.input_file} is inside the output directory {output_dir_abs}. "
@@ -98,6 +126,7 @@ class Samples:
 
 		# Platform-agnostic output directories
 		self.fastq_raw_dir = os.path.join(self.output_dir, "fastq_raw")
+		self.fastq_trimmed_dir = os.path.join(self.output_dir, "fastq_trimmed")
 		self.mapped_bam_dir = os.path.join(self.output_dir, "mapped_bam")
 		self.parsed_haploblock_dir = os.path.join(self.output_dir, "haploblocks")
 		self.genotypes_dir = os.path.join(self.output_dir, "genotype_calls")
@@ -113,28 +142,14 @@ class Samples:
 
 		# PacBio-specific directories
 		if self.platform == "PACBIO":
-			self.fastq_rmdup_dir = os.path.join(self.output_dir, "fastq_rmdup")
-			self.fastq_rmdup_cutadapt_dir = os.path.join(self.output_dir, "fastq_rmdup_cutadapt")
 			self.pbtrgt_dir = os.path.join(self.output_dir, "pbtrgt_vcf")
-
-			platform_dirs.extend([
-				self.fastq_rmdup_dir, self.fastq_rmdup_cutadapt_dir,
-				self.pbtrgt_dir,
-			])
-
-		# ONT-specific directories
-		elif self.platform == "ONT":
-			self.fastq_porechop_dir = os.path.join(self.output_dir, "fastq_porechop")
-			self.fastq_prowler_dir = os.path.join(self.output_dir, "fastq_prowler")
-
-			platform_dirs.extend([
-				self.fastq_porechop_dir, self.fastq_prowler_dir
-			])
+			platform_dirs.extend([self.pbtrgt_dir])
 
 		combined_dirs = [
-			self.fastq_raw_dir, self.mapped_bam_dir,
-			self.parsed_haploblock_dir, self.genotypes_dir,
-			self.sv_dir, self.filtered_vcf_dir, self.vcf2fasta_out_dir, 
+			self.fastq_raw_dir, self.fastq_trimmed_dir, 
+			self.mapped_bam_dir, self.parsed_haploblock_dir, 
+			self.genotypes_dir, self.sv_dir, 
+			self.filtered_vcf_dir, self.vcf2fasta_out_dir, 
 			self.hla_fasta_dir, self.hla_typing_dir,
 			self.mosdepth_dir, self.phased_vcf_dir
 		] + platform_dirs
@@ -236,36 +251,23 @@ class Samples:
 		return total_reads, mean_read_length
 
 	def prepare_raw_fastq(self):
-		if self.platform == "PACBIO":
-			if self.format == "BAM":
-				self.convert_bam_to_fastq()
-			elif self.format == "FASTQ":
-				new_fq = os.path.join(self.fastq_raw_dir, self.sample_ID + ".fastq")
-				shutil.copy(self.input_file, new_fq)
-				pigz_cmd = "pigz -f -p {threads} {file}".format(threads = self.threads, file = new_fq)
-				subprocess.run(pigz_cmd, shell=True, check=True)
-				expected_output = os.path.join(self.fastq_raw_dir, self.sample_ID + ".fastq.gz")
-				if not os.path.exists(expected_output):
-					raise RuntimeError(f"Compression failed: {expected_output} not found")
+		if self.format == "BAM":
+			self.convert_bam_to_fastq()
+		elif self.format == "FASTQ":
+			new_fq = os.path.join(self.fastq_raw_dir, self.sample_ID + ".fastq")
+			shutil.copy(self.input_file, new_fq)
+			pigz_cmd = "pigz -f -p {threads} {file}".format(threads = self.threads, file = new_fq)
+			subprocess.run(pigz_cmd, shell=True, check=True)
+			expected_output = os.path.join(self.fastq_raw_dir, self.sample_ID + ".fastq.gz")
+			if not os.path.exists(expected_output):
+				raise RuntimeError(f"Compression failed: {expected_output} not found")
 
-			elif self.format == "FASTQ.GZ":
-				new_fq = os.path.join(self.fastq_raw_dir, self.sample_ID + ".fastq.gz")
-				shutil.copy(self.input_file, new_fq)
-		
-		elif self.platform == "ONT":
-			if self.format == "BAM":
-				self.convert_bam_to_fastq()
-			elif self.format == "FASTQ":
-				new_fq = os.path.join(self.fastq_raw_dir, self.sample_ID + ".fastq")
-				shutil.copy(self.input_file, new_fq)
-			elif self.format == "FASTQ.GZ":
-				new_fq = os.path.join(self.fastq_raw_dir, self.sample_ID + ".fastq.gz")
-				shutil.copy(self.input_file, new_fq)
-				pigz_cmd = "pigz -f -d -p {threads} {file}".format(threads = self.threads, file = new_fq)
-				subprocess.run(pigz_cmd, shell=True, check=True)
-				expected_output = os.path.join(self.fastq_raw_dir, self.sample_ID + ".fastq")
-				if not os.path.exists(expected_output):
-					raise RuntimeError(f"Compression failed: {expected_output} not found")
+		elif self.format == "FASTQ.GZ":
+			new_fq = os.path.join(self.fastq_raw_dir, self.sample_ID + ".fastq.gz")
+			shutil.copy(self.input_file, new_fq)
+			expected_output = os.path.join(self.fastq_raw_dir, self.sample_ID + ".fastq.gz")
+			if not os.path.exists(expected_output):
+				raise RuntimeError(f"Compression failed: {expected_output} not found")
 
 	def print_results(self):
 		results_file = os.path.join(self.hla_typing_dir, "refined_allele_output.csv")
@@ -320,6 +322,8 @@ def main():
 	parser.add_argument("--output_dir", required=True, help="Output Directory", default=None)
 	parser.add_argument("--aligner", choices=["minimap2", "vg"], required=True, help="Tool for reference genome alignment", default=None)
 	parser.add_argument("--genotyper", choices=["bcftools", "clair3", "deepvariant"], required=False, help="Tool for genotyping", default="deepvariant")
+	parser.add_argument("--trim_adapters", action="store_true", help="Enable adapter trimming before processing")
+	parser.add_argument("--adapter_file", type=str, required=False, default=None, help="Path to a file with custom adapter sequences (FASTA/FASTQ). If not provided, default adapters will be used.")
 	parser.add_argument("--threads", type=int, required=False, help="Number of threads to use", default=6)
 	parser.add_argument("--read_group_string", required=False, help="Override the parsed read group string", default=None)
 	# Show help and exit if no arguments were provided
@@ -338,49 +342,48 @@ def main():
 	# Check that all required tools are installed
 	# check_required_commands()
 	start_time = time.time()
-	sample = Samples(input_file=args.input_file, sample_name=args.sample_name, platform=args.platform, output_dir=args.output_dir, aligner=args.aligner, genotyper=args.genotyper, threads=args.threads, read_group_string=args.read_group_string)
+	sample = Samples(input_file=args.input_file, sample_name=args.sample_name, platform=args.platform, output_dir=args.output_dir, aligner=args.aligner, genotyper=args.genotyper, trim_adapters=args.trim_adapters, adapter_file=args.adapter_file, threads=args.threads, read_group_string=args.read_group_string)
 
 	if sample.platform == "PACBIO":	
-		# sample.mark_duplicates_pbmarkdup()
-		# # sample.run_fastqc(os.path.join(sample.fastq_rmdup_dir, sample.sample_ID + ".pbmarkdup.fastq.gz"))
 		# sample.trim_adapters()
-		# # sample.run_fastqc(os.path.join(sample.fastq_rmdup_cutadapt_dir, sample.sample_ID + ".pbmarkdup.cutadapt.fastq.gz"))
-		# sample.align_to_reference_minimap()
-		# if sample.aligner == "vg":
-		# 	sample.align_to_reference_vg()
-		# 	sample.reassign_mapq()
-		# sample.filter_reads()
-
-		# if sample.genotyper == "bcftools":
-		# 	sample.call_variants_bcftools()
-		# elif sample.genotyper == "deepvariant":
-		# 	sample.call_variants_deepvariant()
-		# elif sample.genotyper == "clair3":
-		# 	sample.call_variants_clair3()
-		# sample.call_structural_variants_pbsv()
-		sample.call_structural_variants_sawfish()
-		# sample.genotype_tandem_repeats()
-		sample.phase_genotypes_hiphase()
-		sample.merge_hiphase_vcfs()
-
-	elif sample.platform == "ONT":
-		sample.run_porechop_abi()
-		sample.trim_reads()
+		# sample.run_fastqc(os.path.join(sample.fastq_trimmed_dir, sample.sample_ID + ".trimmed.fastq.gz"))
+		# sample.mark_duplicates_pbmarkdup()
+		# sample.run_fastqc(os.path.join(sample.fastq_trimmed_dir, sample.sample_ID + ".trimmed.pbmarkdup.fastq.gz"))
 		sample.align_to_reference_minimap()
 		if sample.aligner == "vg":
 			sample.align_to_reference_vg()
 			sample.reassign_mapq()
-		sample.mark_duplicates_picard()
 		sample.filter_reads()
+
 		if sample.genotyper == "bcftools":
 			sample.call_variants_bcftools()
 		elif sample.genotyper == "deepvariant":
 			sample.call_variants_deepvariant()
 		elif sample.genotyper == "clair3":
 			sample.call_variants_clair3()
-		sample.call_structural_variants_sniffles()
-		sample.phase_genotypes_longphase()
-		sample.merge_longphase_vcfs()
+		# sample.call_structural_variants_pbsv()
+		sample.call_structural_variants_sawfish()
+		sample.genotype_tandem_repeats()
+		sample.phase_genotypes_hiphase()
+		sample.merge_hiphase_vcfs()
+
+	# elif sample.platform == "ONT":
+		# sample.trim_adapters()
+		# sample.align_to_reference_minimap()
+		# if sample.aligner == "vg":
+		# 	sample.align_to_reference_vg()
+		# 	sample.reassign_mapq()
+		# sample.mark_duplicates_picard()
+		# sample.filter_reads()
+		# if sample.genotyper == "bcftools":
+		# 	sample.call_variants_bcftools()
+		# elif sample.genotyper == "deepvariant":
+		# 	sample.call_variants_deepvariant()
+		# elif sample.genotyper == "clair3":
+		# 	sample.call_variants_clair3()
+		# sample.call_structural_variants_sniffles()
+		# sample.phase_genotypes_longphase()
+		# sample.merge_longphase_vcfs()
 			
 	sample.run_mosdepth()
 	sample.parse_mosdepth()

@@ -29,22 +29,69 @@ def filter_vcf(self):
 	# Include homozygous ALT (both biallelic and multiallelic) and phased heterozygous
 	# Exclude symbolic variants 
 	# Note: both pbsv and sniffles have the FILTER=PASS annotation and normal GT fields for INS/DEL. DUP,BND,INV are symbolic and will be excluded but reported
-	if self.genotyper == "bcftools":
-		keep_expr = (
-			'TRID=="" && '
-			'(GT="1/1" || GT="2/2" || GT="3/3" || GT="4/4" || GT="5/5" || '
-			'GT="0|1" || GT="1|0" || GT="1|2" || GT="2|1" || GT="2|3" || GT="3|2") && '
-			'(ALT!~"^<") && '
-			'((REF~"^[ACGT]$" && ALT~"^[ACGT]$" && (GQ="." || (GQ>=20 && QUAL>=10))) || '
-			'((REF!~"^[ACGT]$" || ALT!~"^[ACGT]$") && (GQ="." || GQ>=10)))'
-		)
+	if self.platform == "ONT":
+		# For ONT data, skip TRID-related filtering entirely
+		if self.genotyper == "bcftools":
+			keep_expr = (
+				'(GT="1/1" || GT="2/2" || GT="3/3" || GT="4/4" || GT="5/5" || '
+				'GT="0|1" || GT="1|0" || GT="1|2" || GT="2|1" || GT="2|3" || GT="3|2") && '
+				'(ALT!~"^<") && '
+				'((REF~"^[ACGT]$" && ALT~"^[ACGT]$" && (GQ="." || (GQ>=20 && QUAL>=10))) || '
+				'((REF!~"^[ACGT]$" || ALT!~"^[ACGT]$") && (GQ="." || GQ>=10)))'
+			)
+		else:
+			keep_expr = (
+				'(FILTER="PASS") && '
+				'(ALT!~"^<") && '
+				'(GT="1/1" || GT="2/2" || GT="3/3" || GT="4/4" || GT="5/5" || '
+				'GT="0|1" || GT="1|0" || GT="1|2" || GT="2|1" || GT="2|3" || GT="3|2")'
+			)
+
+		# For unphased_expr, skip TRID check as well
+		if self.genotyper == "bcftools":
+			unphased_expr = (
+				'(ALT~"^<" || '
+				'((GT="0/1" || GT="1/0" || GT="1/2" || GT="2/1" || GT="2/3" || GT="3/2") && '
+				'((REF~"^[ACGT]$" && ALT~"^[ACGT]$" && (GQ="." || (GQ>=20 && QUAL>=10))) || '
+				'((REF!~"^[ACGT]$" || ALT!~"^[ACGT]$") && (GQ="." || GQ>=10)))))'
+			)
+		else:
+			unphased_expr = (
+				'(FILTER="PASS") && '
+				'(GT="0/1" || GT="1/0" || GT="1/2" || GT="2/1" || GT="2/3" || GT="3/2")'
+			)
+
 	else:
-		keep_expr = (
-			'(FILTER="PASS") && '
-			'(ALT!~"^<") && '
-			'(GT="1/1" || GT="2/2" || GT="3/3" || GT="4/4" || GT="5/5" || '
-			' GT="0|1" || GT="1|0" || GT="1|2" || GT="2|1" || GT="2|3" || GT="3|2")'
-		)
+		# Your existing TRID-aware expressions go here
+		if self.genotyper == "bcftools":
+			keep_expr = (
+				'TRID=="" && '
+				'(GT="1/1" || GT="2/2" || GT="3/3" || GT="4/4" || GT="5/5" || '
+				'GT="0|1" || GT="1|0" || GT="1|2" || GT="2|1" || GT="2|3" || GT="3|2") && '
+				'(ALT!~"^<") && '
+				'((REF~"^[ACGT]$" && ALT~"^[ACGT]$" && (GQ="." || (GQ>=20 && QUAL>=10))) || '
+				'((REF!~"^[ACGT]$" || ALT!~"^[ACGT]$") && (GQ="." || GQ>=10)))'
+			)
+		else:
+			keep_expr = (
+				'(FILTER="PASS") && '
+				'(ALT!~"^<") && '
+				'(GT="1/1" || GT="2/2" || GT="3/3" || GT="4/4" || GT="5/5" || '
+				'GT="0|1" || GT="1|0" || GT="1|2" || GT="2|1" || GT="2|3" || GT="3|2")'
+			)
+
+		if self.genotyper == "bcftools":
+			unphased_expr = (
+				'(TRID!="" || ALT~"^<" || '
+				'((GT="0/1" || GT="1/0" || GT="1/2" || GT="2/1" || GT="2/3" || GT="3/2") && '
+				'((REF~"^[ACGT]$" && ALT~"^[ACGT]$" && (GQ="." || (GQ>=20 && QUAL>=10))) || '
+				'((REF!~"^[ACGT]$" || ALT!~"^[ACGT]$") && (GQ="." || GQ>=10)))))'
+			)
+		else:
+			unphased_expr = (
+				'((FILTER="PASS") && (GT="0/1" || GT="1/0" || '
+				'GT="1/2" || GT="2/1" || GT="2/3" || GT="3/2")) || TRID!=""'
+			)
 
 	# Create new pass-filter VCF
 	subprocess.run(
@@ -59,21 +106,6 @@ def filter_vcf(self):
 		shell=True, check=True
 	)
 	subprocess.run(f"bcftools index -f {fail_vcf}", shell=True, check=True)
-
-
-	# Extract unphased PASS heterozygous genotypes from the fail-filter vcf
-	if self.genotyper == "bcftools":
-		unphased_expr = (
-			'(TRID!="" || ALT~"^<" || '
-			'((GT="0/1" || GT="1/0" || GT="1/2" || GT="2/1" || GT="2/3" || GT="3/2") && '
-			'((REF~"^[ACGT]$" && ALT~"^[ACGT]$" && (GQ="." || (GQ>=20 && QUAL>=10))) || '
-			'((REF!~"^[ACGT]$" || ALT!~"^[ACGT]$") && (GQ="." || GQ>=10)))))'
-		)
-	else:
-		unphased_expr = (
-			'((FILTER="PASS") && (GT="0/1" || GT="1/0" || '
-			'GT="1/2" || GT="2/1" || GT="2/3" || GT="3/2")) || TRID!=""'
-		)
 
 	subprocess.run(
 		f'bcftools view -i \'{unphased_expr}\' {fail_vcf} -Oz -o {pass_unphased}',
