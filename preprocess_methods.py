@@ -23,10 +23,10 @@ ref_paths="/hb/scratch/ogarci12/hybridcapture_pangenome/ref/hprc-v1.0-mc-grch38-
 # sed 's/^>GRCh38\.chr/>chr/' /hb/scratch/ogarci12/hybridcapture_pangenome/ref/hprc-v1.0-mc-grch38-minaf.0.1.fa > /hb/groups/cornejo_lab/matt/hla_capture/input_data/reference/hprc-v1.0-chr-renamed.fa
 
 # Reference to use after mapping to graph and surjecting to GRCh38
-reference_fasta = os.path.join(DATA_DIR, "reference/hprc-v1.0-chr-renamed.fa")
+# reference_fasta = os.path.join(DATA_DIR, "reference/hprc-v1.0-chr-renamed.fa")
 
 # Referencew with added Y scaffold!
-# reference_fasta = os.path.join(DATA_DIR, "reference/augmented_hg38.fa")
+reference_fasta = os.path.join(DATA_DIR, "reference/augmented_hg38.fa")
 
 # DeepVariant sif file
 deepvariant_sif = os.path.join(DATA_DIR, "deepvariant_sif/deepvariant.sif")

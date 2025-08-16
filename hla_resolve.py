@@ -169,7 +169,7 @@ class Samples:
 		print(f"Read Group: {self.read_group_string}")
 		print("\n\n")
 
-		# self.prepare_raw_fastq()
+		self.prepare_raw_fastq()
 
 	def parse_input_file(self, input_path):
 		if input_path.endswith(".bam"):
@@ -345,10 +345,10 @@ def main():
 	sample = Samples(input_file=args.input_file, sample_name=args.sample_name, platform=args.platform, output_dir=args.output_dir, aligner=args.aligner, genotyper=args.genotyper, trim_adapters=args.trim_adapters, adapter_file=args.adapter_file, threads=args.threads, read_group_string=args.read_group_string)
 
 	if sample.platform == "PACBIO":	
-		# sample.trim_adapters()
-		# sample.run_fastqc(os.path.join(sample.fastq_trimmed_dir, sample.sample_ID + ".trimmed.fastq.gz"))
-		# sample.mark_duplicates_pbmarkdup()
-		# sample.run_fastqc(os.path.join(sample.fastq_trimmed_dir, sample.sample_ID + ".trimmed.pbmarkdup.fastq.gz"))
+		sample.trim_adapters()
+	# 	# sample.run_fastqc(os.path.join(sample.fastq_trimmed_dir, sample.sample_ID + ".trimmed.fastq.gz"))
+		sample.mark_duplicates_pbmarkdup()
+	# 	# sample.run_fastqc(os.path.join(sample.fastq_trimmed_dir, sample.sample_ID + ".trimmed.pbmarkdup.fastq.gz"))
 		sample.align_to_reference_minimap()
 		if sample.aligner == "vg":
 			sample.align_to_reference_vg()
