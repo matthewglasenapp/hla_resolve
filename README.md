@@ -10,10 +10,9 @@ Output(s): HLA star allele calls based on the latest IPD-IMGT/HLA database. Star
 Runtime: Depends on the size of the input file and the chosen aligner and genotyper. 
 
 ```
-usage: hla_resolve.py [-h] --input_file INPUT_FILE --sample_name SAMPLE_NAME --platform {pacbio,ont} --output_dir OUTPUT_DIR --aligner
-                      {minimap2,vg} [--genotyper {bcftools,clair3,deepvariant}] [--threads THREADS] [--read_group_string READ_GROUP_STRING]
-
-Run HLA-Resolve
+usage: hla_resolve.py [-h] --input_file INPUT_FILE --sample_name SAMPLE_NAME --platform {pacbio,ont} --output_dir OUTPUT_DIR --aligner {minimap2,vg}
+                      [--genotyper {bcftools,clair3,deepvariant}] [--trim_adapters] [--adapter_file ADAPTER_FILE] [--threads THREADS]
+                      [--read_group_string READ_GROUP_STRING]
 
 options:
   -h, --help            show this help message and exit
@@ -29,9 +28,13 @@ options:
                         Tool for reference genome alignment (default: None)
   --genotyper {bcftools,clair3,deepvariant}
                         Tool for genotyping (default: deepvariant)
+  --trim_adapters       Enable adapter trimming before processing (default: False)
+  --adapter_file ADAPTER_FILE
+                        Path to a file with custom adapter sequences (FASTA/FASTQ). If not provided, default adapters will be used. (default: None)
   --threads THREADS     Number of threads to use (default: 6)
   --read_group_string READ_GROUP_STRING
                         Override the parsed read group string (default: None)
+
 ```
 
 Demo example:
