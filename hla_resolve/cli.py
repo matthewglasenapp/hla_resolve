@@ -345,7 +345,7 @@ def main():
 	parser.add_argument("--adapter_file", type=str, required=False, default=None, help="Path to a file with custom adapter sequences (FASTA/FASTQ). If not provided, default adapters will be used.")
 	parser.add_argument("--threads", type=int, required=False, help="Number of threads to use", default=6)
 	parser.add_argument("--read_group_string", required=False, help="Override the parsed read group string", default=None)
-	parser.add_argument("--clean-up", required=False, help="Remove intermediate files", default=False)
+	parser.add_argument("--clean-up", action="store_true", help="Remove intermediate files")
 	# Show help and exit if no arguments were provided
 	if len(sys.argv) == 1:
 		parser.print_help()
