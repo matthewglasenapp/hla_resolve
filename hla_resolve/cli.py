@@ -170,7 +170,7 @@ class Samples:
 		print(f"Read Group: {self.read_group_string}")
 		print("\n\n")
 
-		self.prepare_raw_fastq()
+		# self.prepare_raw_fastq()
 
 	def parse_input_file(self, input_path):
 		if input_path.endswith(".bam"):
@@ -345,28 +345,28 @@ def main():
 	start_time = time.time()
 	sample = Samples(input_file=args.input_file, sample_name=args.sample_name, platform=args.platform, output_dir=args.output_dir, aligner=args.aligner, genotyper=args.genotyper, trim_adapters=args.trim_adapters, adapter_file=args.adapter_file, threads=args.threads, read_group_string=args.read_group_string)
 
-	if sample.platform == "PACBIO":	
-		sample.trim_adapters()
+	# if sample.platform == "PACBIO":	
+		# sample.trim_adapters()
 		# sample.run_fastqc(os.path.join(sample.fastq_trimmed_dir, sample.sample_ID + ".trimmed.fastq.gz"))
-		sample.mark_duplicates_pbmarkdup()
+		# sample.mark_duplicates_pbmarkdup()
 		# sample.run_fastqc(os.path.join(sample.fastq_trimmed_dir, sample.sample_ID + ".trimmed.pbmarkdup.fastq.gz"))
-		sample.align_to_reference_minimap()
-		if sample.aligner == "vg":
-			sample.align_to_reference_vg()
-			sample.reassign_mapq()
-		sample.filter_reads()
+		# sample.align_to_reference_minimap()
+		# if sample.aligner == "vg":
+			# sample.align_to_reference_vg()
+			# sample.reassign_mapq()
+		# sample.filter_reads()
 
-		if sample.genotyper == "bcftools":
-			sample.call_variants_bcftools()
-		elif sample.genotyper == "deepvariant":
-			sample.call_variants_deepvariant()
-		elif sample.genotyper == "clair3":
-			sample.call_variants_clair3()
+		# if sample.genotyper == "bcftools":
+		# 	sample.call_variants_bcftools()
+		# elif sample.genotyper == "deepvariant":
+		# 	sample.call_variants_deepvariant()
+		# elif sample.genotyper == "clair3":
+		# 	sample.call_variants_clair3()
 		# sample.call_structural_variants_pbsv()
-		sample.call_structural_variants_sawfish()
-		sample.genotype_tandem_repeats()
-		sample.phase_genotypes_hiphase()
-		sample.merge_hiphase_vcfs()
+		# sample.call_structural_variants_sawfish()
+		# sample.genotype_tandem_repeats()
+		# sample.phase_genotypes_hiphase()
+		# sample.merge_hiphase_vcfs()
 
 	# elif sample.platform == "ONT":
 		# sample.trim_adapters()
@@ -386,7 +386,7 @@ def main():
 		# sample.phase_genotypes_longphase()
 		# sample.merge_longphase_vcfs()
 			
-	sample.run_mosdepth()
+	# sample.run_mosdepth()
 	sample.parse_mosdepth()
 	heterozygous_sites, haploblock_list = sample.parse_haploblocks()
 	phased_genes = sample.evaluate_gene_haploblocks(heterozygous_sites, haploblock_list)
