@@ -141,7 +141,7 @@ def filter_vcf(sample):
 		else:
 			overlap_dict[gene].append(new_record)
 
-	print("The following {count} unphased variants overlapped with an HLA gene and could not be applied".format(count=counter))
+	print(f"The following {counter} unphased variants overlapped with an HLA gene and could not be applied")
 	print("\n")
 	for gene, records in overlap_dict.items():
 		print(gene)
@@ -183,16 +183,15 @@ def run_vcf2fasta(sample, gene, feature):
 	
 	if feature == "CDS":
 		input_gff = os.path.join(gff_dir, gene_id + "_cds_sorted.gff3")
-		vcf2fasta_cmd = "python3 {vcf2fasta} --fasta {reference_fasta} --vcf {input_vcf} --gff {input_gff} -o {output_dir} --feat CDS --blend".format(vcf2fasta = vcf2fasta_script, reference_fasta = reference_genome, input_vcf = input_vcf, input_gff = input_gff, output_dir = out_dir)
+		vcf2fasta_cmd = f"python3 {vcf2fasta_script} --fasta {reference_genome} --vcf {input_vcf} --gff {input_gff} -o {out_dir} --feat CDS --blend"
 	elif feature == "gene":
 		input_gff = os.path.join(gff_dir, gene_id + "_gene.gff3")
-		vcf2fasta_cmd = "python3 {vcf2fasta} --fasta {reference_fasta} --vcf {input_vcf} --gff {input_gff} -o {output_dir} --feat gene".format(
-	vcf2fasta = vcf2fasta_script, reference_fasta = reference_genome, input_vcf = input_vcf, input_gff = input_gff, output_dir = out_dir)
+		vcf2fasta_cmd = f"python3 {vcf2fasta_script} --fasta {reference_genome} --vcf {input_vcf} --gff {input_gff} -o {out_dir} --feat gene"
 	
 	subprocess.run(vcf2fasta_cmd, shell = True, check = True)
 
 def parse_fastas(sample):
-	find_cmd = "find {input_dir} -type f > fasta_files.txt".format(input_dir = sample.vcf2fasta_out_dir)
+	find_cmd = f"find {sample.vcf2fasta_out_dir} -type f > fasta_files.txt"
 	subprocess.run(find_cmd, shell = True, check = True)
 	fasta_files = open("fasta_files.txt", "r").read().splitlines()
 	os.remove("fasta_files.txt")
@@ -212,16 +211,16 @@ def parse_fastas(sample):
 		allele_2 = lines[2].split("\n")[1].strip().replace("-","").strip()
 
 		if allele_1[0:3] != "ATG" or allele_2[0:3] != "ATG":
-			print("File {} does not begin with start codon!".format(file))
+			print(f"File {file} does not begin with start codon!")
 		
 		elif not allele_1[-3:] in stop_codons or not allele_2[-3:] in stop_codons:
-			print("File {} does not end with stop codon!".format(file))
+			print(f"File {file} does not end with stop codon!")
 
 		if not set(allele_1).issubset(DNA_bases):
-			print("{} has invalid characters!".format(file))
+			print(f"{file} has invalid characters!")
 
 		if not set(allele_2).issubset(DNA_bases):
-			print("{} has invalid characters!".format(file))
+			print(f"{file} has invalid characters!")
 
 		if feat not in fasta_dict:
 			fasta_dict[feat] = {}

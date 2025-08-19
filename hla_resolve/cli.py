@@ -15,7 +15,9 @@ from Bio import SeqIO
 from hla_resolve.preprocess_methods import (
     convert_bam_to_fastq,
     trim_adapters,
+	mark_duplicates_pbmarkdup,
     trim_reads,
+	run_porechop_abi,
     run_fastqc,
     align_to_reference_minimap,
     align_to_reference_vg,
@@ -23,36 +25,28 @@ from hla_resolve.preprocess_methods import (
     filter_reads,
     run_mosdepth,
     parse_mosdepth,
-    filter_reads
+    filter_reads,
+    mark_duplicates_picard
 )
 
 # Variant calling functions (platform/genotyper dependent)
 from hla_resolve.preprocess_methods import (
     call_variants_bcftools,
     call_variants_deepvariant,
-    call_variants_clair3
+    call_variants_clair3,
+	genotype_tandem_repeats,
+	call_structural_variants_pbsv,
+	call_structural_variants_sawfish,
+	call_structural_variants_sniffles
 )
 
-# Structural variant and phasing functions (platform dependent)
+# Phasing functions (platform dependent)
 from hla_resolve.preprocess_methods import (
-    call_structural_variants_pbsv,
-    call_structural_variants_sawfish,
-    call_structural_variants_sniffles,
-    genotype_tandem_repeats,
     phase_genotypes_hiphase,
-    merge_hiphase_vcfs,
     phase_genotypes_longphase,
+	merge_hiphase_vcfs,
     merge_longphase_vcfs
 )
-
-# Duplicate marking functions (platform dependent)
-from hla_resolve.preprocess_methods import (
-    mark_duplicates_pbmarkdup,
-    mark_duplicates_picard
-)
-
-# ONT-specific functions
-from hla_resolve.preprocess_methods import run_porechop_abi
 
 # Haploblock analysis functions
 from hla_resolve.investigate_haploblocks_methods import (
@@ -68,10 +62,6 @@ from hla_resolve.reconstruct_fasta_methods import (
 )
 
 # Note: hla_typer.main is imported lazily in the main function to avoid overhead
-# when not using HLA typing functionality
-
-# Platform-specific functions are imported directly and can be used as needed
-# No need for helper functions - just call the imported functions directly
 
 genes_of_interest = ("HLA-A", "HLA-B", "HLA-C", "HLA-DRB1", "HLA-DQA1", "HLA-DQB1", "HLA-DPA1", "HLA-DPB1")
 
@@ -116,7 +106,7 @@ def check_required_commands():
 		if shutil.which(command) is None:
 			missing_commands.append(command)
 	if len(missing_commands) != 0:
-		print("Error: Missing the following commands: {}".format(", ".join(missing_commands)))
+		print(f"Error: Missing the following commands: {', '.join(missing_commands)}")
 		sys.exit(1)
 	else:
 		print("All tools required are installed!")
@@ -237,7 +227,7 @@ class Samples:
 			read_count = self.count_bam_reads(input_path)
 
 			if read_count < min_reads_sample:
-				raise ValueError("Input BAM file {input_path} contains too few reads: {read_count:,}".format(input_path = input_path, read_count = read_count))
+				raise ValueError(f"Input BAM file {input_path} contains too few reads: {read_count:,}")
 
 			with pysam.AlignmentFile(input_path, "rb", check_sq=False) as bamfile:
 				header = bamfile.header.to_dict()
@@ -262,31 +252,31 @@ class Samples:
 
 			read_count, mean_read_length = self.run_fastplong(input_path)
 			if read_count < min_reads_sample:
-				raise ValueError("Input fastq file {input_path} contains too few reads: {read_count:,}".format(input_path = input_path, read_count = read_count))
+				raise ValueError(f"Input fastq file {input_path} contains too few reads: {read_count:,}")
 			if mean_read_length < min_read_length:
-				raise ValueError("Input fastq file {input_path} contains short-read data. Mean read length: {mean_length}".format(input_path = input_path, mean_length = mean_read_length))
+				raise ValueError(f"Input fastq file {input_path} contains short-read data. Mean read length: {mean_read_length}")
 
-			rg_id = "{sample_ID}_RG".format(sample_ID = self.sample_ID)
+			rg_id = f"{self.sample_ID}_RG"
 			rg_pl = self.platform
 			rg_sm = self.sample_ID
 			rg_lb = self.sample_ID
-			rg_pu = "{sample_ID}_PU".format(sample_ID = self.sample_ID)
+			rg_pu = f"{self.sample_ID}_PU"
 
 		else:
-			raise ValueError("Unsupported input file format: {input_file}".format(input_file = input_path))
+			raise ValueError(f"Unsupported input file format: {input_path}")
 
 		rg_string = f"@RG\\tID:{rg_id}\\tSM:{rg_sm}\\tPL:{rg_pl}\\tLB:{rg_lb}\\tPU:{rg_pu}"
 
 		return rg_string
 
 	def verify_bam_integrity(self, bam_path):
-		quickcheck_cmd = "samtools quickcheck -u -v {input_file}".format(input_file = bam_path)
+		quickcheck_cmd = f"samtools quickcheck -u -v {bam_path}"
 		result = subprocess.run(quickcheck_cmd, shell=True, capture_output=True, text=True)
 		if result.returncode != 0:
 			raise ValueError(f"Input BAM is corrupt. Samtools quickcheck failed for {bam_path}:\n{result.stderr}")
 
 	def count_bam_reads(self, bam_path):
-		count_cmd = "samtools view -@ {threads} -c {input_file}".format(threads = self.threads, input_file = bam_path)
+		count_cmd = f"samtools view -@ {self.threads} -c {bam_path}"
 		result = subprocess.run(count_cmd, shell=True, capture_output=True, text=True, check=True)
 		count = int(result.stdout.strip())
 		print(f"Total BAM records in {bam_path}: {count:,}")
@@ -296,7 +286,7 @@ class Samples:
 		html_path = os.path.join(self.fastq_raw_dir, self.sample_ID + ".fastplong.html")
 		json_path = os.path.join(self.fastq_raw_dir, self.sample_ID + ".fastplong.json")
 
-		fastplong_cmd = "fastplong -i {input_file} -h {html_file} -j {json_file} -w {threads} -A -Q -L -m 0 -n 100000".format(input_file = fq_path, html_file = html_path, json_file = json_path, threads = self.threads)
+		fastplong_cmd = f"fastplong -i {fq_path} -h {html_path} -j {json_path} -w {self.threads} -A -Q -L -m 0 -n 100000"
 
 		result = subprocess.run(fastplong_cmd, shell=True, check=False, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
 		if result.returncode != 0:
@@ -315,7 +305,7 @@ class Samples:
 		elif self.format == "FASTQ":
 			new_fq = os.path.join(self.fastq_raw_dir, self.sample_ID + ".fastq")
 			shutil.copy(self.input_file, new_fq)
-			pigz_cmd = "pigz -f -p {threads} {file}".format(threads = self.threads, file = new_fq)
+			pigz_cmd = f"pigz -f -p {self.threads} {new_fq}"
 			subprocess.run(pigz_cmd, shell=True, check=True)
 			expected_output = os.path.join(self.fastq_raw_dir, self.sample_ID + ".fastq.gz")
 			if not os.path.exists(expected_output):
@@ -332,12 +322,9 @@ class Samples:
 		results_file = os.path.join(self.hla_typing_dir, "refined_allele_output.csv")
 		with open(results_file, "r") as f:
 			results = f.read().splitlines()[1].split(",")[1:]
-		print("{sample} HLA Star Allele Calls".format(sample = self.sample_ID))
+		print(f"{self.sample_ID} HLA Star Allele Calls")
 		for item in results:
 			print(item)
-
-# Functions are now imported directly and can be called as needed
-# No need to assign them to the Samples class
 
 def main():
 	parser = argparse.ArgumentParser(
@@ -449,7 +436,7 @@ def main():
 	end_time = time.time()
 	elapsed_time = end_time - start_time
 	minutes, seconds = divmod(elapsed_time,60)
-	print("Processed sampled in {}:{:.2f}!".format(int(minutes), seconds))
+	print(f"Processed sampled in {int(minutes)}:{seconds:.2f}!")
 
 if __name__ == "__main__":
 	main()
