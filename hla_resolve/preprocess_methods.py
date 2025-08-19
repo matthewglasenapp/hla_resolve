@@ -67,62 +67,62 @@ prop_20x_thresh = 0.8
 prop_30x_thresh = 0.8 
 
 # Convert BAM file of unmapped HiFi (ccs) reads to FASTQ format for marking duplicates and trimming adapters
-def convert_bam_to_fastq(self):
-	if self.platform == "PACBIO":
+def convert_bam_to_fastq(sample):
+	if sample.platform == "PACBIO":
 		print("Converting HiFi ccs reads to fastq format using pbtk bam2fastq!")
-		print("bam2fastq input file: {}".format(self.input_file))
+		print("bam2fastq input file: {}".format(sample.input_file))
 		
-		os.chdir(self.fastq_raw_dir)
+		os.chdir(sample.fastq_raw_dir)
 		
-		bam2fastq_cmd = "bam2fastq -j {threads} {input_file} -o {output_prefix}".format(threads = self.threads, input_file = self.input_file, output_prefix = self.sample_ID)
+		bam2fastq_cmd = "bam2fastq -j {threads} {input_file} -o {output_prefix}".format(threads = sample.threads, input_file = sample.input_file, output_prefix = sample.sample_ID)
 		
 		subprocess.run(bam2fastq_cmd, shell=True, check=True)
 				
-		print("Raw fastq reads written to: {}".format(os.path.join(self.fastq_raw_dir, self.sample_ID + ".fastq.gz")))
+		print("Raw fastq reads written to: {}".format(os.path.join(sample.fastq_raw_dir, sample.sample_ID + ".fastq.gz")))
 		print("\n\n")
 
-		os.chdir(self.ORIGINAL_CWD)
+		os.chdir(sample.ORIGINAL_CWD)
 	
-	elif self.platform == "ONT":
+	elif sample.platform == "ONT":
 		print("Converting ONT raw reads to fastq format using Samtools fastq!")
-		print("Samtools fastq input file: {}".format(self.input_file))
+		print("Samtools fastq input file: {}".format(sample.input_file))
 
-		output_fastq = os.path.join(self.fastq_raw_dir, self.sample_ID + ".fastq")
+		output_fastq = os.path.join(sample.fastq_raw_dir, sample.sample_ID + ".fastq")
 
-		samtools_fq_cmd = "samtools fastq -@ {threads} {input_file} > {output_file}".format(threads = self.threads, input_file = self.input_file, output_file = output_fastq)
+		samtools_fq_cmd = "samtools fastq -@ {threads} {input_file} > {output_file}".format(threads = sample.threads, input_file = sample.input_file, output_file = output_fastq)
 		
 		subprocess.run(samtools_fq_cmd, shell=True, check=True)
 
 # Adapter/barcode trimming for ONT data
-def run_porechop_abi(self):
+def run_porechop_abi(sample):
 	print("Removing adapters and barcodes with porechop_abi!")
 	
-	input_fastq = os.path.join(self.fastq_raw_dir, self.sample_ID + ".fastq")
+	input_fastq = os.path.join(sample.fastq_raw_dir, sample.sample_ID + ".fastq")
 	
 	print("porechop_abi input file: {}".format(input_fastq))
 
-	output_fastq = os.path.join(self.fastq_porechop_dir, self.sample_ID + ".porechop.fastq")
+	output_fastq = os.path.join(sample.fastq_porechop_dir, sample.sample_ID + ".porechop.fastq")
 	
-	porechop_cmd = "porechop_abi --ab_initio -v 1 -i {input_file} -t {threads} -o {output_file} --format fastq".format(input_file = input_fastq, threads = self.threads, output_file = output_fastq)
+	porechop_cmd = "porechop_abi --ab_initio -v 1 -i {input_file} -t {threads} -o {output_file} --format fastq".format(input_file = input_fastq, threads = sample.threads, output_file = output_fastq)
 
 	subprocess.run(porechop_cmd, shell=True, check=True)
 
 # Quality trimming step for ONT data 
-def trim_reads(self):
+def trim_reads(sample):
 	print("Trimiming reads with ProwlerTrimmer!")
 	
-	input_fastq_dir = self.fastq_porechop_dir + "/"
-	input_fastq_file = self.sample_ID + ".porechop.fastq"
-	output_dir = self.fastq_prowler_dir + "/"
+	input_fastq_dir = sample.fastq_porechop_dir + "/"
+	input_fastq_file = sample.sample_ID + ".porechop.fastq"
+	output_dir = sample.fastq_prowler_dir + "/"
 
 	prowler_trimmer_cmd = 'python3 {prowler_trimmer} -i {input_dir} -f {input_file} -o {output_dir} -m "D" -q 20'.format(prowler_trimmer = prowler_trimmer, input_dir = input_fastq_dir, input_file = input_fastq_file, output_dir = output_dir)
 
 	subprocess.run(prowler_trimmer_cmd, shell=True, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-	trimmed_fastq = os.path.join(self.fastq_prowler_dir, self.sample_ID + ".porechopTrimLT-U0-D20W100L100R0.fastq")
-	renamed_trimmed_fastq = os.path.join(self.fastq_prowler_dir, self.sample_ID + ".porechop.prowler.fastq")
+	trimmed_fastq = os.path.join(sample.fastq_prowler_dir, sample.sample_ID + ".porechopTrimLT-U0-D20W100L100R0.fastq")
+	renamed_trimmed_fastq = os.path.join(sample.fastq_prowler_dir, sample.sample_ID + ".porechop.prowler.fastq")
 	os.rename(trimmed_fastq, renamed_trimmed_fastq)
-	pigz_cmd = "pigz -f -p {threads} {input_file}".format(threads = self.threads, input_file = renamed_trimmed_fastq)
+	pigz_cmd = "pigz -f -p {threads} {input_file}".format(threads = sample.threads, input_file = renamed_trimmed_fastq)
 	subprocess.run(pigz_cmd, shell=True, check=True)
 
 # Run fastqc on fastq file
@@ -137,36 +137,36 @@ def run_fastqc(self, fastqc_file):
 
 # Trim Adapter Sequences and polyA tails
 # Customize this command based on the fastqc output
-def legacy_trim_adapters(self):
+def legacy_trim_adapters(sample):
 	print("Trimming adapter sequences with cutadapt!")
 	
-	input_file = os.path.join(self.fastq_rmdup_dir, self.sample_ID + ".pbmarkdup.fastq.gz")
+	input_file = os.path.join(sample.fastq_rmdup_dir, sample.sample_ID + ".pbmarkdup.fastq.gz")
 	
 	print("cutadapt input file: {}".format(input_file))
 
-	output_file = os.path.join(self.fastq_rmdup_cutadapt_dir, self.sample_ID + ".pbmarkdup.cutadapt.fastq.gz")
+	output_file = os.path.join(sample.fastq_rmdup_cutadapt_dir, sample.sample_ID + ".pbmarkdup.cutadapt.fastq.gz")
 	
 	# The following argument is used to trim polyA tails: -a 'A{{10}}N{{90}}. The double brackets are for python string interpolation
 	# me and me_rc are the transposase mosaic end binding sequences defined at the top of the script
-	#cutadapt_cmd = "cutadapt -j {threads} --quiet -n {num_cuts_allowed} -g {five_prime_adapter} -a {three_prime_adapter} -a 'A{{10}}N{{90}}' -o {output_fastq} {input_fastq}".format(threads = self.threads, num_cuts_allowed = 3, five_prime_adapter = me, three_prime_adapter = me_rc, output_fastq = output_file, input_fastq = input_file)
-	cutadapt_cmd = "cutadapt -j {threads} --quiet -n {num_cuts_allowed} -g {five_prime_adapter} -a {three_prime_adapter} -o {output_fastq} {input_fastq}".format(threads = self.threads, num_cuts_allowed = 2, five_prime_adapter = me, three_prime_adapter = me_rc, output_fastq = output_file, input_fastq = input_file)
+	#cutadapt_cmd = "cutadapt -j {threads} --quiet -n {num_cuts_allowed} -g {five_prime_adapter} -a {three_prime_adapter} -a 'A{{10}}N{{90}}' -o {output_fastq} {input_fastq}".format(threads = sample.threads, num_cuts_allowed = 3, five_prime_adapter = me, three_prime_adapter = me_rc, output_fastq = output_file, input_fastq = input_file)
+	cutadapt_cmd = "cutadapt -j {threads} --quiet -n {num_cuts_allowed} -g {five_prime_adapter} -a {three_prime_adapter} -o {output_fastq} {input_fastq}".format(threads = sample.threads, num_cuts_allowed = 2, five_prime_adapter = me, three_prime_adapter = me_rc, output_fastq = output_file, input_fastq = input_file)
 
 	subprocess.run(cutadapt_cmd, shell=True, check=True)
 	
 	print("Deduplicated trimmed reads written to: {}".format(output_file))
 	print("\n\n")
 
-def trim_adapters(self):
-	input_file = os.path.join(self.fastq_raw_dir, self.sample_ID + ".fastq.gz")
-	output_file = os.path.join(self.fastq_trimmed_dir, self.sample_ID + ".trimmed.fastq.gz")
+def trim_adapters(sample):
+	input_file = os.path.join(sample.fastq_raw_dir, sample.sample_ID + ".fastq.gz")
+	output_file = os.path.join(sample.fastq_trimmed_dir, sample.sample_ID + ".trimmed.fastq.gz")
 
-	if self.adapters:
+	if sample.adapters:
 
-		if self.adapter_file:
+		if sample.adapter_file:
 			print("Trimming adapter sequences with cutadapt!")
 			print("cutadapt input file: {}".format(input_file))
 
-			cutadapt_cmd = "cutadapt -j {threads} --minimum-length 21 --quiet -n {num_cuts_allowed} -g {five_prime_adapter} -a {three_prime_adapter} -o {output_fastq} {input_fastq}".format(threads = self.threads, num_cuts_allowed = 2, five_prime_adapter = self.five_prime_adapter, three_prime_adapter = self.three_prime_adapter, output_fastq = output_file, input_fastq = input_file)
+			cutadapt_cmd = "cutadapt -j {threads} --minimum-length 21 --quiet -n {num_cuts_allowed} -g {five_prime_adapter} -a {three_prime_adapter} -o {output_fastq} {input_fastq}".format(threads = sample.threads, num_cuts_allowed = 2, five_prime_adapter = sample.five_prime_adapter, three_prime_adapter = sample.three_prime_adapter, output_fastq = output_file, input_fastq = input_file)
 
 			subprocess.run(cutadapt_cmd, shell=True, check=True)
 	
@@ -177,10 +177,10 @@ def trim_adapters(self):
 			print("Trimming adapter sequences with fastplong in AUTO mode!")
 			print("fastplong input file: {}".format(input_file))
 
-			html_path = os.path.join(self.fastq_trimmed_dir, self.sample_ID + ".fastplong.html")
-			json_path = os.path.join(self.fastq_trimmed_dir, self.sample_ID + ".fastplong.json")
+			html_path = os.path.join(sample.fastq_trimmed_dir, sample.sample_ID + ".fastplong.html")
+			json_path = os.path.join(sample.fastq_trimmed_dir, sample.sample_ID + ".fastplong.json")
 
-			fastplong_cmd = "fastplong -i {input_file} -h {html_file} -j {json_file} -w {threads} -n 100000 -o {output_file}".format(input_file = input_file, html_file = html_path, json_file = json_path, threads = self.threads, output_file = output_file)
+			fastplong_cmd = "fastplong -i {input_file} -h {html_file} -j {json_file} -w {threads} -n 100000 -o {output_file}".format(input_file = input_file, html_file = html_path, json_file = json_path, threads = sample.threads, output_file = output_file)
 			
 			subprocess.run(fastplong_cmd, shell=True, check=False)
 
@@ -192,49 +192,49 @@ def trim_adapters(self):
 		shutil.copy(input_file, output_file)
 
 # Mark PCR duplicates with pbmarkdup
-def mark_duplicates_pbmarkdup(self):
+def mark_duplicates_pbmarkdup(sample):
 	print("Removing PCR duplicates using pbmarkdup!")
 	
-	input_fastq = os.path.join(self.fastq_trimmed_dir, self.sample_ID + ".trimmed.fastq.gz")
+	input_fastq = os.path.join(sample.fastq_trimmed_dir, sample.sample_ID + ".trimmed.fastq.gz")
 	
 	print("pbmarkdup input file: {}".format(input_fastq))
 
-	output_fastq = os.path.join(self.fastq_trimmed_dir, self.sample_ID + ".trimmed.pbmarkdup.fastq")
+	output_fastq = os.path.join(sample.fastq_trimmed_dir, sample.sample_ID + ".trimmed.pbmarkdup.fastq")
 
-	pbmarkdup_cmd = "pbmarkdup -j {threads} --rmdup {input_file} {output_file}".format(threads = self.threads, input_file = input_fastq, output_file = output_fastq)
+	pbmarkdup_cmd = "pbmarkdup -j {threads} --rmdup {input_file} {output_file}".format(threads = sample.threads, input_file = input_fastq, output_file = output_fastq)
 	
 	subprocess.run(pbmarkdup_cmd, shell=True, check=True)
 
-	gzip_cmd = "pigz -f -p {threads} {input_file}".format(threads = self.threads, input_file = output_fastq)
+	gzip_cmd = "pigz -f -p {threads} {input_file}".format(threads = sample.threads, input_file = output_fastq)
 	subprocess.run(gzip_cmd, shell=True, check=True)
 	
 	print("De-duplicated reads written to: {}.gz!".format(output_fastq))
 	print("\n\n")
 
 # Align to GRCh38 reference genome with pbmm2
-def align_to_reference_minimap(self):
+def align_to_reference_minimap(sample):
 	print("Aligning reads to GRCh38 reference genome with minimap2!")
 	
-	if self.platform == "PACBIO":
-		input_fastq = os.path.join(self.fastq_trimmed_dir, self.sample_ID + ".trimmed.pbmarkdup.fastq.gz")
+	if sample.platform == "PACBIO":
+		input_fastq = os.path.join(sample.fastq_trimmed_dir, sample.sample_ID + ".trimmed.pbmarkdup.fastq.gz")
 		platform_string = "map-hifi"
-	elif self.platform == "ONT":
-		input_fastq = os.path.join(self.fastq_trimmed_dir, self.sample_ID + ".trimmed.fastq.gz")
+	elif sample.platform == "ONT":
+		input_fastq = os.path.join(sample.fastq_trimmed_dir, sample.sample_ID + ".trimmed.fastq.gz")
 		platform_string = "map-ont"
 
-	output_bam = os.path.join(self.mapped_bam_dir, self.sample_ID + ".hg38.bam")
+	output_bam = os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".hg38.bam")
 
 	print("minimap2 input file: {}".format(input_fastq))
 
 	# Deprecate pbmm2. Moving forward with minimap2 for ease of comparison with ONT data.
 	# print("Aligning reads to GRCh38 reference genome with pbmm2!")
 	# print("pbmm2 input file: {}".format(input_fastq))
-	# pbmm2_cmd = "pbmm2 align -j {threads} {reference_genome} {input_file} {output_file} --sort --log-level INFO --unmapped --bam-index BAI --rg '{rg_string}'".format(threads = self.threads, reference_genome = reference_fasta, input_file = input_fastq, output_file = output_bam, rg_string = self.read_group_string)
+	# pbmm2_cmd = "pbmm2 align -j {threads} {reference_genome} {input_file} {output_file} --sort --log-level INFO --unmapped --bam-index BAI --rg '{rg_string}'".format(threads = sample.threads, reference_genome = reference_fasta, input_file = input_fastq, output_file = output_bam, rg_string = sample.read_group_string)
 	# subprocess.run(pbmm2_cmd, shell=True, check=True)
 
-	minimap_threads = int(self.threads * 2 / 3)
-	samtools_threads = self.threads - minimap_threads
-	minimap_rg_string = "'{}'".format(self.read_group_string.replace("\t", "\\t"))
+	minimap_threads = int(sample.threads * 2 / 3)
+	samtools_threads = sample.threads - minimap_threads
+	minimap_rg_string = "'{}'".format(sample.read_group_string.replace("\t", "\\t"))
 
 	minimap2_cmd = "minimap2 -Y -t {minimap_threads} -ax {platform_string} {reference_genome} {input_file} -R {rg_string} | samtools sort -@ {samtools_threads} -o {output_file}".format(minimap_threads = minimap_threads, platform_string = platform_string, reference_genome = reference_fasta, input_file = input_fastq, rg_string = minimap_rg_string, samtools_threads = samtools_threads, output_file = output_bam)
 	index_bam = "samtools index {input_file}".format(input_file = output_bam)
@@ -245,36 +245,36 @@ def align_to_reference_minimap(self):
 	print("Mapped bam written to: {}".format(output_bam))
 	print("\n\n")
 
-def align_to_reference_vg(self):
+def align_to_reference_vg(sample):
 	print("Aligning reads to pangenome reference genome with vg giraffe!")
 	
-	if self.platform == "PACBIO":
-		input_fastq = os.path.join(self.fastq_trimmed_dir, self.sample_ID + ".trimmed.pbmarkdup.fastq.gz")
+	if sample.platform == "PACBIO":
+		input_fastq = os.path.join(sample.fastq_trimmed_dir, sample.sample_ID + ".trimmed.pbmarkdup.fastq.gz")
 		parameter_preset = "hifi"
 
-	elif self.platform == "ONT":
-		input_fastq = os.path.join(self.fastq_prowler_dir, self.sample_ID + ".trimmed.fastq.gz")
+	elif sample.platform == "ONT":
+		input_fastq = os.path.join(sample.fastq_prowler_dir, sample.sample_ID + ".trimmed.fastq.gz")
 		parameter_preset = "r10"
 	
-	output_bam = os.path.join(self.mapped_bam_dir, self.sample_ID + ".pangenome.bam")
+	output_bam = os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".pangenome.bam")
 		
 	print("vg giraffe input file: {}".format(input_fastq))
 	
-	vg_threads = int(self.threads * 2 / 3)
-	samtools_threads = self.threads - vg_threads
+	vg_threads = int(sample.threads * 2 / 3)
+	samtools_threads = sample.threads - vg_threads
 
-	rg_fields = dict(field.split(":", 1) for field in self.read_group_string.split("\\t")[1:])
+	rg_fields = dict(field.split(":", 1) for field in sample.read_group_string.split("\\t")[1:])
 	read_group_id = rg_fields["ID"]
 
-	vg_command = "{vg} giraffe -b {platform} -Z {reference_gbz} -f {input_file} -p -P -o BAM --threads {vg_threads} --ref-paths {ref_paths} -R {read_group} -N {sample_name} | samtools sort -@ {samtools_threads} -o {output_file}".format(vg = vg, platform = parameter_preset, reference_gbz = reference_gbz, input_file = input_fastq, vg_threads = vg_threads, ref_paths = ref_paths, read_group = read_group_id, sample_name = self.sample_ID, samtools_threads = samtools_threads, output_file = output_bam)
+	vg_command = "{vg} giraffe -b {platform} -Z {reference_gbz} -f {input_file} -p -P -o BAM --threads {vg_threads} --ref-paths {ref_paths} -R {read_group} -N {sample_name} | samtools sort -@ {samtools_threads} -o {output_file}".format(vg = vg, platform = parameter_preset, reference_gbz = reference_gbz, input_file = input_fastq, vg_threads = vg_threads, ref_paths = ref_paths, read_group = read_group_id, sample_name = sample.sample_ID, samtools_threads = samtools_threads, output_file = output_bam)
 	index_bam = "samtools index {input_file}".format(input_file = output_bam)
 
 	subprocess.run(vg_command, shell=True, check=True)
 	subprocess.run(index_bam, shell=True, check=True)
 
 	# Reheader
-	temp_sam_1 = os.path.join(self.mapped_bam_dir, self.sample_ID + "_temp1.sam")
-	temp_sam_2 = os.path.join(self.mapped_bam_dir, self.sample_ID + "_temp2.sam")
+	temp_sam_1 = os.path.join(sample.mapped_bam_dir, sample.sample_ID + "_temp1.sam")
+	temp_sam_2 = os.path.join(sample.mapped_bam_dir, sample.sample_ID + "_temp2.sam")
 	# converted_bam = output_bam.replace(".bam", ".reaheader.bam")
 	converted_bam = output_bam.replace(".pangenome.bam", ".pg.bam")
 	convert_to_sam = "samtools view -h {input_file} > {temp}".format(input_file = output_bam, temp = temp_sam_1)
@@ -289,13 +289,13 @@ def align_to_reference_vg(self):
 	# Add read group 
 	# final_bam = output_bam.replace(".pangenome.bam", ".pg.bam")
 	
-	# rg_fields = dict(field.split(":", 1) for field in self.read_group_string.split("\t")[1:])
+	# rg_fields = dict(field.split(":", 1) for field in sample.read_group_string.split("\t")[1:])
 	# rg_id = rg_fields["ID"]
 
-	# if rg_fields.get("SM") and rg_fields["SM"] != self.sample_ID:
-	# 	print(f"[WARNING] Overriding SM: {rg_fields['SM']} → {self.sample_ID}")
+	# if rg_fields.get("SM") and rg_fields["SM"] != sample.sample_ID:
+	# 	print(f"[WARNING] Overriding SM: {rg_fields['SM']} → {sample.sample_ID}")
 	
-	# add_rg_cmd = "samtools addreplacerg -r ID:{rg_id} -r SM:{SM} -o {final_bam} {converted_bam}".format(rg_id = rg_id, SM = self.sample_ID, final_bam = final_bam, converted_bam = converted_bam)
+	# add_rg_cmd = "samtools addreplacerg -r ID:{rg_id} -r SM:{SM} -o {final_bam} {converted_bam}".format(rg_id = rg_id, SM = sample.sample_ID, final_bam = final_bam, converted_bam = converted_bam)
 	
 	# subprocess.run(add_rg_cmd, shell=True, check=True)
 	# index_final_bam = "samtools index {input_bam}".format(input_bam = final_bam)
@@ -304,12 +304,12 @@ def align_to_reference_vg(self):
 	clean_up = "rm {bam1} {temp1} {temp2}".format(bam1 = output_bam, temp1 = temp_sam_1, temp2 = temp_sam_2)
 	subprocess.run(clean_up, shell=True, check=True)
 
-def reassign_mapq(self):
+def reassign_mapq(sample):
 	mapq_dict = dict()
 
-	bam_hg38 = os.path.join(self.mapped_bam_dir, self.sample_ID + ".hg38.bam")
-	bam_pg = os.path.join(self.mapped_bam_dir, self.sample_ID + ".pg.bam")
-	reassigned_pg = os.path.join(self.mapped_bam_dir, self.sample_ID + ".pg.mapq_reassign.bam")
+	bam_hg38 = os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".hg38.bam")
+	bam_pg = os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".pg.bam")
+	reassigned_pg = os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".pg.mapq_reassign.bam")
 
 	with pysam.AlignmentFile(bam_hg38, "rb") as f:
 		for read in f:
@@ -333,18 +333,18 @@ def reassign_mapq(self):
 		print("{Count} reads in {pg_bam} were missing from {hg38_bam}".format(Count = len(missing_reads), pg_bam = bam_pg, hg38_bam = bam_hg38))
 
 # Only marking duplicates for ONT data becuase pbmarkdup was used earlier for PacBio data
-def mark_duplicates_picard(self):
-	if self.aligner == "minimap2":
-		input_bam = os.path.join(self.mapped_bam_dir, self.sample_ID + ".hg38.bam")
-		output_bam = os.path.join(self.mapped_bam_dir, self.sample_ID + ".hg38.mrkdup.bam")
-		metrics_file = os.path.join(self.mapped_bam_dir, self.sample_ID + ".hg38.mrkdup.metrics.txt")
+def mark_duplicates_picard(sample):
+	if sample.aligner == "minimap2":
+		input_bam = os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".hg38.bam")
+		output_bam = os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".hg38.mrkdup.bam")
+		metrics_file = os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".hg38.mrkdup.metrics.txt")
 
-	elif self.aligner == "vg":
-		input_bam = os.path.join(self.mapped_bam_dir, self.sample_ID + ".pg.mapq_reassign.bam")
-		output_bam = os.path.join(self.mapped_bam_dir, self.sample_ID + ".pg.mapq_reassign.mrkdup.bam")
-		metrics_file = os.path.join(self.mapped_bam_dir, self.sample_ID + ".pg.mapq_reassign.mrkdup.metrics.txt")
+	elif sample.aligner == "vg":
+		input_bam = os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".pg.mapq_reassign.bam")
+		output_bam = os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".pg.mapq_reassign.mrkdup.bam")
+		metrics_file = os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".pg.mapq_reassign.mrkdup.metrics.txt")
 	
-	temp_dir = os.path.join(self.mapped_bam_dir, "mark_duplicates")
+	temp_dir = os.path.join(sample.mapped_bam_dir, "mark_duplicates")
 	os.makedirs(temp_dir, exist_ok=True)
 	
 	mark_duplicates_cmd = "gatk MarkDuplicates -I {input_file} -O {output_file} --TMP_DIR {temp_dir} -M {metrics_file} --CREATE_INDEX true --VALIDATION_STRINGENCY LENIENT".format(input_file = input_bam, output_file = output_bam, temp_dir = temp_dir, metrics_file = metrics_file)
@@ -352,28 +352,28 @@ def mark_duplicates_picard(self):
 	subprocess.run(mark_duplicates_cmd, shell=True, check=True)
 
 # Filer reads that did not map to chromosome 6
-def filter_reads(self):
+def filter_reads(sample):
 	print("Excluding BAM records that don't map to chromosome 6!")
 
-	output_bam = os.path.join(self.mapped_bam_dir, self.sample_ID +".hg38.rmdup.chr6.bam")
+	output_bam = os.path.join(sample.mapped_bam_dir, sample.sample_ID +".hg38.rmdup.chr6.bam")
 
-	if self.aligner == "minimap2":
-		if self.platform == "PACBIO":
-			input_bam = os.path.join(self.mapped_bam_dir, self.sample_ID + ".hg38.bam")
-		elif self.platform == "ONT":
-			input_bam = os.path.join(self.mapped_bam_dir, self.sample_ID + ".hg38.mrkdup.bam")
+	if sample.aligner == "minimap2":
+		if sample.platform == "PACBIO":
+			input_bam = os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".hg38.bam")
+		elif sample.platform == "ONT":
+			input_bam = os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".hg38.mrkdup.bam")
 
-	elif self.aligner == "vg":
-		if self.platform == "PACBIO":
-			input_bam = os.path.join(self.mapped_bam_dir, self.sample_ID + ".pg.mapq_reassign.bam")
-		elif self.platform == "ONT":
-			input_bam = os.path.join(self.mapped_bam_dir, self.sample_ID + ".pg.mapq_reassign.mrkdup.bam")
+	elif sample.aligner == "vg":
+		if sample.platform == "PACBIO":
+			input_bam = os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".pg.mapq_reassign.bam")
+		elif sample.platform == "ONT":
+			input_bam = os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".pg.mapq_reassign.mrkdup.bam")
 
 	print("Samtools input file: {}".format(input_bam))
 
 	# Extract chromosome 6 and exclude secondary and supplementary alignments
-	# samtools_cmd = "samtools view -@ {threads} -F 2304 -b {input_file} chr6 > '{output_file}'".format(threads = self.threads, input_file = input_bam, output_file = output_bam)
-	samtools_cmd = "samtools view -F 1024 -@ {threads} -b {input_file} chr6 > '{output_file}'".format(threads = self.threads, input_file = input_bam, output_file = output_bam)
+	# samtools_cmd = "samtools view -@ {threads} -F 2304 -b {input_file} chr6 > '{output_file}'".format(threads = sample.threads, input_file = input_bam, output_file = output_bam)
+	samtools_cmd = "samtools view -F 1024 -@ {threads} -b {input_file} chr6 > '{output_file}'".format(threads = sample.threads, input_file = input_bam, output_file = output_bam)
 	index_cmd = "samtools index {input_file}".format(input_file = output_bam)
 
 	subprocess.run(samtools_cmd, shell=True, check=True)
@@ -388,26 +388,26 @@ def filter_reads(self):
 
 	return read_count
 
-def run_mosdepth(self):
-	input_file = os.path.join(self.mapped_bam_dir, self.sample_ID +".hg38.rmdup.chr6.bam")
+def run_mosdepth(sample):
+	input_file = os.path.join(sample.mapped_bam_dir, sample.sample_ID +".hg38.rmdup.chr6.bam")
 
 	print("Running mosdepth on {file}".format(file = input_file))
 	
-	prefix = os.path.join(self.mosdepth_dir, self.sample_ID)
+	prefix = os.path.join(sample.mosdepth_dir, sample.sample_ID)
 	
 	# --flag 3328 excludes duplicates and secondary/supplementary alignments
-	mosdepth = "mosdepth --flag 3328 --by {regions_file} --thresholds 20,30 -t {threads} {prefix} {bam_file}".format(regions_file = mosdepth_regions_file, threads = self.threads, prefix = prefix, bam_file = input_file)
+	mosdepth = "mosdepth --flag 3328 --by {regions_file} --thresholds 20,30 -t {threads} {prefix} {bam_file}".format(regions_file = mosdepth_regions_file, threads = sample.threads, prefix = prefix, bam_file = input_file)
 	
 	subprocess.run(mosdepth, shell=True, check=True)
 	
 	print("\n\n")
 
-def parse_mosdepth(self):
+def parse_mosdepth(sample):
 	print("Parsing mosdepth results!")
 	print("\n\n")
 	coverage_dict = dict()
-	regions_file = os.path.join(self.mosdepth_dir, self.sample_ID + ".regions.bed.gz")
-	thresholds_file = os.path.join(self.mosdepth_dir, self.sample_ID + ".thresholds.bed.gz")
+	regions_file = os.path.join(sample.mosdepth_dir, sample.sample_ID + ".regions.bed.gz")
+	thresholds_file = os.path.join(sample.mosdepth_dir, sample.sample_ID + ".thresholds.bed.gz")
 	
 	print("Gene,mean_depth,prop_20x,prop_30x")
 
@@ -431,29 +431,29 @@ def parse_mosdepth(self):
 			print(gene, coverage_depth, prop_20x, prop_30x)
 
 			if coverage_depth >= depth_thresh and prop_20x >= prop_20x_thresh and prop_30x >= prop_30x_thresh:
-				self.sufficient_coverage_genes.append(gene)
+				sample.sufficient_coverage_genes.append(gene)
 			else:
 				print("Gene {gene} has insufficient coverage for haplotyping and star allele calling".format(gene = gene))
 	print("\n\n")
 
 # Call SNV with DeepVariant
-def call_variants_deepvariant(self):
-	input_file = os.path.join(self.mapped_bam_dir, self.sample_ID +".hg38.rmdup.chr6.bam")
+def call_variants_deepvariant(sample):
+	input_file = os.path.join(sample.mapped_bam_dir, sample.sample_ID +".hg38.rmdup.chr6.bam")
 
-	if self.platform == "PACBIO":
+	if sample.platform == "PACBIO":
 		model_type = "PACBIO"
-	elif self.platform == "ONT":
+	elif sample.platform == "ONT":
 		model_type = "ONT_R104"
 	
 	print("Calling SNVs and small INDELS with DeepVariant!")
 	print("DeepVariant input file: {}".format(input_file))
 	
-	output_vcf = os.path.join(self.genotypes_dir, self.sample_ID + ".vcf.gz")
-	output_gvcf = os.path.join(self.genotypes_dir, self.sample_ID + ".g.vcf.gz")
+	output_vcf = os.path.join(sample.genotypes_dir, sample.sample_ID + ".vcf.gz")
+	output_gvcf = os.path.join(sample.genotypes_dir, sample.sample_ID + ".g.vcf.gz")
 
 	bind_paths = [
-		f"{self.genotypes_dir}:/data",
-		f"{self.mapped_bam_dir}:/input",
+		f"{sample.genotypes_dir}:/data",
+		f"{sample.mapped_bam_dir}:/input",
 		f"{os.path.dirname(reference_fasta)}:/reference"
 	]
 
@@ -473,11 +473,11 @@ def call_variants_deepvariant(self):
 			sif=deepvariant_sif,
 			model_type=model_type,
 			ref_filename=os.path.basename(reference_fasta),
-			sample=self.sample_ID
+			sample=sample.sample_ID
 			)
 
 	# Log DeepVariant in own output file so it doesn't clog up STDOUT
-	deepvariant_log = os.path.join(self.genotypes_dir, self.sample_ID + ".deepvariant.log")
+	deepvariant_log = os.path.join(sample.genotypes_dir, sample.sample_ID + ".deepvariant.log")
 	print("Writing stdout to {file}".format(file = deepvariant_log))
 
 	with open(deepvariant_log, "w") as log_file:
@@ -487,27 +487,27 @@ def call_variants_deepvariant(self):
 	print("GVCF written to {}".format(output_gvcf))
 	print("\n\n")
 
-def call_variants_clair3(self):
-	input_file = os.path.join(self.mapped_bam_dir, self.sample_ID +".hg38.rmdup.chr6.bam")
+def call_variants_clair3(sample):
+	input_file = os.path.join(sample.mapped_bam_dir, sample.sample_ID +".hg38.rmdup.chr6.bam")
 
-	if self.platform == "ONT":
+	if sample.platform == "ONT":
 		platform = "ont"
 		clair3_model_path = clair3_ont_model_path
-	elif self.platform == "PACBIO":
+	elif sample.platform == "PACBIO":
 		platform = "hifi"
 		clair3_model_path = clair3_hifi_model_path
 
 	print("Calling SNVs and small INDELS with Clair3!")
 
-	output_dir = os.path.join(self.genotypes_dir, self.sample_ID)
+	output_dir = os.path.join(sample.genotypes_dir, sample.sample_ID)
 	os.makedirs(output_dir, exist_ok=True)
 
-	clair3_cmd = "run_clair3.sh --bam_fn={input_file} --ref_fn={reference_genome} --platform={platform} --model_path={clair3_model} --output={output_dir} --threads={threads} --sample_name={sample} --bed_fn={bed_file}".format(input_file = input_file, reference_genome = reference_fasta, platform = platform, clair3_model = clair3_model_path, output_dir = output_dir, threads = self.threads, sample = self.sample_ID, bed_file = chr6_bed)
+	clair3_cmd = "run_clair3.sh --bam_fn={input_file} --ref_fn={reference_genome} --platform={platform} --model_path={clair3_model} --output={output_dir} --threads={threads} --sample_name={sample} --bed_fn={bed_file}".format(input_file = input_file, reference_genome = reference_fasta, platform = platform, clair3_model = clair3_model_path, output_dir = output_dir, threads = sample.threads, sample = sample.sample_ID, bed_file = chr6_bed)
 	
 	subprocess.run(clair3_cmd, shell=True, check=True)
 
-	raw_genotypes_file = os.path.join(self.genotypes_dir, self.sample_ID, "merge_output.vcf.gz")
-	relocated_genotypes_file = os.path.join(self.genotypes_dir, self.sample_ID + ".vcf.gz")
+	raw_genotypes_file = os.path.join(sample.genotypes_dir, sample.sample_ID, "merge_output.vcf.gz")
+	relocated_genotypes_file = os.path.join(sample.genotypes_dir, sample.sample_ID + ".vcf.gz")
 	shutil.copy(raw_genotypes_file, relocated_genotypes_file)
 	subprocess.run(f"tabix -p vcf {relocated_genotypes_file}", shell=True, check=True)
 	
@@ -515,22 +515,22 @@ def call_variants_clair3(self):
 	print("\n\n")
 
 # Call SNV with bcftools
-def call_variants_bcftools(self):
-	input_file = os.path.join(self.mapped_bam_dir, self.sample_ID +".hg38.rmdup.chr6.bam")
+def call_variants_bcftools(sample):
+	input_file = os.path.join(sample.mapped_bam_dir, sample.sample_ID +".hg38.rmdup.chr6.bam")
 
-	if self.platform == "PACBIO":
+	if sample.platform == "PACBIO":
 		config = "pacbio-ccs-1.20"
-	elif self.platform == "ONT":
+	elif sample.platform == "ONT":
 		config = "ont-sup-1.20"
 
 	print("Calling SNVs and small INDELS with bcftools!")
 
 	print("Bcftools input file: {}".format(input_file))
 	
-	output_vcf = os.path.join(self.genotypes_dir, self.sample_ID + ".vcf.gz")
+	output_vcf = os.path.join(sample.genotypes_dir, sample.sample_ID + ".vcf.gz")
 
-	pileup_threads = str(self.threads // 2)
-	call_threads = str(self.threads // 2)
+	pileup_threads = str(sample.threads // 2)
+	call_threads = str(sample.threads // 2)
 
 	bcftools_command = (
 		"bcftools mpileup --config {config} --threads {pileup_threads} "
@@ -553,15 +553,15 @@ def call_variants_bcftools(self):
 	print("\n\n")
 
 # Run pbsv to call structural variants (SV)
-def call_structural_variants_pbsv(self):
+def call_structural_variants_pbsv(sample):
 	print("Calling structural variants with pbsv!")
 
-	input_bam = os.path.join(self.mapped_bam_dir, self.sample_ID +".hg38.rmdup.chr6.bam")
+	input_bam = os.path.join(sample.mapped_bam_dir, sample.sample_ID +".hg38.rmdup.chr6.bam")
 
 	print("pbsv input file: {}".format(input_bam))
 	
-	output_svsig = os.path.join(self.sv_dir, self.sample_ID + ".svsig.gz")
-	output_vcf = os.path.join(self.sv_dir, self.sample_ID + ".SV.vcf")
+	output_svsig = os.path.join(sample.sv_dir, sample.sample_ID + ".svsig.gz")
+	output_vcf = os.path.join(sample.sv_dir, sample.sample_ID + ".SV.vcf")
 
 	# -a Don't downsample
 	# -q Don't filter by MapQ
@@ -573,7 +573,7 @@ def call_structural_variants_pbsv(self):
 	
 	subprocess.run(index_svsig_cmd, shell=True, check=True)
 
-	pbsv_call_cmd = "pbsv call -j {threads} --min-sv-length 51 --region chr6 --hifi {reference_genome} {input_file} {output_file}".format(threads = self.threads, reference_genome = reference_fasta, input_file = output_svsig, output_file = output_vcf)
+	pbsv_call_cmd = "pbsv call -j {threads} --min-sv-length 51 --region chr6 --hifi {reference_genome} {input_file} {output_file}".format(threads = sample.threads, reference_genome = reference_fasta, input_file = output_svsig, output_file = output_vcf)
 	
 	subprocess.run(pbsv_call_cmd, shell=True, check=True)
 
@@ -587,16 +587,16 @@ def call_structural_variants_pbsv(self):
 	print("\n\n")
 
 # Run sawfish to call structural variants (SV)
-def call_structural_variants_sawfish(self):
+def call_structural_variants_sawfish(sample):
 	print("Calling structural variants with sawfish!")
 
 	# Hardcode threads because discover needs 8GB RAM per thread
 	# 4 threads is plenty for target capture, sawfish is wicked fast
 	threads = 4
 
-	input_bam = os.path.join(self.mapped_bam_dir, self.sample_ID +".hg38.rmdup.chr6.bam")
-	small_variant_calls = os.path.join(self.genotypes_dir, self.sample_ID + ".vcf.gz")
-	discover_dir = os.path.join(self.sv_dir, "discover")
+	input_bam = os.path.join(sample.mapped_bam_dir, sample.sample_ID +".hg38.rmdup.chr6.bam")
+	small_variant_calls = os.path.join(sample.genotypes_dir, sample.sample_ID + ".vcf.gz")
+	discover_dir = os.path.join(sample.sv_dir, "discover")
 
 	print("Sawfish input file: {}".format(input_bam))
 
@@ -605,13 +605,13 @@ def call_structural_variants_sawfish(self):
 	# subprocess.run(sawfish_discover_cmd, shell=True, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 	subprocess.run(sawfish_discover_cmd, shell=True, check=True)
 	
-	sawfish_call_cmd = "{sawfish} joint-call --threads {threads} --sample {indir} --output-dir {outdir} --min-sv-mapq 0".format(sawfish = sawfish, threads = threads, indir = discover_dir, outdir=self.sv_dir)
+	sawfish_call_cmd = "{sawfish} joint-call --threads {threads} --sample {indir} --output-dir {outdir} --min-sv-mapq 0".format(sawfish = sawfish, threads = threads, indir = discover_dir, outdir=sample.sv_dir)
 	
 	# subprocess.run(sawfish_call_cmd, shell=True, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 	subprocess.run(sawfish_call_cmd, shell=True, check=True)
 
-	sawfish_output_file = os.path.join(self.sv_dir, "genotyped.sv.vcf.gz")
-	renamed_file = os.path.join(self.sv_dir, self.sample_ID + ".SV.vcf.gz")
+	sawfish_output_file = os.path.join(sample.sv_dir, "genotyped.sv.vcf.gz")
+	renamed_file = os.path.join(sample.sv_dir, sample.sample_ID + ".SV.vcf.gz")
 	if os.path.exists(sawfish_output_file):
 		shutil.move(sawfish_output_file, renamed_file)
 		index_cmd = "tabix -p vcf {input_file}".format(input_file = renamed_file)
@@ -622,31 +622,31 @@ def call_structural_variants_sawfish(self):
 	
 	print("\n\n")
 
-def call_structural_variants_sniffles(self):
+def call_structural_variants_sniffles(sample):
 	print("Calling structural variants with Sniffles!")
 	
-	input_bam = os.path.join(self.mapped_bam_dir, self.sample_ID +".hg38.rmdup.chr6.bam")
-	output_vcf = os.path.join(self.sv_dir, self.sample_ID + ".SV.vcf.gz")
+	input_bam = os.path.join(sample.mapped_bam_dir, sample.sample_ID +".hg38.rmdup.chr6.bam")
+	output_vcf = os.path.join(sample.sv_dir, sample.sample_ID + ".SV.vcf.gz")
 
-	sniffles_cmd = "sniffles --output-rnames --allow-overwrite -t {threads} --reference {reference_genome} --regions {bed_file} -i {input_bam} -v {output_vcf} --tandem-repeats {tandem_repeat_bed}".format(threads = self.threads, reference_genome = reference_fasta, bed_file = chr6_bed, input_bam = input_bam, output_vcf = output_vcf, tandem_repeat_bed = tandem_repeat_bed)
+	sniffles_cmd = "sniffles --output-rnames --allow-overwrite -t {threads} --reference {reference_genome} --regions {bed_file} -i {input_bam} -v {output_vcf} --tandem-repeats {tandem_repeat_bed}".format(threads = sample.threads, reference_genome = reference_fasta, bed_file = chr6_bed, input_bam = input_bam, output_vcf = output_vcf, tandem_repeat_bed = tandem_repeat_bed)
 	subprocess.run(sniffles_cmd, shell=True, check=True)
 
 	print("Sniffles SV VCF written to: {}".format(output_vcf))
 	print("\n\n")
 
 # Genotype tandem repeats with pbtrgt
-def genotype_tandem_repeats(self):
+def genotype_tandem_repeats(sample):
 	print("Genotyping tandem repeats with pbtrgt!")
 
-	input_bam = os.path.join(self.mapped_bam_dir, self.sample_ID +".hg38.rmdup.chr6.bam")
+	input_bam = os.path.join(sample.mapped_bam_dir, sample.sample_ID +".hg38.rmdup.chr6.bam")
 
 	print("trgt input file: {}".format(input_bam))
 	
-	output_prefix = self.sample_ID + ".TR"
+	output_prefix = sample.sample_ID + ".TR"
 	
-	os.chdir(self.pbtrgt_dir)
+	os.chdir(sample.pbtrgt_dir)
 	
-	trgt_cmd = "trgt genotype --threads {threads} --genome {reference_genome} --reads {input_file} --repeats {repeat_file} --output-prefix {output_prefix} --preset targeted".format(threads = self.threads, reference_genome = reference_fasta, input_file = input_bam, repeat_file = pbtrgt_repeat_file, output_prefix = output_prefix)
+	trgt_cmd = "trgt genotype --threads {threads} --genome {reference_genome} --reads {input_file} --repeats {repeat_file} --output-prefix {output_prefix} --preset targeted".format(threads = sample.threads, reference_genome = reference_fasta, input_file = input_bam, repeat_file = pbtrgt_repeat_file, output_prefix = output_prefix)
 	
 	subprocess.run(trgt_cmd, shell=True, check=True)
 	
@@ -660,39 +660,39 @@ def genotype_tandem_repeats(self):
 	
 	subprocess.run(index_cmd, shell=True, check=True)
 
-	print("TR VCF written to {}".format(os.path.join(self.pbtrgt_dir, output_prefix + ".vcf.gz")))
+	print("TR VCF written to {}".format(os.path.join(sample.pbtrgt_dir, output_prefix + ".vcf.gz")))
 	print("\n\n")
 
-	os.chdir(self.ORIGINAL_CWD)
+	os.chdir(sample.ORIGINAL_CWD)
 
 # Phase genotypes with HiPhase
-def phase_genotypes_hiphase(self):
+def phase_genotypes_hiphase(sample):
 	print("Phasing Genotypes with HiPhase!")
 
-	input_snv = os.path.join(self.genotypes_dir, self.sample_ID + ".vcf.gz")
-	input_SV = os.path.join(self.sv_dir, self.sample_ID + ".SV.vcf.gz")
-	input_TR = os.path.join(self.pbtrgt_dir, self.sample_ID + ".TR.vcf.gz")
+	input_snv = os.path.join(sample.genotypes_dir, sample.sample_ID + ".vcf.gz")
+	input_SV = os.path.join(sample.sv_dir, sample.sample_ID + ".SV.vcf.gz")
+	input_TR = os.path.join(sample.pbtrgt_dir, sample.sample_ID + ".TR.vcf.gz")
 
-	input_bam = os.path.join(self.mapped_bam_dir, self.sample_ID +".hg38.rmdup.chr6.bam")
+	input_bam = os.path.join(sample.mapped_bam_dir, sample.sample_ID +".hg38.rmdup.chr6.bam")
 
 	print("Input BAM: {}".format(input_bam))
 	print("Input SNV: {}".format(input_snv))
 	print("Input SV: {}".format(input_SV))
 	print("Input TR: {}".format(input_TR))
 	
-	output_bam = os.path.join(self.mapped_bam_dir, self.sample_ID + ".hg38.rmdup.chr6.haplotag.bam")
-	output_snv = os.path.join(self.phased_vcf_dir, self.sample_ID + ".hiphase.vcf.gz")
-	output_SV = os.path.join(self.phased_vcf_dir, self.sample_ID + ".hiphase.SV.vcf.gz")
-	output_TR = os.path.join(self.phased_vcf_dir, self.sample_ID + ".hiphase.TR.vcf.gz")
+	output_bam = os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".hg38.rmdup.chr6.haplotag.bam")
+	output_snv = os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".hiphase.vcf.gz")
+	output_SV = os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".hiphase.SV.vcf.gz")
+	output_TR = os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".hiphase.TR.vcf.gz")
 
-	output_summary_file = os.path.join(self.phased_vcf_dir, self.sample_ID + ".phased.summary.txt")
-	output_blocks_file = os.path.join(self.phased_vcf_dir, self.sample_ID + ".phased.blocks.txt")
-	output_stats_file = os.path.join(self.phased_vcf_dir, self.sample_ID + ".phased.stats.txt")
+	output_summary_file = os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".phased.summary.txt")
+	output_blocks_file = os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".phased.blocks.txt")
+	output_stats_file = os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".phased.stats.txt")
 
-	hiphase_cmd = f"hiphase --threads {self.threads} --ignore-read-groups --reference {reference_fasta} --bam {input_bam} --output-bam {output_bam} --vcf {input_snv} --output-vcf {output_snv} --vcf {input_SV} --output-vcf {output_SV} --vcf {input_TR} --output-vcf {output_TR} --stats-file {output_stats_file} --blocks-file {output_blocks_file} --summary-file {output_summary_file}"
+	hiphase_cmd = f"hiphase --threads {sample.threads} --ignore-read-groups --reference {reference_fasta} --bam {input_bam} --output-bam {output_bam} --vcf {input_snv} --output-vcf {output_snv} --vcf {input_SV} --output-vcf {output_SV} --vcf {input_TR} --output-vcf {output_TR} --stats-file {output_stats_file} --blocks-file {output_blocks_file} --summary-file {output_summary_file}"
 	
 	# Log HiPhase in own output file so it doesn't clog up STDOUT
-	hiphase_log = os.path.join(self.phased_vcf_dir, self.sample_ID + ".hiphase.log")
+	hiphase_log = os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".hiphase.log")
 	print("Writing stdout to {}".format(hiphase_log))
 
 	with open(hiphase_log, "w") as log_file:
@@ -708,18 +708,18 @@ def phase_genotypes_hiphase(self):
 	print("\n\n")
 
 # Merge phased SNV (DeepVariant), tandem repeat (TRGT), and structural variant (pbsv) VCFs with bcftools concat 
-def merge_hiphase_vcfs(self):
+def merge_hiphase_vcfs(sample):
 	print("Merging phased DeepVariant, pbsv, and TRGT VCF files!")
 
-	input_snv = os.path.join(self.phased_vcf_dir, self.sample_ID + ".hiphase.vcf.gz")
-	input_SV = os.path.join(self.phased_vcf_dir, self.sample_ID + ".hiphase.SV.vcf.gz")
-	input_TR = os.path.join(self.phased_vcf_dir, self.sample_ID + ".hiphase.TR.vcf.gz")
+	input_snv = os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".hiphase.vcf.gz")
+	input_SV = os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".hiphase.SV.vcf.gz")
+	input_TR = os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".hiphase.TR.vcf.gz")
 
 	print("DeepVariant input file: {}".format(input_snv))
 	print("pbsv input file: {}".format(input_SV))
 	print("pbtrgt input file: {}".format(input_TR))
 
-	output_vcf = os.path.join(self.phased_vcf_dir, self.sample_ID + ".hiphase.joint.vcf.gz")
+	output_vcf = os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".hiphase.joint.vcf.gz")
 	
 	# Copied directly from Holt et al. 2024 Supplementary Material Program 5. 
 	concat_cmd = "bcftools concat --allow-overlaps {SNV_vcf} {SV_vcf} {TR_vcf} | grep -v 'chrX|chrY' | grep -v 'SVTYPE=BND|SVTYPE=INV|SVTYPE=DUP' | bcftools norm -d none --fasta-ref {reference_genome} | bcftools sort | bgzip > {output_file}".format(SNV_vcf = input_snv, SV_vcf = input_SV, TR_vcf = input_TR, reference_genome = reference_fasta, output_file = output_vcf)
@@ -734,19 +734,19 @@ def merge_hiphase_vcfs(self):
 	print("\n\n")
 
 # Phase genotypes with WhatsHap
-def phase_genotypes_whatshap(self):
+def phase_genotypes_whatshap(sample):
 	print("Phasing Genotypes with WhatsHap!")
 
-	input_bam = os.path.join(self.mapped_bam_dir, self.sample_ID +".hg38.rmdup.chr6.bam")
-	input_snv = os.path.join(self.genotypes_dir, self.sample_ID + ".vcf.gz")
-	haplotagged_bam = os.path.join(self.mapped_bam_dir, self.sample_ID + ".hg38.rumdup.chr6.whatshap.bam")
-	phased_vcf = os.path.join(self.phased_vcf_dir, self.sample_ID + ".whatshap.vcf.gz")
+	input_bam = os.path.join(sample.mapped_bam_dir, sample.sample_ID +".hg38.rmdup.chr6.bam")
+	input_snv = os.path.join(sample.genotypes_dir, sample.sample_ID + ".vcf.gz")
+	haplotagged_bam = os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".hg38.rumdup.chr6.whatshap.bam")
+	phased_vcf = os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".whatshap.vcf.gz")
 
 	print("Input BAM: {}".format(input_bam))
 	print("Input VCF: {}".format(input_vcf))
 
-	output_blocks_file = os.path.join(self.whatshap_phased_vcf_dir, self.sample_ID + ".phased.haploblocks.txt")
-	output_gtf_file = os.path.join(self.whatshap_phased_vcf_dir, self.sample_ID + ".phased.haploblocks.gtf")
+	output_blocks_file = os.path.join(sample.whatshap_phased_vcf_dir, sample.sample_ID + ".phased.haploblocks.txt")
+	output_gtf_file = os.path.join(sample.whatshap_phased_vcf_dir, sample.sample_ID + ".phased.haploblocks.gtf")
 
 	whatshap_phase_cmd = "whatshap phase --ignore-read-groups --output {output_file} --reference {reference_genome} {input_vcf} {input_bam}".format(output_file = phased_vcf, reference_genome = reference_fasta, input_vcf = input_vcf, input_bam = input_bam)
 
@@ -758,7 +758,7 @@ def phase_genotypes_whatshap(self):
 	whatshap_stats_cmd = "whatshap stats --block-list={block_list_file} --gtf={gtf_file} {input_vcf}".format(block_list_file = output_blocks_file, gtf_file = output_gtf_file, input_vcf = phased_vcf)
 
 	# Log WhatsHap in own output file so it doesn't clog up STDOUT
-	whatshap_log = os.path.join(self.whatshap_phased_vcf_dir, self.sample_ID + ".whatshap.log")
+	whatshap_log = os.path.join(sample.whatshap_phased_vcf_dir, sample.sample_ID + ".whatshap.log")
 
 	with open(whatshap_log, "w") as log_file:
 		log_file.write("\n==== Running WhatsHap Phase ====\n")
@@ -776,24 +776,24 @@ def phase_genotypes_whatshap(self):
 	print("WhatsHap phase blocks written to: {}".format(output_blocks_file))
 	print("\n\n")
 
-def phase_genotypes_longphase(self):
+def phase_genotypes_longphase(sample):
 	print("Phasing Genotypes with LongPhase!")
 
-	input_bam = os.path.join(self.mapped_bam_dir, self.sample_ID +".hg38.rmdup.chr6.bam")
-	input_SNV_vcf = os.path.join(self.genotypes_dir, self.sample_ID + ".vcf.gz")
-	input_SV_vcf = os.path.join(self.sv_dir, self.sample_ID + ".SV.vcf.gz")
+	input_bam = os.path.join(sample.mapped_bam_dir, sample.sample_ID +".hg38.rmdup.chr6.bam")
+	input_SNV_vcf = os.path.join(sample.genotypes_dir, sample.sample_ID + ".vcf.gz")
+	input_SV_vcf = os.path.join(sample.sv_dir, sample.sample_ID + ".SV.vcf.gz")
 
 	print("Input BAM: {}".format(input_bam))
 	print("Input SNV VCF: {}".format(input_SNV_vcf))
 	print("Input SV VCF: {}".format(input_SV_vcf))
 
 
-	output_blocks_file = os.path.join(self.phased_vcf_dir, self.sample_ID + ".phased.haploblocks.txt")
-	output_gtf_file = os.path.join(self.phased_vcf_dir, self.sample_ID + ".phased.haploblocks.gtf")
+	output_blocks_file = os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".phased.haploblocks.txt")
+	output_gtf_file = os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".phased.haploblocks.gtf")
 
-	phased_vcf = os.path.join(self.phased_vcf_dir, self.sample_ID + ".longphase.vcf.gz")
+	phased_vcf = os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".longphase.vcf.gz")
 	phased_vcf_prefix = phased_vcf.split(".vcf.gz")[0]
-	longphase_phase_cmd = "{longphase} phase -s {input_snv_vcf} --sv {input_sv_vcf} -b {input_bam} -r {reference_genome} -t {threads} -o {phased_prefix} --ont".format(longphase = longphase, input_snv_vcf = input_SNV_vcf, input_sv_vcf = input_SV_vcf, input_bam = input_bam, reference_genome = reference_fasta, threads = self.threads, phased_prefix = phased_vcf_prefix)
+	longphase_phase_cmd = "{longphase} phase -s {input_snv_vcf} --sv {input_sv_vcf} -b {input_bam} -r {reference_genome} -t {threads} -o {phased_prefix} --ont".format(longphase = longphase, input_snv_vcf = input_SNV_vcf, input_sv_vcf = input_SV_vcf, input_bam = input_bam, reference_genome = reference_fasta, threads = sample.threads, phased_prefix = phased_vcf_prefix)
 
 	# Compress and index SNV VCF
 	compress_cmd = "bgzip -f {prefix}.vcf".format(prefix=phased_vcf_prefix)
@@ -802,19 +802,19 @@ def phase_genotypes_longphase(self):
 
 	# Compress and index SV VCF
 	SV_prefix = phased_vcf_prefix + "_SV"
-	phased_SV_vcf = os.path.join(self.phased_vcf_dir, self.sample_ID + ".longphase_SV.vcf.gz")
+	phased_SV_vcf = os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".longphase_SV.vcf.gz")
 	compress_SV_cmd = "bgzip -f {prefix}.vcf".format(prefix=SV_prefix)
 	index_SV_cmd = "bcftools index {input_file}".format(input_file = phased_SV_vcf)
 	tabix_SV_cmd = "tabix {input_file}".format(input_file = phased_SV_vcf)
 
-	haplotagged_bam = os.path.join(self.mapped_bam_dir, self.sample_ID + ".hg38.rmdup.chr6.haplotag.bam")
+	haplotagged_bam = os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".hg38.rmdup.chr6.haplotag.bam")
 	haplotagged_bam_prefix = haplotagged_bam.split(".bam")[0]
-	longphase_haplotag_cmd = "{longphase} haplotag -r {reference_genome} -s {input_snv_vcf} --sv-file {input_sv_vcf} -b {input_bam} -t {threads} -o {prefix}".format(longphase = longphase, reference_genome = reference_fasta, input_snv_vcf = phased_vcf, input_sv_vcf = input_SV_vcf, input_bam = input_bam, threads = self.threads, prefix = haplotagged_bam_prefix)
+	longphase_haplotag_cmd = "{longphase} haplotag -r {reference_genome} -s {input_snv_vcf} --sv-file {input_sv_vcf} -b {input_bam} -t {threads} -o {prefix}".format(longphase = longphase, reference_genome = reference_fasta, input_snv_vcf = phased_vcf, input_sv_vcf = input_SV_vcf, input_bam = input_bam, threads = sample.threads, prefix = haplotagged_bam_prefix)
 
 	whatshap_stats_cmd = "whatshap stats --block-list={block_list_file} --gtf={gtf_file} {input_vcf}".format(block_list_file = output_blocks_file, gtf_file = output_gtf_file, input_vcf = phased_vcf)
 
 	# Log WhatsHap in own output file so it doesn't clog up STDOUT
-	longphase_log = os.path.join(self.phased_vcf_dir, self.sample_ID + ".longphase.log")
+	longphase_log = os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".longphase.log")
 
 	with open(longphase_log, "w") as log_file:
 		log_file.write("\n==== Running LongPhase Phase ====\n")
@@ -836,19 +836,19 @@ def phase_genotypes_longphase(self):
 	print("LongPhase phase blocks written to: {}".format(output_blocks_file))
 	print("\n\n")
 
-def merge_longphase_vcfs(self):
+def merge_longphase_vcfs(sample):
 	print("Merging longphase SNV and SV VCFs using bcftools...")
 
-	phased_vcf = os.path.join(self.phased_vcf_dir, self.sample_ID + ".longphase.vcf.gz")
-	phased_SV_vcf = os.path.join(self.phased_vcf_dir, self.sample_ID + ".longphase_SV.vcf.gz")
-	merged_vcf = os.path.join(self.phased_vcf_dir, self.sample_ID + ".longphase.merged.vcf.gz")
+	phased_vcf = os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".longphase.vcf.gz")
+	phased_SV_vcf = os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".longphase_SV.vcf.gz")
+	merged_vcf = os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".longphase.merged.vcf.gz")
 	reheadered_SV_vcf = phased_SV_vcf.replace(".vcf.gz", ".reheader.vcf.gz")
 
-	header_file = os.path.join(self.phased_vcf_dir, self.sample_ID + ".header.txt")
-	merge_log = os.path.join(self.phased_vcf_dir, self.sample_ID + ".merge.log")
+	header_file = os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".header.txt")
+	merge_log = os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".merge.log")
 
 	with open(header_file, "w") as hf:
-		hf.write(f"SAMPLE\t{self.sample_ID}\n")
+		hf.write(f"SAMPLE\t{sample.sample_ID}\n")
 
 	reheader_cmd = f"bcftools reheader -s {header_file} {phased_SV_vcf} -o {reheadered_SV_vcf}"
 	index_sv_cmd = f"bcftools index {reheadered_SV_vcf}"

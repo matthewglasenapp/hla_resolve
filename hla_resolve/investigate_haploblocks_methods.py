@@ -11,17 +11,17 @@ mhc_start = 29555628
 mhc_stop = 33409896
 
 # Get list of haploblock intervals for MHC
-def parse_haploblocks(self):
-	sample_name = self.sample_ID
+def parse_haploblocks(sample):
+	sample_name = sample.sample_ID
 	heterozygous_sites = []
 	haploblock_list = []
 
-	if self.platform == "PACBIO":
-		vcf_file = os.path.join(self.phased_vcf_dir, self.sample_ID + ".hiphase.joint.vcf.gz")
-		haploblock_file = os.path.join(self.phased_vcf_dir, self.sample_ID + ".phased.blocks.txt")
-	elif self.platform == "ONT":
-		vcf_file = os.path.join(self.phased_vcf_dir, self.sample_ID + ".longphase.vcf.gz")
-		haploblock_file = os.path.join(self.phased_vcf_dir, self.sample_ID + ".phased.haploblocks.txt")
+	if sample.platform == "PACBIO":
+		vcf_file = os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".hiphase.joint.vcf.gz")
+		haploblock_file = os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".phased.blocks.txt")
+	elif sample.platform == "ONT":
+		vcf_file = os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".longphase.vcf.gz")
+		haploblock_file = os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".phased.haploblocks.txt")
 	
 	vcf = pysam.VariantFile(vcf_file)
 
@@ -51,9 +51,9 @@ def parse_haploblocks(self):
 		fields = line.split("\t")
 		
 		# HiPhase and Longphase have slightly differently formatted haploblock tsv files. 
-		if self.platform == "PACBIO":
+		if sample.platform == "PACBIO":
 			chromosome, start, stop = "chr6", int(fields[4]) - 1, int(fields[5])
-		elif self.platform == "ONT":
+		elif sample.platform == "ONT":
 			chromosome, start, stop = "chr6", int(fields[3]) - 1, int(fields[4])
 
 		if chromosome == "chr6" and stop > mhc_start:
@@ -62,7 +62,7 @@ def parse_haploblocks(self):
 	return heterozygous_sites, haploblock_list
 
 # Check whether each captured MHC gene is completely spanned by a haploblock
-def evaluate_gene_haploblocks(self, het_sites, haploblocks):
+def evaluate_gene_haploblocks(sample, het_sites, haploblocks):
 	# List of fully phased genes
 	haploblocks.sort()
 	gene_list = []
@@ -126,7 +126,7 @@ def evaluate_gene_haploblocks(self, het_sites, haploblocks):
 					overlapping_haploblocks.append((block_start, block_stop))
 
 			num_pre_merge_haploblocks = len(overlapping_haploblocks)  # Track count before extension & merging
-			print(f"Processing {self.sample_ID} {gene}")
+			print(f"Processing {sample.sample_ID} {gene}")
 			print(f"Overlapping unextended haploblocks: {len(overlapping_haploblocks)}")
 
 			if upstream_block:
@@ -183,18 +183,18 @@ def evaluate_gene_haploblocks(self, het_sites, haploblocks):
 			largest_overlap_string = f"{prop_overlap*100:.2f}%"
 
 			# Use the pre-merge haploblock count, not merged count!
-			incomplete_data.append([self.sample_ID, gene, num_pre_merge_haploblocks, largest_overlap_string])
-			print(f"{self.sample_ID} {gene}, Pre-Merge Haploblocks: {num_pre_merge_haploblocks}")
+			incomplete_data.append([sample.sample_ID, gene, num_pre_merge_haploblocks, largest_overlap_string])
+			print(f"{sample.sample_ID} {gene}, Pre-Merge Haploblocks: {num_pre_merge_haploblocks}")
 			print(f"Proportion of gene contained in largest overlapping haploblock: {largest_overlap_string}")
 
-	with open(os.path.join(self.parsed_haploblock_dir, f"phased_genes.tsv"), "w", newline="") as csv_file:
+	with open(os.path.join(sample.parsed_haploblock_dir, f"phased_genes.tsv"), "w", newline="") as csv_file:
 		writer = csv.writer(csv_file, delimiter="\t")
 		writer.writerow(["sample", "num_genes", "genes"])
-		writer.writerow([self.sample_ID, len(gene_list), ",".join(gene_list)])
+		writer.writerow([sample.sample_ID, len(gene_list), ",".join(gene_list)])
 
 
 	if incomplete_data:
-		with open(os.path.join(self.parsed_haploblock_dir, f"incomplete.csv"), "w", newline="") as csvfile:
+		with open(os.path.join(sample.parsed_haploblock_dir, f"incomplete.csv"), "w", newline="") as csvfile:
 			csv_writer = csv.writer(csvfile)
 			csv_writer.writerow(["sample", "gene", "num_haploblocks", "largest_haploblock"])
 			csv_writer.writerows(incomplete_data)
