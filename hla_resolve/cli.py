@@ -10,10 +10,11 @@ import argparse
 import json
 import textwrap
 from Bio import SeqIO
-from preprocess_methods import convert_bam_to_fastq, mark_duplicates_pbmarkdup, mark_duplicates_picard, trim_adapters, run_fastqc, trim_reads, align_to_reference_minimap, align_to_reference_vg, reassign_mapq, filter_reads, run_mosdepth, parse_mosdepth, call_variants_bcftools, call_variants_deepvariant, call_variants_clair3, call_structural_variants_pbsv, call_structural_variants_sawfish, call_structural_variants_sniffles, genotype_tandem_repeats, phase_genotypes_hiphase, merge_hiphase_vcfs, phase_genotypes_longphase, merge_longphase_vcfs, run_porechop_abi
-from investigate_haploblocks_methods import parse_haploblocks, evaluate_gene_haploblocks
-from reconstruct_fasta_methods import filter_vcf, run_vcf2fasta, parse_fastas
-from hla_typer import main as classify_hla_alleles
+
+from hla_resolve import preprocess_methods
+from hla_resolve import reconstruct_fasta_methods
+from hla_resolve import investigate_haploblocks_methods
+from hla_resolve.hla_typer import main as classify_hla_alleles
 
 genes_of_interest = ("HLA-A", "HLA-B", "HLA-C", "HLA-DRB1", "HLA-DQA1", "HLA-DQB1", "HLA-DPA1", "HLA-DPB1")
 
@@ -277,35 +278,35 @@ class Samples:
 		for item in results:
 			print(item)
 
-Samples.convert_bam_to_fastq = convert_bam_to_fastq
-Samples.mark_duplicates_pbmarkdup = mark_duplicates_pbmarkdup
-Samples.mark_duplicates_picard = mark_duplicates_picard
-Samples.trim_adapters = trim_adapters
-Samples.run_porechop_abi = run_porechop_abi
-Samples.trim_reads = trim_reads
-Samples.run_fastqc = run_fastqc
-Samples.align_to_reference_minimap = align_to_reference_minimap
-Samples.align_to_reference_vg = align_to_reference_vg
-Samples.reassign_mapq = reassign_mapq
-Samples.filter_reads = filter_reads
-Samples.run_mosdepth = run_mosdepth
-Samples.parse_mosdepth = parse_mosdepth
-Samples.call_variants_bcftools = call_variants_bcftools
-Samples.call_variants_deepvariant = call_variants_deepvariant
-Samples.call_variants_clair3 = call_variants_clair3
-Samples.call_structural_variants_pbsv = call_structural_variants_pbsv
-Samples.call_structural_variants_sawfish = call_structural_variants_sawfish
-Samples.call_structural_variants_sniffles = call_structural_variants_sniffles
-Samples.genotype_tandem_repeats = genotype_tandem_repeats
-Samples.phase_genotypes_hiphase = phase_genotypes_hiphase
-Samples.merge_hiphase_vcfs = merge_hiphase_vcfs
-Samples.phase_genotypes_longphase = phase_genotypes_longphase
-Samples.merge_longphase_vcfs = merge_longphase_vcfs
-Samples.parse_haploblocks = parse_haploblocks
-Samples.evaluate_gene_haploblocks = evaluate_gene_haploblocks
-Samples.filter_vcf = filter_vcf
-Samples.run_vcf2fasta = run_vcf2fasta
-Samples.parse_fastas = parse_fastas
+Samples.convert_bam_to_fastq = preprocess_methods.convert_bam_to_fastq
+Samples.mark_duplicates_pbmarkdup = preprocess_methods.mark_duplicates_pbmarkdup
+Samples.mark_duplicates_picard = preprocess_methods.mark_duplicates_picard
+Samples.trim_adapters = preprocess_methods.trim_adapters
+Samples.run_porechop_abi = preprocess_methods.run_porechop_abi
+Samples.trim_reads = preprocess_methods.trim_reads
+Samples.run_fastqc = preprocess_methods.run_fastqc
+Samples.align_to_reference_minimap = preprocess_methods.align_to_reference_minimap
+Samples.align_to_reference_vg = preprocess_methods.align_to_reference_vg
+Samples.reassign_mapq = preprocess_methods.reassign_mapq
+Samples.filter_reads = preprocess_methods.filter_reads
+Samples.run_mosdepth = preprocess_methods.run_mosdepth
+Samples.parse_mosdepth = preprocess_methods.parse_mosdepth
+Samples.call_variants_bcftools = preprocess_methods.call_variants_bcftools
+Samples.call_variants_deepvariant = preprocess_methods.call_variants_deepvariant
+Samples.call_variants_clair3 = preprocess_methods.call_variants_clair3
+Samples.call_structural_variants_pbsv = preprocess_methods.call_structural_variants_pbsv
+Samples.call_structural_variants_sawfish = preprocess_methods.call_structural_variants_sawfish
+Samples.call_structural_variants_sniffles = preprocess_methods.call_structural_variants_sniffles
+Samples.genotype_tandem_repeats = preprocess_methods.genotype_tandem_repeats
+Samples.phase_genotypes_hiphase = preprocess_methods.phase_genotypes_hiphase
+Samples.merge_hiphase_vcfs = preprocess_methods.merge_hiphase_vcfs
+Samples.phase_genotypes_longphase = preprocess_methods.phase_genotypes_longphase
+Samples.merge_longphase_vcfs = preprocess_methods.merge_longphase_vcfs
+Samples.parse_haploblocks = investigate_haploblocks_methods.parse_haploblocks
+Samples.evaluate_gene_haploblocks = investigate_haploblocks_methods.evaluate_gene_haploblocks
+Samples.filter_vcf = reconstruct_fasta_methods.filter_vcf
+Samples.run_vcf2fasta = reconstruct_fasta_methods.run_vcf2fasta
+Samples.parse_fastas = reconstruct_fasta_methods.parse_fastas
 
 def main():
 	parser = argparse.ArgumentParser(
