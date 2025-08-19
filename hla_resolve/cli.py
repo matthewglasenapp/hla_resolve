@@ -28,7 +28,7 @@ min_reads_sample = 100
 min_read_length = 300
 
 # IPD/IMGT HLA XML file
-IMGT_XML = "/hb/scratch/mglasena/hla_resolve/hla.xml"
+IMGT_XML = "/hb/scratch/mglasena/test_hla_resolve/hla_resolve/hla_resolve/hla.xml"
 
 # Ensure all required tools are installed and executable
 def check_required_commands():    

@@ -40,7 +40,7 @@ tandem_repeat_bed = os.path.join(DATA_DIR, "repeats_bed/human_GRCh38_no_alt_anal
 
 chr6_bed = os.path.join(DATA_DIR, "reference/chr6.bed")
 
-mosdepth_regions_file = "/hb/scratch/mglasena/hla_resolve/hla_genes.bed"
+mosdepth_regions_file = "/hb/scratch/mglasena/test_hla_resolve/hla_resolve/hla_resolve/hla_genes.bed"
 
 # GRCh38 tandem repeat definition file for pbtrgt
 # Downloaded from https://zenodo.org/records/8329210

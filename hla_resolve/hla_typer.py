@@ -923,7 +923,7 @@ def run_classification(reference_xml_file, samples_file, full_sample_file=None, 
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser(description='Two-Step HLA Allele Identification System')
 	parser.add_argument('--hla-xml', required=False, default=None, help='Input hla.xml reference file')
-	parser.add_argument('--samples', required=False, default="../data/HLA_Class_I_haplotypes.fa", help='Input FASTA file with full sequences')
+	parser.add_argument('--samples', required=False, default="hla_resolve/data/HLA_Class_I_haplotypes.fa", help='Input FASTA file with full sequences')
 	parser.add_argument('--truth', required=False, default=None, help='Input csv file containg truth data, for testing purposes')
 	parser.add_argument("--full-sequence", required=False, default=None, help="To enable the third intron/UTR classification stage, supply full sequence data here")
 	
