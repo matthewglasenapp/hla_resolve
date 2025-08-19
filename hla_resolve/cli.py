@@ -123,7 +123,7 @@ def check_required_commands():
 		print("\n\n")
 
 class Samples:
-	def __init__(self, input_file, sample_name, platform, output_dir, aligner, genotyper, trim_adapters=False, adapter_file=None, threads=1, read_group_string=None):
+	def __init__(self, input_file, sample_name, platform, output_dir, aligner, genotyper, trim_adapters=False, adapter_file=None, threads=1, read_group_string=None, clean_up=False):
 		self.ORIGINAL_CWD = os.getcwd()
 		self.input_file = os.path.realpath(os.path.abspath(input_file))
 
