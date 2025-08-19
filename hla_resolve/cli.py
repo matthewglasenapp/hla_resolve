@@ -311,7 +311,7 @@ class Samples:
 
 	def prepare_raw_fastq(self):
 		if self.format == "BAM":
-			self.convert_bam_to_fastq()
+			convert_bam_to_fastq(self)
 		elif self.format == "FASTQ":
 			new_fq = os.path.join(self.fastq_raw_dir, self.sample_ID + ".fastq")
 			shutil.copy(self.input_file, new_fq)
