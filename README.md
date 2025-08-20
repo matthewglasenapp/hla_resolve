@@ -7,7 +7,7 @@ Input: Demultiplexed, raw sequencing read files. One sample per file. The tool i
 
 Output(s): HLA star allele calls based on the latest IPD-IMGT/HLA database. Star allele calls are provided for HLA-A, HLA-B, HLA-C, HLA-DRB1, HLA-DQA1, HLA-DQB1, HLA-DPA1, and HLA-DPB1. Haplotagged, mapped BAM files for chomosome 6 are provided for visualization with genome browsers such as IGV. Phased VCFs for chomrosome 6 are provided. Reconstructed, haploid (phased) nucleotide sequences are provided for each gene in fasta format. 
 
-Runtime: Depends on the size of the input file and the chosen aligner and genotyper. 
+Runtime (in progress): Depends on the size of the input file, the chosen aligner and genotyper, and CPU allocation. MHC target capture data should run in < 30min with 6CPU and 40GB RAM.
 
 ```
 usage: cli.py [-h] --input_file INPUT_FILE --sample_name SAMPLE_NAME --platform {pacbio,ont} --output_dir OUTPUT_DIR --aligner {minimap2,vg}
