@@ -10,9 +10,11 @@ Output(s): HLA star allele calls based on the latest IPD-IMGT/HLA database. Star
 Runtime: Depends on the size of the input file and the chosen aligner and genotyper. 
 
 ```
-usage: hla_resolve.py [-h] --input_file INPUT_FILE --sample_name SAMPLE_NAME --platform {pacbio,ont} --output_dir OUTPUT_DIR --aligner {minimap2,vg}
-                      [--genotyper {bcftools,clair3,deepvariant}] [--trim_adapters] [--adapter_file ADAPTER_FILE] [--threads THREADS]
-                      [--read_group_string READ_GROUP_STRING]
+usage: cli.py [-h] --input_file INPUT_FILE --sample_name SAMPLE_NAME --platform {pacbio,ont} --output_dir OUTPUT_DIR --aligner {minimap2,vg}
+              [--genotyper {bcftools,clair3,deepvariant}] [--trim_adapters] [--adapter_file ADAPTER_FILE] [--threads THREADS]
+              [--read_group_string READ_GROUP_STRING] [--clean-up]
+
+Run HLA-Resolve
 
 options:
   -h, --help            show this help message and exit
@@ -34,7 +36,10 @@ options:
   --threads THREADS     Number of threads to use (default: 6)
   --read_group_string READ_GROUP_STRING
                         Override the parsed read group string (default: None)
+  --clean-up            Remove intermediate files (default: False)
 
+Example: python3 -m cli.py --input_file reads.bam --sample_name HG002 --platform pacbio --output_dir out --aligner minimap2 --genotyper deepvariant --threads
+10
 ```
 
 Demo example:
@@ -42,7 +47,7 @@ Demo example:
 Input data: PacBio Revio HiFi targeted sequencing reads from IHW09118, a female Aboriginal Australian sample from the International Histocompatibility Working Group catalog. 
 
 ```
-python3 hla_resolve.py \
+python3 -m cli.py \
 --input_file IHW09118.hifi_reads.bam \
 --sample_name IHW09118 \
 --platform pacbio \
