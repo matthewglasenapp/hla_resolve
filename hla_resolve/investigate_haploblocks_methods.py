@@ -3,7 +3,6 @@ import csv
 import json
 import pysam
 import pandas as pd
-from hla_resolve.cli import Samples
 
 # Get list of haploblock intervals for MHC
 def parse_haploblocks(sample):
@@ -23,7 +22,7 @@ def parse_haploblocks(sample):
 	for record in vcf:
 		if record.chrom != "chr6":
 			continue
-		if record.pos < Samples.mhc_start or record.pos > Samples.mhc_stop:
+		if record.pos < sample.mhc_start or record.pos > sample.mhc_stop:
 			continue
 
 		# Safety check in case sample_name is missing in the VCF
@@ -51,7 +50,7 @@ def parse_haploblocks(sample):
 		elif sample.platform == "ONT":
 			chromosome, start, stop = "chr6", int(fields[3]) - 1, int(fields[4])
 
-		if chromosome == "chr6" and stop > Samples.mhc_start:
+		if chromosome == "chr6" and stop > sample.mhc_start:
 			haploblock_list.append([start,stop])
 
 	return heterozygous_sites, haploblock_list
@@ -65,7 +64,7 @@ def evaluate_gene_haploblocks(sample, het_sites, haploblocks):
 	# List of genes with partially overlapping haploblock
 	incomplete_data = []
 	
-	genes = open(Samples.genes_bed, "r").read().splitlines()
+	genes = open(sample.genes_bed, "r").read().splitlines()
 	for line in genes:
 		fields = line.split("\t")
 		name = fields[3].split("_")[0]
@@ -106,7 +105,7 @@ def evaluate_gene_haploblocks(sample, het_sites, haploblocks):
 					break
 
 		# Get details on haploblock overlap for genes of interest (HLA Class I/II) that were not fully phased 
-		if not fully_phased and gene in Samples.genes_of_interest:
+		if not fully_phased and gene in sample.genes_of_interest:
 			overlapping_haploblocks = []
 			upstream_block = None
 			downstream_block = None

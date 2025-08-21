@@ -164,30 +164,41 @@ class Samples:
         # Set the class variables based on data_dir
         if not Samples.reference_fasta:
             data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
-            
-            # Use reference fasta with no alternate contigs.
-            # reference_fasta = os.path.join(data_dir, "reference/GCA_000001405.15_GRCh38_no_alt_analysis_set.fa")
-            # reference_fasta = os.path.join(data_dir, "reference/GRCh38_primary_only.fa")
-            # Rename fasta headers
-            # sed 's/^>GRCh38\.chr/>chr/' /hb/scratch/ogarci12/hybridcapture_pangenome/ref/hprc-v1.0-mc-grch38-minaf.0.1.fa > /hb/groups/cornejo_lab/matt/hla_capture/input_data/reference/hprc-v1.0-chr-renamed.fa
-            # Reference to use after mapping to graph and surjecting to GRCh38
-            # reference_fasta = os.path.join(data_dir, "reference/hprc-v1.0-chr-renamed.fa")
-            # Reference with added Y scaffold!
             Samples.reference_fasta = os.path.join(data_dir, "reference/augmented_hg38.fa")
-            
-            # DeepVariant sif file
             Samples.deepvariant_sif = os.path.join(data_dir, "deepvariant_sif/deepvariant.sif")
-            
-            # GRCh38 tandem repeat mask file for pbsv
-            # Downloaded from https://github.com/PacificBiosciences/pbsv/blob/master/annotations/human_GRCh38_no_alt_analysis_set.trf.bed
             Samples.tandem_repeat_bed = os.path.join(data_dir, "repeats_bed/human_GRCh38_no_alt_analysis_set.trf.bed")
-            
-            # chr6 bed file for clair3
             Samples.chr6_bed = os.path.join(data_dir, "reference/chr6.bed")
-            
-            # GRCh38 tandem repeat definition file for pbtrgt
-            # Downloaded from https://zenodo.org/records/8329210
             Samples.pbtrgt_repeat_file = os.path.join(data_dir, "repeats_bed/test_chr6_polymorphic_repeats.hg38.bed")
+        
+        # Copy all class variables to instance for easy access
+        self.reference_fasta = Samples.reference_fasta
+        self.deepvariant_sif = Samples.deepvariant_sif
+        self.tandem_repeat_bed = Samples.tandem_repeat_bed
+        self.chr6_bed = Samples.chr6_bed
+        self.pbtrgt_repeat_file = Samples.pbtrgt_repeat_file
+        self.reference_gbz = Samples.reference_gbz
+        self.ref_paths = Samples.ref_paths
+        self.vg = Samples.vg
+        self.mosdepth_regions_file = Samples.mosdepth_regions_file
+        self.me = Samples.me
+        self.me_rc = Samples.me_rc
+        self.longphase = Samples.longphase
+        self.prowler_trimmer = Samples.prowler_trimmer
+        self.sawfish = Samples.sawfish
+        self.clair3_ont_model_path = Samples.clair3_ont_model_path
+        self.clair3_hifi_model_path = Samples.clair3_hifi_model_path
+        self.depth_thresh = Samples.depth_thresh
+        self.prop_20x_thresh = Samples.prop_20x_thresh
+        self.prop_30x_thresh = Samples.prop_30x_thresh
+        self.vcf2fasta_script = Samples.vcf2fasta_script
+        self.reference_genome = Samples.reference_genome
+        self.gff_dir = Samples.gff_dir
+        self.hla_genes_regions_file = Samples.hla_genes_regions_file
+        self.genes_bed = Samples.genes_bed
+        self.genes_of_interest = Samples.genes_of_interest
+        self.mhc_start = Samples.mhc_start
+        self.mhc_stop = Samples.mhc_stop
+        self.IMGT_XML = Samples.IMGT_XML
         
         # data_dir points directly to the data/ subdirectory
         self.data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
