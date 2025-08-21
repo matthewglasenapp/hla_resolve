@@ -5,27 +5,14 @@ from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio import SeqIO
 
-DNA_bases = {"A", "T", "G", "C"}
-stop_codons = ["TAA", "TAG", "TGA"]
-
-def filter_vcf(sample):
-	if sample.platform == "PACBIO":
-		input_vcf = os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".hiphase.joint.vcf.gz")
-	elif sample.platform == "ONT":
-		input_vcf = os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".longphase.merged.vcf.gz")
-	
-	pass_vcf = os.path.join(sample.phased_vcf_dir, f"{sample.sample_ID}_PASS.vcf.gz")
-	fail_vcf = os.path.join(sample.phased_vcf_dir, f"{sample.sample_ID}_FAIL.vcf.gz")
-	pass_unphased = os.path.join(sample.phased_vcf_dir, f"{sample.sample_ID}_PASS_UNPHASED.vcf.gz")
-	filtered_vcf = os.path.join(sample.filtered_vcf_dir, f"{sample.sample_ID}_filtered.vcf.gz")
-
+def filter_vcf(input_vcf, pass_vcf, fail_vcf, pass_unphased, filtered_vcf, unphased_overlap_tsv, platform, genotyper, hla_genes_regions_file):
 	# bcftools call does not have a FILTER=PASS annotation, so drop that from the filtering expression
 	# Include homozygous ALT (both biallelic and multiallelic) and phased heterozygous
 	# Exclude symbolic variants 
 	# Note: both pbsv and sniffles have the FILTER=PASS annotation and normal GT fields for INS/DEL. DUP,BND,INV are symbolic and will be excluded but reported
-	if sample.platform == "ONT":
+	if platform == "ONT":
 		# For ONT data, skip TRID-related filtering entirely
-		if sample.genotyper == "bcftools":
+		if genotyper == "bcftools":
 			keep_expr = (
 				'(GT="1/1" || GT="2/2" || GT="3/3" || GT="4/4" || GT="5/5" || '
 				'GT="0|1" || GT="1|0" || GT="1|2" || GT="2|1" || GT="2|3" || GT="3|2") && '
@@ -42,7 +29,7 @@ def filter_vcf(sample):
 			)
 
 		# For unphased_expr, skip TRID check as well
-		if sample.genotyper == "bcftools":
+		if genotyper == "bcftools":
 			unphased_expr = (
 				'(ALT~"^<" || '
 				'((GT="0/1" || GT="1/0" || GT="1/2" || GT="2/1" || GT="2/3" || GT="3/2") && '
@@ -57,7 +44,7 @@ def filter_vcf(sample):
 
 	else:
 		# Your existing TRID-aware expressions go here
-		if sample.genotyper == "bcftools":
+		if genotyper == "bcftools":
 			keep_expr = (
 				'TRID=="" && '
 				'(GT="1/1" || GT="2/2" || GT="3/3" || GT="4/4" || GT="5/5" || '
@@ -74,7 +61,7 @@ def filter_vcf(sample):
 				'GT="0|1" || GT="1|0" || GT="1|2" || GT="2|1" || GT="2|3" || GT="3|2")'
 			)
 
-		if sample.genotyper == "bcftools":
+		if genotyper == "bcftools":
 			unphased_expr = (
 				'(TRID!="" || ALT~"^<" || '
 				'((GT="0/1" || GT="1/0" || GT="1/2" || GT="2/1" || GT="2/3" || GT="3/2") && '
@@ -108,9 +95,8 @@ def filter_vcf(sample):
 	subprocess.run(f"bcftools index -f {pass_unphased}", shell=True, check=True)
 
 	# Intersect unphased PASS heterozygous genotypes from the fail-filter vcf with HLA BED to get overlapping variants that could not bee applied
-	unphased_overlap_tsv = os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".unphased.tsv")
 	subprocess.run(
-		f'bedtools intersect -a {pass_unphased} -b {sample.hla_genes_regions_file} -wa -wb -header > {unphased_overlap_tsv}',
+		f'bedtools intersect -a {pass_unphased} -b {hla_genes_regions_file} -wa -wb -header > {unphased_overlap_tsv}',
 		shell=True, check=True
 	)
 	
@@ -170,22 +156,18 @@ def filter_vcf(sample):
 	)
 	subprocess.run(f"bcftools index {filtered_vcf}", shell=True, check=True)
 
-def run_vcf2fasta(sample, gene, feature):
+def run_vcf2fasta(vcf2fasta, input_vcf, input_gff, reference_genome, output_dir, gene, feature):
 	gene_id = gene.lower().replace("-", "_")
-	input_vcf = os.path.join(sample.filtered_vcf_dir, f"{sample.sample_ID}_filtered.vcf.gz")
-	out_dir = os.path.join(sample.vcf2fasta_out_dir, gene_id)
 	
 	if feature == "CDS":
-		input_gff = os.path.join(sample.gff_dir, gene_id + "_cds_sorted.gff3")
-		vcf2fasta_cmd = f"python3 {sample.vcf2fasta_script} --fasta {sample.reference_genome} --vcf {input_vcf} --gff {input_gff} -o {out_dir} --feat CDS --blend"
+		vcf2fasta_cmd = f"python3 {vcf2fasta} --fasta {reference_genome} --vcf {input_vcf} --gff {input_gff} -o {output_dir} --feat CDS --blend"
 	elif feature == "gene":
-		input_gff = os.path.join(sample.gff_dir, gene_id + "_gene.gff3")
-		vcf2fasta_cmd = f"python3 {sample.vcf2fasta_script} --fasta {sample.reference_genome} --vcf {input_vcf} --gff {input_gff} -o {out_dir} --feat gene"
+		vcf2fasta_cmd = f"python3 {vcf2fasta} --fasta {reference_genome} --vcf {input_vcf} --gff {input_gff} -o {output_dir} --feat gene"
 	
 	subprocess.run(vcf2fasta_cmd, shell = True, check = True)
 
-def parse_fastas(sample):
-	find_cmd = f"find {sample.vcf2fasta_out_dir} -type f > fasta_files.txt"
+def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA_bases, stop_codons):
+	find_cmd = f"find {vcf2fasta_output_dir} -type f > fasta_files.txt"
 	subprocess.run(find_cmd, shell = True, check = True)
 	fasta_files = open("fasta_files.txt", "r").read().splitlines()
 	os.remove("fasta_files.txt")
@@ -224,17 +206,14 @@ def parse_fastas(sample):
 		fasta_dict[feat][gene].append(allele_1)
 		fasta_dict[feat][gene].append(allele_2)
 
-	outfile_gene = os.path.join(sample.hla_fasta_dir, sample.sample_ID + "_HLA_haplotypes_gene.fasta")
-	outfile_CDS = os.path.join(sample.hla_fasta_dir, sample.sample_ID + "_HLA_haplotypes_CDS.fasta")
-
 	gene_records = []
 	cds_records = []
 
 	for feat, genes in fasta_dict.items():
 		for gene, haplotypes in genes.items():
-			hap1_name = f"{sample.sample_ID}_{gene}_1"
+			hap1_name = f"{sample_ID}_{gene}_1"
 			hap1_seq = haplotypes[0]
-			hap2_name = f"{sample.sample_ID}_{gene}_2"
+			hap2_name = f"{sample_ID}_{gene}_2"
 			hap2_seq = haplotypes[1]
 
 			if feat == "gene":
