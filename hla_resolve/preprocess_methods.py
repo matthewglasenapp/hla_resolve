@@ -5,47 +5,41 @@ import gzip
 import shutil
 from Bio import SeqIO
 
-# Absolute path to the directory containing this script
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-
-# Path to the data directory bundled with the script
-DATA_DIR = os.path.join(SCRIPT_DIR, "data")
-
 # Input file paths
 # Pangenome graph reference info 
 reference_gbz="/hb/scratch/ogarci12/hybridcapture_pangenome/ref/hprc-v1.0-mc-grch38-minaf.0.1.gbz"
 ref_paths="/hb/scratch/ogarci12/hybridcapture_pangenome/ref/hprc-v1.0-mc-grch38-minaf.0.1.dict"
 
 # Use reference fasta with no alternate contigs.
-# reference_fasta = os.path.join(DATA_DIR, "reference/GCA_000001405.15_GRCh38_no_alt_analysis_set.fa")
-# reference_fasta = os.path.join(DATA_DIR, "reference/GRCh38_primary_only.fa")
+# reference_fasta = os.path.join(sample.data_dir, "reference/GCA_000001405.15_GRCh38_no_alt_analysis_set.fa")
+# reference_fasta = os.path.join(sample.data_dir, "reference/GRCh38_primary_only.fa")
 # Rename fasta headers
 # sed 's/^>GRCh38\.chr/>chr/' /hb/scratch/ogarci12/hybridcapture_pangenome/ref/hprc-v1.0-mc-grch38-minaf.0.1.fa > /hb/groups/cornejo_lab/matt/hla_capture/input_data/reference/hprc-v1.0-chr-renamed.fa
 
 # Reference to use after mapping to graph and surjecting to GRCh38
-# reference_fasta = os.path.join(DATA_DIR, "reference/hprc-v1.0-chr-renamed.fa")
+# reference_fasta = os.path.join(sample.data_dir, "reference/hprc-v1.0-chr-renamed.fa")
 
 # Referencew with added Y scaffold!
-reference_fasta = os.path.join(DATA_DIR, "reference/augmented_hg38.fa")
+reference_fasta = os.path.join(sample.data_dir, "reference/augmented_hg38.fa")
 
 # DeepVariant sif file
-deepvariant_sif = os.path.join(DATA_DIR, "deepvariant_sif/deepvariant.sif")
+deepvariant_sif = os.path.join(sample.data_dir, "deepvariant_sif/deepvariant.sif")
 
 # Path to vg install
 vg = "/hb/scratch/ogarci12/hybridcapture_pangenome/vg"
 
 # GRCh38 tandem repeat mask file for pbsv
 # Downloaded from https://github.com/PacificBiosciences/pbsv/blob/master/annotations/human_GRCh38_no_alt_analysis_set.trf.bed
-tandem_repeat_bed = os.path.join(DATA_DIR, "repeats_bed/human_GRCh38_no_alt_analysis_set.trf.bed")
+tandem_repeat_bed = os.path.join(sample.data_dir, "repeats_bed/human_GRCh38_no_alt_analysis_set.trf.bed")
 
-chr6_bed = os.path.join(DATA_DIR, "reference/chr6.bed")
+chr6_bed = os.path.join(sample.data_dir, "reference/chr6.bed")
 
 mosdepth_regions_file = "/hb/scratch/mglasena/test_hla_resolve/hla_resolve/hla_resolve/hla_genes.bed"
 
 # GRCh38 tandem repeat definition file for pbtrgt
 # Downloaded from https://zenodo.org/records/8329210
-# pbtrgt_repeat_file = os.path.join(DATA_DIR, "repeats_bed/polymorphic_repeats.hg38.bed")
-pbtrgt_repeat_file = os.path.join(DATA_DIR, "repeats_bed/test_chr6_polymorphic_repeats.hg38.bed")
+# pbtrgt_repeat_file = os.path.join(sample.data_dir, "repeats_bed/polymorphic_repeats.hg38.bed")
+pbtrgt_repeat_file = os.path.join(sample.data_dir, "repeats_bed/test_chr6_polymorphic_repeats.hg38.bed")
 
 # Transposase mosaic end binding sequence
 # The TE sequence (and its reverse complement) introduced during tagmentation still needs to be removed
