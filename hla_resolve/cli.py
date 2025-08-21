@@ -74,8 +74,7 @@ min_reads_sample = 100
 # Require that mean read length is at least 300 bp or higher
 min_read_length = 300
 
-# IPD/IMGT HLA XML file
-IMGT_XML = "/hb/scratch/mglasena/test_hla_resolve/hla_resolve/hla_resolve/hla.xml"
+# IPD/IMGT HLA XML file is now a class variable in the Samples class
 
 # Ensure all required tools are installed and executable
 def check_required_commands():    
@@ -113,9 +112,82 @@ def check_required_commands():
 		print("\n\n")
 
 class Samples:
+    # Class variables for reference file paths
+    reference_fasta = None
+    deepvariant_sif = None
+    tandem_repeat_bed = None
+    chr6_bed = None
+    pbtrgt_repeat_file = None
+    
+    # Class variables for other hardcoded paths and constants
+    # Pangenome graph reference info 
+    reference_gbz = "/hb/scratch/ogarci12/hybridcapture_pangenome/ref/hprc-v1.0-mc-grch38-minaf.0.1.gbz"
+    ref_paths = "/hb/scratch/ogarci12/hybridcapture_pangenome/ref/hprc-v1.0-mc-grch38-minaf.0.1.dict"
+    vg = "/hb/scratch/ogarci12/hybridcapture_pangenome/vg"
+    mosdepth_regions_file = "/hb/scratch/mglasena/test_hla_resolve/hla_resolve/hla_resolve/hla_genes.bed"
+    # Transposase mosaic end binding sequence
+    # The TE sequence (and its reverse complement) introduced during tagmentation still needs to be removed
+    # Adapters and barcodes were removed by PacBio with lima
+    me = "AGATGTGTATAAGAGACAG"
+    me_rc = "CTGTCTCTTATACACATCT"
+    longphase = "/hb/home/mglasena/software/longphase/longphase_linux-x64"
+    prowler_trimmer = "/hb/home/mglasena/software/ProwlerTrimmer/TrimmerLarge.py"
+    sawfish = "/hb/home/mglasena/software/sawfish-v2.0.3-x86_64-unknown-linux-gnu/bin/sawfish"
+    clair3_ont_model_path = "/hb/home/mglasena/.conda/envs/clair3/bin/models/r941_prom_sup_g5014"
+    clair3_hifi_model_path = "/hb/home/mglasena/.conda/envs/clair3/bin/models/hifi_revio"
+    # Coverage Thresholds
+    # Might have to relax if you didn't get the flanking regions of the gene (i.e., UTR)
+    depth_thresh = 30
+    prop_20x_thresh = 0.8
+    prop_30x_thresh = 0.8
+    
+    # Additional paths from reconstruct_fasta_methods.py
+    vcf2fasta_script = "/hb/scratch/mglasena/vcf2fasta/vcf2fasta.py"
+    reference_genome = "/hb/groups/cornejo_lab/matt/hla_capture/input_data/reference/GCA_000001405.15_GRCh38_no_alt_analysis_set.fa"
+    gff_dir = "/hb/groups/cornejo_lab/matt/hla_capture/input_data/hla_gff/"
+    hla_genes_regions_file = "/hb/scratch/mglasena/test_hla_resolve/hla_resolve/hla_resolve/hla_genes.bed"
+    
+    # Additional paths and constants from investigate_haploblocks_methods.py
+    genes_bed = "/hb/groups/cornejo_lab/matt/hla_capture/input_data/reference/parse_haploblocks_bed.bed"
+    genes_of_interest = ("HLA-A", "HLA-B", "HLA-C", "HLA-DRB1", "HLA-DQA1", "HLA-DQA2", "HLA-DQB1", "HLA-DQB2", "HLA-DPA1", "HLA-DPB1")
+    # Extended MHC coordinates
+    mhc_start = 29555628
+    mhc_stop = 33409896
+    
+    # IPD/IMGT HLA XML file
+    IMGT_XML = "/hb/scratch/mglasena/test_hla_resolve/hla_resolve/hla_resolve/hla.xml"
+    
     def __init__(self, input_file, sample_name, platform, output_dir, 
                  aligner, genotyper, trim_adapters=False, adapter_file=None, 
                  threads=1, read_group_string=None, clean_up=False):
+        
+        # Set the class variables based on data_dir
+        if not Samples.reference_fasta:
+            data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+            
+            # Use reference fasta with no alternate contigs.
+            # reference_fasta = os.path.join(data_dir, "reference/GCA_000001405.15_GRCh38_no_alt_analysis_set.fa")
+            # reference_fasta = os.path.join(data_dir, "reference/GRCh38_primary_only.fa")
+            # Rename fasta headers
+            # sed 's/^>GRCh38\.chr/>chr/' /hb/scratch/ogarci12/hybridcapture_pangenome/ref/hprc-v1.0-mc-grch38-minaf.0.1.fa > /hb/groups/cornejo_lab/matt/hla_capture/input_data/reference/hprc-v1.0-chr-renamed.fa
+            # Reference to use after mapping to graph and surjecting to GRCh38
+            # reference_fasta = os.path.join(data_dir, "reference/hprc-v1.0-chr-renamed.fa")
+            # Reference with added Y scaffold!
+            Samples.reference_fasta = os.path.join(data_dir, "reference/augmented_hg38.fa")
+            
+            # DeepVariant sif file
+            Samples.deepvariant_sif = os.path.join(data_dir, "deepvariant_sif/deepvariant.sif")
+            
+            # GRCh38 tandem repeat mask file for pbsv
+            # Downloaded from https://github.com/PacificBiosciences/pbsv/blob/master/annotations/human_GRCh38_no_alt_analysis_set.trf.bed
+            Samples.tandem_repeat_bed = os.path.join(data_dir, "repeats_bed/human_GRCh38_no_alt_analysis_set.trf.bed")
+            
+            # chr6 bed file for clair3
+            Samples.chr6_bed = os.path.join(data_dir, "reference/chr6.bed")
+            
+            # GRCh38 tandem repeat definition file for pbtrgt
+            # Downloaded from https://zenodo.org/records/8329210
+            Samples.pbtrgt_repeat_file = os.path.join(data_dir, "repeats_bed/test_chr6_polymorphic_repeats.hg38.bed")
         
         # data_dir points directly to the data/ subdirectory
         self.data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")

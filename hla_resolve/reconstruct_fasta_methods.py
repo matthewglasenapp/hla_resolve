@@ -4,12 +4,7 @@ import pysam
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio import SeqIO
-
-vcf2fasta_script = "/hb/scratch/mglasena/vcf2fasta/vcf2fasta.py"
-reference_genome = "/hb/groups/cornejo_lab/matt/hla_capture/input_data/reference/GCA_000001405.15_GRCh38_no_alt_analysis_set.fa"
-gff_dir = "/hb/groups/cornejo_lab/matt/hla_capture/input_data/hla_gff/"
-
-hla_genes_regions_file = "/hb/scratch/mglasena/test_hla_resolve/hla_resolve/hla_resolve/hla_genes.bed"
+from hla_resolve.cli import Samples
 
 DNA_bases = {"A", "T", "G", "C"}
 stop_codons = ["TAA", "TAG", "TGA"]
@@ -116,7 +111,7 @@ def filter_vcf(sample):
 	# Intersect unphased PASS heterozygous genotypes from the fail-filter vcf with HLA BED to get overlapping variants that could not bee applied
 	unphased_overlap_tsv = os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".unphased.tsv")
 	subprocess.run(
-		f'bedtools intersect -a {pass_unphased} -b {hla_genes_regions_file} -wa -wb -header > {unphased_overlap_tsv}',
+		f'bedtools intersect -a {pass_unphased} -b {Samples.hla_genes_regions_file} -wa -wb -header > {unphased_overlap_tsv}',
 		shell=True, check=True
 	)
 	
@@ -182,11 +177,11 @@ def run_vcf2fasta(sample, gene, feature):
 	out_dir = os.path.join(sample.vcf2fasta_out_dir, gene_id)
 	
 	if feature == "CDS":
-		input_gff = os.path.join(gff_dir, gene_id + "_cds_sorted.gff3")
-		vcf2fasta_cmd = f"python3 {vcf2fasta_script} --fasta {reference_genome} --vcf {input_vcf} --gff {input_gff} -o {out_dir} --feat CDS --blend"
+		input_gff = os.path.join(Samples.gff_dir, gene_id + "_cds_sorted.gff3")
+		vcf2fasta_cmd = f"python3 {Samples.vcf2fasta_script} --fasta {Samples.reference_genome} --vcf {input_vcf} --gff {input_gff} -o {out_dir} --feat CDS --blend"
 	elif feature == "gene":
-		input_gff = os.path.join(gff_dir, gene_id + "_gene.gff3")
-		vcf2fasta_cmd = f"python3 {vcf2fasta_script} --fasta {reference_genome} --vcf {input_vcf} --gff {input_gff} -o {out_dir} --feat gene"
+		input_gff = os.path.join(Samples.gff_dir, gene_id + "_gene.gff3")
+		vcf2fasta_cmd = f"python3 {Samples.vcf2fasta_script} --fasta {Samples.reference_genome} --vcf {input_vcf} --gff {input_gff} -o {out_dir} --feat gene"
 	
 	subprocess.run(vcf2fasta_cmd, shell = True, check = True)
 
