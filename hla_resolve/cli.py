@@ -2,12 +2,12 @@ import time
 import textwrap
 import argparse
 import sys
-from sample import Samples
+from sample_manager import Samples
 from utils import check_required_commands
-from sample import build_workflow_config
-from ont_workflow import preprocess_ont_sample
-from pacbio_workflow import preprocess_pacbio_sample
-from resolve_alleles import resolve_alleles
+from sample_manager import build_workflow_config
+from ont_pipeline import preprocess_ont_sample
+from pacbio_pipeline import preprocess_pacbio_sample
+from resolve_alleles_pipeline import resolve_alleles
 
 def main():
     parser = argparse.ArgumentParser(
