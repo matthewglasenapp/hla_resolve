@@ -299,6 +299,7 @@ class Samples:
         
         # Phasing output files
         self.phased_summary = os.path.join(self.phased_vcf_dir, f"{self.sample_ID}.phased.summary.txt")
+        self.phased_stats = os.path.join(self.phased_vcf_dir, f"{self.sample_ID}.phased.stats.txt")
         self.phased_blocks = os.path.join(self.phased_vcf_dir, f"{self.sample_ID}.phased.blocks.txt")
         self.phased_haploblocks = os.path.join(self.phased_vcf_dir, f"{self.sample_ID}.phased.haploblocks.txt")
         self.phased_haploblocks_gtf = os.path.join(self.phased_vcf_dir, f"{self.sample_ID}.phased.haploblocks.gtf")
@@ -382,6 +383,7 @@ def build_workflow_config(sample):
 		'longphase_sv_vcf': sample.longphase_sv_vcf,
 		'longphase_merged_vcf': sample.longphase_merged_vcf,
 		'phased_summary': sample.phased_summary,
+		'phased_stats': sample.phased_stats,
 		'phased_blocks': sample.phased_blocks,
 		'phased_haploblocks': sample.phased_haploblocks,
 		'phased_haploblocks_gtf': sample.phased_haploblocks_gtf,
