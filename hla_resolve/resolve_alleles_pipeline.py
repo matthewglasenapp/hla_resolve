@@ -148,7 +148,7 @@ def resolve_alleles(config):
 	os.chdir(config['hla_typing_dir'])
 	
 	classify_hla_alleles(
-		imgt_xml=config['IMGT_XML'], 
+		reference_xml_file=config['IMGT_XML'], 
 		hla_fasta_dir=config['hla_fasta_dir'], 
 		sample_ID=config['sample_ID']
 	)
