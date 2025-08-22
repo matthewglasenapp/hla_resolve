@@ -17,6 +17,7 @@ from preprocess_methods import (
 )
 
 def preprocess_pacbio_sample(config):
+	pass
 	# trim_adapters(
 	# 	adapters=config['adapters'],
 	# 	input_file=config['raw_fastq'],
@@ -128,38 +129,38 @@ def preprocess_pacbio_sample(config):
 	# 	reference_fasta=config['reference_fasta']
 	# )
 	
-	genotype_tandem_repeats(
-		input_bam=config['hg38_rmdup_chr6_bam'],
-		output_vcf=config['tr_vcf'],
-		pbtrgt_dir=config['pbtrgt_dir'],
-		threads=config['threads'],
-		reference_fasta=config['reference_fasta'],
-		pbtrgt_repeat_file=config['pbtrgt_repeat_file'],
-		original_cwd=config['ORIGINAL_CWD']
-	)
+	# genotype_tandem_repeats(
+	# 	input_bam=config['hg38_rmdup_chr6_bam'],
+	# 	output_vcf=config['tr_vcf'],
+	# 	pbtrgt_dir=config['pbtrgt_dir'],
+	# 	threads=config['threads'],
+	# 	reference_fasta=config['reference_fasta'],
+	# 	pbtrgt_repeat_file=config['pbtrgt_repeat_file'],
+	# 	original_cwd=config['ORIGINAL_CWD']
+	# )
 	
-	phase_genotypes_hiphase(
-		input_bam=config['hg38_rmdup_chr6_bam'],
-		input_snv=config['snv_vcf'],
-		input_SV=config['sv_vcf'],
-		input_TR=config['tr_vcf'],
-		output_bam=config['hg38_rmdup_chr6_haplotag_bam'],
-		output_snv=config['hiphase_snv_vcf'],
-		output_SV=config['hiphase_sv_vcf'],
-		output_TR=config['hiphase_tr_vcf'],
-		output_summary_file=config['phased_summary'],
-		output_blocks_file=config['phased_blocks'],
-		output_stats_file=config['phased_stats'],
-		threads=config['threads'],
-		reference_fasta=config['reference_fasta'],
-		phased_vcf_dir=config['phased_vcf_dir'],
-		sample_ID=config['sample_ID']
-	)
+	# phase_genotypes_hiphase(
+	# 	input_bam=config['hg38_rmdup_chr6_bam'],
+	# 	input_snv=config['snv_vcf'],
+	# 	input_SV=config['sv_vcf'],
+	# 	input_TR=config['tr_vcf'],
+	# 	output_bam=config['hg38_rmdup_chr6_haplotag_bam'],
+	# 	output_snv=config['hiphase_snv_vcf'],
+	# 	output_SV=config['hiphase_sv_vcf'],
+	# 	output_TR=config['hiphase_tr_vcf'],
+	# 	output_summary_file=config['phased_summary'],
+	# 	output_blocks_file=config['phased_blocks'],
+	# 	output_stats_file=config['phased_stats'],
+	# 	threads=config['threads'],
+	# 	reference_fasta=config['reference_fasta'],
+	# 	phased_vcf_dir=config['phased_vcf_dir'],
+	# 	sample_ID=config['sample_ID']
+	# )
 	
-	merge_hiphase_vcfs(
-		input_snv=config['hiphase_snv_vcf'],
-		input_SV=config['hiphase_sv_vcf'],
-		input_TR=config['hiphase_tr_vcf'],
-		output_vcf=config['hiphase_joint_vcf'],
-		reference_fasta=config['reference_fasta']
-	)
+	# merge_hiphase_vcfs(
+	# 	input_snv=config['hiphase_snv_vcf'],
+	# 	input_SV=config['hiphase_sv_vcf'],
+	# 	input_TR=config['hiphase_tr_vcf'],
+	# 	output_vcf=config['hiphase_joint_vcf'],
+	# 	reference_fasta=config['reference_fasta']
+	# )

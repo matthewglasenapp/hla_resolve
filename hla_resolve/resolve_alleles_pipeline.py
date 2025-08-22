@@ -67,10 +67,10 @@ def resolve_alleles(config):
 		haploblock_file = config['phased_haploblocks']
 	
 	heterozygous_sites, haploblock_list = parse_haploblocks(
-		phased_vcf=phased_vcf,
-		haploblock_file=haploblock_file,
-		sample_ID=config['sample_ID'],
+		input_vcf=phased_vcf,
+		input_haploblock_file=haploblock_file,
 		platform=config['platform'],
+		sample_ID=config['sample_ID'],
 		mhc_start=config['mhc_start'],
 		mhc_stop=config['mhc_stop']
 	)
