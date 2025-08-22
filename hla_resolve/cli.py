@@ -29,6 +29,10 @@ from hla_resolve.preprocess_methods import (
     mark_duplicates_picard
 )
 
+# Workflow functions
+from hla_resolve.ont_workflow import preprocess_ont_sample
+from hla_resolve.pacbio_workflow import preprocess_pacbio_sample
+
 # Variant calling functions (platform/genotyper dependent)
 from hla_resolve.preprocess_methods import (
     call_variants_bcftools,
@@ -392,121 +396,6 @@ class Samples:
         for item in results:
             print(item)
 
-def run_coverage_analysis(sample):
-    run_mosdepth(
-        input_file=os.path.join(sample.mapped_bam_dir, sample.sample_ID +".hg38.rmdup.chr6.bam"),
-        output_dir=sample.mosdepth_dir,
-        sample_ID=sample.sample_ID,
-        regions_file=Samples.mosdepth_regions_file,
-        threads=sample.threads
-    )
-    
-    sufficient_coverage_genes = parse_mosdepth(
-        regions_file=os.path.join(sample.mosdepth_dir, sample.sample_ID + ".regions.bed.gz"),
-        thresholds_file=os.path.join(sample.mosdepth_dir, sample.sample_ID + ".thresholds.bed.gz"), 
-        depth_thresh=Samples.depth_thresh,
-        prop_20x_thresh=Samples.prop_20x_thresh,
-        prop_30x_thresh=Samples.prop_30x_thresh
-    )
-    return sufficient_coverage_genes
-
-def reconstruct_fasta_sequences(sample, sufficient_coverage_genes):
-    if sample.platform == "PACBIO":
-        phased_vcf = os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".hiphase.joint.vcf.gz")
-        haploblock_file = os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".phased.blocks.txt")
-    elif sample.platform == "ONT":
-        phased_vcf = os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".longphase.vcf.gz")
-        haploblock_file = os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".phased.haploblocks.txt")
-    
-    heterozygous_sites, haploblock_list = parse_haploblocks(
-        phased_vcf=phased_vcf,
-        haploblock_file=haploblock_file,
-        sample_ID=sample.sample_ID,
-        platform=sample.platform,
-        mhc_start=Samples.mhc_start,
-        mhc_stop=Samples.mhc_stop
-    )
-
-    phased_genes = evaluate_gene_haploblocks(
-        phased_genes_file=os.path.join(sample.parsed_haploblock_dir, f"phased_genes.tsv"),
-        incomplete_genes_file=os.path.join(sample.parsed_haploblock_dir, f"incomplete.csv"),
-        sample_ID=sample.sample_ID,
-        genes_bed=Samples.genes_bed,  
-        genes_of_interest=Samples.genes_of_interest,
-        heterozygous_sites=heterozygous_sites, 
-        haploblock_list=haploblock_list)
-    
-    if sample.platform == "PACBIO":
-        input_vcf = os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".hiphase.joint.vcf.gz")
-    elif sample.platform == "ONT":
-        input_vcf = os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".longphase.merged.vcf.gz")
-    
-    filter_vcf(
-        input_vcf=input_vcf,
-        pass_vcf=os.path.join(sample.phased_vcf_dir, f"{sample.sample_ID}_PASS.vcf.gz"),
-        fail_vcf=os.path.join(sample.phased_vcf_dir, f"{sample.sample_ID}_FAIL.vcf.gz"),
-        pass_unphased_vcf=os.path.join(sample.phased_vcf_dir, f"{sample.sample_ID}_PASS_UNPHASED.vcf.gz"),
-        filtered_vcf=os.path.join(sample.filtered_vcf_dir, f"{sample.sample_ID}_filtered.vcf.gz"),
-        unphased_tsv=os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".unphased.tsv"),
-        platform=sample.platform,
-        genotyper=sample.genotyper,
-        hla_genes_regions_file=Samples.hla_genes_regions_file
-    )
-    
-    # Reset self.vcf2fasta_out_dir for sequential runs 
-    if any(os.scandir(sample.vcf2fasta_out_dir)):
-        shutil.rmtree(sample.vcf2fasta_out_dir)
-        os.makedirs(sample.vcf2fasta_out_dir, exist_ok=True)
-
-    for gene in phased_genes:
-        if gene in Samples.genes_of_interest and gene in sufficient_coverage_genes:
-            run_vcf2fasta(
-                vcf2fasta=Samples.vcf2fasta_script,
-                input_vcf=os.path.join(sample.filtered_vcf_dir, f"{sample.sample_ID}_filtered.vcf.gz"),
-                output_dir=os.path.join(sample.vcf2fasta_out_dir, gene),
-                input_gff=os.path.join(sample.gff_dir, gene + "_cds_sorted.gff3"),
-                reference_genome=Samples.reference_genome,
-                gene=gene, 
-                feature="gene")
-            
-            run_vcf2fasta(
-                vcf2fasta=Samples.vcf2fasta_script,
-                input_vcf=os.path.join(sample.filtered_vcf_dir, f"{sample.sample_ID}_filtered.vcf.gz"),
-                output_dir=os.path.join(sample.vcf2fasta_out_dir, gene),
-                input_gff=os.path.join(sample.gff_dir, gene + "_gene.gff3"),
-                reference_genome=Samples.reference_genome,
-                gene=gene, 
-                feature="CDS")
-    
-    parse_fastas(
-        vcf2fasta_out_dir=sample.vcf2fasta_out_dir,
-        output_gene_fasta=os.path.join(sample.hla_fasta_dir, sample.sample_ID + "_HLA_haplotypes_gene.fasta"),
-        output_cds_fasta=os.path.join(sample.hla_fasta_dir, sample.sample_ID + "_HLA_haplotypes_CDS.fasta"),
-        DNA_bases=Samples.DNA_bases,
-        stop_codons=Samples.stop_codons
-    )
-
-    return phased_genes
-
-def type_hla_alleles(sample, phased_genes):
-    original_dir = os.getcwd()
-    os.chdir(sample.hla_typing_dir)
-    # Lazy import to avoid overhead when not using HLA typing
-    from hla_resolve.hla_typer import main as classify_hla_alleles
-    classify_hla_alleles(
-        imgt_xml=Samples.IMGT_XML, 
-        hla_fasta_dir=sample.hla_fasta_dir, 
-        sample_ID=sample.sample_ID
-    )
-    sample.print_results()
-
-    if sample.clean_up:
-        for directory in sample.combined_dirs:
-            if os.path.exists(directory) and directory != sample.hla_typing_dir:
-                shutil.rmtree(directory)
-    
-    os.chdir(original_dir)
-
 def main():
     parser = argparse.ArgumentParser(
     description="Run HLA-Resolve",
@@ -543,9 +432,33 @@ def main():
     sample = Samples(input_file=args.input_file, sample_name=args.sample_name, platform=args.platform, output_dir=args.output_dir, aligner=args.aligner, genotyper=args.genotyper, trim_adapters=args.trim_adapters, adapter_file=args.adapter_file, threads=args.threads, read_group_string=args.read_group_string, clean_up=args.clean_up)
 
     if sample.platform == "PACBIO":
-        preprocess_pacbio_sample(sample)
+        preprocess_pacbio_sample(
+            sample=sample,
+            reference_fasta=Samples.reference_fasta,
+            vg=Samples.vg,
+            reference_gbz=Samples.reference_gbz,
+            ref_paths=Samples.ref_paths,
+            deepvariant_sif=Samples.deepvariant_sif,
+            chr6_bed=Samples.chr6_bed,
+            clair3_ont_model_path=Samples.clair3_ont_model_path,
+            clair3_hifi_model_path=Samples.clair3_hifi_model_path,
+            sawfish=Samples.sawfish,
+            pbtrgt_repeat_file=Samples.pbtrgt_repeat_file
+        )
     elif sample.platform == "ONT":
-        preprocess_ont_sample(sample)
+        preprocess_ont_sample(
+            sample=sample,
+            reference_fasta=Samples.reference_fasta,
+            vg=Samples.vg,
+            reference_gbz=Samples.reference_gbz,
+            ref_paths=Samples.ref_paths,
+            deepvariant_sif=Samples.deepvariant_sif,
+            chr6_bed=Samples.chr6_bed,
+            clair3_ont_model_path=Samples.clair3_ont_model_path,
+            clair3_hifi_model_path=Samples.clair3_hifi_model_path,
+            longphase=Samples.longphase,
+            tandem_repeat_bed=Samples.tandem_repeat_bed
+        )
     
     sufficient_coverage_genes = run_coverage_analysis(sample)
     
