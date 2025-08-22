@@ -15,6 +15,12 @@ from reconstruct_fasta_methods import (
 )
 from hla_typer import main as classify_hla_alleles
 
+def convert_gene_name_for_gff(gene_name):
+	"""
+	Convert gene name from config format (HLA-A) to GFF filename format (hla_a)
+	"""
+	return gene_name.lower().replace('-', '_')
+
 def print_results(config):
 	"""
 	Print the HLA typing results from the output file.
@@ -108,11 +114,12 @@ def resolve_alleles(config):
 
 	for gene in phased_genes:
 		if gene in config['genes_of_interest'] and gene in sufficient_coverage_genes:
+			gff_gene_name = convert_gene_name_for_gff(gene)
 			run_vcf2fasta(
 				vcf2fasta=config['vcf2fasta_script'],
 				input_vcf=config['filtered_vcf'],
 				output_dir=os.path.join(config['vcf2fasta_out_dir'], gene),
-				input_gff=os.path.join(config['gff_dir'], gene + "_cds_sorted.gff3"),
+				input_gff=os.path.join(config['gff_dir'], gff_gene_name + "_cds_sorted.gff3"),
 				reference_genome=config['reference_genome'],
 				gene=gene, 
 				feature="gene")
@@ -121,7 +128,7 @@ def resolve_alleles(config):
 				vcf2fasta=config['vcf2fasta_script'],
 				input_vcf=config['filtered_vcf'],
 				output_dir=os.path.join(config['vcf2fasta_out_dir'], gene),
-				input_gff=os.path.join(config['gff_dir'], gene + "_gene.gff3"),
+				input_gff=os.path.join(config['gff_dir'], gff_gene_name + "_gene.gff3"),
 				reference_genome=config['reference_genome'],
 				gene=gene, 
 				feature="CDS")
