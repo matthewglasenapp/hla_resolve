@@ -11,7 +11,7 @@ from config import (
 	mosdepth_regions_file, depth_thresh, prop_20x_thresh, prop_30x_thresh,
 	mhc_start, mhc_stop, genes_bed, genes_of_interest, genes_of_interest_extended,
 	hla_genes_regions_file, vcf2fasta_script, reference_genome, 
-	DNA_bases, stop_codons, IMGT_XML
+	DNA_bases, stop_codons, IMGT_XML, gff_dir
 )
 
 class Samples:
@@ -356,7 +356,7 @@ def build_workflow_config(sample):
 		'vcf2fasta_out_dir': sample.vcf2fasta_out_dir,
 		'hla_fasta_dir': sample.hla_fasta_dir,
 		'hla_typing_dir': sample.hla_typing_dir,
-		'gff_dir': sample.gff_dir,
+		'gff_dir': gff_dir,  # Use global GFF directory from config.py
 		'clean_up': sample.clean_up,
 		
 		# File paths (pre-constructed to avoid os.path.join() in workflows)
