@@ -5,6 +5,7 @@ import sys
 from sample import Samples
 from config import *
 from utils import check_required_commands
+from workflow_config import build_workflow_config
 from ont_workflow import preprocess_ont_sample
 from pacbio_workflow import preprocess_pacbio_sample
 from resolve_alleles import resolve_alleles
@@ -44,9 +45,12 @@ def main():
     
     sample = Samples(input_file=args.input_file, sample_name=args.sample_name, platform=args.platform, output_dir=args.output_dir, aligner=args.aligner, genotyper=args.genotyper, trim_adapters=args.trim_adapters, adapter_file=args.adapter_file, threads=args.threads, read_group_string=args.read_group_string, clean_up=args.clean_up)
 
-    if sample.platform == "PACBIO":
+    # Build workflow configuration from sample object
+    workflow_config = build_workflow_config(sample)
+    
+    if workflow_config['platform'] == "PACBIO":
         preprocess_pacbio_sample(
-            sample=sample,
+            config=workflow_config,
             reference_fasta=Samples.reference_fasta,
             vg=vg,
             reference_gbz=reference_gbz,
@@ -58,9 +62,9 @@ def main():
             sawfish=sawfish,
             pbtrgt_repeat_file=Samples.pbtrgt_repeat_file
         )
-    elif sample.platform == "ONT":
+    elif workflow_config['platform'] == "ONT":
         preprocess_ont_sample(
-            sample=sample,
+            config=workflow_config,
             reference_fasta=Samples.reference_fasta,
             vg=vg,
             reference_gbz=reference_gbz,
@@ -74,7 +78,7 @@ def main():
         )
     
     resolve_alleles(
-        sample=sample,
+        config=workflow_config,
         mosdepth_regions_file=mosdepth_regions_file,
         depth_thresh=depth_thresh,
         prop_20x_thresh=prop_20x_thresh,
