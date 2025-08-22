@@ -93,9 +93,9 @@ def resolve_alleles(config):
 		input_vcf=input_vcf,
 		pass_vcf=config['pass_vcf'],
 		fail_vcf=config['fail_vcf'],
-		pass_unphased_vcf=config['pass_unphased_vcf'],
+		pass_unphased=config['pass_unphased_vcf'],
 		filtered_vcf=config['filtered_vcf'],
-		unphased_tsv=config['unphased_tsv'],
+		unphased_overlap_tsv=config['unphased_tsv'],
 		platform=config['platform'],
 		genotyper=config['genotyper'],
 		hla_genes_regions_file=config['hla_genes_regions_file']
