@@ -13,6 +13,21 @@ from reconstruct_fasta_methods import (
 	run_vcf2fasta,
 	parse_fastas
 )
+from hla_typer import main as classify_hla_alleles
+
+def print_results(config):
+	"""
+	Print the HLA typing results from the output file.
+	"""
+	results_file = os.path.join(config['hla_typing_dir'], "refined_allele_output.csv")
+	if os.path.exists(results_file):
+		with open(results_file, "r") as f:
+			results = f.read().splitlines()[1].split(",")[1:]
+		print(f"{config['sample_ID']} HLA Star Allele Calls:")
+		for item in results:
+			print(f"  {item}")
+	else:
+		print(f"Warning: Results file not found at {results_file}")
 
 def resolve_alleles(config):
 	"""
@@ -20,31 +35,12 @@ def resolve_alleles(config):
 	1. Coverage analysis
 	2. FASTA sequence reconstruction 
 	3. HLA typing
+	4. Print results
 	"""
 	print("Starting HLA allele resolution workflow...")
 	
 	# Step 1: Coverage analysis
 	print("Step 1: Running coverage analysis...")
-	sufficient_coverage_genes = run_coverage_analysis(config=config)
-	
-	# Step 2: FASTA reconstruction
-	print("Step 2: Reconstructing FASTA sequences...")
-	phased_genes = reconstruct_fasta_sequences(
-		config=config,
-		sufficient_coverage_genes=sufficient_coverage_genes
-	)
-	
-	# Step 3: HLA typing
-	print("Step 3: Typing HLA alleles...")
-	type_hla_alleles(
-		config=config,
-		phased_genes=phased_genes
-	)
-	
-	print("HLA allele resolution workflow completed!")
-	return phased_genes
-
-def run_coverage_analysis(config):
 	run_mosdepth(
 		input_file=config['hg38_rmdup_chr6_bam'],
 		output_dir=config['mosdepth_dir'],
@@ -60,9 +56,9 @@ def run_coverage_analysis(config):
 		prop_20x_thresh=config['prop_20x_thresh'],
 		prop_30x_thresh=config['prop_30x_thresh']
 	)
-	return sufficient_coverage_genes
-
-def reconstruct_fasta_sequences(config, sufficient_coverage_genes):
+	
+	# Step 2: FASTA reconstruction
+	print("Step 2: Reconstructing FASTA sequences...")
 	if config['platform'] == "PACBIO":
 		phased_vcf = config['hiphase_joint_vcf']
 		haploblock_file = config['phased_blocks']
@@ -137,39 +133,23 @@ def reconstruct_fasta_sequences(config, sufficient_coverage_genes):
 		DNA_bases=config['DNA_bases'],
 		stop_codons=config['stop_codons']
 	)
-
-	return phased_genes
-
-def type_hla_alleles(config, phased_genes):
+	
+	# Step 3: HLA typing
+	print("Step 3: Typing HLA alleles...")
 	original_dir = os.getcwd()
 	os.chdir(config['hla_typing_dir'])
-	# Lazy import to avoid overhead when not using HLA typing
-	from hla_resolve.hla_typer import main as classify_hla_alleles
+	
 	classify_hla_alleles(
 		imgt_xml=config['IMGT_XML'], 
 		hla_fasta_dir=config['hla_fasta_dir'], 
 		sample_ID=config['sample_ID']
 	)
-	# Note: print_results() and clean_up functionality would need to be handled differently
-	# since we no longer have access to the sample object
-
-	if config.get('clean_up', False):
-		# Define directories to clean up - this would need to be passed in config
-		combined_dirs = [
-			config['fastq_raw_dir'],
-			config['fastq_trimmed_dir'],
-			config['mapped_bam_dir'],
-			config['genotypes_dir'],
-			config['sv_dir'],
-			config['phased_vcf_dir'],
-			config['mosdepth_dir'],
-			config['parsed_haploblock_dir'],
-			config['filtered_vcf_dir'],
-			config['vcf2fasta_out_dir']
-		]
-		for directory in combined_dirs:
-			if os.path.exists(directory) and directory != config['hla_typing_dir']:
-				shutil.rmtree(directory)
 	
 	os.chdir(original_dir)
+	
+	# Step 4: Print results
+	print("Step 4: Printing HLA typing results...")
+	print_results(config)
+	
+	print("HLA allele resolution workflow completed!")
 

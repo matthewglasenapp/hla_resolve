@@ -8,6 +8,7 @@ from sample_manager import build_workflow_config
 from ont_pipeline import preprocess_ont_sample
 from pacbio_pipeline import preprocess_pacbio_sample
 from resolve_alleles_pipeline import resolve_alleles
+from cleanup import cleanup_intermediate_files
 
 def main():
     parser = argparse.ArgumentParser(
@@ -53,6 +54,9 @@ def main():
         preprocess_ont_sample(config=workflow_config)
     
     resolve_alleles(config=workflow_config)
+    
+    # Clean up intermediate files if requested
+    cleanup_intermediate_files(config=workflow_config)
 
     end_time = time.time()
     elapsed_time = end_time - start_time
