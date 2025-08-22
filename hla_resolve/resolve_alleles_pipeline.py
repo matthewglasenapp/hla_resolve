@@ -119,7 +119,7 @@ def resolve_alleles(config):
 				vcf2fasta=config['vcf2fasta_script'],
 				input_vcf=config['filtered_vcf'],
 				output_dir=os.path.join(config['vcf2fasta_out_dir'], gene),
-				input_gff=os.path.join(config['gff_dir'], gff_gene_name + "_cds_sorted.gff3"),
+				input_gff=os.path.join(config['gff_dir'], gff_gene_name + "_gene.gff3"),
 				reference_genome=config['reference_genome'],
 				gene=gene, 
 				feature="gene")
@@ -128,7 +128,7 @@ def resolve_alleles(config):
 				vcf2fasta=config['vcf2fasta_script'],
 				input_vcf=config['filtered_vcf'],
 				output_dir=os.path.join(config['vcf2fasta_out_dir'], gene),
-				input_gff=os.path.join(config['gff_dir'], gff_gene_name + "_gene.gff3"),
+				input_gff=os.path.join(config['gff_dir'], gff_gene_name + "_cds_sorted.gff3"),
 				reference_genome=config['reference_genome'],
 				gene=gene, 
 				feature="CDS")
