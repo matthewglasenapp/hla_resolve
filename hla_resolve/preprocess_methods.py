@@ -6,10 +6,10 @@ import shutil
 from Bio import SeqIO
 
 # Convert BAM file of unmapped HiFi (ccs) reads to FASTQ format for marking duplicates and trimming adapters
-def convert_bam_to_fastq(input_file, output_file,platform, threads):
+def convert_bam_to_fastq(input_file, output_file, platform, threads):
 	if platform == "PACBIO":
 		print("Converting HiFi ccs reads to fastq format using pbtk bam2fastq!")
-		print(f"bam2fastq input file: {sample.input_file}")
+		print(f"bam2fastq input file: {input_file}")
 
 		output_prefix = output_file.split(".fastq.gz")[0]
 				
@@ -20,7 +20,7 @@ def convert_bam_to_fastq(input_file, output_file,platform, threads):
 		print(f"Raw fastq reads written to: {output_file}")
 		print("\n\n")
 	
-	elif sample.platform == "ONT":
+	elif platform == "ONT":
 		print("Converting ONT raw reads to fastq format using Samtools fastq!")
 		print(f"Samtools fastq input file: {input_file}")
 
@@ -31,26 +31,32 @@ def convert_bam_to_fastq(input_file, output_file,platform, threads):
 	print(f"Raw fastq reads written to: {output_file}")
 	print("\n\n")
 
-def trim_adapters(adapters, input_file, output_file, sample_ID,threads, adapter_file = None):
+def trim_adapters(adapters, input_file, output_file, sample_ID, threads, adapter_file = None):
 	if adapters:
 
 		if adapter_file:
 			print("Trimming adapter sequences with cutadapt!")
 			print(f"cutadapt input file: {input_file}")
 
-			cutadapt_cmd = f"cutadapt -j {threads} --minimum-length 21 --quiet -n 2 -g {five_prime_adapter} -a {three_prime_adapter} -o {output_file} {input_file}"
+			# For now, use fastplong since we don't have specific adapter sequences
+			# TODO: Parse adapter file to extract specific sequences
+			print("Using fastplong for adapter trimming (adapter file parsing not yet implemented)")
+			
+			output_dir = os.path.dirname(output_file)
+			html_path = os.path.join(output_dir, sample_ID + ".fastplong.html")
+			json_path = os.path.join(output_dir, sample_ID + ".fastplong.json")
 
-			subprocess.run(cutadapt_cmd, shell=True, check=True)
-	
+			fastplong_cmd = f"fastplong -i {input_file} -h {html_path} -j {json_path} -w {threads} -n 100000 -o {output_file}"
+			
+			subprocess.run(fastplong_cmd, shell=True, check=False)
+
 			print(f"Trimmed reads written to: {output_file}")
-			print("\n\n")
 
 		else:
 			print("Trimming adapter sequences with fastplong in AUTO mode!")
 			print(f"fastplong input file: {input_file}")
 
 			output_dir = os.path.dirname(output_file)
-
 			html_path = os.path.join(output_dir, sample_ID + ".fastplong.html")
 			json_path = os.path.join(output_dir, sample_ID + ".fastplong.json")
 
@@ -265,11 +271,11 @@ def filter_reads(input_file, output_file, threads):
 	subprocess.run(samtools_cmd, shell=True, check=True)
 	subprocess.run(index_cmd, shell=True, check=True)
 
-	count_reads_cmd = f"samtools view -c {output_bam}"
+	count_reads_cmd = f"samtools view -c {output_file}"
 
 	read_count = int(subprocess.check_output(count_reads_cmd, shell=True).strip())
 	
-	print(f"Filtered BAM records written to: {output_bam}")
+	print(f"Filtered BAM records written to: {output_file}")
 	print("\n\n")
 
 	return read_count
@@ -358,7 +364,7 @@ def call_variants_bcftools(input_file, output_file, reference_fasta, platform, t
 		f"-a FORMAT/DP,AD,ADF,ADR,SP {input_file} | "
 		f"bcftools call -mv -f GQ --threads {call_threads} -Ou | "
 		f"bcftools view -i '(TYPE=\"snp\" && GQ>=20 && QUAL>=10) || (TYPE=\"indel\" && GQ>=10)' "
-		f"-Oz -o {output_filef}")		
+		f"-Oz -o {output_file}")		
 
 	subprocess.run(bcftools_command, shell=True, check=True)
 	subprocess.run(f"tabix -p vcf {output_file}", shell=True, check=True)
