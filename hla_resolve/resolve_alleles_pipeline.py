@@ -76,13 +76,13 @@ def resolve_alleles(config):
 	)
 
 	phased_genes = evaluate_gene_haploblocks(
-		phased_genes_file=config['phased_genes_tsv'],
-		incomplete_genes_file=config['incomplete_genes_csv'],
+		output_file=config['phased_genes_tsv'],
+		incomplete_file=config['incomplete_genes_csv'],
 		sample_ID=config['sample_ID'],
 		genes_bed=config['genes_bed'],  
 		genes_of_interest=config['genes_of_interest'],
-		heterozygous_sites=heterozygous_sites, 
-		haploblock_list=haploblock_list)
+		het_sites=heterozygous_sites, 
+		haploblocks=haploblock_list)
 	
 	if config['platform'] == "PACBIO":
 		input_vcf = config['hiphase_joint_vcf']
