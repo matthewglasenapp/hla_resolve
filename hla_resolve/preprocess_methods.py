@@ -449,7 +449,12 @@ def genotype_tandem_repeats(input_bam, output_vcf, pbtrgt_dir, threads, referenc
 
 	print(f"trgt input file: {input_bam}")
 	
-	output_prefix = os.path.splitext(os.path.basename(output_vcf))[0]
+	# Extract the base name without any extensions
+	output_prefix = os.path.basename(output_vcf)
+	if output_prefix.endswith('.vcf.gz'):
+		output_prefix = output_prefix[:-7]  # Remove .vcf.gz
+	elif output_prefix.endswith('.vcf'):
+		output_prefix = output_prefix[:-4]  # Remove .vcf
 	
 	os.chdir(pbtrgt_dir)
 	
@@ -481,7 +486,25 @@ def phase_genotypes_hiphase(input_bam, input_snv, input_SV, input_TR, output_bam
 	print(f"Input SV: {input_SV}")
 	print(f"Input TR: {input_TR}")
 	
-	hiphase_cmd = f"hiphase --threads {threads} --ignore-read-groups --reference {reference_fasta} --bam {input_bam} --output-bam {output_bam} --vcf {input_snv} --output-vcf {output_snv} --vcf {input_SV} --output-vcf {output_SV} --vcf {input_TR} --output-vcf {output_TR} --stats-file {output_summary_file} --blocks-file {output_blocks_file} --summary-file {output_summary_file}"
+	# Check if input files exist
+	missing_files = []
+	if not os.path.exists(input_bam):
+		missing_files.append(f"BAM: {input_bam}")
+	if not os.path.exists(input_snv):
+		missing_files.append(f"SNV VCF: {input_snv}")
+	if not os.path.exists(input_SV):
+		missing_files.append(f"SV VCF: {input_SV}")
+	if not os.path.exists(input_TR):
+		missing_files.append(f"TR VCF: {input_TR}")
+	
+	if missing_files:
+		print(f"ERROR: Missing input files for HiPhase:")
+		for file in missing_files:
+			print(f"  - {file}")
+		print("Skipping HiPhase phasing step.")
+		return
+	
+	hiphase_cmd = f"hiphase --threads {threads} --ignore-read-groups --reference {reference_fasta} --bam {input_bam} --output-bam {output_bam} --vcf {input_snv} --output-vcf {output_snv} --vcf {input_SV} --output-vcf {output_SV} --vcf {input_TR} --output-vcf {output_TR} --stats-file {output_stats_file} --blocks-file {output_blocks_file} --summary-file {output_summary_file}"
 	
 	# Log HiPhase in own output file so it doesn't clog up STDOUT
 	hiphase_log = os.path.join(phased_vcf_dir, sample_ID + ".hiphase.log")

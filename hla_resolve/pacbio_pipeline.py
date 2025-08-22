@@ -128,15 +128,15 @@ def preprocess_pacbio_sample(config):
 	# 	reference_fasta=config['reference_fasta']
 	# )
 	
-	# genotype_tandem_repeats(
-	# 	input_bam=config['hg38_rmdup_chr6_bam'],
-	# 	output_vcf=config['tr_vcf'],
-	# 	pbtrgt_dir=config['pbtrgt_dir'],
-	# 	threads=config['threads'],
-	# 	reference_fasta=config['reference_fasta'],
-	# 	pbtrgt_repeat_file=config['pbtrgt_repeat_file'],
-	# 	original_cwd=config['ORIGINAL_CWD']
-	# )
+	genotype_tandem_repeats(
+		input_bam=config['hg38_rmdup_chr6_bam'],
+		output_vcf=config['tr_vcf'],
+		pbtrgt_dir=config['pbtrgt_dir'],
+		threads=config['threads'],
+		reference_fasta=config['reference_fasta'],
+		pbtrgt_repeat_file=config['pbtrgt_repeat_file'],
+		original_cwd=config['ORIGINAL_CWD']
+	)
 	
 	phase_genotypes_hiphase(
 		input_bam=config['hg38_rmdup_chr6_bam'],
