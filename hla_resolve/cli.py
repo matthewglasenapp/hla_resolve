@@ -173,37 +173,8 @@ class Samples:
             Samples.chr6_bed = os.path.join(data_dir, "reference/chr6.bed")
             Samples.pbtrgt_repeat_file = os.path.join(data_dir, "repeats_bed/test_chr6_polymorphic_repeats.hg38.bed")
         
-        # Copy all class variables to instance for easy access
-        self.reference_fasta = Samples.reference_fasta
-        self.deepvariant_sif = Samples.deepvariant_sif
-        self.tandem_repeat_bed = Samples.tandem_repeat_bed
-        self.chr6_bed = Samples.chr6_bed
-        self.pbtrgt_repeat_file = Samples.pbtrgt_repeat_file
-        self.reference_gbz = Samples.reference_gbz
-        self.ref_paths = Samples.ref_paths
-        self.vg = Samples.vg
-        self.mosdepth_regions_file = Samples.mosdepth_regions_file
-        self.me = Samples.me
-        self.me_rc = Samples.me_rc
-        self.longphase = Samples.longphase
-        self.prowler_trimmer = Samples.prowler_trimmer
-        self.sawfish = Samples.sawfish
-        self.clair3_ont_model_path = Samples.clair3_ont_model_path
-        self.clair3_hifi_model_path = Samples.clair3_hifi_model_path
-        self.depth_thresh = Samples.depth_thresh
-        self.prop_20x_thresh = Samples.prop_20x_thresh
-        self.prop_30x_thresh = Samples.prop_30x_thresh
-        self.vcf2fasta_script = Samples.vcf2fasta_script
-        self.reference_genome = Samples.reference_genome
-        self.gff_dir = Samples.gff_dir
-        self.hla_genes_regions_file = Samples.hla_genes_regions_file
-        self.genes_bed = Samples.genes_bed
-        self.genes_of_interest = Samples.genes_of_interest
-        self.mhc_start = Samples.mhc_start
-        self.mhc_stop = Samples.mhc_stop
-        self.IMGT_XML = Samples.IMGT_XML
-        self.DNA_bases = Samples.DNA_bases
-        self.stop_codons = Samples.stop_codons
+        # Class variables are now accessed directly via Samples.class_variable_name
+        # No need to copy them to instance variables anymore
         
         # data_dir points directly to the data/ subdirectory
         self.data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
@@ -469,138 +440,142 @@ def main():
             adapter_file=sample.adapter_file
         )
 
-        run_fastqc(os.path.join(sample.fastq_trimmed_dir, sample.sample_ID + ".trimmed.fastq.gz"))
+        run_fastqc(
+            input_file=os.path.join(sample.fastq_trimmed_dir, sample.sample_ID + ".trimmed.fastq.gz")
+        )
         
         
         mark_duplicates_pbmarkdup(
-            os.path.join(sample.fastq_trimmed_dir, sample.sample_ID + ".trimmed.fastq.gz"),
-            os.path.join(sample.fastq_trimmed_dir, sample.sample_ID + ".trimmed.pbmarkdup.fastq"),
-            sample.threads
+            input_file=os.path.join(sample.fastq_trimmed_dir, sample.sample_ID + ".trimmed.fastq.gz"),
+            output_file=os.path.join(sample.fastq_trimmed_dir, sample.sample_ID + ".trimmed.pbmarkdup.fastq"),
+            threads=sample.threads
         )
         
-        run_fastqc(os.path.join(sample.fastq_trimmed_dir, sample.sample_ID + ".trimmed.pbmarkdup.fastq.gz"))
+        run_fastqc(
+            input_file=os.path.join(sample.fastq_trimmed_dir, sample.sample_ID + ".trimmed.pbmarkdup.fastq.gz")
+        )
         
         align_to_reference_minimap(
-            os.path.join(sample.fastq_trimmed_dir, sample.sample_ID + ".trimmed.pbmarkdup.fastq.gz"),
-            os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".hg38.bam"),
-            sample.read_group_string,
-            sample.reference_fasta,
-            sample.platform,
-            sample.threads,
+            input_file=os.path.join(sample.fastq_trimmed_dir, sample.sample_ID + ".trimmed.pbmarkdup.fastq.gz"),
+            output_file=os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".hg38.bam"),
+            read_group_string=sample.read_group_string,
+            reference_fasta=Samples.reference_fasta,
+            platform=sample.platform,
+            threads=sample.threads,
         )
         
         if sample.aligner == "vg":
             align_to_reference_vg(
-                sample.vg,
-                os.path.join(sample.fastq_trimmed_dir, sample.sample_ID + ".trimmed.pbmarkdup.fastq.gz"),
-                os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".pangenome.bam"),
-                sample.sample_ID,
-                sample.read_group_string,
-                sample.reference_gbz,
-                sample.ref_paths,
-                sample.platform,
-                sample.threads
+                vg=Samples.vg,
+                input_file=os.path.join(sample.fastq_trimmed_dir, sample.sample_ID + ".trimmed.pbmarkdup.fastq.gz"),
+                output_file=os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".pangenome.bam"),
+                sample_ID=sample.sample_ID,
+                read_group_string=sample.read_group_string,
+                reference_gbz=Samples.reference_gbz,
+                ref_paths=Samples.ref_paths,
+                platform=sample.platform,
+                threads=sample.threads
             )
             
             reassign_mapq(
-                os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".hg38.bam"),
-                os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".pangenome.bam"),
-                os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".pg.mapq_reassign.bam")
+                bam_hg38=os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".hg38.bam"),
+                bam_pg=os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".pangenome.bam"),
+                reassigned_pg=os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".pg.mapq_reassign.bam")
             )
         
             filter_reads(
-                os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".pg.mapq_reassign.bam"),
-                os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".hg38.rmdup.chr6.bam"),
-                sample.threads
+                input_file=os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".pg.mapq_reassign.bam"),
+                output_file=os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".hg38.rmdup.chr6.bam"),
+                threads=sample.threads
             )
         
         else:
             filter_reads(
-                os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".hg38.bam"),
-                os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".hg38.rmdup.chr6.bam"),
-                sample.threads
+                input_file=os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".hg38.bam"),
+                output_file=os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".hg38.rmdup.chr6.bam"),
+                threads=sample.threads
             )
 
         if sample.genotyper == "bcftools":
             call_variants_bcftools(
-                os.path.join(sample.mapped_bam_dir, sample.sample_ID +".hg38.rmdup.chr6.bam"),
-                os.path.join(sample.genotypes_dir, sample.sample_ID + ".vcf.gz"),
-                sample.reference_fasta,
-                sample.threads,
-                sample.platform
+                input_file=os.path.join(sample.mapped_bam_dir, sample.sample_ID +".hg38.rmdup.chr6.bam"),
+                output_file=os.path.join(sample.genotypes_dir, sample.sample_ID + ".vcf.gz"),
+                reference_fasta=Samples.reference_fasta,
+                threads=sample.threads,
+                platform=sample.platform
             )
         
         elif sample.genotyper == "deepvariant":
             call_variants_deepvariant(
-                os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".hg38.rmdup.chr6.bam"),
-                os.path.join(sample.genotypes_dir, sample.sample_ID + ".vcf.gz"),
-                os.path.join(sample.genotypes_dir, sample.sample_ID + ".g.vcf.gz"),
-                sample.platform,
-                sample.deepvariant_sif,
-                sample.reference_fasta,
-                sample.genotypes_dir,
-                sample.mapped_bam_dir,
-                sample.sample_ID
+                input_bam=os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".hg38.rmdup.chr6.bam"),
+                output_vcf=os.path.join(sample.genotypes_dir, sample.sample_ID + ".vcf.gz"),
+                output_gvcf=os.path.join(sample.genotypes_dir, sample.sample_ID + ".g.vcf.gz"),
+                platform=sample.platform,
+                deepvariant_sif=Samples.deepvariant_sif,
+                reference_fasta=Samples.reference_fasta,
+                genotypes_dir=sample.genotypes_dir,
+                mapped_bam_dir=sample.mapped_bam_dir,
+                sample_ID=sample.sample_ID
             )
         
         elif sample.genotyper == "clair3":
             call_variants_clair3(
-                os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".hg38.rmdup.chr6.bam"),
-                os.path.join(sample.genotypes_dir, sample.sample_ID + ".vcf.gz"),
-                sample.platform,
-                sample.reference_fasta,
-                sample.threads,
-                sample.chr6_bed,
-                sample.clair3_ont_model_path,
-                sample.clair3_hifi_model_path,
-                sample.genotypes_dir,
-                sample.sample_ID
+                input_bam=os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".hg38.rmdup.chr6.bam"),
+                output_vcf=os.path.join(sample.genotypes_dir, sample.sample_ID + ".vcf.gz"),
+                platform=sample.platform,
+                reference_fasta=Samples.reference_fasta,
+                threads=sample.threads,
+                chr6_bed=Samples.chr6_bed,
+                clair3_ont_model_path=Samples.clair3_ont_model_path,
+                clair3_hifi_model_path=Samples.clair3_hifi_model_path,
+                genotypes_dir=sample.genotypes_dir,
+                sample_ID=sample.sample_ID
             )
         
         # call_structural_variants_pbsv(sample)
         
         call_structural_variants_sawfish(
-            os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".hg38.rmdup.chr6.bam"),
-            os.path.join(sample.genotypes_dir, sample.sample_ID + ".vcf.gz"),
-            os.path.join(sample.sv_dir, sample.sample_ID + ".SV.vcf.gz"),
-            sample.sv_dir,
-            sample.sawfish,
-            sample.reference_fasta
+            input_bam=os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".hg38.rmdup.chr6.bam"),
+            small_variant_calls=os.path.join(sample.genotypes_dir, sample.sample_ID + ".vcf.gz"),
+            output_vcf=os.path.join(sample.sv_dir, sample.sample_ID + ".SV.vcf.gz"),
+            sv_dir=sample.sv_dir,
+            sawfish=Samples.sawfish,
+            reference_fasta=Samples.reference_fasta
         )
         
         genotype_tandem_repeats(
-            os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".hg38.rmdup.chr6.bam"),
-            os.path.join(sample.pbtrgt_dir, sample.sample_ID + ".TR.vcf.gz"),
-            sample.pbtrgt_dir,
-            sample.threads,
-            sample.reference_fasta,
-            sample.pbtrgt_repeat_file,
-            sample.ORIGINAL_CWD
+            input_bam=os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".hg38.rmdup.chr6.bam"),
+            output_vcf=os.path.join(sample.pbtrgt_dir, sample.sample_ID + ".TR.vcf.gz"),
+            pbtrgt_dir=sample.pbtrgt_dir,
+            threads=sample.threads,
+            reference_fasta=Samples.reference_fasta,
+            pbtrgt_repeat_file=Samples.pbtrgt_repeat_file,
+            original_cwd=sample.ORIGINAL_CWD
         )
         
         phase_genotypes_hiphase(
-            os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".hg38.rmdup.chr6.bam"),
-            os.path.join(sample.genotypes_dir, sample.sample_ID + ".vcf.gz"),
-            os.path.join(sample.sv_dir, sample.sample_ID + ".SV.vcf.gz"),
-            os.path.join(sample.pbtrgt_dir, sample.sample_ID + ".TR.vcf.gz"),
-            os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".hg38.rmdup.chr6.haplotag.bam"),
-            os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".hiphase.vcf.gz"),
-            os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".hiphase.SV.vcf.gz"),
-            os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".hiphase.TR.vcf.gz"),
-            os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".phased.summary.txt"),
-            os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".phased.blocks.txt"),
-            sample.threads,
-            sample.reference_fasta,
-            sample.phased_vcf_dir,
-            sample.sample_ID
+            input_bam=os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".hg38.rmdup.chr6.bam"),
+            input_snv=os.path.join(sample.genotypes_dir, sample.sample_ID + ".vcf.gz"),
+            input_SV=os.path.join(sample.sv_dir, sample.sample_ID + ".SV.vcf.gz"),
+            input_TR=os.path.join(sample.pbtrgt_dir, sample.sample_ID + ".TR.vcf.gz"),
+            output_bam=os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".hg38.rmdup.chr6.haplotag.bam"),
+            output_snv=os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".hiphase.vcf.gz"),
+            output_SV=os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".hiphase.SV.vcf.gz"),
+            output_TR=os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".hiphase.TR.vcf.gz"),
+            output_summary_file=os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".phased.summary.txt"),
+            output_blocks_file=os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".phased.blocks.txt"),
+            threads=sample.threads,
+            reference_fasta=Samples.reference_fasta,
+            phased_vcf_dir=sample.phased_vcf_dir,
+            sample_ID=sample.sample_ID
         )
         
         merge_hiphase_vcfs(
-            os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".hiphase.vcf.gz"),
-            os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".hiphase.SV.vcf.gz"),
-            os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".hiphase.TR.vcf.gz"),
-            os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".hiphase.joint.vcf.gz"),
-            sample.reference_fasta
+            input_snv=os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".hiphase.vcf.gz"),
+            input_SV=os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".hiphase.SV.vcf.gz"),
+            input_TR=os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".hiphase.TR.vcf.gz"),
+            output_vcf=os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".hiphase.joint.vcf.gz"),
+            reference_fasta=Samples.reference_fasta
         )
 
     elif sample.platform == "ONT":
@@ -616,136 +591,136 @@ def main():
             os.path.join(sample.fastq_trimmed_dir, sample.sample_ID + ".trimmed.fastq.gz"),
             os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".hg38.bam"),
             sample.read_group_string,
-            sample.reference_fasta,
+            Samples.reference_fasta,
             sample.platform,
             sample.threads
         )
         if sample.aligner == "vg":
             align_to_reference_vg(
-                sample.vg,
-                os.path.join(sample.fastq_trimmed_dir, sample.sample_ID + ".trimmed.fastq.gz"),
-                os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".pangenome.bam"),  
-                sample.sample_ID,
-                sample.read_group_string,
-                sample.reference_gbz,
-                sample.ref_paths,
-                sample.platform,
-                sample.threads
+                vg=Samples.vg,
+                input_file=os.path.join(sample.fastq_trimmed_dir, sample.sample_ID + ".trimmed.fastq.gz"),
+                output_file=os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".pangenome.bam"),  
+                sample_ID=sample.sample_ID,
+                read_group_string=sample.read_group_string,
+                reference_gbz=Samples.reference_gbz,
+                ref_paths=Samples.ref_paths,
+                platform=sample.platform,
+                threads=sample.threads
                 )
             
             reassign_mapq(
-                os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".hg38.bam"),
-                os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".pangenome.bam"),
-                os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".pg.mapq_reassign.bam")
+                bam_hg38=os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".hg38.bam"),
+                bam_pg=os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".pangenome.bam"),
+                reassigned_pg=os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".pg.mapq_reassign.bam")
             )
             
             mark_duplicates_picard(
-                os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".pg.mapq_reassign.bam"),
-                os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".pg.mapq_reassign.mrkdup.bam"),
-                os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".pg.mapq_reassign.mrkdup.metrics.txt"),
-                os.path.join(sample.mapped_bam_dir, "mark_duplicates")
+                input_file=os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".pg.mapq_reassign.bam"),
+                output_file=os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".pg.mapq_reassign.mrkdup.bam"),
+                metrics_file=os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".pg.mapq_reassign.mrkdup.metrics.txt"),
+                temp_dir=os.path.join(sample.mapped_bam_dir, "mark_duplicates")
             )
 
             filter_reads(
-                os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".pg.mapq_reassign.mrkdup.bam"),
-                os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".hg38.rmdup.chr6.bam"),
-                sample.threads
+                input_file=os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".pg.mapq_reassign.mrkdup.bam"),
+                output_file=os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".hg38.rmdup.chr6.bam"),
+                threads=sample.threads
             )
         
         else:
             mark_duplicates_picard(
-                os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".hg38.bam"),
-                os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".hg38.mrkdup.bam"),
-                os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".hg38.mrkdup.metrics.txt"),
-                os.path.join(sample.mapped_bam_dir, "mark_duplicates")
+                input_file=os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".hg38.bam"),
+                output_file=os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".hg38.mrkdup.bam"),
+                metrics_file=os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".hg38.mrkdup.metrics.txt"),
+                temp_dir=os.path.join(sample.mapped_bam_dir, "mark_duplicates")
             )
         
             filter_reads(
-                os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".hg38.mrkdup.bam"),
-                os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".hg38.rmdup.chr6.bam"),
-                sample.threads
+                input_file=os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".hg38.mrkdup.bam"),
+                output_file=os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".hg38.rmdup.chr6.bam"),
+                threads=sample.threads
             )
 
         if sample.genotyper == "bcftools":
             call_variants_bcftools(
-                os.path.join(sample.mapped_bam_dir, sample.sample_ID +".hg38.rmdup.chr6.bam"),
-                os.path.join(sample.genotypes_dir, sample.sample_ID + ".vcf.gz"),
-                sample.reference_fasta,
-                sample.platform,
-                sample.threads
+                input_file=os.path.join(sample.mapped_bam_dir, sample.sample_ID +".hg38.rmdup.chr6.bam"),
+                output_file=os.path.join(sample.genotypes_dir, sample.sample_ID + ".vcf.gz"),
+                reference_fasta=Samples.reference_fasta,
+                platform=sample.platform,
+                threads=sample.threads
             )
         
         elif sample.genotyper == "deepvariant":
             call_variants_deepvariant(
-                os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".hg38.rmdup.chr6.bam"),
-                os.path.join(sample.genotypes_dir, sample.sample_ID + ".vcf.gz"),
-                os.path.join(sample.genotypes_dir, sample.sample_ID + ".g.vcf.gz"),
-                sample.platform,
-                sample.deepvariant_sif,
-                sample.reference_fasta,
-                sample.genotypes_dir,
-                sample.mapped_bam_dir,
-                sample.sample_ID
+                input_bam=os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".hg38.rmdup.chr6.bam"),
+                output_vcf=os.path.join(sample.genotypes_dir, sample.sample_ID + ".vcf.gz"),
+                output_gvcf=os.path.join(sample.genotypes_dir, sample.sample_ID + ".g.vcf.gz"),
+                platform=sample.platform,
+                deepvariant_sif=Samples.deepvariant_sif,
+                reference_fasta=Samples.reference_fasta,
+                genotypes_dir=sample.genotypes_dir,
+                mapped_bam_dir=sample.mapped_bam_dir,
+                sample_ID=sample.sample_ID
             )
         elif sample.genotyper == "clair3":
             call_variants_clair3(
-                os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".hg38.rmdup.chr6.bam"),
-                os.path.join(sample.genotypes_dir, sample.sample_ID + ".vcf.gz"),
-                sample.platform,
-                sample.reference_fasta,
-                sample.threads,
-                sample.chr6_bed,
-                sample.clair3_ont_model_path,
-                sample.clair3_hifi_model_path,
-                sample.genotypes_dir,
-                sample.sample_ID
+                input_bam=os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".hg38.rmdup.chr6.bam"),
+                output_vcf=os.path.join(sample.genotypes_dir, sample.sample_ID + ".vcf.gz"),
+                platform=sample.platform,
+                reference_fasta=Samples.reference_fasta,
+                threads=sample.threads,
+                chr6_bed=Samples.chr6_bed,
+                clair3_ont_model_path=Samples.clair3_ont_model_path,
+                clair3_hifi_model_path=Samples.clair3_hifi_model_path,
+                genotypes_dir=sample.genotypes_dir,
+                sample_ID=sample.sample_ID
             )
         call_structural_variants_sniffles(
-            os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".hg38.rmdup.chr6.bam"),
-            os.path.join(sample.sv_dir, sample.sample_ID + ".SV.vcf.gz"),
-            sample.threads,
-            sample.reference_fasta,
-            sample.chr6_bed,
-            sample.tandem_repeat_bed
+            input_bam=os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".hg38.rmdup.chr6.bam"),
+            output_vcf=os.path.join(sample.sv_dir, sample.sample_ID + ".SV.vcf.gz"),
+            threads=sample.threads,
+            reference_fasta=Samples.reference_fasta,
+            chr6_bed=Samples.chr6_bed,
+            tandem_repeat_bed=Samples.tandem_repeat_bed
         )
         phase_genotypes_longphase(
-            os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".hg38.rmdup.chr6.bam"),
-            os.path.join(sample.genotypes_dir, sample.sample_ID + ".vcf.gz"),
-            os.path.join(sample.sv_dir, sample.sample_ID + ".SV.vcf.gz"),
-            os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".phased.haploblocks.txt"),
-            os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".phased.haploblocks.gtf"),
-            os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".longphase.vcf.gz"),
-            os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".longphase_SV.vcf.gz"),
-            os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".hg38.rmdup.chr6.haplotag.bam"),
-            sample.longphase,
-            sample.reference_fasta,
-            sample.threads,
-            sample.phased_vcf_dir,
-            sample.sample_ID
+            input_bam=os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".hg38.rmdup.chr6.bam"),
+            input_SNV_vcf=os.path.join(sample.genotypes_dir, sample.sample_ID + ".vcf.gz"),
+            input_SV_vcf=os.path.join(sample.sv_dir, sample.sample_ID + ".SV.vcf.gz"),
+            output_blocks_file=os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".phased.haploblocks.txt"),
+            output_gtf_file=os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".phased.haploblocks.gtf"),
+            phased_vcf=os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".longphase.vcf.gz"),
+            phased_SV_vcf=os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".longphase_SV.vcf.gz"),
+            haplotagged_bam=os.path.join(sample.mapped_bam_dir, sample.sample_ID + ".hg38.rmdup.chr6.haplotag.bam"),
+            longphase=Samples.longphase,
+            reference_fasta=Samples.reference_fasta,
+            threads=sample.threads,
+            phased_vcf_dir=sample.phased_vcf_dir,
+            sample_ID=sample.sample_ID
         )
         merge_longphase_vcfs(
-            os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".longphase.vcf.gz"),
-            os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".longphase_SV.vcf.gz"),
-            os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".longphase.merged.vcf.gz"),
-            sample.reference_fasta,
-            sample.phased_vcf_dir,
-            sample.sample_ID
+            phased_vcf=os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".longphase.vcf.gz"),
+            phased_SV_vcf=os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".longphase_SV.vcf.gz"),
+            merged_vcf=os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".longphase.merged.vcf.gz"),
+            reference_fasta=Samples.reference_fasta,
+            phased_vcf_dir=sample.phased_vcf_dir,
+            sample_ID=sample.sample_ID
         )
             
     run_mosdepth(
-        os.path.join(sample.mapped_bam_dir, sample.sample_ID +".hg38.rmdup.chr6.bam"),
-        sample.mosdepth_dir,
-        sample.sample_ID,
-        sample.mosdepth_regions_file,
-        sample.threads
+        input_file=os.path.join(sample.mapped_bam_dir, sample.sample_ID +".hg38.rmdup.chr6.bam"),
+        output_dir=sample.mosdepth_dir,
+        sample_ID=sample.sample_ID,
+        regions_file=Samples.mosdepth_regions_file,
+        threads=sample.threads
     )
     
     sufficient_coverage_genes =parse_mosdepth(
-        os.path.join(sample.mosdepth_dir, sample.sample_ID + ".regions.bed.gz"),
-        os.path.join(sample.mosdepth_dir, sample.sample_ID + ".thresholds.bed.gz"), 
-        sample.depth_thresh,
-        sample.prop_20x_thresh,
-        sample.prop_30x_thresh
+        regions_file=os.path.join(sample.mosdepth_dir, sample.sample_ID + ".regions.bed.gz"),
+        thresholds_file=os.path.join(sample.mosdepth_dir, sample.sample_ID + ".thresholds.bed.gz"), 
+        depth_thresh=Samples.depth_thresh,
+        prop_20x_thresh=Samples.prop_20x_thresh,
+        prop_30x_thresh=Samples.prop_30x_thresh
     )
 
     if sample.platform == "PACBIO":
@@ -757,22 +732,22 @@ def main():
     
     
     heterozygous_sites, haploblock_list = parse_haploblocks(
-        phased_vcf,
-        haploblock_file,
-        sample.sample_ID,
-        sample.platform,
-        sample.mhc_start,
-        sample.mhc_stop
+        phased_vcf=phased_vcf,
+        haploblock_file=haploblock_file,
+        sample_ID=sample.sample_ID,
+        platform=sample.platform,
+        mhc_start=Samples.mhc_start,
+        mhc_stop=Samples.mhc_stop
     )
 
     phased_genes = evaluate_gene_haploblocks(
-        os.path.join(sample.parsed_haploblock_dir, f"phased_genes.tsv"),
-        os.path.join(sample.parsed_haploblock_dir, f"incomplete.csv"),
-        sample.sample_ID,
-        sample.genes_bed,  
-        sample.genes_of_interest,
-        heterozygous_sites, 
-        haploblock_list)
+        phased_genes_file=os.path.join(sample.parsed_haploblock_dir, f"phased_genes.tsv"),
+        incomplete_genes_file=os.path.join(sample.parsed_haploblock_dir, f"incomplete.csv"),
+        sample_ID=sample.sample_ID,
+        genes_bed=Samples.genes_bed,  
+        genes_of_interest=Samples.genes_of_interest,
+        heterozygous_sites=heterozygous_sites, 
+        haploblock_list=haploblock_list)
     
     if sample.platform == "PACBIO":
         input_vcf = os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".hiphase.joint.vcf.gz")
@@ -780,15 +755,15 @@ def main():
         input_vcf = os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".longphase.merged.vcf.gz")
     
     filter_vcf(
-        input_vcf,
-        os.path.join(sample.phased_vcf_dir, f"{sample.sample_ID}_PASS.vcf.gz"),
-        os.path.join(sample.phased_vcf_dir, f"{sample.sample_ID}_FAIL.vcf.gz"),
-        os.path.join(sample.phased_vcf_dir, f"{sample.sample_ID}_PASS_UNPHASED.vcf.gz"),
-        os.path.join(sample.filtered_vcf_dir, f"{sample.sample_ID}_filtered.vcf.gz"),
-        os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".unphased.tsv"),
-        sample.platform,
-        sample.genotyper,
-        sample.hla_genes_regions_file
+        input_vcf=input_vcf,
+        pass_vcf=os.path.join(sample.phased_vcf_dir, f"{sample.sample_ID}_PASS.vcf.gz"),
+        fail_vcf=os.path.join(sample.phased_vcf_dir, f"{sample.sample_ID}_FAIL.vcf.gz"),
+        pass_unphased_vcf=os.path.join(sample.phased_vcf_dir, f"{sample.sample_ID}_PASS_UNPHASED.vcf.gz"),
+        filtered_vcf=os.path.join(sample.filtered_vcf_dir, f"{sample.sample_ID}_filtered.vcf.gz"),
+        unphased_tsv=os.path.join(sample.phased_vcf_dir, sample.sample_ID + ".unphased.tsv"),
+        platform=sample.platform,
+        genotyper=sample.genotyper,
+        hla_genes_regions_file=Samples.hla_genes_regions_file
     )
     
     # Reset self.vcf2fasta_out_dir for sequential runs 
@@ -799,35 +774,39 @@ def main():
     for gene in phased_genes:
         if gene in genes_of_interest and gene in sample.sufficient_coverage_genes:
             run_vcf2fasta(
-                sample.vcf2fasta_script,
-                os.path.join(sample.filtered_vcf_dir, f"{sample.sample_ID}_filtered.vcf.gz"),
-                os.path.join(sample.vcf2fasta_out_dir, gene),
-                os.path.join(sample.gff_dir, gene + "_cds_sorted.gff3"),
-                sample.reference_genome,
-                gene, 
-                "gene")
+                vcf2fasta=Samples.vcf2fasta_script,
+                input_vcf=os.path.join(sample.filtered_vcf_dir, f"{sample.sample_ID}_filtered.vcf.gz"),
+                output_dir=os.path.join(sample.vcf2fasta_out_dir, gene),
+                input_gff=os.path.join(sample.gff_dir, gene + "_cds_sorted.gff3"),
+                reference_genome=Samples.reference_genome,
+                gene=gene, 
+                feature="gene")
             
             run_vcf2fasta(
-                sample.vcf2fasta_script,
-                os.path.join(sample.filtered_vcf_dir, f"{sample.sample_ID}_filtered.vcf.gz"),
-                os.path.join(sample.vcf2fasta_out_dir, gene),
-                os.path.join(sample.gff_dir, gene + "_gene.gff3"),
-                sample.reference_genome,
-                gene, 
-                "CDS")
+                vcf2fasta=Samples.vcf2fasta_script,
+                input_vcf=os.path.join(sample.filtered_vcf_dir, f"{sample.sample_ID}_filtered.vcf.gz"),
+                output_dir=os.path.join(sample.vcf2fasta_out_dir, gene),
+                input_gff=os.path.join(sample.gff_dir, gene + "_gene.gff3"),
+                reference_genome=Samples.reference_genome,
+                gene=gene, 
+                feature="CDS")
     
     parse_fastas(
-        sample.vcf2fasta_out_dir,
-        os.path.join(sample.hla_fasta_dir, sample.sample_ID + "_HLA_haplotypes_gene.fasta"),
-        os.path.join(sample.hla_fasta_dir, sample.sample_ID + "_HLA_haplotypes_CDS.fasta"),
-        sample.DNA_bases,
-        sample.stop_codons
+        vcf2fasta_out_dir=sample.vcf2fasta_out_dir,
+        output_gene_fasta=os.path.join(sample.hla_fasta_dir, sample.sample_ID + "_HLA_haplotypes_gene.fasta"),
+        output_cds_fasta=os.path.join(sample.hla_fasta_dir, sample.sample_ID + "_HLA_haplotypes_CDS.fasta"),
+        DNA_bases=Samples.DNA_bases,
+        stop_codons=Samples.stop_codons
     )
 
     os.chdir(sample.hla_typing_dir)
     # Lazy import to avoid overhead when not using HLA typing
     from hla_resolve.hla_typer import main as classify_hla_alleles
-    classify_hla_alleles(IMGT_XML, sample.hla_fasta_dir, sample.sample_ID)
+    classify_hla_alleles(
+        imgt_xml=Samples.IMGT_XML, 
+        hla_fasta_dir=sample.hla_fasta_dir, 
+        sample_ID=sample.sample_ID
+    )
     sample.print_results()
 
     if sample.clean_up:
