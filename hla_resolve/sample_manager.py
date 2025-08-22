@@ -149,7 +149,7 @@ class Samples:
         print(f"Read Group: {self.read_group_string}")
         print("\n\n")
 
-        self.prepare_raw_fastq()
+        # self.prepare_raw_fastq()
 
     def parse_input_file(self, input_path):
         if input_path.endswith(".bam"):
