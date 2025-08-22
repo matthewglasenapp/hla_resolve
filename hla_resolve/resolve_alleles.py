@@ -14,6 +14,68 @@ from reconstruct_fasta_methods import (
 	parse_fastas
 )
 
+def resolve_alleles(
+	sample,
+	mosdepth_regions_file,
+	depth_thresh,
+	prop_20x_thresh,
+	prop_30x_thresh,
+	mhc_start,
+	mhc_stop,
+	genes_bed,
+	genes_of_interest,
+	hla_genes_regions_file,
+	vcf2fasta_script,
+	reference_genome,
+	DNA_bases,
+	stop_codons,
+	IMGT_XML
+):
+	"""
+	Main orchestration function that runs the complete allele resolution workflow:
+	1. Coverage analysis
+	2. FASTA sequence reconstruction 
+	3. HLA typing
+	"""
+	print("Starting HLA allele resolution workflow...")
+	
+	# Step 1: Coverage analysis
+	print("Step 1: Running coverage analysis...")
+	sufficient_coverage_genes = run_coverage_analysis(
+		sample=sample,
+		mosdepth_regions_file=mosdepth_regions_file,
+		depth_thresh=depth_thresh,
+		prop_20x_thresh=prop_20x_thresh,
+		prop_30x_thresh=prop_30x_thresh
+	)
+	
+	# Step 2: FASTA reconstruction
+	print("Step 2: Reconstructing FASTA sequences...")
+	phased_genes = reconstruct_fasta_sequences(
+		sample=sample,
+		sufficient_coverage_genes=sufficient_coverage_genes,
+		mhc_start=mhc_start,
+		mhc_stop=mhc_stop,
+		genes_bed=genes_bed,
+		genes_of_interest=genes_of_interest,
+		hla_genes_regions_file=hla_genes_regions_file,
+		vcf2fasta_script=vcf2fasta_script,
+		reference_genome=reference_genome,
+		DNA_bases=DNA_bases,
+		stop_codons=stop_codons
+	)
+	
+	# Step 3: HLA typing
+	print("Step 3: Typing HLA alleles...")
+	type_hla_alleles(
+		sample=sample,
+		phased_genes=phased_genes,
+		IMGT_XML=IMGT_XML
+	)
+	
+	print("HLA allele resolution workflow completed!")
+	return phased_genes
+
 def run_coverage_analysis(
 	sample,
 	mosdepth_regions_file,
@@ -150,3 +212,4 @@ def type_hla_alleles(
 				shutil.rmtree(directory)
 	
 	os.chdir(original_dir)
+

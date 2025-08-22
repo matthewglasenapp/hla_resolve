@@ -5,13 +5,9 @@ import sys
 from sample import Samples
 from config import *
 from utils import check_required_commands
-from hla_resolve.ont_workflow import preprocess_ont_sample
-from hla_resolve.pacbio_workflow import preprocess_pacbio_sample
-from hla_resolve.resolve_alleles import (
-	run_coverage_analysis,
-	reconstruct_fasta_sequences,
-	type_hla_alleles
-)
+from ont_workflow import preprocess_ont_sample
+from pacbio_workflow import preprocess_pacbio_sample
+from resolve_alleles import resolve_alleles
 
 def main():
     parser = argparse.ArgumentParser(
@@ -77,17 +73,12 @@ def main():
             tandem_repeat_bed=Samples.tandem_repeat_bed
         )
     
-    sufficient_coverage_genes = run_coverage_analysis(
+    resolve_alleles(
         sample=sample,
         mosdepth_regions_file=mosdepth_regions_file,
         depth_thresh=depth_thresh,
         prop_20x_thresh=prop_20x_thresh,
-        prop_30x_thresh=prop_30x_thresh
-    )
-    
-    phased_genes = reconstruct_fasta_sequences(
-        sample=sample,
-        sufficient_coverage_genes=sufficient_coverage_genes,
+        prop_30x_thresh=prop_30x_thresh,
         mhc_start=mhc_start,
         mhc_stop=mhc_stop,
         genes_bed=genes_bed,
@@ -96,12 +87,7 @@ def main():
         vcf2fasta_script=vcf2fasta_script,
         reference_genome=reference_genome,
         DNA_bases=DNA_bases,
-        stop_codons=stop_codons
-    )
-    
-    type_hla_alleles(
-        sample=sample,
-        phased_genes=phased_genes,
+        stop_codons=stop_codons,
         IMGT_XML=IMGT_XML
     )
 
