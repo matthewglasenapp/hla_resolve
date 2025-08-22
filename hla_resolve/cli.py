@@ -3,7 +3,6 @@ import textwrap
 import argparse
 import sys
 from sample import Samples
-from config import *
 from utils import check_required_commands
 from sample import build_workflow_config
 from ont_workflow import preprocess_ont_sample
@@ -49,51 +48,11 @@ def main():
     workflow_config = build_workflow_config(sample)
     
     if workflow_config['platform'] == "PACBIO":
-        preprocess_pacbio_sample(
-            config=workflow_config,
-            reference_fasta=Samples.reference_fasta,
-            vg=vg,
-            reference_gbz=reference_gbz,
-            ref_paths=ref_paths,
-            deepvariant_sif=Samples.deepvariant_sif,
-            chr6_bed=Samples.chr6_bed,
-            clair3_ont_model_path=clair3_ont_model_path,
-            clair3_hifi_model_path=clair3_hifi_model_path,
-            sawfish=sawfish,
-            pbtrgt_repeat_file=Samples.pbtrgt_repeat_file
-        )
+        preprocess_pacbio_sample(config=workflow_config)
     elif workflow_config['platform'] == "ONT":
-        preprocess_ont_sample(
-            config=workflow_config,
-            reference_fasta=Samples.reference_fasta,
-            vg=vg,
-            reference_gbz=reference_gbz,
-            ref_paths=ref_paths,
-            deepvariant_sif=Samples.deepvariant_sif,
-            chr6_bed=Samples.chr6_bed,
-            clair3_ont_model_path=clair3_ont_model_path,
-            clair3_hifi_model_path=clair3_hifi_model_path,
-            longphase=longphase,
-            tandem_repeat_bed=Samples.tandem_repeat_bed
-        )
+        preprocess_ont_sample(config=workflow_config)
     
-    resolve_alleles(
-        config=workflow_config,
-        mosdepth_regions_file=mosdepth_regions_file,
-        depth_thresh=depth_thresh,
-        prop_20x_thresh=prop_20x_thresh,
-        prop_30x_thresh=prop_30x_thresh,
-        mhc_start=mhc_start,
-        mhc_stop=mhc_stop,
-        genes_bed=genes_bed,
-        genes_of_interest=genes_of_interest_extended,
-        hla_genes_regions_file=hla_genes_regions_file,
-        vcf2fasta_script=vcf2fasta_script,
-        reference_genome=reference_genome,
-        DNA_bases=DNA_bases,
-        stop_codons=stop_codons,
-        IMGT_XML=IMGT_XML
-    )
+    resolve_alleles(config=workflow_config)
 
     end_time = time.time()
     elapsed_time = end_time - start_time

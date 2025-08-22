@@ -5,7 +5,14 @@ import json
 import pysam
 from Bio import SeqIO
 from preprocess_methods import convert_bam_to_fastq
-from config import min_reads_sample, min_read_length
+from config import (
+	min_reads_sample, min_read_length, reference_gbz, ref_paths, vg, 
+	longphase, sawfish, clair3_ont_model_path, clair3_hifi_model_path,
+	mosdepth_regions_file, depth_thresh, prop_20x_thresh, prop_30x_thresh,
+	mhc_start, mhc_stop, genes_bed, genes_of_interest, genes_of_interest_extended,
+	hla_genes_regions_file, vcf2fasta_script, reference_genome, 
+	DNA_bases, stop_codons, IMGT_XML
+)
 
 class Samples:
     # Class variables for reference file paths
@@ -389,6 +396,35 @@ def build_workflow_config(sample):
 		'mosdepth_thresholds': sample.mosdepth_thresholds,
 		'phased_genes_tsv': sample.phased_genes_tsv,
 		'incomplete_genes_csv': sample.incomplete_genes_csv,
+		
+		# Reference files and tool paths (from Samples class and config.py)
+		'reference_fasta': Samples.reference_fasta,
+		'deepvariant_sif': Samples.deepvariant_sif,
+		'chr6_bed': Samples.chr6_bed,
+		'tandem_repeat_bed': Samples.tandem_repeat_bed,
+		'pbtrgt_repeat_file': Samples.pbtrgt_repeat_file,
+		'reference_gbz': reference_gbz,
+		'ref_paths': ref_paths,
+		'vg': vg,
+		'longphase': longphase,
+		'sawfish': sawfish,
+		'clair3_ont_model_path': clair3_ont_model_path,
+		'clair3_hifi_model_path': clair3_hifi_model_path,
+		'mosdepth_regions_file': mosdepth_regions_file,
+		'depth_thresh': depth_thresh,
+		'prop_20x_thresh': prop_20x_thresh,
+		'prop_30x_thresh': prop_30x_thresh,
+		'mhc_start': mhc_start,
+		'mhc_stop': mhc_stop,
+		'genes_bed': genes_bed,
+		'genes_of_interest': genes_of_interest,
+		'genes_of_interest_extended': genes_of_interest_extended,
+		'hla_genes_regions_file': hla_genes_regions_file,
+		'vcf2fasta_script': vcf2fasta_script,
+		'reference_genome': reference_genome,
+		'DNA_bases': DNA_bases,
+		'stop_codons': stop_codons,
+		'IMGT_XML': IMGT_XML,
 	}
 	
 	# Platform-specific directories

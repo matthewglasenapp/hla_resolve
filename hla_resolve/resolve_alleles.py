@@ -14,23 +14,7 @@ from reconstruct_fasta_methods import (
 	parse_fastas
 )
 
-def resolve_alleles(
-	config,
-	mosdepth_regions_file,
-	depth_thresh,
-	prop_20x_thresh,
-	prop_30x_thresh,
-	mhc_start,
-	mhc_stop,
-	genes_bed,
-	genes_of_interest,
-	hla_genes_regions_file,
-	vcf2fasta_script,
-	reference_genome,
-	DNA_bases,
-	stop_codons,
-	IMGT_XML
-):
+def resolve_alleles(config):
 	"""
 	Main orchestration function that runs the complete allele resolution workflow:
 	1. Coverage analysis
@@ -41,78 +25,44 @@ def resolve_alleles(
 	
 	# Step 1: Coverage analysis
 	print("Step 1: Running coverage analysis...")
-	sufficient_coverage_genes = run_coverage_analysis(
-		config=config,
-		mosdepth_regions_file=mosdepth_regions_file,
-		depth_thresh=depth_thresh,
-		prop_20x_thresh=prop_20x_thresh,
-		prop_30x_thresh=prop_30x_thresh
-	)
+	sufficient_coverage_genes = run_coverage_analysis(config=config)
 	
 	# Step 2: FASTA reconstruction
 	print("Step 2: Reconstructing FASTA sequences...")
 	phased_genes = reconstruct_fasta_sequences(
 		config=config,
-		sufficient_coverage_genes=sufficient_coverage_genes,
-		mhc_start=mhc_start,
-		mhc_stop=mhc_stop,
-		genes_bed=genes_bed,
-		genes_of_interest=genes_of_interest,
-		hla_genes_regions_file=hla_genes_regions_file,
-		vcf2fasta_script=vcf2fasta_script,
-		reference_genome=reference_genome,
-		DNA_bases=DNA_bases,
-		stop_codons=stop_codons
+		sufficient_coverage_genes=sufficient_coverage_genes
 	)
 	
 	# Step 3: HLA typing
 	print("Step 3: Typing HLA alleles...")
 	type_hla_alleles(
 		config=config,
-		phased_genes=phased_genes,
-		IMGT_XML=IMGT_XML
+		phased_genes=phased_genes
 	)
 	
 	print("HLA allele resolution workflow completed!")
 	return phased_genes
 
-def run_coverage_analysis(
-	config,
-	mosdepth_regions_file,
-	depth_thresh,
-	prop_20x_thresh,
-	prop_30x_thresh
-):
+def run_coverage_analysis(config):
 	run_mosdepth(
 		input_file=config['hg38_rmdup_chr6_bam'],
 		output_dir=config['mosdepth_dir'],
 		sample_ID=config['sample_ID'],
-		regions_file=mosdepth_regions_file,
+		regions_file=config['mosdepth_regions_file'],
 		threads=config['threads']
 	)
 	
 	sufficient_coverage_genes = parse_mosdepth(
 		regions_file=config['mosdepth_regions'],
 		thresholds_file=config['mosdepth_thresholds'], 
-		depth_thresh=depth_thresh,
-		prop_20x_thresh=prop_20x_thresh,
-		prop_30x_thresh=prop_30x_thresh
+		depth_thresh=config['depth_thresh'],
+		prop_20x_thresh=config['prop_20x_thresh'],
+		prop_30x_thresh=config['prop_30x_thresh']
 	)
 	return sufficient_coverage_genes
 
-def reconstruct_fasta_sequences(
-	config,
-	sufficient_coverage_genes,
-	mhc_start,
-	mhc_stop,
-	genes_bed,
-	genes_of_interest,
-	hla_genes_regions_file,
-	vcf2fasta_script,
-	reference_genome,
-	DNA_bases,
-	stop_codons
-):
+def reconstruct_fasta_sequences(config, sufficient_coverage_genes):
 	if config['platform'] == "PACBIO":
 		phased_vcf = config['hiphase_joint_vcf']
 		haploblock_file = config['phased_blocks']
@@ -125,16 +75,16 @@ def reconstruct_fasta_sequences(
 		haploblock_file=haploblock_file,
 		sample_ID=config['sample_ID'],
 		platform=config['platform'],
-		mhc_start=mhc_start,
-		mhc_stop=mhc_stop
+		mhc_start=config['mhc_start'],
+		mhc_stop=config['mhc_stop']
 	)
 
 	phased_genes = evaluate_gene_haploblocks(
 		phased_genes_file=config['phased_genes_tsv'],
 		incomplete_genes_file=config['incomplete_genes_csv'],
 		sample_ID=config['sample_ID'],
-		genes_bed=genes_bed,  
-		genes_of_interest=genes_of_interest,
+		genes_bed=config['genes_bed'],  
+		genes_of_interest=config['genes_of_interest'],
 		heterozygous_sites=heterozygous_sites, 
 		haploblock_list=haploblock_list)
 	
@@ -152,7 +102,7 @@ def reconstruct_fasta_sequences(
 		unphased_tsv=config['unphased_tsv'],
 		platform=config['platform'],
 		genotyper=config['genotyper'],
-		hla_genes_regions_file=hla_genes_regions_file
+		hla_genes_regions_file=config['hla_genes_regions_file']
 	)
 	
 	# Reset vcf2fasta_out_dir for sequential runs 
@@ -161,22 +111,22 @@ def reconstruct_fasta_sequences(
 		os.makedirs(config['vcf2fasta_out_dir'], exist_ok=True)
 
 	for gene in phased_genes:
-		if gene in genes_of_interest and gene in sufficient_coverage_genes:
+		if gene in config['genes_of_interest'] and gene in sufficient_coverage_genes:
 			run_vcf2fasta(
-				vcf2fasta=vcf2fasta_script,
+				vcf2fasta=config['vcf2fasta_script'],
 				input_vcf=config['filtered_vcf'],
 				output_dir=os.path.join(config['vcf2fasta_out_dir'], gene),
 				input_gff=os.path.join(config['gff_dir'], gene + "_cds_sorted.gff3"),
-				reference_genome=reference_genome,
+				reference_genome=config['reference_genome'],
 				gene=gene, 
 				feature="gene")
 			
 			run_vcf2fasta(
-				vcf2fasta=vcf2fasta_script,
+				vcf2fasta=config['vcf2fasta_script'],
 				input_vcf=config['filtered_vcf'],
 				output_dir=os.path.join(config['vcf2fasta_out_dir'], gene),
 				input_gff=os.path.join(config['gff_dir'], gene + "_gene.gff3"),
-				reference_genome=reference_genome,
+				reference_genome=config['reference_genome'],
 				gene=gene, 
 				feature="CDS")
 	
@@ -184,23 +134,19 @@ def reconstruct_fasta_sequences(
 		vcf2fasta_out_dir=config['vcf2fasta_out_dir'],
 		output_gene_fasta=config['hla_gene_fasta'],
 		output_cds_fasta=config['hla_cds_fasta'],
-		DNA_bases=DNA_bases,
-		stop_codons=stop_codons
+		DNA_bases=config['DNA_bases'],
+		stop_codons=config['stop_codons']
 	)
 
 	return phased_genes
 
-def type_hla_alleles(
-	config,
-	phased_genes,
-	IMGT_XML
-):
+def type_hla_alleles(config, phased_genes):
 	original_dir = os.getcwd()
 	os.chdir(config['hla_typing_dir'])
 	# Lazy import to avoid overhead when not using HLA typing
 	from hla_resolve.hla_typer import main as classify_hla_alleles
 	classify_hla_alleles(
-		imgt_xml=IMGT_XML, 
+		imgt_xml=config['IMGT_XML'], 
 		hla_fasta_dir=config['hla_fasta_dir'], 
 		sample_ID=config['sample_ID']
 	)
