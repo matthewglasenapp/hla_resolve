@@ -28,17 +28,17 @@ def preprocess_ont_sample(
 	tandem_repeat_bed
 ):
 	trim_adapters(
-	adapters=config['adapters'],
-	input_file=os.path.join(config['fastq_raw_dir'], config['sample_ID'] + ".fastq.gz"),
-	output_file=os.path.join(config['fastq_trimmed_dir'], config['sample_ID'] + ".trimmed.fastq.gz"),
-	sample_ID=config['sample_ID'],
-	threads=config['threads'],
-	adapter_file=config['adapter_file']
+		adapters=config['adapters'],
+		input_file=config['raw_fastq'],
+		output_file=config['trimmed_fastq'],
+		sample_ID=config['sample_ID'],
+		threads=config['threads'],
+		adapter_file=config['adapter_file']
 	)
 	
 	align_to_reference_minimap(
-		input_file=os.path.join(config['fastq_trimmed_dir'], config['sample_ID'] + ".trimmed.fastq.gz"),
-		output_file=os.path.join(config['mapped_bam_dir'], config['sample_ID'] + ".hg38.bam"),
+		input_file=config['trimmed_fastq'],
+		output_file=config['hg38_bam'],
 		read_group_string=config['read_group_string'],
 		reference_fasta=reference_fasta,
 		platform=config['platform'],
@@ -48,8 +48,8 @@ def preprocess_ont_sample(
 	if config['aligner'] == "vg":
 		align_to_reference_vg(
 			vg=vg,
-			input_file=os.path.join(config['fastq_trimmed_dir'], config['sample_ID'] + ".trimmed.fastq.gz"),
-			output_file=os.path.join(config['mapped_bam_dir'], config['sample_ID'] + ".pangenome.bam"),  
+			input_file=config['trimmed_fastq'],
+			output_file=config['pangenome_bam'],  
 			sample_ID=config['sample_ID'],
 			read_group_string=config['read_group_string'],
 			reference_gbz=reference_gbz,
@@ -59,42 +59,42 @@ def preprocess_ont_sample(
 			)
 	
 		reassign_mapq(
-			bam_hg38=os.path.join(config['mapped_bam_dir'], config['sample_ID'] + ".hg38.bam"),
-			bam_pg=os.path.join(config['mapped_bam_dir'], config['sample_ID'] + ".pangenome.bam"),
-			reassigned_pg=os.path.join(config['mapped_bam_dir'], config['sample_ID'] + ".pg.mapq_reassign.bam")
+			bam_hg38=config['hg38_bam'],
+			bam_pg=config['pangenome_bam'],
+			reassigned_pg=config['pg_mapq_reassign_bam']
 		)
 		
 		mark_duplicates_picard(
-			input_file=os.path.join(config['mapped_bam_dir'], config['sample_ID'] + ".pg.mapq_reassign.bam"),
-			output_file=os.path.join(config['mapped_bam_dir'], config['sample_ID'] + ".pg.mapq_reassign.mrkdup.bam"),
-			metrics_file=os.path.join(config['mapped_bam_dir'], config['sample_ID'] + ".pg.mapq_reassign.mrkdup.metrics.txt"),
+			input_file=config['pg_mapq_reassign_bam'],
+			output_file=config['pg_mapq_reassign_mrkdup_bam'],
+			metrics_file=config['pg_mapq_reassign_mrkdup_metrics'],
 			temp_dir=os.path.join(config['mapped_bam_dir'], "mark_duplicates")
 		)
 
 		filter_reads(
-			input_file=os.path.join(config['mapped_bam_dir'], config['sample_ID'] + ".pg.mapq_reassign.mrkdup.bam"),
-			output_file=os.path.join(config['mapped_bam_dir'], config['sample_ID'] + ".hg38.rmdup.chr6.bam"),
+			input_file=config['pg_mapq_reassign_mrkdup_bam'],
+			output_file=config['hg38_rmdup_chr6_bam'],
 			threads=config['threads']
 		)
 
 	else:
 		mark_duplicates_picard(
-			input_file=os.path.join(config['mapped_bam_dir'], config['sample_ID'] + ".hg38.bam"),
-			output_file=os.path.join(config['mapped_bam_dir'], config['sample_ID'] + ".hg38.mrkdup.bam"),
-			metrics_file=os.path.join(config['mapped_bam_dir'], config['sample_ID'] + ".hg38.mrkdup.metrics.txt"),
+			input_file=config['hg38_bam'],
+			output_file=config['hg38_mrkdup_bam'],
+			metrics_file=config['hg38_mrkdup_metrics'],
 			temp_dir=os.path.join(config['mapped_bam_dir'], "mark_duplicates")
 		)
 
 		filter_reads(
-			input_file=os.path.join(config['mapped_bam_dir'], config['sample_ID'] + ".hg38.mrkdup.bam"),
-			output_file=os.path.join(config['mapped_bam_dir'], config['sample_ID'] + ".hg38.rmdup.chr6.bam"),
+			input_file=config['hg38_mrkdup_bam'],
+			output_file=config['hg38_rmdup_chr6_bam'],
 			threads=config['threads']
 		)
 
 	if config['genotyper'] == "bcftools":
 		call_variants_bcftools(
-			input_file=os.path.join(config['mapped_bam_dir'], config['sample_ID'] +".hg38.rmdup.chr6.bam"),
-			output_file=os.path.join(config['genotypes_dir'], config['sample_ID'] + ".vcf.gz"),
+			input_file=config['hg38_rmdup_chr6_bam'],
+			output_file=config['snv_vcf'],
 			reference_fasta=reference_fasta,
 			platform=config['platform'],
 			threads=config['threads']
@@ -102,9 +102,9 @@ def preprocess_ont_sample(
 
 	elif config['genotyper'] == "deepvariant":
 		call_variants_deepvariant(
-			input_bam=os.path.join(config['mapped_bam_dir'], config['sample_ID'] + ".hg38.rmdup.chr6.bam"),
-			output_vcf=os.path.join(config['genotypes_dir'], config['sample_ID'] + ".vcf.gz"),
-			output_gvcf=os.path.join(config['genotypes_dir'], config['sample_ID'] + ".g.vcf.gz"),
+			input_bam=config['hg38_rmdup_chr6_bam'],
+			output_vcf=config['snv_vcf'],
+			output_gvcf=config['snv_gvcf'],
 			platform=config['platform'],
 			deepvariant_sif=deepvariant_sif,
 			reference_fasta=reference_fasta,
@@ -114,8 +114,8 @@ def preprocess_ont_sample(
 		)
 	elif config['genotyper'] == "clair3":
 		call_variants_clair3(
-			input_bam=os.path.join(config['mapped_bam_dir'], config['sample_ID'] + ".hg38.rmdup.chr6.bam"),
-			output_vcf=os.path.join(config['genotypes_dir'], config['sample_ID'] + ".vcf.gz"),
+			input_bam=config['hg38_rmdup_chr6_bam'],
+			output_vcf=config['snv_vcf'],
 			platform=config['platform'],
 			reference_fasta=reference_fasta,
 			threads=config['threads'],
@@ -126,22 +126,22 @@ def preprocess_ont_sample(
 			sample_ID=config['sample_ID']
 		)
 	call_structural_variants_sniffles(
-		input_bam=os.path.join(config['mapped_bam_dir'], config['sample_ID'] + ".hg38.rmdup.chr6.bam"),
-		output_vcf=os.path.join(config['sv_dir'], config['sample_ID'] + ".SV.vcf.gz"),
+		input_bam=config['hg38_rmdup_chr6_bam'],
+		output_vcf=config['sv_vcf'],
 		threads=config['threads'],
 		reference_fasta=reference_fasta,
 		chr6_bed=chr6_bed,
 		tandem_repeat_bed=tandem_repeat_bed
 	)
 	phase_genotypes_longphase(
-		input_bam=os.path.join(config['mapped_bam_dir'], config['sample_ID'] + ".hg38.rmdup.chr6.bam"),
-		input_SNV_vcf=os.path.join(config['genotypes_dir'], config['sample_ID'] + ".vcf.gz"),
-		input_SV_vcf=os.path.join(config['sv_dir'], config['sample_ID'] + ".SV.vcf.gz"),
-		output_blocks_file=os.path.join(config['phased_vcf_dir'], config['sample_ID'] + ".phased.haploblocks.txt"),
-		output_gtf_file=os.path.join(config['phased_vcf_dir'], config['sample_ID'] + ".phased.haploblocks.gtf"),
-		phased_vcf=os.path.join(config['phased_vcf_dir'], config['sample_ID'] + ".longphase.vcf.gz"),
-		phased_SV_vcf=os.path.join(config['phased_vcf_dir'], config['sample_ID'] + ".longphase_SV.vcf.gz"),
-		haplotagged_bam=os.path.join(config['mapped_bam_dir'], config['sample_ID'] + ".hg38.rmdup.chr6.haplotag.bam"),
+		input_bam=config['hg38_rmdup_chr6_bam'],
+		input_SNV_vcf=config['snv_vcf'],
+		input_SV_vcf=config['sv_vcf'],
+		output_blocks_file=config['phased_haploblocks'],
+		output_gtf_file=config['phased_haploblocks_gtf'],
+		phased_vcf=config['longphase_vcf'],
+		phased_SV_vcf=config['longphase_sv_vcf'],
+		haplotagged_bam=config['hg38_rmdup_chr6_haplotag_bam'],
 		longphase=longphase,
 		reference_fasta=reference_fasta,
 		threads=config['threads'],
@@ -149,9 +149,9 @@ def preprocess_ont_sample(
 		sample_ID=config['sample_ID']
 	)
 	merge_longphase_vcfs(
-		phased_vcf=os.path.join(config['phased_vcf_dir'], config['sample_ID'] + ".longphase.vcf.gz"),
-		phased_SV_vcf=os.path.join(config['phased_vcf_dir'], config['sample_ID'] + ".longphase_SV.vcf.gz"),
-		merged_vcf=os.path.join(config['phased_vcf_dir'], config['sample_ID'] + ".longphase.merged.vcf.gz"),
+		phased_vcf=config['longphase_vcf'],
+		phased_SV_vcf=config['longphase_sv_vcf'],
+		merged_vcf=config['longphase_merged_vcf'],
 		reference_fasta=reference_fasta,
 		phased_vcf_dir=config['phased_vcf_dir'],
 		sample_ID=config['sample_ID']

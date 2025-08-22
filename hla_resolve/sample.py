@@ -106,6 +106,7 @@ class Samples:
         self.hla_typing_dir = os.path.join(self.output_dir, "hla_typing_results")
         self.mosdepth_dir = os.path.join(self.output_dir, "mosdepth")
         self.phased_vcf_dir = os.path.join(self.output_dir, "phased_vcf")
+        self.gff_dir = os.path.join(self.output_dir, "gff")
 
         platform_dirs = []
 
@@ -120,11 +121,14 @@ class Samples:
             self.genotypes_dir, self.sv_dir, 
             self.filtered_vcf_dir, self.vcf2fasta_out_dir, 
             self.hla_fasta_dir, self.hla_typing_dir,
-            self.mosdepth_dir, self.phased_vcf_dir
+            self.mosdepth_dir, self.phased_vcf_dir, self.gff_dir
         ] + platform_dirs
 
         for directory in self.combined_dirs:
             os.makedirs(directory, exist_ok=True)
+
+        # Define all file paths as properties to avoid os.path.join() in workflow functions
+        self._define_file_paths()
 
         parsed_rg = self.parse_input_file(self.input_file)
 
@@ -246,3 +250,150 @@ class Samples:
         print(f"{self.sample_ID} HLA Star Allele Calls")
         for item in results:
             print(item)
+
+    def _define_file_paths(self):
+        """Define all file paths as properties to avoid path construction in workflow functions"""
+        
+        # Raw and trimmed FASTQ files
+        self.raw_fastq = os.path.join(self.fastq_raw_dir, f"{self.sample_ID}.fastq.gz")
+        self.trimmed_fastq = os.path.join(self.fastq_trimmed_dir, f"{self.sample_ID}.trimmed.fastq.gz")
+        self.trimmed_pbmarkdup_fastq = os.path.join(self.fastq_trimmed_dir, f"{self.sample_ID}.trimmed.pbmarkdup.fastq")
+        self.trimmed_pbmarkdup_fastq_gz = os.path.join(self.fastq_trimmed_dir, f"{self.sample_ID}.trimmed.pbmarkdup.fastq.gz")
+        
+        # BAM files
+        self.hg38_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.hg38.bam")
+        self.pangenome_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.pangenome.bam")
+        self.pg_mapq_reassign_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.pg.mapq_reassign.bam")
+        self.pg_mapq_reassign_mrkdup_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.pg.mapq_reassign.mrkdup.bam")
+        self.hg38_mrkdup_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.hg38.mrkdup.bam")
+        self.hg38_rmdup_chr6_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.hg38.rmdup.chr6.bam")
+        self.hg38_rmdup_chr6_haplotag_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.hg38.rmdup.chr6.haplotag.bam")
+        
+        # Metrics files
+        self.pg_mapq_reassign_mrkdup_metrics = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.pg.mapq_reassign.mrkdup.metrics.txt")
+        self.hg38_mrkdup_metrics = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.hg38.mrkdup.metrics.txt")
+        
+        # VCF files
+        self.snv_vcf = os.path.join(self.genotypes_dir, f"{self.sample_ID}.vcf.gz")
+        self.snv_gvcf = os.path.join(self.genotypes_dir, f"{self.sample_ID}.g.vcf.gz")
+        self.sv_vcf = os.path.join(self.sv_dir, f"{self.sample_ID}.SV.vcf.gz")
+        self.tr_vcf = os.path.join(self.pbtrgt_dir, f"{self.sample_ID}.TR.vcf.gz") if hasattr(self, 'pbtrgt_dir') else None
+        
+        # Phased VCF files
+        self.hiphase_snv_vcf = os.path.join(self.phased_vcf_dir, f"{self.sample_ID}.hiphase.vcf.gz")
+        self.hiphase_sv_vcf = os.path.join(self.phased_vcf_dir, f"{self.sample_ID}.hiphase.SV.vcf.gz")
+        self.hiphase_tr_vcf = os.path.join(self.phased_vcf_dir, f"{self.sample_ID}.hiphase.TR.vcf.gz")
+        self.hiphase_joint_vcf = os.path.join(self.phased_vcf_dir, f"{self.sample_ID}.hiphase.joint.vcf.gz")
+        
+        # LongPhase VCF files (for ONT)
+        self.longphase_vcf = os.path.join(self.phased_vcf_dir, f"{self.sample_ID}.longphase.vcf.gz")
+        self.longphase_sv_vcf = os.path.join(self.phased_vcf_dir, f"{self.sample_ID}.longphase_SV.vcf.gz")
+        self.longphase_merged_vcf = os.path.join(self.phased_vcf_dir, f"{self.sample_ID}.longphase.merged.vcf.gz")
+        
+        # Phasing output files
+        self.phased_summary = os.path.join(self.phased_vcf_dir, f"{self.sample_ID}.phased.summary.txt")
+        self.phased_blocks = os.path.join(self.phased_vcf_dir, f"{self.sample_ID}.phased.blocks.txt")
+        self.phased_haploblocks = os.path.join(self.phased_vcf_dir, f"{self.sample_ID}.phased.haploblocks.txt")
+        self.phased_haploblocks_gtf = os.path.join(self.phased_vcf_dir, f"{self.sample_ID}.phased.haploblocks.gtf")
+        
+        # Filtered VCF files
+        self.pass_vcf = os.path.join(self.phased_vcf_dir, f"{self.sample_ID}_PASS.vcf.gz")
+        self.fail_vcf = os.path.join(self.phased_vcf_dir, f"{self.sample_ID}_FAIL.vcf.gz")
+        self.pass_unphased_vcf = os.path.join(self.phased_vcf_dir, f"{self.sample_ID}_PASS_UNPHASED.vcf.gz")
+        self.filtered_vcf = os.path.join(self.filtered_vcf_dir, f"{self.sample_ID}_filtered.vcf.gz")
+        self.unphased_tsv = os.path.join(self.phased_vcf_dir, f"{self.sample_ID}.unphased.tsv")
+        
+        # HLA typing output files
+        self.hla_gene_fasta = os.path.join(self.hla_fasta_dir, f"{self.sample_ID}_HLA_haplotypes_gene.fasta")
+        self.hla_cds_fasta = os.path.join(self.hla_fasta_dir, f"{self.sample_ID}_HLA_haplotypes_CDS.fasta")
+        
+        # Mosdepth files
+        self.mosdepth_regions = os.path.join(self.mosdepth_dir, f"{self.sample_ID}.regions.bed.gz")
+        self.mosdepth_thresholds = os.path.join(self.mosdepth_dir, f"{self.sample_ID}.thresholds.bed.gz")
+        
+        # Haploblock analysis files
+        self.phased_genes_tsv = os.path.join(self.parsed_haploblock_dir, "phased_genes.tsv")
+        self.incomplete_genes_csv = os.path.join(self.parsed_haploblock_dir, "incomplete.csv")
+        
+
+
+def build_workflow_config(sample):
+	"""
+	Build a configuration dictionary for workflows from a sample object.
+	This avoids passing the entire sample object to workflow functions.
+	"""
+	config = {
+		# Core sample information
+		'sample_ID': sample.sample_ID,
+		'threads': sample.threads,
+		'platform': sample.platform,
+		'aligner': sample.aligner,
+		'genotyper': sample.genotyper,
+		
+		# Adapter settings
+		'adapters': sample.adapters,
+		'adapter_file': sample.adapter_file,
+		'read_group_string': sample.read_group_string,
+		
+		# Directory paths
+		'fastq_raw_dir': sample.fastq_raw_dir,
+		'fastq_trimmed_dir': sample.fastq_trimmed_dir,
+		'mapped_bam_dir': sample.mapped_bam_dir,
+		'genotypes_dir': sample.genotypes_dir,
+		'sv_dir': sample.sv_dir,
+		'phased_vcf_dir': sample.phased_vcf_dir,
+		'mosdepth_dir': sample.mosdepth_dir,
+		'parsed_haploblock_dir': sample.parsed_haploblock_dir,
+		'filtered_vcf_dir': sample.filtered_vcf_dir,
+		'vcf2fasta_out_dir': sample.vcf2fasta_out_dir,
+		'hla_fasta_dir': sample.hla_fasta_dir,
+		'hla_typing_dir': sample.hla_typing_dir,
+		'gff_dir': sample.gff_dir,
+		'clean_up': sample.clean_up,
+		
+		# File paths (pre-constructed to avoid os.path.join() in workflows)
+		'raw_fastq': sample.raw_fastq,
+		'trimmed_fastq': sample.trimmed_fastq,
+		'trimmed_pbmarkdup_fastq': sample.trimmed_pbmarkdup_fastq,
+		'trimmed_pbmarkdup_fastq_gz': sample.trimmed_pbmarkdup_fastq_gz,
+		'hg38_bam': sample.hg38_bam,
+		'pangenome_bam': sample.pangenome_bam,
+		'pg_mapq_reassign_bam': sample.pg_mapq_reassign_bam,
+		'pg_mapq_reassign_mrkdup_bam': sample.pg_mapq_reassign_mrkdup_bam,
+		'hg38_mrkdup_bam': sample.hg38_mrkdup_bam,
+		'hg38_rmdup_chr6_bam': sample.hg38_rmdup_chr6_bam,
+		'hg38_rmdup_chr6_haplotag_bam': sample.hg38_rmdup_chr6_haplotag_bam,
+		'snv_vcf': sample.snv_vcf,
+		'snv_gvcf': sample.snv_gvcf,
+		'sv_vcf': sample.sv_vcf,
+		'tr_vcf': sample.tr_vcf,
+		'hiphase_snv_vcf': sample.hiphase_snv_vcf,
+		'hiphase_sv_vcf': sample.hiphase_sv_vcf,
+		'hiphase_tr_vcf': sample.hiphase_tr_vcf,
+		'hiphase_joint_vcf': sample.hiphase_joint_vcf,
+		'longphase_vcf': sample.longphase_vcf,
+		'longphase_sv_vcf': sample.longphase_sv_vcf,
+		'longphase_merged_vcf': sample.longphase_merged_vcf,
+		'phased_summary': sample.phased_summary,
+		'phased_blocks': sample.phased_blocks,
+		'phased_haploblocks': sample.phased_haploblocks,
+		'phased_haploblocks_gtf': sample.phased_haploblocks_gtf,
+		'pass_vcf': sample.pass_vcf,
+		'fail_vcf': sample.fail_vcf,
+		'pass_unphased_vcf': sample.pass_unphased_vcf,
+		'filtered_vcf': sample.filtered_vcf,
+		'unphased_tsv': sample.unphased_tsv,
+		'hla_gene_fasta': sample.hla_gene_fasta,
+		'hla_cds_fasta': sample.hla_cds_fasta,
+		'mosdepth_regions': sample.mosdepth_regions,
+		'mosdepth_thresholds': sample.mosdepth_thresholds,
+		'phased_genes_tsv': sample.phased_genes_tsv,
+		'incomplete_genes_csv': sample.incomplete_genes_csv,
+	}
+	
+	# Platform-specific directories
+	if sample.platform == "PACBIO":
+		config['pbtrgt_dir'] = getattr(sample, 'pbtrgt_dir', None)
+		config['ORIGINAL_CWD'] = getattr(sample, 'ORIGINAL_CWD', None)
+	
+	return config

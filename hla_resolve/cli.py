@@ -5,7 +5,7 @@ import sys
 from sample import Samples
 from config import *
 from utils import check_required_commands
-from workflow_config import build_workflow_config
+from sample import build_workflow_config
 from ont_workflow import preprocess_ont_sample
 from pacbio_workflow import preprocess_pacbio_sample
 from resolve_alleles import resolve_alleles

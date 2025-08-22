@@ -84,7 +84,7 @@ def run_coverage_analysis(
 	prop_30x_thresh
 ):
 	run_mosdepth(
-		input_file=os.path.join(config['mapped_bam_dir'], config['sample_ID'] +".hg38.rmdup.chr6.bam"),
+		input_file=config['hg38_rmdup_chr6_bam'],
 		output_dir=config['mosdepth_dir'],
 		sample_ID=config['sample_ID'],
 		regions_file=mosdepth_regions_file,
@@ -92,8 +92,8 @@ def run_coverage_analysis(
 	)
 	
 	sufficient_coverage_genes = parse_mosdepth(
-		regions_file=os.path.join(config['mosdepth_dir'], config['sample_ID'] + ".regions.bed.gz"),
-		thresholds_file=os.path.join(config['mosdepth_dir'], config['sample_ID'] + ".thresholds.bed.gz"), 
+		regions_file=config['mosdepth_regions'],
+		thresholds_file=config['mosdepth_thresholds'], 
 		depth_thresh=depth_thresh,
 		prop_20x_thresh=prop_20x_thresh,
 		prop_30x_thresh=prop_30x_thresh
@@ -114,11 +114,11 @@ def reconstruct_fasta_sequences(
 	stop_codons
 ):
 	if config['platform'] == "PACBIO":
-		phased_vcf = os.path.join(config['phased_vcf_dir'], config['sample_ID'] + ".hiphase.joint.vcf.gz")
-		haploblock_file = os.path.join(config['phased_vcf_dir'], config['sample_ID'] + ".phased.blocks.txt")
+		phased_vcf = config['hiphase_joint_vcf']
+		haploblock_file = config['phased_blocks']
 	elif config['platform'] == "ONT":
-		phased_vcf = os.path.join(config['phased_vcf_dir'], config['sample_ID'] + ".longphase.vcf.gz")
-		haploblock_file = os.path.join(config['phased_vcf_dir'], config['sample_ID'] + ".phased.haploblocks.txt")
+		phased_vcf = config['longphase_vcf']
+		haploblock_file = config['phased_haploblocks']
 	
 	heterozygous_sites, haploblock_list = parse_haploblocks(
 		phased_vcf=phased_vcf,
@@ -130,8 +130,8 @@ def reconstruct_fasta_sequences(
 	)
 
 	phased_genes = evaluate_gene_haploblocks(
-		phased_genes_file=os.path.join(config['parsed_haploblock_dir'], f"phased_genes.tsv"),
-		incomplete_genes_file=os.path.join(config['parsed_haploblock_dir'], f"incomplete.csv"),
+		phased_genes_file=config['phased_genes_tsv'],
+		incomplete_genes_file=config['incomplete_genes_csv'],
 		sample_ID=config['sample_ID'],
 		genes_bed=genes_bed,  
 		genes_of_interest=genes_of_interest,
@@ -139,17 +139,17 @@ def reconstruct_fasta_sequences(
 		haploblock_list=haploblock_list)
 	
 	if config['platform'] == "PACBIO":
-		input_vcf = os.path.join(config['phased_vcf_dir'], config['sample_ID'] + ".hiphase.joint.vcf.gz")
+		input_vcf = config['hiphase_joint_vcf']
 	elif config['platform'] == "ONT":
-		input_vcf = os.path.join(config['phased_vcf_dir'], config['sample_ID'] + ".longphase.merged.vcf.gz")
+		input_vcf = config['longphase_merged_vcf']
 	
 	filter_vcf(
 		input_vcf=input_vcf,
-		pass_vcf=os.path.join(config['phased_vcf_dir'], f"{config['sample_ID']}_PASS.vcf.gz"),
-		fail_vcf=os.path.join(config['phased_vcf_dir'], f"{config['sample_ID']}_FAIL.vcf.gz"),
-		pass_unphased_vcf=os.path.join(config['phased_vcf_dir'], f"{config['sample_ID']}_PASS_UNPHASED.vcf.gz"),
-		filtered_vcf=os.path.join(config['filtered_vcf_dir'], f"{config['sample_ID']}_filtered.vcf.gz"),
-		unphased_tsv=os.path.join(config['phased_vcf_dir'], config['sample_ID'] + ".unphased.tsv"),
+		pass_vcf=config['pass_vcf'],
+		fail_vcf=config['fail_vcf'],
+		pass_unphased_vcf=config['pass_unphased_vcf'],
+		filtered_vcf=config['filtered_vcf'],
+		unphased_tsv=config['unphased_tsv'],
 		platform=config['platform'],
 		genotyper=config['genotyper'],
 		hla_genes_regions_file=hla_genes_regions_file
@@ -164,7 +164,7 @@ def reconstruct_fasta_sequences(
 		if gene in genes_of_interest and gene in sufficient_coverage_genes:
 			run_vcf2fasta(
 				vcf2fasta=vcf2fasta_script,
-				input_vcf=os.path.join(config['filtered_vcf_dir'], f"{config['sample_ID']}_filtered.vcf.gz"),
+				input_vcf=config['filtered_vcf'],
 				output_dir=os.path.join(config['vcf2fasta_out_dir'], gene),
 				input_gff=os.path.join(config['gff_dir'], gene + "_cds_sorted.gff3"),
 				reference_genome=reference_genome,
@@ -173,7 +173,7 @@ def reconstruct_fasta_sequences(
 			
 			run_vcf2fasta(
 				vcf2fasta=vcf2fasta_script,
-				input_vcf=os.path.join(config['filtered_vcf_dir'], f"{config['sample_ID']}_filtered.vcf.gz"),
+				input_vcf=config['filtered_vcf'],
 				output_dir=os.path.join(config['vcf2fasta_out_dir'], gene),
 				input_gff=os.path.join(config['gff_dir'], gene + "_gene.gff3"),
 				reference_genome=reference_genome,
@@ -182,8 +182,8 @@ def reconstruct_fasta_sequences(
 	
 	parse_fastas(
 		vcf2fasta_out_dir=config['vcf2fasta_out_dir'],
-		output_gene_fasta=os.path.join(config['hla_fasta_dir'], config['sample_ID'] + "_HLA_haplotypes_gene.fasta"),
-		output_cds_fasta=os.path.join(config['hla_fasta_dir'], config['sample_ID'] + "_HLA_haplotypes_CDS.fasta"),
+		output_gene_fasta=config['hla_gene_fasta'],
+		output_cds_fasta=config['hla_cds_fasta'],
 		DNA_bases=DNA_bases,
 		stop_codons=stop_codons
 	)
