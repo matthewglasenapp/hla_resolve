@@ -134,9 +134,10 @@ def resolve_alleles(config):
 				feature="CDS")
 	
 	parse_fastas(
-		vcf2fasta_out_dir=config['vcf2fasta_out_dir'],
-		output_gene_fasta=config['hla_gene_fasta'],
-		output_cds_fasta=config['hla_cds_fasta'],
+		sample_ID=config['sample_ID'],
+		vcf2fasta_output_dir=config['vcf2fasta_out_dir'],
+		outfile_gene=config['hla_gene_fasta'],
+		outfile_CDS=config['hla_cds_fasta'],
 		DNA_bases=config['DNA_bases'],
 		stop_codons=config['stop_codons']
 	)
