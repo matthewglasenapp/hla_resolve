@@ -54,8 +54,6 @@ def print_time_taken(fun):
 
 # Pull hla xml database from web. Put in ./tmp directory
 def build_g_group_dict_from_web():
-	# TODO: Don't pull if file exists and is up to date
-
 	# These imports are only needed here
 	from zipfile import ZipFile
 	import os
@@ -294,16 +292,6 @@ def get_g_group_exons(allele_to_g_groups, sequence_data):
 				
 			common_sequence[g_group] = peptide_domain_sequence
 
-	# TODO: Remove if not needed
-	# no_domain = []
-		
-	# for allele in g_group_to_allele["None"]:
-	#     if sequence_data[allele].get("peptide_binding_domain") == None:
-	#         print(allele, "has no binding domain!")
-	#         no_domain.append(allele)
-
-	# orphan_alleles = {allele:sequence_data[allele]["peptide_binding_domain"] for allele in g_group_to_allele["None"] if allele not in no_domain}
-		
 	return common_sequence #, orphan_alleles
 
 # Load samples from a fasta file
@@ -312,10 +300,6 @@ def get_g_group_exons(allele_to_g_groups, sequence_data):
 def load_test_data(sample_file):
 	samples = {}
 	for record in SeqIO.parse(sample_file, "fasta"):
-		# TODO: Remove
-		# if "revio_hiphase" not in record.id:
-		#     continue
-		
 		samples[record.id] = record.seq
 
 	return samples
@@ -325,11 +309,10 @@ def load_test_data(sample_file):
 # Input: common_sequences: {class: (exon, sequence)} Common G group ARS
 #        sequence: (str) Sample exon sequence
 #        sample_name: (str) Name of sample
-#        truth_data: {sample_name: {<gene>_<num>: allele}} | None (optional)
 #        logfile: (file | None) (optional)
 # Output: (class, distance, num_equidistant)
 @profile
-def assign_classification_to_sample(common_sequenes, sequence, sample_name, truth_data=None, logfile=None):
+def assign_classification_to_sample(common_sequenes, sequence, sample_name, logfile=None):
 	best = (None, None, 0) # (class_name, distance, num_matches)
 	same_dist = []
 
@@ -374,46 +357,62 @@ def assign_classification_to_sample(common_sequenes, sequence, sample_name, trut
 # Input: full_sequence: {class: sequence} Full sequences of samples to check
 #        sequence: (str) Sample sequence to classify
 #        full_sample_name: (str) Name of sample
-#        truth_data: {sample_name: {<gene>_<num>: allele}} | None (optional)
 #        logfile: (file | None) (optional)
-#        use_len: (bool)
 #        norm_distance: (bool)
+#        eval_metric: (str: "edit_distance" | "match_length" | "identity")
 # Output: (class, distance, match_length, num_equidistant)
 @profile
-def assign_classification_to_sample_full_seq(full_sequence, sequence, full_sample_name, truth_data = None, logfile=None, use_len=False, norm_distance=False):
-	best = (None, None, None) # (class_name, distance, match_length)
+def assign_classification_to_sample_full_seq(full_sequence, sequence, full_sample_name, logfile=None, norm_distance=False, eval_metric="edit_distance"):
+	best = (None, None, None, None) # (class_name, distance, match_length, identity)
 	same_dist = []
 
 	# Grab gene to narrow search
-	# TODO: Is this reliable way to grab gene?
+	# TODO: Is this reliable way to grab gene? Yes.
 	hla_gene = full_sample_name.split("_")[1]
 	hla_gene = hla_gene[hla_gene.index("-")+1:] + "*"
 
 	for class_name, sequence_data in full_sequence.items():
+		# Skip if not the same gene
 		if hla_gene not in class_name:
 			continue
 
+		# Get distance metrics between test and sample sequences
 		distance, match_len = get_distance(sequence, sequence_data, get_length=True)
 
 		# Normalize edit distance by match length if this is enabled
 		if norm_distance:
 			distance = distance/match_len
 
-		# Choose between (min) edit distance and (max) match length as metric
-		metric_idx = 2 if use_len else 1
-		dist_cmp = lambda : distance < best[1]
-		leng_cmp = lambda : match_len > best[2]
-		cmp_fn = leng_cmp if use_len else dist_cmp
+		# Sequence identity, 1 - (edit distance/match length)
+		seq_identity = 1 - (distance / match_len)
+
+		# LUT for evaluation metric based on provided choice
+		metrics = {"edit_distance": distance, "match_length": match_len, "indentity": seq_identity}
+		metric_idxs = {"edit_distance": 1, "match_length": 2, "indentity": 3} # Index into saved best match
+
+		# Get index into best match based on chosen evaluation metric
+		metric_idx = metric_idxs[eval_metric]
+		
+		# Grab desired metric from saved best match
+		best_metric = best[metric_idx]
+
+		# Get desired metric for the current test sample
+		metric = metrics[eval_metric]
+
+		# Either choose to maximize or minimize metric. Min(edit dist), or Max(match len OR identity)
+		maximize = lambda : metric > best_metric
+		minimize = lambda : metric < best_metric
+		cmp_fn = minimize if eval_metric == "edit_distance" else maximize
 
 		# If first sample, or closest sample, set as best
-		if best[metric_idx] == None or cmp_fn():
-			best = (class_name, distance, match_len)
+		if best_metric == None or cmp_fn():
+			best = (class_name, distance, match_len, seq_identity)
 			same_dist = [class_name]
-		elif distance == best[metric_idx]:
+		elif metric == best_metric:
 			same_dist += [class_name]
 	
 	if logfile != None:
-		logfile.write(f"For {full_sample_name}, assigned {best[0]} dist {best[1]} len {best[2]}\n")
+		logfile.write(f"For {full_sample_name}, assigned {best[0]} dist {best[1]} len {best[2]} id {best[3]} using {eval_metric}\n")
 		if len(same_dist) > 1:
 			logfile.write(f"Equidistant for {full_sample_name}: {', '.join(same_dist)}\n")
 
@@ -428,6 +427,8 @@ def assign_classification_to_sample_full_seq(full_sequence, sequence, full_sampl
 @profile
 @print_time_taken
 def pass_1_classification(common_sequenes, samples, g_groups_dict, truth_data = None):
+	print("INFO: Beginning classification pass 1...")
+
 	results = {}
 	perfect = 0
 	current = 0
@@ -435,32 +436,28 @@ def pass_1_classification(common_sequenes, samples, g_groups_dict, truth_data = 
 	# pass_1_logfile = None
 	pass_1_logfile = open("g_group_assignment.log", "w")
 
-	pass_1_start_time = time.time()
 	for sample_name, sample_sequence in samples.items():
 		current += 1
 		if current % 20 == 0:
 			print(f"INFO: Processing {current}/{len(samples)} ({(current/len(samples))*100:.2f}%)")
 
-		result = assign_classification_to_sample(common_sequenes, sample_sequence, sample_name, truth_data=None, logfile=pass_1_logfile)
+		result = assign_classification_to_sample(common_sequenes, sample_sequence, sample_name, logfile=pass_1_logfile)
 		results[sample_name] = result
 		if result[1] == 0:
 			perfect += 1
-		# if result[1] > 0: print("WARN: G Group non-exact match found")
 
 		# Get just unique string corresponding to sample
 		sample_id = sample_name.split("_")[0]
 
 		# If truth data was given and has an entry of this sample
 		if truth_data != None and sample_id in truth_data.keys():
-			# TODO: Change sequence db to be g group
 			dist_to_truth_g_group(sample_name, truth_data, common_sequenes, sample_sequence, pass_1_logfile, g_groups_dict)
 
 	if pass_1_logfile != None:
 		pass_1_logfile.close()
 
 	print(f"INFO: 0 distance g group assignments: {perfect}/{len(samples)}. See logfile for details")
-	taken = time.time()-pass_1_start_time
-	# print(f"INFO: Pass 1 took {math.floor(taken/60)}m {taken%60:2.0f}s")
+	
 	return results
 
 # Builds a database of relevant allele sequences
@@ -509,8 +506,7 @@ def match_partial(x, db):
 	match = x    
 	
 	# Some alleles are not full. Ex: HLA-C*03:04:01. This is one of the HLA-C*03:04:01:* genes
-	# Check if allele found. If so, continue as normal.
-	# If not, find partial match. Missing feilds are wildcards. Then proceede with first match
+	# Use our existing matching functions for allele names.
 
 	# If exact match for allele name not found in our seq database
 	if not x in db.keys():
@@ -640,6 +636,8 @@ def dist_to_truth_allele(sample_name, truth_data, sequence_db, sequence, logfile
 @profile
 @print_time_taken
 def pass_2_classification(sequence_data, allele_to_g_groups, results_dict, samples, truth_data=None, exon_only=True):
+	print("INFO: Beginning classification pass 2...")
+
 	# {g_group: allele}
 	g_group_to_allele = generate_allele_dict(allele_to_g_groups)
 
@@ -650,8 +648,6 @@ def pass_2_classification(sequence_data, allele_to_g_groups, results_dict, sampl
 	pass_2_logfile = open("allele_assignment.log", "w")
 	perfect = 0
 	current = 0
-
-	pass_2_start_time = time.time()
 
 	results = {}
 	for sample_name, classification in results_dict.items():
@@ -691,7 +687,13 @@ def pass_2_classification(sequence_data, allele_to_g_groups, results_dict, sampl
 			allele_sequence_db = all_allele_sequence_db
 
 		# Re-use classification function
-		result = assign_classification_to_sample_full_seq(allele_sequence_db, samples[sample_name], sample_name, truth_data=truth_data, logfile=pass_2_logfile)
+		result = assign_classification_to_sample_full_seq(allele_sequence_db, samples[sample_name], sample_name, logfile=pass_2_logfile)
+
+		# If class is None, print warning. Will error in pass 3
+		if result[0] == None:
+			print(f"WARN: Ecountered allele that couldn't be classified in pass 2:", sample_name)
+
+		# If perfect match, add to score
 		if result[1] == 0:
 			perfect += 1
 		results[sample_name] = result
@@ -707,8 +709,6 @@ def pass_2_classification(sequence_data, allele_to_g_groups, results_dict, sampl
 		pass_2_logfile.close()
 
 	print(f"INFO: 0 distance allele assignments: {perfect}/{len(samples)}. See logfile for details")
-	taken = time.time()-pass_2_start_time
-	# print(f"INFO: Pass 2 took {math.floor(taken/60)}m {taken%60:2.0f}s")
 
 	return results
 
@@ -723,6 +723,8 @@ def pass_2_classification(sequence_data, allele_to_g_groups, results_dict, sampl
 # Output: {sample_name: (g_group, distance)}
 @print_time_taken
 def pass_3_classification(sequence_data, results_dict, samples, truth_data=None):
+	print("INFO: Beginning classification pass 3...")
+
 	# Precompute database of all sequences
 	all_allele_sequence_db = produce_allele_seq_db(sequence_data, exon_only=False)
 
@@ -739,8 +741,14 @@ def pass_3_classification(sequence_data, results_dict, samples, truth_data=None)
 
 		# Strip last field from the allele, to get substring that matches the exon reigon
 		classified_allele = classification[0]
-		if classified_allele is None:
-			print(f"DEBUG: sample={sample_name} has None allele: classification={classification!r}")
+
+		# Log if classification was None, and skip
+		if classified_allele == None:
+			print(f"ERR: Ecountered allele that couldn't be classified:", sample_name)
+			if pass_3_logfile != None:
+				pass_3_logfile.writelines(f"{sample_name} was assigned None in pass 2")
+			continue
+
 		fields = classified_allele.split(":")
 
 		# For four field alleles, trim of last field so we can replace it with wildcard
@@ -770,7 +778,7 @@ def pass_3_classification(sequence_data, results_dict, samples, truth_data=None)
 		allele_sequence_db = produce_allele_seq_db(sequence_data, selected_alleles=all_exon_matches, exon_only=False)
 
 		# Same as pass 2, but this time, classify full sequence input against full sequence db
-		result = assign_classification_to_sample_full_seq(allele_sequence_db, samples[sample_name], sample_name, truth_data=truth_data, logfile=pass_3_logfile, use_len=False)
+		result = assign_classification_to_sample_full_seq(allele_sequence_db, samples[sample_name], sample_name, logfile=pass_3_logfile, eval_metric="indentity")
 		if result[1] == 0:
 			perfect += 1
 		results[sample_name] = result
@@ -795,25 +803,27 @@ def pass_3_classification(sequence_data, results_dict, samples, truth_data=None)
 # Output: None
 @print_time_taken
 def output_results(results, file_path):
-	# TODO: Figure out standardized input format
-	
+	# Helper functions to get sample name and allele
 	get_name = lambda x:x.split("_")[0]
 	get_allele = lambda x:x.split("_")[1]+"_"+x.split("_")[-1]
 
+	# Get list of all samples and alleles
 	entry_names = results.keys()
 	unique_samples = sorted(list(set(map(get_name, entry_names))))
 	unique_alleles = sorted(list(set(map(get_allele, entry_names))))
 
+	# Array containing sample id, and empty slots for allele classification
 	data = [[sample] + [None] * len(unique_alleles) for sample in unique_samples]
 	
-	# TODO: This may be slow with 10s/100s of thousands of samples
-	for entry, g_group in results.items():
+	# Go through each entry in the results, and add it to the data array
+	for entry, classification in results.items():
 		sample_name = get_name(entry)
 		sample_allele = get_allele(entry)
 
+		# Insert classification into correct slot in array
 		name_index = unique_samples.index(sample_name)
 		allele_index = unique_alleles.index(sample_allele)
-		data[name_index][allele_index+1] = g_group[0]
+		data[name_index][allele_index+1] = classification[0]
 
 	# Swap alleles 1 and 2 when 2 > 1
 	for entry in range(len(data)):
@@ -828,7 +838,7 @@ def output_results(results, file_path):
 					data[entry][i] = allele_2
 					data[entry][i+1] = allele_1
 			
-
+	# Turn into dataframe and output to csv file
 	df = pd.DataFrame(data, columns=["sampleID"]+unique_alleles)
 	df.to_csv(file_path, index=False)
 
@@ -872,7 +882,8 @@ def load_truth_data(path, source = "IHW"):
 
 	return sample_labels
 
-# Main function. Runs all classification passes and writes results
+# Runs all classification passes and writes results
+# Called by main() in the pipeline
 # Input:    reference_xml_file: (str) XML file with allele reference sequences
 #           samples_file: (str) fasta file full of input sample concatinated exons
 #           truth_file: (str | None) csv file with true allele calls, for tracing
@@ -908,7 +919,7 @@ def run_classification(reference_xml_file, samples_file, full_sample_file=None, 
 	allele_classifications = pass_2_classification(sequence_data, g_group_dict, g_group_classifications, samples, truth_data=truth_data)
 
 	print("INFO: Writing allele results")
-	output_results(allele_classifications, "allele_output.csv")
+	output_results(allele_classifications, "3_field_allele_output.csv")
 	
 	if full_sample_file == None:
 		exit(0)
@@ -917,13 +928,13 @@ def run_classification(reference_xml_file, samples_file, full_sample_file=None, 
 	refined_classifications = pass_3_classification(sequence_data, allele_classifications, full_samples, truth_data=truth_data)
 
 	print("INFO: Writing refined allele results")
-	output_results(refined_classifications, "refined_allele_output.csv")
+	output_results(refined_classifications, "allele_output.csv")
 
 # CLI interface used for testing
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser(description='Two-Step HLA Allele Identification System')
 	parser.add_argument('--hla-xml', required=False, default=None, help='Input hla.xml reference file')
-	parser.add_argument('--samples', required=False, default="hla_resolve/data/HLA_Class_I_haplotypes.fa", help='Input FASTA file with full sequences')
+	parser.add_argument('--samples', required=False, default="../data/HLA_Class_I_haplotypes.fa", help='Input FASTA file with full sequences')
 	parser.add_argument('--truth', required=False, default=None, help='Input csv file containg truth data, for testing purposes')
 	parser.add_argument("--full-sequence", required=False, default=None, help="To enable the third intron/UTR classification stage, supply full sequence data here")
 	
@@ -939,7 +950,7 @@ if __name__ == "__main__":
 # Main entrypoint from pipeline
 # Input:    reference_xml_file: (str) Path to XML file with allele reference sequences
 #           hla_fasta_dir: (str) Path to directory containing pipeline output fasta files
-#           sample_ID: (str | int) Number of the sample to be processed
+#           sample_ID: (str | int) ID number of the sample to be processed
 # Output:   (None) Writes to assignement.log and output.csv files for each stage
 def main(reference_xml_file, hla_fasta_dir, sample_ID):
 	samples_file = os.path.join(hla_fasta_dir, str(sample_ID) + "_HLA_haplotypes_CDS.fasta")
