@@ -31,24 +31,19 @@ def convert_bam_to_fastq(input_file, output_file, platform, threads):
 	print(f"Raw fastq reads written to: {output_file}")
 	print("\n\n")
 
-def trim_adapters(adapters, input_file, output_file, sample_ID, threads, adapter_file = None):
+def trim_adapters(adapters, input_file, output_file, sample_ID, threads, adapter_file = None, five_prime_adapter = None, three_prime_adapter = None):
 	if adapters:
 
-		if adapter_file:
+		if adapter_file and five_prime_adapter and three_prime_adapter:
 			print("Trimming adapter sequences with cutadapt!")
 			print(f"cutadapt input file: {input_file}")
+			print(f"5' adapter: {five_prime_adapter}")
+			print(f"3' adapter: {three_prime_adapter}")
 
-			# For now, use fastplong since we don't have specific adapter sequences
-			# TODO: Parse adapter file to extract specific sequences
-			print("Using fastplong for adapter trimming (adapter file parsing not yet implemented)")
+			# Use cutadapt with specific adapter sequences from the adapter file
+			cutadapt_cmd = f"cutadapt -j {threads} --quiet -n 2 -g {five_prime_adapter} -a {three_prime_adapter} -o {output_file} {input_file}"
 			
-			output_dir = os.path.dirname(output_file)
-			html_path = os.path.join(output_dir, sample_ID + ".fastplong.html")
-			json_path = os.path.join(output_dir, sample_ID + ".fastplong.json")
-
-			fastplong_cmd = f"fastplong -i {input_file} -h {html_path} -j {json_path} -w {threads} -n 100000 -o {output_file}"
-			
-			subprocess.run(fastplong_cmd, shell=True, check=False)
+			subprocess.run(cutadapt_cmd, shell=True, check=True)
 
 			print(f"Trimmed reads written to: {output_file}")
 

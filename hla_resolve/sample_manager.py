@@ -250,13 +250,13 @@ class Samples:
             if not os.path.exists(expected_output):
                 raise RuntimeError(f"Compression failed: {expected_output} not found")
 
-    def print_results(self):
-        results_file = os.path.join(self.hla_typing_dir, "refined_allele_output.csv")
-        with open(results_file, "r") as f:
-            results = f.read().splitlines()[1].split(",")[1:]
-        print(f"{self.sample_ID} HLA Star Allele Calls")
-        for item in results:
-            print(item)
+	def print_results(self):
+		results_file = os.path.join(self.hla_typing_dir, "allele_output.csv")
+		with open(results_file, "r") as f:
+			results = f.read().splitlines()[1].split(",")[1:]
+		print(f"{self.sample_ID} HLA Star Allele Calls")
+		for item in results:
+			print(item)
 
     def _define_file_paths(self):
         """Define all file paths as properties to avoid path construction in workflow functions"""
@@ -341,6 +341,8 @@ def build_workflow_config(sample):
 		# Adapter settings
 		'adapters': sample.adapters,
 		'adapter_file': sample.adapter_file,
+		'five_prime_adapter': sample.five_prime_adapter,
+		'three_prime_adapter': sample.three_prime_adapter,
 		'read_group_string': sample.read_group_string,
 		
 		# Directory paths

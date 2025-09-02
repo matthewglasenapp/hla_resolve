@@ -21,7 +21,9 @@ def preprocess_ont_sample(config):
 		output_file=config['trimmed_fastq'],
 		sample_ID=config['sample_ID'],
 		threads=config['threads'],
-		adapter_file=config['adapter_file']
+		adapter_file=config['adapter_file'],
+		five_prime_adapter=config['five_prime_adapter'],
+		three_prime_adapter=config['three_prime_adapter']
 	)
 	
 	align_to_reference_minimap(

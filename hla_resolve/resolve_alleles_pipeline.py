@@ -25,7 +25,7 @@ def print_results(config):
 	"""
 	Print the HLA typing results from the output file.
 	"""
-	results_file = os.path.join(config['hla_typing_dir'], "refined_allele_output.csv")
+	results_file = os.path.join(config['hla_typing_dir'], "allele_output.csv")
 	if os.path.exists(results_file):
 		with open(results_file, "r") as f:
 			results = f.read().splitlines()[1].split(",")[1:]
