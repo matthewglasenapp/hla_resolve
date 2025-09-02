@@ -17,6 +17,10 @@ from preprocess_methods import (
 )
 
 def preprocess_pacbio_sample(config):
+	run_fastqc(
+		input_file=config['raw_fastq']
+	)
+	
 	trim_adapters(
 		adapters=config['adapters'],
 		input_file=config['raw_fastq'],
@@ -36,10 +40,6 @@ def preprocess_pacbio_sample(config):
 		input_file=config['trimmed_fastq'],
 		output_file=config['trimmed_pbmarkdup_fastq'],
 		threads=config['threads']
-	)
-	
-	run_fastqc(
-		input_file=config['trimmed_pbmarkdup_fastq_gz']
 	)
 	
 	align_to_reference_minimap(
