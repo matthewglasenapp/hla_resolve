@@ -41,7 +41,7 @@ def trim_adapters(adapters, input_file, output_file, sample_ID, threads, adapter
 			print(f"3' adapter: {three_prime_adapter}")
 
 			# Use cutadapt with specific adapter sequences from the adapter file
-			cutadapt_cmd = f"cutadapt -j {threads} --quiet -n 2 -g {five_prime_adapter} -a {three_prime_adapter} -o {output_file} {input_file}"
+			cutadapt_cmd = f"cutadapt -j {threads} --quiet -n 2 --minimum-length 100 -g {five_prime_adapter} -a {three_prime_adapter} -o {output_file} {input_file}"
 			
 			subprocess.run(cutadapt_cmd, shell=True, check=True)
 

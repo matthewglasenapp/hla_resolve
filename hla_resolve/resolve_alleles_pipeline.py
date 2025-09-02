@@ -90,6 +90,12 @@ def resolve_alleles(config):
 		het_sites=heterozygous_sites, 
 		haploblocks=haploblock_list)
 	
+	# Print which genes were successfully phased
+	print("Phased Genes:")
+	for gene in config['genes_of_interest']:
+		if gene in phased_genes:
+			print(f"  {gene}")
+	
 	if config['platform'] == "PACBIO":
 		input_vcf = config['hiphase_joint_vcf']
 	elif config['platform'] == "ONT":
