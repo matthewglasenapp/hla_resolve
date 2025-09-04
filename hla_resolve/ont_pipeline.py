@@ -50,7 +50,7 @@ def preprocess_ont_sample(config):
 	
 		reassign_mapq(
 			bam_hg38=config['hg38_bam'],
-			bam_pg=config['pangenome_bam'],
+			bam_pg=config['pg_bam'],
 			reassigned_pg=config['pg_mapq_reassign_bam']
 		)
 		
