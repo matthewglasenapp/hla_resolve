@@ -122,7 +122,7 @@ def preprocess_pacbio_sample(config):
 	# call_structural_variants_pbsv(sample)
 	
 	call_structural_variants_sawfish(
-		input_bam=config['hg38_rmdup_chr6_bam'],
+		input_bam=config['hg38_bam'],
 		small_variant_calls=config['snv_vcf'],
 		output_vcf=config['sv_vcf'],
 		sv_dir=config['sv_dir'],
