@@ -260,7 +260,8 @@ def filter_reads(input_file, output_file, threads):
 
 	# Extract chromosome 6 and exclude secondary and supplementary alignments
 	# samtools_cmd = "samtools view -@ {threads} -F 2304 -b {input_file} chr6 > '{output_file}'".format(threads = sample.threads, input_file = input_bam, output_file = output_bam)
-	samtools_cmd = f"samtools view -F 1024 -@ {threads} -b {input_file} chr6 > '{output_file}'"
+	# Use -h flag to preserve full header, then filter to chr6
+	samtools_cmd = f"samtools view -h -F 1024 -@ {threads} {input_file} chr6 | samtools view -b > '{output_file}'"
 	index_cmd = f"samtools index {output_file}"
 
 	subprocess.run(samtools_cmd, shell=True, check=True)
