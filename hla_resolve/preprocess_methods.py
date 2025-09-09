@@ -164,7 +164,7 @@ def align_to_reference_minimap(input_file, output_file, read_group_string, refer
 	print(f"Mapped bam written to: {output_file}")
 	print("\n\n")
 
-def align_to_reference_vg(vg, input_file, output_file, sample_ID, read_group_string, reference_gbz, ref_paths, platform, threads):
+def align_to_reference_vg(vg, input_file, output_file, reheader_bam, sample_ID, read_group_string, reference_gbz, ref_paths, platform, threads):
 	print("Aligning reads to pangenome reference genome with vg giraffe!")
 	
 	if platform == "PACBIO":
@@ -191,12 +191,10 @@ def align_to_reference_vg(vg, input_file, output_file, sample_ID, read_group_str
 	output_dir = os.path.dirname(output_file)
 	temp_sam_1 = os.path.join(output_dir, sample_ID + "_temp1.sam")
 	temp_sam_2 = os.path.join(output_dir, sample_ID + "_temp2.sam")
-	# converted_bam = output_bam.replace(".bam", ".reaheader.bam")
-	converted_bam = output_file.replace(".pangenome.bam", ".pg.bam")
 	convert_to_sam = f"samtools view -h {output_file} > {temp_sam_1}"
 	rename_records = f"sed \"s/\\<GRCh38\\.chr/chr/g\" {temp_sam_1} > {temp_sam_2}"
-	convert_to_bam = f"samtools view -b -o {converted_bam} {temp_sam_2}"
-	index_new_bam = f"samtools index {converted_bam}"
+	convert_to_bam = f"samtools view -b -o {reheader_bam} {temp_sam_2}"
+	index_new_bam = f"samtools index {reheader_bam}"
 	subprocess.run(convert_to_sam, shell=True, check=True)
 	subprocess.run(rename_records, shell=True, check=True)
 	subprocess.run(convert_to_bam, shell=True, check=True)

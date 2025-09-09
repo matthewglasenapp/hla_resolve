@@ -56,6 +56,7 @@ def preprocess_pacbio_sample(config):
 			vg=config['vg'],
 			input_file=config['trimmed_pbmarkdup_fastq_gz'],
 			output_file=config['pangenome_bam'],
+			reheader_bam=config['pg_reheader_bam'],
 			sample_ID=config['sample_ID'],
 			read_group_string=config['read_group_string'],
 			reference_gbz=config['reference_gbz'],
@@ -122,7 +123,7 @@ def preprocess_pacbio_sample(config):
 	# call_structural_variants_pbsv(sample)
 	
 	call_structural_variants_sawfish(
-		input_bam=config['hg38_bam'],
+		input_bam=config['hg38_rumdup_chr6_bam'],
 		small_variant_calls=config['snv_vcf'],
 		output_vcf=config['sv_vcf'],
 		sv_dir=config['sv_dir'],

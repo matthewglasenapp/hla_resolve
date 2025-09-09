@@ -271,6 +271,7 @@ class Samples:
         self.hg38_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.hg38.bam")
         self.pangenome_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.pangenome.bam")
         self.pg_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.pg.bam")
+        self.pg_reheader_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.pg.bam")
         self.pg_mapq_reassign_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.pg.mapq_reassign.bam")
         self.pg_mapq_reassign_mrkdup_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.pg.mapq_reassign.mrkdup.bam")
         self.hg38_mrkdup_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.hg38.mrkdup.bam")
@@ -370,6 +371,7 @@ def build_workflow_config(sample):
 		'hg38_bam': sample.hg38_bam,
 		'pangenome_bam': sample.pangenome_bam,
 		'pg_bam': sample.pg_bam,
+		'pg_reheader_bam': sample.pg_reheader_bam,
 		'pg_mapq_reassign_bam': sample.pg_mapq_reassign_bam,
 		'pg_mapq_reassign_mrkdup_bam': sample.pg_mapq_reassign_mrkdup_bam,
 		'hg38_mrkdup_bam': sample.hg38_mrkdup_bam,
