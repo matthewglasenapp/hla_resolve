@@ -39,7 +39,9 @@ prop_30x_thresh = 0.8
 
 # Additional paths from reconstruct_fasta_methods.py
 vcf2fasta_script = "/hb/scratch/mglasena/vcf2fasta/vcf2fasta.py"
+# Reference genome - toggle between these as needed:
 reference_genome = "/hb/groups/cornejo_lab/matt/hla_capture/input_data/reference/GCA_000001405.15_GRCh38_no_alt_analysis_set.fa"
+# reference_genome = "/hb/scratch/mglasena/test_hla_resolve/hla_resolve/hla_resolve/data/reference/augmented_hg38.fa"  # For testing with augmented reference
 gff_dir = "/hb/groups/cornejo_lab/matt/hla_capture/input_data/hla_gff"
 hla_genes_regions_file = "/hb/scratch/mglasena/test_hla_resolve/hla_resolve/hla_resolve/hla_genes.bed"
 

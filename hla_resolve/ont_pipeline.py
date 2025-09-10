@@ -30,7 +30,7 @@ def preprocess_ont_sample(config):
 		input_file=config['trimmed_fastq'],
 		output_file=config['hg38_bam'],
 		read_group_string=config['read_group_string'],
-		reference_fasta=config['reference_fasta'],
+		reference_fasta=config['reference_genome'],
 		platform=config['platform'],
 		threads=config['threads']
 	)
@@ -85,7 +85,7 @@ def preprocess_ont_sample(config):
 		call_variants_bcftools(
 			input_file=config['hg38_rmdup_chr6_bam'],
 			output_file=config['snv_vcf'],
-			reference_fasta=config['reference_fasta'],
+			reference_fasta=config['reference_genome'],
 			platform=config['platform'],
 			threads=config['threads']
 		)
@@ -97,7 +97,7 @@ def preprocess_ont_sample(config):
 			output_gvcf=config['snv_gvcf'],
 			platform=config['platform'],
 			deepvariant_sif=config['deepvariant_sif'],
-			reference_fasta=config['reference_fasta'],
+			reference_fasta=config['reference_genome'],
 			genotypes_dir=config['genotypes_dir'],
 			mapped_bam_dir=config['mapped_bam_dir'],
 			sample_ID=config['sample_ID']
@@ -107,7 +107,7 @@ def preprocess_ont_sample(config):
 			input_bam=config['hg38_rmdup_chr6_bam'],
 			output_vcf=config['snv_vcf'],
 			platform=config['platform'],
-			reference_fasta=config['reference_fasta'],
+			reference_fasta=config['reference_genome'],
 			threads=config['threads'],
 			chr6_bed=config['chr6_bed'],
 			clair3_ont_model_path=config['clair3_ont_model_path'],
@@ -119,7 +119,7 @@ def preprocess_ont_sample(config):
 		input_bam=config['hg38_rmdup_chr6_bam'],
 		output_vcf=config['sv_vcf'],
 		threads=config['threads'],
-		reference_fasta=config['reference_fasta'],
+		reference_fasta=config['reference_genome'],
 		chr6_bed=config['chr6_bed'],
 		tandem_repeat_bed=config['tandem_repeat_bed']
 	)
@@ -133,7 +133,7 @@ def preprocess_ont_sample(config):
 		phased_SV_vcf=config['longphase_sv_vcf'],
 		haplotagged_bam=config['hg38_rmdup_chr6_haplotag_bam'],
 		longphase=config['longphase'],
-		reference_fasta=config['reference_fasta'],
+		reference_fasta=config['reference_genome'],
 		threads=config['threads'],
 		phased_vcf_dir=config['phased_vcf_dir'],
 		sample_ID=config['sample_ID']
@@ -142,7 +142,7 @@ def preprocess_ont_sample(config):
 		phased_vcf=config['longphase_vcf'],
 		phased_SV_vcf=config['longphase_sv_vcf'],
 		merged_vcf=config['longphase_merged_vcf'],
-		reference_fasta=config['reference_fasta'],
+		reference_fasta=config['reference_genome'],
 		phased_vcf_dir=config['phased_vcf_dir'],
 		sample_ID=config['sample_ID']
 	)

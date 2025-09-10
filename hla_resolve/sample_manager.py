@@ -406,7 +406,7 @@ def build_workflow_config(sample):
 		'incomplete_genes_csv': sample.incomplete_genes_csv,
 		
 		# Reference files and tool paths (from Samples class and config.py)
-		'reference_fasta': Samples.reference_fasta,
+		'reference_genome': reference_genome,
 		'deepvariant_sif': Samples.deepvariant_sif,
 		'chr6_bed': Samples.chr6_bed,
 		'tandem_repeat_bed': Samples.tandem_repeat_bed,
