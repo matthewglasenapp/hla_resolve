@@ -9,92 +9,90 @@ import re
 import argparse
 import os
 
-from line_profiler import profile
-
 NUM_SAMPLES = None
 
 # Known problematic entries whose exons 2 (or 3 if applicable) do not
 # match with other alleles in their G group
 non_matching_exons = {"HLA-C*07:02:01:17N": "C*07:02:01G",
-					  "HLA-C*15:02:01:08N": "C*15:02:01G",
-					  "HLA-DRB4*01:03:01:02N": "DRB4*01:01:01G",
-					  "HLA-DRB4*01:03:01:13N": "DRB4*01:01:01G",
-					  "HLA-DRB4*01:03:01:26N": "DRB4*01:01:01G",
-					  "HLA-DRB4*01:03:01:28N": "DRB4*01:01:01G",
-					  "HLA-DRB4*01:03:41N": "DRB4*01:01:01G",
-					  "HLA-DMB*01:05": "DMB*01:01:01G"}
+                      "HLA-C*15:02:01:08N": "C*15:02:01G",
+                      "HLA-DRB4*01:03:01:02N": "DRB4*01:01:01G",
+                      "HLA-DRB4*01:03:01:13N": "DRB4*01:01:01G",
+                      "HLA-DRB4*01:03:01:26N": "DRB4*01:01:01G",
+                      "HLA-DRB4*01:03:01:28N": "DRB4*01:01:01G",
+                      "HLA-DRB4*01:03:41N": "DRB4*01:01:01G",
+                      "HLA-DMB*01:05": "DMB*01:01:01G"}
 
 # Function decorator to print time taken to run a function
 def print_time_taken(fun):
-	def wrapper(self, *args, **kwargs):
-		# Get start time
-		start_time = time.time()
+    def wrapper(self, *args, **kwargs):
+        # Get start time
+        start_time = time.time()
 
-		# Run decorated function
-		result = fun(self, *args, **kwargs)
+        # Run decorated function
+        result = fun(self, *args, **kwargs)
 
-		# Get end time, and print minutes and seconds taken
-		end_time = time.time()
-		time_taken = end_time-start_time
-		seconds = time_taken % 60
-		minutes = math.floor(time_taken / 60)
-		if NUM_SAMPLES == None:
-			print(f"INFO: {fun.__name__} took {minutes}m {seconds:2.0f}s")
-		else:
-			time_per_sample = time_taken / NUM_SAMPLES
-			seconds_per_sample = time_per_sample % 60
-			minutes_per_sample = math.floor(time_per_sample / 60)
-			print(f"INFO: {fun.__name__} took {minutes}m {seconds:2.0f}s")
-			print(f"INFO: {fun.__name__} took {minutes_per_sample}m {seconds_per_sample:2.0f}s per sample")
-		
-		# Return result of decorated function
-		return result
-	
-	return wrapper
+        # Get end time, and print minutes and seconds taken
+        end_time = time.time()
+        time_taken = end_time-start_time
+        seconds = time_taken % 60
+        minutes = math.floor(time_taken / 60)
+        if NUM_SAMPLES == None:
+            print(f"INFO: {fun.__name__} took {minutes}m {seconds:2.0f}s")
+        else:
+            time_per_sample = time_taken / NUM_SAMPLES
+            seconds_per_sample = time_per_sample % 60
+            minutes_per_sample = math.floor(time_per_sample / 60)
+            print(f"INFO: {fun.__name__} took {minutes}m {seconds:2.0f}s")
+            print(f"INFO: {fun.__name__} took {minutes_per_sample}m {seconds_per_sample:2.0f}s per sample")
+        
+        # Return result of decorated function
+        return result
+    
+    return wrapper
 
 # Pull hla xml database from web. Put in ./tmp directory
 def build_g_group_dict_from_web():
-	# These imports are only needed here
-	from zipfile import ZipFile
-	import os
-	import requests
-	import datetime
+    # These imports are only needed here
+    from zipfile import ZipFile
+    import os
+    import requests
+    import datetime
 
-	db_url = "https://ftp.ebi.ac.uk/pub/databases/ipd/imgt/hla/xml/hla.xml.zip"
+    db_url = "https://ftp.ebi.ac.uk/pub/databases/ipd/imgt/hla/xml/hla.xml.zip"
 
-	file_exists = os.path.isfile("tmp/hla.xml")
+    file_exists = os.path.isfile("tmp/hla.xml")
 
-	# If file exists, check if up to date
-	if file_exists:
-		# Get file last modified timestamp as datetime object
-		file_modified = os.path.getmtime("tmp/hla.xml")
-		file_modified = datetime.datetime.fromtimestamp(file_modified)
+    # If file exists, check if up to date
+    if file_exists:
+        # Get file last modified timestamp as datetime object
+        file_modified = os.path.getmtime("tmp/hla.xml")
+        file_modified = datetime.datetime.fromtimestamp(file_modified)
 
-		# Get database last modified timestamp as datetime object
-		response = requests.head(db_url)
-		response.raise_for_status()
-		db_modified = response.headers.get('Last-Modified')
-		db_modified = datetime.datetime.strptime(db_modified, '%a, %d %b %Y %H:%M:%S %Z')
+        # Get database last modified timestamp as datetime object
+        response = requests.head(db_url)
+        response.raise_for_status()
+        db_modified = response.headers.get('Last-Modified')
+        db_modified = datetime.datetime.strptime(db_modified, '%a, %d %b %Y %H:%M:%S %Z')
 
-		# If file is more recent than latest database update, no need to get new file
-		if file_modified > db_modified:
-			print("INFO: Cached xml pulled from web is up-to-date")
-			return
-		else:
-			print("INFO: Cached xml pulled from web is not up-to-date. Redownloading...")
-			os.system("rm tmp/hla.xml.zip")
-	else:
-		print("INFO: No cached xml database. Pulling from web...")
+        # If file is more recent than latest database update, no need to get new file
+        if file_modified > db_modified:
+            print("INFO: Cached xml pulled from web is up-to-date")
+            return
+        else:
+            print("INFO: Cached xml pulled from web is not up-to-date. Redownloading...")
+            os.system("rm tmp/hla.xml.zip")
+    else:
+        print("INFO: No cached xml database. Pulling from web...")
 
-	# Get the zip file
-	command = "wget -P ./tmp " + db_url 
-	os.system("mkdir -p tmp")
-	os.system(command)
-	
-	# Extract using zipfile library, unzip command not available
-	zip = ZipFile('tmp/hla.xml.zip')
-	zip.extractall('tmp/')
-	zip.close()
+    # Get the zip file
+    command = "wget -P ./tmp " + db_url 
+    os.system("mkdir -p tmp")
+    os.system(command)
+    
+    # Extract using zipfile library, unzip command not available
+    zip = ZipFile('tmp/hla.xml.zip')
+    zip.extractall('tmp/')
+    zip.close()
 
 # Builds dictionary databases of allele's g group associations and code
 # Input: xml_file: path to XML file with referebnce database info
@@ -102,97 +100,97 @@ def build_g_group_dict_from_web():
 #          sequence_data: {allele: {feature: sequence}}
 @print_time_taken
 def build_g_group_dict(xml_file):
-	# If None, pull from web
-	if xml_file == None:
-		build_g_group_dict_from_web()
-		xml_file = "./tmp/hla.xml"
+    # If None, pull from web
+    if xml_file == None:
+        build_g_group_dict_from_web()
+        xml_file = "./tmp/hla.xml"
 
-	# Parse metadata XML file
-	print("INFO: Parsing metadata XML file")
-	tree = ET.parse(xml_file)
-	root = tree.getroot()
+    # Parse metadata XML file
+    print("INFO: Parsing metadata XML file")
+    tree = ET.parse(xml_file)
+    root = tree.getroot()
 
-	# Dictionary translating an allele to g group
-	g_groups = dict()
-	sequence_data = dict()
+    # Dictionary translating an allele to g group
+    g_groups = dict()
+    sequence_data = dict()
 
-	# All tags prefixed with this string
-	tag = lambda x:'{http://hla.alleles.org/xml}' + x
+    # All tags prefixed with this string
+    tag = lambda x:'{http://hla.alleles.org/xml}' + x
 
-	# From alleles, get every allele's g group
-	alleles = root.find(tag('alleles'))
-	for allele in alleles.findall(tag('allele')):
-		# G group and class (I or II)
-		g_group_xml = allele.find(tag('hla_g_group'))
-		class_type = allele.find(tag('locus')).attrib['class']
-		
-		# Skip alleles with no g group
-		if g_group_xml == None:
-			continue
-		
-		# Sequence section of file structure
-		sequence = allele.find(tag('sequence'))
-		if sequence == None:
-			continue
+    # From alleles, get every allele's g group
+    alleles = root.find(tag('alleles'))
+    for allele in alleles.findall(tag('allele')):
+        # G group and class (I or II)
+        g_group_xml = allele.find(tag('hla_g_group'))
+        class_type = allele.find(tag('locus')).attrib['class']
+        
+        # Skip alleles with no g group
+        if g_group_xml == None:
+            continue
+        
+        # Sequence section of file structure
+        sequence = allele.find(tag('sequence'))
+        if sequence == None:
+            continue
 
-		# DNA sequence, and feature annotation (exon, intron, etc.)
-		dna_sequence = sequence.find(tag('nucsequence'))
-		features = sequence.findall(tag('feature'))
-		if dna_sequence == None or features == None:
-			continue
+        # DNA sequence, and feature annotation (exon, intron, etc.)
+        dna_sequence = sequence.find(tag('nucsequence'))
+        features = sequence.findall(tag('feature'))
+        if dna_sequence == None or features == None:
+            continue
 
-		# Get full allele name and g group
-		name = allele.attrib["name"]
-		g_group = g_group_xml.attrib["status"]
+        # Get full allele name and g group
+        name = allele.attrib["name"]
+        g_group = g_group_xml.attrib["status"]
 
-		# Collect sequences by type
-		sequence_data[name] = dict()
-		for i, feature in enumerate(features):
-			feature_type = feature.attrib["featuretype"]
+        # Collect sequences by type
+        sequence_data[name] = dict()
+        for i, feature in enumerate(features):
+            feature_type = feature.attrib["featuretype"]
 
-			# Skip features that don't denote region
-			if feature_type not in ["UTR", "Exon", "Intron"]:
-				continue
+            # Skip features that don't denote region
+            if feature_type not in ["UTR", "Exon", "Intron"]:
+                continue
 
-			if feature_type not in sequence_data[name].keys():
-				sequence_data[name][feature_type] = []
+            if feature_type not in sequence_data[name].keys():
+                sequence_data[name][feature_type] = []
 
-			# Get snippet for this feature
-			locations = feature.find(tag('SequenceCoordinates'))
-			start, end = int(locations.attrib["start"]), int(locations.attrib["end"])
-			cut_sequence = dna_sequence.text[start-1:end]
+            # Get snippet for this feature
+            locations = feature.find(tag('SequenceCoordinates'))
+            start, end = int(locations.attrib["start"]), int(locations.attrib["end"])
+            cut_sequence = dna_sequence.text[start-1:end]
 
-			sequence_data[name][feature_type].append((i, cut_sequence))
+            sequence_data[name][feature_type].append((i, cut_sequence))
 
-			# Add sequences relevant to determining G group here too
-			if feature.attrib["name"] == "Exon 2":
-				sequence_data[name]["peptide_binding_domain"] = [(2, cut_sequence)]
+            # Add sequences relevant to determining G group here too
+            if feature.attrib["name"] == "Exon 2":
+                sequence_data[name]["peptide_binding_domain"] = [(2, cut_sequence)]
 
-			if feature.attrib["name"] == "Exon 3" and class_type == "I":
-				# Case where class 1 entry doesn't have Exon 2? Just HLA-E*01:04
-				if sequence_data[name].get("peptide_binding_domain") == None:
-					sequence_data[name]["peptide_binding_domain"] = [(3, cut_sequence)]
-					continue
+            if feature.attrib["name"] == "Exon 3" and class_type == "I":
+                # Case where class 1 entry doesn't have Exon 2? Just HLA-E*01:04
+                if sequence_data[name].get("peptide_binding_domain") == None:
+                    sequence_data[name]["peptide_binding_domain"] = [(3, cut_sequence)]
+                    continue
 
-				sequence_data[name]["peptide_binding_domain"].append((3, cut_sequence))
+                sequence_data[name]["peptide_binding_domain"].append((3, cut_sequence))
 
-		g_groups[name] = g_group
-		# print(g_group, type(g_group))
+        g_groups[name] = g_group
+        # print(g_group, type(g_group))
 
-	return g_groups, sequence_data
+    return g_groups, sequence_data
 
 # Create dictionary containing all alleles within a g group
 # Input: allele_to_g_groups: {allele: g_group}
 # Output: g_group_to_allele: {g_group: alleles}
 def generate_allele_dict(allele_to_g_groups):
-	g_group_to_allele = dict()
-	for k, v in allele_to_g_groups.items():
-		if v not in g_group_to_allele.keys():
-			g_group_to_allele[v] = []
+    g_group_to_allele = dict()
+    for k, v in allele_to_g_groups.items():
+        if v not in g_group_to_allele.keys():
+            g_group_to_allele[v] = []
 
-		g_group_to_allele[v].append(k)
+        g_group_to_allele[v].append(k)
 
-	return g_group_to_allele
+    return g_group_to_allele
 
 # Get the edit distance between two samples
 # Inputs:   sequence: sample sequence (str)
@@ -200,41 +198,48 @@ def generate_allele_dict(allele_to_g_groups):
 #           get_length: return length (bool) (optional)
 # Output:   edit distance (int), match_length (int) (optional)
 def get_distance(sequence, sequence_data, get_length=False, gap_compressed=True):
-	# Don't spend extra time calculating locations unless necessary
-	task = "locations" if get_length else "distance"
-	
-	# If gap compressed enabled, we need to calculate full path
-	if gap_compressed:
-		task = "path"
+    # Don't spend extra time calculating locations unless necessary
+    task = "distance"
+    
+    # If gap compressed enabled, or match length, we need to calculate full path
+    if gap_compressed or get_length:
+        task = "path"
 
-	# Ensure first argument is shorter sequence
-	if len(sequence) <= len(sequence_data):
-		results = edlib.align(sequence, sequence_data, task=task, mode="HW")
-	else:
-		results = edlib.align(sequence_data, sequence, task=task, mode="HW")
+    # Ensure first argument is shorter sequence
+    if len(sequence) <= len(sequence_data):
+        results = edlib.align(sequence, sequence_data, task=task, mode="HW")
+    else:
+        results = edlib.align(sequence_data, sequence, task=task, mode="HW")
 
-	edit_distance = results["editDistance"]
-	
-	# If using gap compressed distance, adjust to remove extra distance
-	if gap_compressed:
-		# Find all instances of insertion or deletion in cigar
-		pattern = r"(\d+)(I|D)"
-		for match in re.finditer(pattern, results["cigar"]):
+    edit_distance = results["editDistance"]
+    
+    # If using gap compressed distance, adjust to remove extra distance
+    if gap_compressed:
+        # Find all instances of insertion or deletion in cigar
+        pattern = r"(\d+)(I|D)"
+        for match in re.finditer(pattern, results["cigar"]):
 
-			# For any insertion/deletion longer than 1 bp,
-			# remove it from the edit distance leaving only
-			# one behind. All insertions/deletions count as 1
-			length = int(match.group(1))
-			if length > 1:
-				edit_distance -= length - 1
+            # For any insertion/deletion longer than 1 bp,
+            # remove it from the edit distance leaving only
+            # one behind. All insertions/deletions count as 1
+            length = int(match.group(1))
+            if length > 1:
+                edit_distance -= length - 1
 
-	# If we want to get match length, calculate from locations and return it too
-	if get_length:
-		match_length = sum([x[1]-x[0] for x in results['locations']])
-		return edit_distance, match_length
-	
-	# Otherwise just return edit distance
-	return edit_distance
+    # If we want to get match length, calculate from cigar and return it too
+    if get_length:
+        match_length = 0
+
+        # Sum all matches
+        pattern = r"(\d+)(=)"
+        for match in re.finditer(pattern, results["cigar"]):
+            length = int(match.group(1))
+            match_length += length
+
+        return edit_distance, match_length
+    
+    # Otherwise just return edit distance
+    return edit_distance
 
 # Get common peptide binding exons for each g group
 # Inputs: allele_to_g_groups: {allele: g_group}
@@ -243,66 +248,66 @@ def get_distance(sequence, sequence_data, get_length=False, gap_compressed=True)
 #        orphan_alleles: {allele: sequence}
 @print_time_taken
 def get_g_group_exons(allele_to_g_groups, sequence_data):
-	# Create dictionary containing all alleles within a g group
-	g_group_to_allele = generate_allele_dict(allele_to_g_groups)
+    # Create dictionary containing all alleles within a g group
+    g_group_to_allele = generate_allele_dict(allele_to_g_groups)
 
-	print("INFO: Finding common g group sequences")
-	common_sequence = dict()
-	# Check that peptide binding domain is same for every allele in g group
-	for g_group, alleles in g_group_to_allele.items():
-		if g_group == "None":
-			continue
+    print("INFO: Finding common g group sequences")
+    common_sequence = dict()
+    # Check that peptide binding domain is same for every allele in g group
+    for g_group, alleles in g_group_to_allele.items():
+        if g_group == "None":
+            continue
 
-		# Grab first one as comparison reference
-		peptide_domain_sequence = sequence_data[alleles[0]]["peptide_binding_domain"]
+        # Grab first one as comparison reference
+        peptide_domain_sequence = sequence_data[alleles[0]]["peptide_binding_domain"]
 
-		# Iterate over other alleles to compare
-		for allele in alleles[1:]:
-			# Skip known issue alleles
-			# TODO: This is nto required. Talk to Matt about removal
-			# if allele in non_matching_exons.keys():
-			#     print("INFO: Skipping known problematic allele", allele)
-				
-			#     # Add second entry of this allele for matching algorithm
-			#     differing_ars_sequence = sequence_data[allele]["peptide_binding_domain"]
+        # Iterate over other alleles to compare
+        for allele in alleles[1:]:
+            # Skip known issue alleles
+            # TODO: This is nto required. Talk to Matt about removal
+            # if allele in non_matching_exons.keys():
+            #     print("INFO: Skipping known problematic allele", allele)
+                
+            #     # Add second entry of this allele for matching algorithm
+            #     differing_ars_sequence = sequence_data[allele]["peptide_binding_domain"]
 
-			#     # We need a unique entry in the dictionary for this differing sequence.
-			#     # Use <g_group>;<allele>
-			#     g_group_entry_name = f"{g_group};{allele}"
+            #     # We need a unique entry in the dictionary for this differing sequence.
+            #     # Use <g_group>;<allele>
+            #     g_group_entry_name = f"{g_group};{allele}"
 
-			#     common_sequence[g_group_entry_name] = differing_ars_sequence
+            #     common_sequence[g_group_entry_name] = differing_ars_sequence
 
-			#     continue
+            #     continue
 
-			if len(sequence_data[allele]["peptide_binding_domain"]) != len(peptide_domain_sequence):
-				print("WARN: Number of peptide binding domain related exons not consistent across g group")
+            if len(sequence_data[allele]["peptide_binding_domain"]) != len(peptide_domain_sequence):
+                print("WARN: Number of peptide binding domain related exons not consistent across g group")
 
-			# Check each entry in the peptide binding domain sequence
-			# Will contiain Exon 2 and 3 for type I, Exon 2 for type II
-			for entry in sequence_data[allele]["peptide_binding_domain"]:
+            # Check each entry in the peptide binding domain sequence
+            # Will contiain Exon 2 and 3 for type I, Exon 2 for type II
+            for entry in sequence_data[allele]["peptide_binding_domain"]:
 
-				# If entries not in common, return
-				corresponding_seq = [s[1] for s in peptide_domain_sequence if s[0] == entry[0]][0]
-				if get_distance(entry[1], corresponding_seq) != 0:
-					print(f"ERR: Allele {allele} contains sequence not found in {g_group}")
-					print("INFO: Test sequence:", entry)
-					print("INFO: Corresponding G Group sequence:", corresponding_seq)
-					print("INFO: Calculated distance:", get_distance(entry[1], corresponding_seq))
-					return None
-				
-			common_sequence[g_group] = peptide_domain_sequence
+                # If entries not in common, return
+                corresponding_seq = [s[1] for s in peptide_domain_sequence if s[0] == entry[0]][0]
+                if get_distance(entry[1], corresponding_seq) != 0:
+                    print(f"ERR: Allele {allele} contains sequence not found in {g_group}")
+                    print("INFO: Test sequence:", entry)
+                    print("INFO: Corresponding G Group sequence:", corresponding_seq)
+                    print("INFO: Calculated distance:", get_distance(entry[1], corresponding_seq))
+                    return None
+                
+            common_sequence[g_group] = peptide_domain_sequence
 
-	return common_sequence #, orphan_alleles
+    return common_sequence #, orphan_alleles
 
 # Load samples from a fasta file
 # Input: Path to file with samples
 # Output: Dictionary containing {sample_name: sequence}
 def load_test_data(sample_file):
-	samples = {}
-	for record in SeqIO.parse(sample_file, "fasta"):
-		samples[record.id] = record.seq
+    samples = {}
+    for record in SeqIO.parse(sample_file, "fasta"):
+        samples[record.id] = record.seq
 
-	return samples
+    return samples
 
 # Do first pass of classification (to g group level)
 # This function operates on concatinated exon sequence
@@ -311,47 +316,47 @@ def load_test_data(sample_file):
 #        sample_name: (str) Name of sample
 #        logfile: (file | None) (optional)
 # Output: (class, distance, num_equidistant)
-@profile
+
 def assign_classification_to_sample(common_sequenes, sequence, sample_name, logfile=None):
-	best = (None, None, 0) # (class_name, distance, num_matches)
-	same_dist = []
+    best = (None, None, 0) # (class_name, distance, num_matches)
+    same_dist = []
 
-	hla_gene = sample_name.split("_")[1]
-	hla_gene = hla_gene[hla_gene.index("-")+1:] + "*"
+    hla_gene = sample_name.split("_")[1]
+    hla_gene = hla_gene[hla_gene.index("-")+1:] + "*"
 
-	# Go through each reference sequence and find closest match
-	for class_name, exons in common_sequenes.items():
-		if hla_gene not in class_name:
-			continue
+    # Go through each reference sequence and find closest match
+    for class_name, exons in common_sequenes.items():
+        if hla_gene not in class_name:
+            continue
 
-		# Check all exons for reference sample
-		distance = 0
-		for _, exon_sequence in exons: # one or two exons
-			distance += get_distance(sequence, exon_sequence)
+        # Check all exons for reference sample
+        distance = 0
+        for _, exon_sequence in exons: # one or two exons
+            distance += get_distance(sequence, exon_sequence)
 
-		if distance == best[1]:
-			same_dist += [class_name]
+        if distance == best[1]:
+            same_dist += [class_name]
 
-		# If first, or closest sample, set as best
-		if best[1] == None or distance < best[1]:
-			best = (class_name, distance)
-			same_dist = [class_name]
+        # If first, or closest sample, set as best
+        if best[1] == None or distance < best[1]:
+            best = (class_name, distance)
+            same_dist = [class_name]
 
-	best = (*best, len(same_dist))
+    best = (*best, len(same_dist))
 
-	# Return found g group if edit distance zero
-	if best[1] == 0:
-		if logfile != None:
-			logfile.write(f"For {sample_name}, assigned {best[0]} dist {best[1]}\n")
-			if len(same_dist) > 1:
-				logfile.write(f"Equidistant for {sample_name}: {', '.join(same_dist)}\n")
-		return best
-	
-	# No exact g group found, do unrestricted search during pass 2
-	if logfile != None:
-		logfile.write(f"For {sample_name}, found no perfect match. (Best: {best[0]} with distance {best[1]})\n")
+    # Return found g group if edit distance zero
+    if best[1] == 0:
+        if logfile != None:
+            logfile.write(f"For {sample_name}, assigned {best[0]} dist {best[1]}\n")
+            if len(same_dist) > 1:
+                logfile.write(f"Equidistant for {sample_name}: {', '.join(same_dist)}\n")
+        return best
+    
+    # No exact g group found, do unrestricted search during pass 2
+    if logfile != None:
+        logfile.write(f"For {sample_name}, found no perfect match. (Best: {best[0]} with distance {best[1]})\n")
 
-	return (None, -1, 0)
+    return (None, -1, 0)
 
 # Do full sequence based classification. Used in pass 2 and 3
 # Input: full_sequence: {class: sequence} Full sequences of samples to check
@@ -361,62 +366,62 @@ def assign_classification_to_sample(common_sequenes, sequence, sample_name, logf
 #        norm_distance: (bool)
 #        eval_metric: (str: "edit_distance" | "match_length" | "identity")
 # Output: (class, distance, match_length, num_equidistant)
-@profile
+
 def assign_classification_to_sample_full_seq(full_sequence, sequence, full_sample_name, logfile=None, norm_distance=False, eval_metric="edit_distance"):
-	best = (None, None, None, None) # (class_name, distance, match_length, identity)
-	same_dist = []
+    best = (None, None, None, None) # (class_name, distance, match_length, identity)
+    same_dist = []
 
-	# Grab gene to narrow search
-	# TODO: Is this reliable way to grab gene? Yes.
-	hla_gene = full_sample_name.split("_")[1]
-	hla_gene = hla_gene[hla_gene.index("-")+1:] + "*"
+    # Grab gene to narrow search
+    # TODO: Is this reliable way to grab gene? Yes.
+    hla_gene = full_sample_name.split("_")[1]
+    hla_gene = hla_gene[hla_gene.index("-")+1:] + "*"
 
-	for class_name, sequence_data in full_sequence.items():
-		# Skip if not the same gene
-		if hla_gene not in class_name:
-			continue
+    for class_name, sequence_data in full_sequence.items():
+        # Skip if not the same gene
+        if hla_gene not in class_name:
+            continue
 
-		# Get distance metrics between test and sample sequences
-		distance, match_len = get_distance(sequence, sequence_data, get_length=True)
+        # Get distance metrics between test and sample sequences
+        distance, match_len = get_distance(sequence, sequence_data, get_length=True)
 
-		# Normalize edit distance by match length if this is enabled
-		if norm_distance:
-			distance = distance/match_len
+        # Normalize edit distance by match length if this is enabled
+        if norm_distance:
+            distance = distance/match_len
 
-		# Sequence identity, 1 - (edit distance/match length)
-		seq_identity = 1 - (distance / match_len)
+        # Sequence identity, 1 - (edit distance/match length)
+        seq_identity = 1 - (distance / match_len)
 
-		# LUT for evaluation metric based on provided choice
-		metrics = {"edit_distance": distance, "match_length": match_len, "indentity": seq_identity}
-		metric_idxs = {"edit_distance": 1, "match_length": 2, "indentity": 3} # Index into saved best match
+        # LUT for evaluation metric based on provided choice
+        metrics = {"edit_distance": distance, "match_length": match_len, "identity": seq_identity}
+        metric_idxs = {"edit_distance": 1, "match_length": 2, "identity": 3} # Index into saved best match
 
-		# Get index into best match based on chosen evaluation metric
-		metric_idx = metric_idxs[eval_metric]
-		
-		# Grab desired metric from saved best match
-		best_metric = best[metric_idx]
+        # Get index into best match based on chosen evaluation metric
+        metric_idx = metric_idxs[eval_metric]
+        
+        # Grab desired metric from saved best match
+        best_metric = best[metric_idx]
 
-		# Get desired metric for the current test sample
-		metric = metrics[eval_metric]
+        # Get desired metric for the current test sample
+        metric = metrics[eval_metric]
 
-		# Either choose to maximize or minimize metric. Min(edit dist), or Max(match len OR identity)
-		maximize = lambda : metric > best_metric
-		minimize = lambda : metric < best_metric
-		cmp_fn = minimize if eval_metric == "edit_distance" else maximize
+        # Either choose to maximize or minimize metric. Min(edit dist), or Max(match len OR identity)
+        maximize = lambda : metric > best_metric
+        minimize = lambda : metric < best_metric
+        cmp_fn = minimize if eval_metric == "edit_distance" else maximize
 
-		# If first sample, or closest sample, set as best
-		if best_metric == None or cmp_fn():
-			best = (class_name, distance, match_len, seq_identity)
-			same_dist = [class_name]
-		elif metric == best_metric:
-			same_dist += [class_name]
-	
-	if logfile != None:
-		logfile.write(f"For {full_sample_name}, assigned {best[0]} dist {best[1]} len {best[2]} id {best[3]} using {eval_metric}\n")
-		if len(same_dist) > 1:
-			logfile.write(f"Equidistant for {full_sample_name}: {', '.join(same_dist)}\n")
+        # If first sample, or closest sample, set as best
+        if best_metric == None or cmp_fn():
+            best = (class_name, distance, match_len, seq_identity)
+            same_dist = [class_name]
+        elif metric == best_metric:
+            same_dist += [class_name]
+    
+    if logfile != None:
+        logfile.write(f"For {full_sample_name}, assigned {best[0]} dist {best[1]} len {best[2]} id {best[3]} using {eval_metric}\n")
+        if len(same_dist) > 1:
+            logfile.write(f"Equidistant for {full_sample_name}: {', '.join(same_dist)}\n")
 
-	return (*best, len(same_dist))
+    return (*best, len(same_dist))
 
 # Do first pass of classifiaction (to g group level)
 # Input: common_sequence: {g_group: sequence} Common ARS of each G group
@@ -424,77 +429,77 @@ def assign_classification_to_sample_full_seq(full_sequence, sequence, full_sampl
 #        g_groups_dict: {allele: g_group}
 #        truth_data: {sample_name: {<gene>_<num>: allele}} | None
 # Output: {sample_name: (g_group, distance)}
-@profile
+
 @print_time_taken
 def pass_1_classification(common_sequenes, samples, g_groups_dict, truth_data = None):
-	print("INFO: Beginning classification pass 1...")
+    print("INFO: Beginning classification pass 1...")
 
-	results = {}
-	perfect = 0
-	current = 0
+    results = {}
+    perfect = 0
+    current = 0
 
-	# pass_1_logfile = None
-	pass_1_logfile = open("g_group_assignment.log", "w")
+    # pass_1_logfile = None
+    pass_1_logfile = open("g_group_assignment.log", "w")
 
-	for sample_name, sample_sequence in samples.items():
-		current += 1
-		if current % 20 == 0:
-			print(f"INFO: Processing {current}/{len(samples)} ({(current/len(samples))*100:.2f}%)")
+    for sample_name, sample_sequence in samples.items():
+        current += 1
+        if current % 20 == 0:
+            print(f"INFO: Processing {current}/{len(samples)} ({(current/len(samples))*100:.2f}%)")
 
-		result = assign_classification_to_sample(common_sequenes, sample_sequence, sample_name, logfile=pass_1_logfile)
-		results[sample_name] = result
-		if result[1] == 0:
-			perfect += 1
+        result = assign_classification_to_sample(common_sequenes, sample_sequence, sample_name, logfile=pass_1_logfile)
+        results[sample_name] = result
+        if result[1] == 0:
+            perfect += 1
 
-		# Get just unique string corresponding to sample
-		sample_id = sample_name.split("_")[0]
+        # Get just unique string corresponding to sample
+        sample_id = sample_name.split("_")[0]
 
-		# If truth data was given and has an entry of this sample
-		if truth_data != None and sample_id in truth_data.keys():
-			dist_to_truth_g_group(sample_name, truth_data, common_sequenes, sample_sequence, pass_1_logfile, g_groups_dict)
+        # If truth data was given and has an entry of this sample
+        if truth_data != None and sample_id in truth_data.keys():
+            dist_to_truth_g_group(sample_name, truth_data, common_sequenes, sample_sequence, pass_1_logfile, g_groups_dict)
 
-	if pass_1_logfile != None:
-		pass_1_logfile.close()
+    if pass_1_logfile != None:
+        pass_1_logfile.close()
 
-	print(f"INFO: 0 distance g group assignments: {perfect}/{len(samples)}. See logfile for details")
-	
-	return results
+    print(f"INFO: 0 distance g group assignments: {perfect}/{len(samples)}. See logfile for details")
+    
+    return results
 
 # Builds a database of relevant allele sequences
 # Inputs:   sequence_data: {allele: {feature: (position, sequence)}}
 #           selected_alleles: [allele] | None
 # Outputs:  {allele: sequence}
 def produce_allele_seq_db(sequence_data, selected_alleles = None, exon_only = True):
-	allele_sequence_db = {}
+    allele_sequence_db = {}
 
-	# Iterate over the sequence data for all alleles
-	for allele, sequences in sequence_data.items():
-		# Skip alleles we don't want to seach
-		if selected_alleles != None and allele not in selected_alleles:
-			continue
+    # Iterate over the sequence data for all alleles
+    for allele, sequences in sequence_data.items():
+        # Skip alleles we don't want to seach
+        if selected_alleles != None and allele not in selected_alleles:
+            continue
 
-		# Start building up the full sequence for this alleles
-		segments = []
-		for feature, seq in sequences.items():
-			# Skip duplicate entries for Exon 2/3 used in first pass
-			if feature == "peptide_binding_domain":
-				continue
+        # Start building up the full sequence for this alleles
+        segments = []
+        for feature, seq in sequences.items():
+            # Skip duplicate entries for Exon 2/3 used in first pass
+            if feature == "peptide_binding_domain":
+                continue
 
-			# Skip non-exons if we are classifying concatinated exon data
-			if exon_only and feature != "Exon":
-				continue
+            # Skip non-exons if we are classifying concatinated exon data
+            if exon_only and feature != "Exon":
+                continue
 
-			# Add entry of form (index, sequence)
-			segments += seq
+            # Add entry of form (index, sequence)
+            segments += seq
 
-		# Sort based on index (first element in each tuple)
-		segments.sort()
+        # Sort based on index (first element in each tuple)
+        segments.sort()
 
-		# Assemble full sequence (remove index and concatinate)
-		full_sequence = "".join(list(map(lambda x:x[1], segments)))
-		allele_sequence_db[allele] = full_sequence
+        # Assemble full sequence (remove index and concatinate)
+        full_sequence = "".join(list(map(lambda x:x[1], segments)))
+        allele_sequence_db[allele] = full_sequence
 
-	return allele_sequence_db
+    return allele_sequence_db
 
 # General function for matching partially incomplete name to database of proper names
 # Matches based on keys of db. Used in truth distance checking functions to resolve
@@ -503,23 +508,23 @@ def produce_allele_seq_db(sequence_data, selected_alleles = None, exon_only = Tr
 #           db: {allele: (value never used/accessed)}
 # Outputs:  (str)
 def match_partial(x, db):
-	match = x    
-	
-	# Some alleles are not full. Ex: HLA-C*03:04:01. This is one of the HLA-C*03:04:01:* genes
-	# Use our existing matching functions for allele names.
+    match = x    
+    
+    # Some alleles are not full. Ex: HLA-C*03:04:01. This is one of the HLA-C*03:04:01:* genes
+    # Use our existing matching functions for allele names.
 
-	# If exact match for allele name not found in our seq database
-	if not x in db.keys():
-		# Find best match for the allele name
-		best = (None, None)
-		for allele in db.keys():
-			dist = get_distance(x, allele, gap_compressed=False)
-			if best[1] == None or dist < best[1]:
-				best = (allele, dist)
+    # If exact match for allele name not found in our seq database
+    if not x in db.keys():
+        # Find best match for the allele name
+        best = (None, None)
+        for allele in db.keys():
+            dist = get_distance(x, allele, gap_compressed=False)
+            if best[1] == None or dist < best[1]:
+                best = (allele, dist)
 
-		match = best[0]
-		
-	return match
+        match = best[0]
+        
+    return match
 
 # Function to grab the allele from the truth data corresponding to the sample
 # This function handles reformatting, ensuring leading zeros, etc.
@@ -528,38 +533,38 @@ def match_partial(x, db):
 #           index: (int) | None
 # Outputs:  allele (str)
 def get_allele(sample_name, truth_data, index=None):
-	# Get just unique string corresponding to sample
-	sample_id = sample_name.split("_")[0]
+    # Get just unique string corresponding to sample
+    sample_id = sample_name.split("_")[0]
 
-	# This will run twice for each sample/gene pair, so grab the index
-	# Get gene/index with form <gene>_<index>. Ex: A_1
-	hla_gene = sample_name.split("_")[1]
-	hla_gene = hla_gene[hla_gene.index("-")+1:]
+    # This will run twice for each sample/gene pair, so grab the index
+    # Get gene/index with form <gene>_<index>. Ex: A_1
+    hla_gene = sample_name.split("_")[1]
+    hla_gene = hla_gene[hla_gene.index("-")+1:]
 
-	# If index is None, grab from sample name. Otherwise use provided
-	if index == None:
-		# TODO: Is this reliable way to grab index?
-		gene_with_index = f"{hla_gene[0]}_{sample_name[-1]}"
-	else:
-		gene_with_index = f"{hla_gene[0]}_{index}"
+    # If index is None, grab from sample name. Otherwise use provided
+    if index == None:
+        # TODO: Is this reliable way to grab index?
+        gene_with_index = f"{hla_gene[0]}_{sample_name[-1]}"
+    else:
+        gene_with_index = f"{hla_gene[0]}_{index}"
 
-	# Get correct alleles for this sample
-	correct_allele = truth_data[sample_id][gene_with_index]
+    # Get correct alleles for this sample
+    correct_allele = truth_data[sample_id][gene_with_index]
 
-	fields = correct_allele.split("*")[1].split(":")
+    fields = correct_allele.split("*")[1].split(":")
 
-	# first field is one digit, zero padding required
-	if len(fields[0]) < 2:
-		# Prepend zero for padding
-		fields[0] = "0"+fields[0]
+    # first field is one digit, zero padding required
+    if len(fields[0]) < 2:
+        # Prepend zero for padding
+        fields[0] = "0"+fields[0]
 
-		# Reconstruct with zero padded first field
-		correct_allele = f"{hla_gene}*{':'.join(fields)}"
+        # Reconstruct with zero padded first field
+        correct_allele = f"{hla_gene}*{':'.join(fields)}"
 
-	# Our database contains HLA- prefix
-	correct_allele = "HLA-"+correct_allele
+    # Our database contains HLA- prefix
+    correct_allele = "HLA-"+correct_allele
 
-	return correct_allele, sample_id, gene_with_index
+    return correct_allele, sample_id, gene_with_index
 
 # Get the distance of a sample from the true allele
 # Input:    full_sample_name: (str)
@@ -571,33 +576,33 @@ def get_allele(sample_name, truth_data, index=None):
 #           index: (int) | None
 # Output:   None
 def dist_to_truth_g_group(sample_name, truth_data, sequence_db, sequence, logfile, allele_to_g_group, index=None):
-	# Repeat for both alleles. Pick best to report (of id index set, do that)
-	for allele_index in (1,2):
-		# Reformat to standard format
-		correct_allele, sample_id, gene_with_index = get_allele(sample_name, truth_data, index=allele_index)
+    # Repeat for both alleles. Pick best to report (of id index set, do that)
+    for allele_index in (1,2):
+        # Reformat to standard format
+        correct_allele, sample_id, gene_with_index = get_allele(sample_name, truth_data, index=allele_index)
 
-		# Acceptable alleles are keys in the allele to g group dictionary
-		correct_allele = match_partial(correct_allele, allele_to_g_group)
+        # Acceptable alleles are keys in the allele to g group dictionary
+        correct_allele = match_partial(correct_allele, allele_to_g_group)
 
-		# Convert to G group. Sequence db should b G group ARS.
-		correct_g_group = allele_to_g_group[correct_allele]
+        # Convert to G group. Sequence db should b G group ARS.
+        correct_g_group = allele_to_g_group[correct_allele]
 
-		# Handle case where g group is none
-		if correct_g_group == "None":
-			logfile.writelines(f"Sample {sample_name} with truth table entry {truth_data[sample_id][gene_with_index]}")
-			logfile.writelines(f" (determined using the {gene_with_index}: {correct_allele} allele) belongs to no G group.\n")
-			return
+        # Handle case where g group is none
+        if correct_g_group == "None":
+            logfile.writelines(f"Sample {sample_name} with truth table entry {truth_data[sample_id][gene_with_index]}")
+            logfile.writelines(f" (determined using the {gene_with_index}: {correct_allele} allele) belongs to no G group.\n")
+            return
 
-		# Get sequence, concatinate all exons. Db has form [(exon_num: seq), ...]
-		correct_sequence = sequence_db[correct_g_group]
-		correct_sequence = ''.join(map(lambda x:x[1], correct_sequence))
+        # Get sequence, concatinate all exons. Db has form [(exon_num: seq), ...]
+        correct_sequence = sequence_db[correct_g_group]
+        correct_sequence = ''.join(map(lambda x:x[1], correct_sequence))
 
-		# Get distance and log it
-		correct_g_group_dist = get_distance(sequence, correct_sequence)
+        # Get distance and log it
+        correct_g_group_dist = get_distance(sequence, correct_sequence)
 
-		# Best 0: edit distance 1: g group 2: sample id (just unique sample string) 3: <gene>_<index> (ex: A_1)
-		logfile.writelines(f"Sample {sample_name} with truth table entry {truth_data[sample_id][gene_with_index]}")
-		logfile.writelines(f" (calculated distance to {gene_with_index}: {correct_g_group}) had distance {correct_g_group_dist}\n")
+        # Best 0: edit distance 1: g group 2: sample id (just unique sample string) 3: <gene>_<index> (ex: A_1)
+        logfile.writelines(f"Sample {sample_name} with truth table entry {truth_data[sample_id][gene_with_index]}")
+        logfile.writelines(f" (calculated distance to {gene_with_index}: {correct_g_group}) had distance {correct_g_group_dist}\n")
 
 # Get the distance of a sample from the true allele
 # Input:    full_sample_name: (str)
@@ -607,22 +612,22 @@ def dist_to_truth_g_group(sample_name, truth_data, sequence_db, sequence, logfil
 #           logfile: (file)
 # Output:   None
 def dist_to_truth_allele(sample_name, truth_data, sequence_db, sequence, logfile):
-	# Repeat for both alleles. Pick best to report (of id index set, do that)
-	for allele_index in (1,2):
-		# Get just unique string corresponding to sample
-		correct_allele, sample_id, gene_with_index = get_allele(sample_name, truth_data, index=allele_index)
+    # Repeat for both alleles. Pick best to report (of id index set, do that)
+    for allele_index in (1,2):
+        # Get just unique string corresponding to sample
+        correct_allele, sample_id, gene_with_index = get_allele(sample_name, truth_data, index=allele_index)
 
-		# Some alleles are not full. Ex: HLA-C*03:04:01. This is one of the HLA-C*03:04:01:* genes
-		# Check if allele found. If so, continue as normal.
-		# If not, find partial match. Missing feilds are wildcards. Then proceede with first match    
-		correct_allele = match_partial(correct_allele, sequence_db)
+        # Some alleles are not full. Ex: HLA-C*03:04:01. This is one of the HLA-C*03:04:01:* genes
+        # Check if allele found. If so, continue as normal.
+        # If not, find partial match. Missing feilds are wildcards. Then proceede with first match    
+        correct_allele = match_partial(correct_allele, sequence_db)
 
-		# Get sequence and calculate distance
-		correct_sequence = sequence_db[correct_allele]
-		correct_allele_dist, leng = get_distance(sequence, correct_sequence, get_length=True)
+        # Get sequence and calculate distance
+        correct_sequence = sequence_db[correct_allele]
+        correct_allele_dist, leng = get_distance(sequence, correct_sequence, get_length=True)
 
-		logfile.writelines(f"Sample {sample_name} with truth table entry {truth_data[sample_id][gene_with_index]}")
-		logfile.writelines(f" (calculated distance to {gene_with_index}: {correct_allele}) had distance {correct_allele_dist} and match length {leng}\n")
+        logfile.writelines(f"Sample {sample_name} with truth table entry {truth_data[sample_id][gene_with_index]}")
+        logfile.writelines(f" (calculated distance to {gene_with_index}: {correct_allele}) had distance {correct_allele_dist} and match length {leng}\n")
 
 # Do second pass classification to assign allele from g group to sample
 # This pass is the exon matching stage
@@ -633,84 +638,84 @@ def dist_to_truth_allele(sample_name, truth_data, sequence_db, sequence, logfile
 #        truth_data: {sample_name: {<gene>_<num>: allele}} | None
 #        exon_only: bool
 # Output: {sample_name: (g_group, distance)}
-@profile
+
 @print_time_taken
 def pass_2_classification(sequence_data, allele_to_g_groups, results_dict, samples, truth_data=None, exon_only=True):
-	print("INFO: Beginning classification pass 2...")
+    print("INFO: Beginning classification pass 2...")
 
-	# {g_group: allele}
-	g_group_to_allele = generate_allele_dict(allele_to_g_groups)
+    # {g_group: allele}
+    g_group_to_allele = generate_allele_dict(allele_to_g_groups)
 
-	# Precompute database of all sequences
-	all_allele_sequence_db = produce_allele_seq_db(sequence_data, exon_only=exon_only)
+    # Precompute database of all sequences
+    all_allele_sequence_db = produce_allele_seq_db(sequence_data, exon_only=exon_only)
 
-	# pass_2_logfile = None
-	pass_2_logfile = open("allele_assignment.log", "w")
-	perfect = 0
-	current = 0
+    # pass_2_logfile = None
+    pass_2_logfile = open("allele_assignment.log", "w")
+    perfect = 0
+    current = 0
 
-	results = {}
-	for sample_name, classification in results_dict.items():
-		current += 1
-		if current % 20 == 0:
-			print(f"INFO: Processing {current}/{len(results_dict)} ({(current/len(results_dict))*100:.2f}%)")
+    results = {}
+    for sample_name, classification in results_dict.items():
+        current += 1
+        if current % 20 == 0:
+            print(f"INFO: Processing {current}/{len(results_dict)} ({(current/len(results_dict))*100:.2f}%)")
 
-		# TODO: Handle here g groups of form <g_group>;<allele>
-		g_group = classification[0]
+        # TODO: Handle here g groups of form <g_group>;<allele>
+        g_group = classification[0]
 
-		# Perfect differing allele found, and it was only match. No need to search everywhere
-		# If it is not perfect, search_all will be set
-		# Full search required because we don't know what next closest allele would be
-		if g_group != None and ';' in g_group and \
-			classification[1] == 0 and classification[2] == 1:
-			
-			print("INFO: Differing allele found in first pass")
-			results[sample_name] = g_group.split(";")[1]
-			perfect += 1
-			continue
+        # Perfect differing allele found, and it was only match. No need to search everywhere
+        # If it is not perfect, search_all will be set
+        # Full search required because we don't know what next closest allele would be
+        if g_group != None and ';' in g_group and \
+            classification[1] == 0 and classification[2] == 1:
+            
+            print("INFO: Differing allele found in first pass")
+            results[sample_name] = g_group.split(";")[1]
+            perfect += 1
+            continue
 
-		# Handle: G group known (g_group is g group (string))
-		#         Orphaned allele (g_group is "None" (string). Still a key in g_group_to_allele)
-		#         G group cannot be determined (g_group is None (nonetype))
+        # Handle: G group known (g_group is g group (string))
+        #         Orphaned allele (g_group is "None" (string). Still a key in g_group_to_allele)
+        #         G group cannot be determined (g_group is None (nonetype))
 
-		search_all = g_group not in g_group_to_allele.keys()
+        search_all = g_group not in g_group_to_allele.keys()
 
-		# Get all allele sequences in g group
+        # Get all allele sequences in g group
 
-		# Classify within known G group
-		if not search_all:
-			# Alleles to build database are those found within the g group
-			alleles = g_group_to_allele[g_group]
-			allele_sequence_db = produce_allele_seq_db(sequence_data, selected_alleles=alleles, exon_only=exon_only)
-		else:
-			# If we should search all, use precomputed db
-			allele_sequence_db = all_allele_sequence_db
+        # Classify within known G group
+        if not search_all:
+            # Alleles to build database are those found within the g group
+            alleles = g_group_to_allele[g_group]
+            allele_sequence_db = produce_allele_seq_db(sequence_data, selected_alleles=alleles, exon_only=exon_only)
+        else:
+            # If we should search all, use precomputed db
+            allele_sequence_db = all_allele_sequence_db
 
-		# Re-use classification function
-		result = assign_classification_to_sample_full_seq(allele_sequence_db, samples[sample_name], sample_name, logfile=pass_2_logfile)
+        # Re-use classification function
+        result = assign_classification_to_sample_full_seq(allele_sequence_db, samples[sample_name], sample_name, logfile=pass_2_logfile, eval_metric="edit_distance")
 
-		# If class is None, print warning. Will error in pass 3
-		if result[0] == None:
-			print(f"WARN: Ecountered allele that couldn't be classified in pass 2:", sample_name)
+        # If class is None, print warning. Will error in pass 3
+        if result[0] == None:
+            print(f"WARN: Ecountered allele that couldn't be classified in pass 2:", sample_name)
 
-		# If perfect match, add to score
-		if result[1] == 0:
-			perfect += 1
-		results[sample_name] = result
+        # If perfect match, add to score
+        if result[1] == 0:
+            perfect += 1
+        results[sample_name] = result
 
-		# Get just unique string corresponding to sample
-		sample_id = sample_name.split("_")[0]
+        # Get just unique string corresponding to sample
+        sample_id = sample_name.split("_")[0]
 
-		# If truth data was given and has an entry of this sample
-		if truth_data != None and sample_id in truth_data.keys():
-			dist_to_truth_allele(sample_name, truth_data, all_allele_sequence_db, samples[sample_name], pass_2_logfile)
+        # If truth data was given and has an entry of this sample
+        if truth_data != None and sample_id in truth_data.keys():
+            dist_to_truth_allele(sample_name, truth_data, all_allele_sequence_db, samples[sample_name], pass_2_logfile)
 
-	if pass_2_logfile != None:
-		pass_2_logfile.close()
+    if pass_2_logfile != None:
+        pass_2_logfile.close()
 
-	print(f"INFO: 0 distance allele assignments: {perfect}/{len(samples)}. See logfile for details")
+    print(f"INFO: 0 distance allele assignments: {perfect}/{len(samples)}. See logfile for details")
 
-	return results
+    return results
 
 # Do a third pass, to deteremine 4th field based on introns/UTRs
 # Strip fourth field (if found) and classify based on subset where 
@@ -723,79 +728,79 @@ def pass_2_classification(sequence_data, allele_to_g_groups, results_dict, sampl
 # Output: {sample_name: (g_group, distance)}
 @print_time_taken
 def pass_3_classification(sequence_data, results_dict, samples, truth_data=None):
-	print("INFO: Beginning classification pass 3...")
+    print("INFO: Beginning classification pass 3...")
 
-	# Precompute database of all sequences
-	all_allele_sequence_db = produce_allele_seq_db(sequence_data, exon_only=False)
+    # Precompute database of all sequences
+    all_allele_sequence_db = produce_allele_seq_db(sequence_data, exon_only=False)
 
-	# pass_3_logfile = None
-	pass_3_logfile = open("refined_allele_assignment.log", "w")
-	perfect = 0
-	current = 0
+    # pass_3_logfile = None
+    pass_3_logfile = open("refined_allele_assignment.log", "w")
+    perfect = 0
+    current = 0
 
-	results = {}
-	for sample_name, classification in results_dict.items():
-		current += 1
-		if current % 20 == 0:
-			print(f"INFO: Processing {current}/{len(results_dict)} ({(current/len(results_dict))*100:.2f}%)")
+    results = {}
+    for sample_name, classification in results_dict.items():
+        current += 1
+        if current % 20 == 0:
+            print(f"INFO: Processing {current}/{len(results_dict)} ({(current/len(results_dict))*100:.2f}%)")
 
-		# Strip last field from the allele, to get substring that matches the exon reigon
-		classified_allele = classification[0]
+        # Strip last field from the allele, to get substring that matches the exon reigon
+        classified_allele = classification[0]
 
-		# Log if classification was None, and skip
-		if classified_allele == None:
-			print(f"ERR: Ecountered allele that couldn't be classified:", sample_name)
-			if pass_3_logfile != None:
-				pass_3_logfile.writelines(f"{sample_name} was assigned None in pass 2")
-			continue
+        # Log if classification was None, and skip
+        if classified_allele == None:
+            print(f"ERR: Ecountered allele that couldn't be classified:", sample_name)
+            if pass_3_logfile != None:
+                pass_3_logfile.writelines(f"{sample_name} was assigned None in pass 2")
+            continue
 
-		fields = classified_allele.split(":")
+        fields = classified_allele.split(":")
 
-		# For four field alleles, trim of last field so we can replace it with wildcard
-		if len(fields) > 3:
-			fields = fields[:-1]
-		else:
-			# If there is no fourth field, no need for wildcard search
-			pass_3_logfile.writelines(f"{sample_name} does not have fourth feild. Short circuit to {classified_allele}\n")
-			results[sample_name] = (classified_allele,0,1)
-			continue
+        # For four field alleles, trim of last field so we can replace it with wildcard
+        if len(fields) > 3:
+            fields = fields[:-1]
+        else:
+            # If there is no fourth field, no need for wildcard search
+            pass_3_logfile.writelines(f"{sample_name} does not have fourth feild. Short circuit to {classified_allele}\n")
+            results[sample_name] = (classified_allele,0,1)
+            continue
 
-		# NOTE: Idea: Maybe when we have equidistant matches, pick the longest match?
+        # NOTE: Idea: Maybe when we have equidistant matches, pick the longest match?
 
-		# Construct sequence specifying all coding reigons we want to match
-		exon_match = ":".join(fields)
-		
-		# Build list of all alleles that match the exon substring
-		all_exon_matches = []
-		for allele in sequence_data.keys():
-			dist = get_distance(exon_match, allele)
-			if dist == 0: # Allele names will match perfectly!
-				all_exon_matches.append(allele)
+        # Construct sequence specifying all coding reigons we want to match
+        exon_match = ":".join(fields)
+        
+        # Build list of all alleles that match the exon substring
+        all_exon_matches = []
+        for allele in sequence_data.keys():
+            dist = get_distance(exon_match, allele)
+            if dist == 0: # Allele names will match perfectly!
+                all_exon_matches.append(allele)
 
-		pass_3_logfile.writelines(f"{classified_allele} -> {exon_match} ({len(all_exon_matches)})     {','.join(all_exon_matches)}\n")
+        pass_3_logfile.writelines(f"{classified_allele} -> {exon_match} ({len(all_exon_matches)})     {','.join(all_exon_matches)}\n")
 
-		# Database of allele data from alleles found to have matching exons
-		allele_sequence_db = produce_allele_seq_db(sequence_data, selected_alleles=all_exon_matches, exon_only=False)
+        # Database of allele data from alleles found to have matching exons
+        allele_sequence_db = produce_allele_seq_db(sequence_data, selected_alleles=all_exon_matches, exon_only=False)
 
-		# Same as pass 2, but this time, classify full sequence input against full sequence db
-		result = assign_classification_to_sample_full_seq(allele_sequence_db, samples[sample_name], sample_name, logfile=pass_3_logfile, eval_metric="indentity")
-		if result[1] == 0:
-			perfect += 1
-		results[sample_name] = result
+        # Same as pass 2, but this time, classify full sequence input against full sequence db
+        result = assign_classification_to_sample_full_seq(allele_sequence_db, samples[sample_name], sample_name, logfile=pass_3_logfile, eval_metric="identity")
+        if result[1] == 0:
+            perfect += 1
+        results[sample_name] = result
 
-		# Get just unique string corresponding to sample
-		sample_id = sample_name.split("_")[0]
+        # Get just unique string corresponding to sample
+        sample_id = sample_name.split("_")[0]
 
-		# If truth data was given and has an entry of this sample
-		if truth_data != None and sample_id in truth_data.keys():
-			dist_to_truth_allele(sample_name, truth_data, all_allele_sequence_db, samples[sample_name], pass_3_logfile)
+        # If truth data was given and has an entry of this sample
+        if truth_data != None and sample_id in truth_data.keys():
+            dist_to_truth_allele(sample_name, truth_data, all_allele_sequence_db, samples[sample_name], pass_3_logfile)
 
-	if pass_3_logfile != None:
-		pass_3_logfile.close()
+    if pass_3_logfile != None:
+        pass_3_logfile.close()
 
-	print(f"INFO: 0 distance refined allele assignments: {perfect}/{len(samples)}. See logfile for details")
+    print(f"INFO: 0 distance refined allele assignments: {perfect}/{len(samples)}. See logfile for details")
 
-	return results
+    return results
 
 # Write results to csv file
 # Input: results: {sample_name: (g_group, distance)}
@@ -803,44 +808,44 @@ def pass_3_classification(sequence_data, results_dict, samples, truth_data=None)
 # Output: None
 @print_time_taken
 def output_results(results, file_path):
-	# Helper functions to get sample name and allele
-	get_name = lambda x:x.split("_")[0]
-	get_allele = lambda x:x.split("_")[1]+"_"+x.split("_")[-1]
+    # Helper functions to get sample name and allele
+    get_name = lambda x:x.split("_")[0]
+    get_allele = lambda x:x.split("_")[1]+"_"+x.split("_")[-1]
 
-	# Get list of all samples and alleles
-	entry_names = results.keys()
-	unique_samples = sorted(list(set(map(get_name, entry_names))))
-	unique_alleles = sorted(list(set(map(get_allele, entry_names))))
+    # Get list of all samples and alleles
+    entry_names = results.keys()
+    unique_samples = sorted(list(set(map(get_name, entry_names))))
+    unique_alleles = sorted(list(set(map(get_allele, entry_names))))
 
-	# Array containing sample id, and empty slots for allele classification
-	data = [[sample] + [None] * len(unique_alleles) for sample in unique_samples]
-	
-	# Go through each entry in the results, and add it to the data array
-	for entry, classification in results.items():
-		sample_name = get_name(entry)
-		sample_allele = get_allele(entry)
+    # Array containing sample id, and empty slots for allele classification
+    data = [[sample] + [None] * len(unique_alleles) for sample in unique_samples]
+    
+    # Go through each entry in the results, and add it to the data array
+    for entry, classification in results.items():
+        sample_name = get_name(entry)
+        sample_allele = get_allele(entry)
 
-		# Insert classification into correct slot in array
-		name_index = unique_samples.index(sample_name)
-		allele_index = unique_alleles.index(sample_allele)
-		data[name_index][allele_index+1] = classification[0]
+        # Insert classification into correct slot in array
+        name_index = unique_samples.index(sample_name)
+        allele_index = unique_alleles.index(sample_allele)
+        data[name_index][allele_index+1] = classification[0]
 
-	# Swap alleles 1 and 2 when 2 > 1
-	for entry in range(len(data)):
-		for i in range(1,6,2):
-			# Get alleles HLA-* 1 and 2
-			allele_1 = data[entry][i]
-			allele_2 = data[entry][i+1]
+    # Swap alleles 1 and 2 when 2 > 1
+    for entry in range(len(data)):
+        for i in range(1,6,2):
+            # Get alleles HLA-* 1 and 2
+            allele_1 = data[entry][i]
+            allele_2 = data[entry][i+1]
 
-			# If 2 alphabetically greater than 1, swap
-			if allele_1 != None and allele_2 != None:
-				if allele_2 < allele_1:
-					data[entry][i] = allele_2
-					data[entry][i+1] = allele_1
-			
-	# Turn into dataframe and output to csv file
-	df = pd.DataFrame(data, columns=["sampleID"]+unique_alleles)
-	df.to_csv(file_path, index=False)
+            # If 2 alphabetically greater than 1, swap
+            if allele_1 != None and allele_2 != None:
+                if allele_2 < allele_1:
+                    data[entry][i] = allele_2
+                    data[entry][i+1] = allele_1
+            
+    # Turn into dataframe and output to csv file
+    df = pd.DataFrame(data, columns=["sampleID"]+unique_alleles)
+    df.to_csv(file_path, index=False)
 
 
 # Load a dictionary with truth data from the file if provided
@@ -849,38 +854,38 @@ def output_results(results, file_path):
 # Outputs:  {sample_name: {"A_1": a_1_allele, "A_2": a_2_allele, ...}} | None
 @print_time_taken
 def load_truth_data(path, source = "IHW"):
-	# Skip if no truth data
-	if path == None:
-		return None
+    # Skip if no truth data
+    if path == None:
+        return None
 
-	truth_df = pd.read_csv(path)
+    truth_df = pd.read_csv(path)
 
-	# If file contains info from multiple typers, select only one
-	if "source" in truth_df.columns:
-		truth_df = truth_df[truth_df["source"] == source]
-		
-	# Copy from col 1 into col 2 for empty entires
-	for col in ["A", "B", "C"]:
-		null_entries = truth_df[col+"_2"].isna()
-		truth_df.loc[null_entries, col+"_2"] = truth_df[col+"_1"][null_entries]
+    # If file contains info from multiple typers, select only one
+    if "source" in truth_df.columns:
+        truth_df = truth_df[truth_df["source"] == source]
+        
+    # Copy from col 1 into col 2 for empty entires
+    for col in ["A", "B", "C"]:
+        null_entries = truth_df[col+"_2"].isna()
+        truth_df.loc[null_entries, col+"_2"] = truth_df[col+"_1"][null_entries]
 
-	# Ensure all alleles in truth set begin with (A|B|C)*
-	for col in ["A_1","A_2","B_1","B_2","C_1","C_2"]:
-		letter = col[0]
-		missing_prefix = ~truth_df[col].str.contains(f"{letter}\*", regex=True)
-		truth_df[col][missing_prefix] = f"{letter}*"+truth_df[col][missing_prefix] 
+    # Ensure all alleles in truth set begin with (A|B|C)*
+    for col in ["A_1","A_2","B_1","B_2","C_1","C_2"]:
+        letter = col[0]
+        missing_prefix = ~truth_df[col].str.contains(f"{letter}\*", regex=True)
+        truth_df[col][missing_prefix] = f"{letter}*"+truth_df[col][missing_prefix] 
 
-	# Build dictionary of allele labels for samples
-	sample_labels = {}
-	for sample in truth_df["sample"]:
-		sample_labels[sample] = {}
+    # Build dictionary of allele labels for samples
+    sample_labels = {}
+    for sample in truth_df["sample"]:
+        sample_labels[sample] = {}
 
-		# Grab sample data, and insert into dictionary categorized by gene
-		sample_data = truth_df[truth_df["sample"] == sample]
-		for gene in ["A_1", "A_2", "B_1", "B_2", "C_1", "C_2"]:
-			sample_labels[sample][gene] = sample_data[gene].item()
+        # Grab sample data, and insert into dictionary categorized by gene
+        sample_data = truth_df[truth_df["sample"] == sample]
+        for gene in ["A_1", "A_2", "B_1", "B_2", "C_1", "C_2"]:
+            sample_labels[sample][gene] = sample_data[gene].item()
 
-	return sample_labels
+    return sample_labels
 
 # Runs all classification passes and writes results
 # Called by main() in the pipeline
@@ -891,61 +896,61 @@ def load_truth_data(path, source = "IHW"):
 # Output:   (None) Writes to assignement.log and output.csv files for each stage
 def run_classification(reference_xml_file, samples_file, full_sample_file=None, truth_file=None):
 
-	truth_data = load_truth_data(truth_file)
+    truth_data = load_truth_data(truth_file)
 
-	g_group_dict, sequence_data = build_g_group_dict(reference_xml_file)
+    g_group_dict, sequence_data = build_g_group_dict(reference_xml_file)
 
-	g_group_common_sequences = get_g_group_exons(g_group_dict, sequence_data)
-	if g_group_common_sequences == None:
-		exit(1)
-		
-	samples = load_test_data(samples_file)
-	NUM_SAMPLES = len(samples)
+    g_group_common_sequences = get_g_group_exons(g_group_dict, sequence_data)
+    if g_group_common_sequences == None:
+        exit(1)
+        
+    samples = load_test_data(samples_file)
+    NUM_SAMPLES = len(samples)
 
-	if full_sample_file != None:
-		full_samples = load_test_data(full_sample_file)
-		if NUM_SAMPLES != len(full_samples):
-			print(f"ERR: Different samples in exon only and full sequence sample files.")
-			print(f"{NUM_SAMPLES} (in exon only) vs {len(full_sample_file)} (in full sequence)")
-			exit(1)
+    if full_sample_file != None:
+        full_samples = load_test_data(full_sample_file)
+        if NUM_SAMPLES != len(full_samples):
+            print(f"ERR: Different samples in exon only and full sequence sample files.")
+            print(f"{NUM_SAMPLES} (in exon only) vs {len(full_sample_file)} (in full sequence)")
+            exit(1)
 
-	print("INFO: Classifying samples to G group")
-	g_group_classifications = pass_1_classification(g_group_common_sequences, samples, g_group_dict, truth_data=truth_data)
+    print("INFO: Classifying samples to G group")
+    g_group_classifications = pass_1_classification(g_group_common_sequences, samples, g_group_dict, truth_data=truth_data)
 
-	print("INFO: Writing g group results")
-	output_results(g_group_classifications, "g_group_output.csv")
+    print("INFO: Writing g group results")
+    output_results(g_group_classifications, "g_group_output.csv")
 
-	print("INFO: Classifying the samples to an allele")
-	allele_classifications = pass_2_classification(sequence_data, g_group_dict, g_group_classifications, samples, truth_data=truth_data)
+    print("INFO: Classifying the samples to an allele")
+    allele_classifications = pass_2_classification(sequence_data, g_group_dict, g_group_classifications, samples, truth_data=truth_data)
 
-	print("INFO: Writing allele results")
-	output_results(allele_classifications, "3_field_allele_output.csv")
-	
-	if full_sample_file == None:
-		exit(0)
+    print("INFO: Writing allele results")
+    output_results(allele_classifications, "3_field_allele_output.csv")
+    
+    if full_sample_file == None:
+        exit(0)
 
-	print("INFO: Refining allele classifications based on non-coding regions")
-	refined_classifications = pass_3_classification(sequence_data, allele_classifications, full_samples, truth_data=truth_data)
+    print("INFO: Refining allele classifications based on non-coding regions")
+    refined_classifications = pass_3_classification(sequence_data, allele_classifications, full_samples, truth_data=truth_data)
 
-	print("INFO: Writing refined allele results")
-	output_results(refined_classifications, "allele_output.csv")
+    print("INFO: Writing refined allele results")
+    output_results(refined_classifications, "allele_output.csv")
 
 # CLI interface used for testing
 if __name__ == "__main__":
-	parser = argparse.ArgumentParser(description='Two-Step HLA Allele Identification System')
-	parser.add_argument('--hla-xml', required=False, default=None, help='Input hla.xml reference file')
-	parser.add_argument('--samples', required=False, default="../data/HLA_Class_I_haplotypes.fa", help='Input FASTA file with full sequences')
-	parser.add_argument('--truth', required=False, default=None, help='Input csv file containg truth data, for testing purposes')
-	parser.add_argument("--full-sequence", required=False, default=None, help="To enable the third intron/UTR classification stage, supply full sequence data here")
-	
-	args = parser.parse_args()
+    parser = argparse.ArgumentParser(description='Two-Step HLA Allele Identification System')
+    parser.add_argument('--hla-xml', required=False, default=None, help='Input hla.xml reference file')
+    parser.add_argument('--samples', required=False, default="../data/HLA_Class_I_haplotypes.fa", help='Input FASTA file with full sequences')
+    parser.add_argument('--truth', required=False, default=None, help='Input csv file containg truth data, for testing purposes')
+    parser.add_argument("--full-sequence", required=False, default=None, help="To enable the third intron/UTR classification stage, supply full sequence data here")
+    
+    args = parser.parse_args()
 
-	xml_file = args.hla_xml
-	samples_file = args.samples
-	truth_file = args.truth
-	full_sample_file = args.full_sequence
+    xml_file = args.hla_xml
+    samples_file = args.samples
+    truth_file = args.truth
+    full_sample_file = args.full_sequence
 
-	run_classification(xml_file, samples_file, full_sample_file, truth_file)
+    run_classification(xml_file, samples_file, full_sample_file, truth_file)
 
 # Main entrypoint from pipeline
 # Input:    reference_xml_file: (str) Path to XML file with allele reference sequences
@@ -953,9 +958,7 @@ if __name__ == "__main__":
 #           sample_ID: (str | int) ID number of the sample to be processed
 # Output:   (None) Writes to assignement.log and output.csv files for each stage
 def main(reference_xml_file, hla_fasta_dir, sample_ID):
-	samples_file = os.path.join(hla_fasta_dir, str(sample_ID) + "_HLA_haplotypes_CDS.fasta")
-	full_sample_file = os.path.join(hla_fasta_dir, str(sample_ID) + "_HLA_haplotypes_gene.fasta")
-	print(samples_file)
-	print(full_sample_file)
+    samples_file = os.path.join(hla_fasta_dir, str(sample_ID) + "_HLA_haplotypes_CDS.fasta")
+    full_sample_file = os.path.join(hla_fasta_dir, str(sample_ID) + "_HLA_haplotypes_gene.fasta")
 
-	run_classification(reference_xml_file, samples_file, full_sample_file)
+    run_classification(reference_xml_file, samples_file, full_sample_file)
