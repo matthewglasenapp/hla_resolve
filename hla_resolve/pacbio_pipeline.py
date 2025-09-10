@@ -15,6 +15,7 @@ from preprocess_methods import (
 	phase_genotypes_hiphase,
 	merge_hiphase_vcfs
 )
+from config import min_reads_sample
 
 def preprocess_pacbio_sample(config):
 	run_fastqc(
@@ -71,98 +72,103 @@ def preprocess_pacbio_sample(config):
 			reassigned_pg=config['pg_mapq_reassign_bam']
 		)
 	
-		filter_reads(
+		chr6_read_count = filter_reads(
 			input_file=config['pg_mapq_reassign_bam'],
 			output_file=config['hg38_rmdup_chr6_bam'],
 			threads=config['threads']
 		)
 	
 	else:
-		filter_reads(
+		chr6_read_count = filter_reads(
 			input_file=config['hg38_bam'],
 			output_file=config['hg38_rmdup_chr6_bam'],
 			threads=config['threads']
 		)
 
-	if config['genotyper'] == "bcftools":
-		call_variants_bcftools(
-			input_file=config['hg38_rmdup_chr6_bam'],
-			output_file=config['snv_vcf'],
-			reference_fasta=config['reference_genome'],
-			threads=config['threads'],
-			platform=config['platform']
-		)
-	
-	elif config['genotyper'] == "deepvariant":
-		call_variants_deepvariant(
+	if chr6_read_count >= min_reads_sample:
+		if config['genotyper'] == "bcftools":
+			call_variants_bcftools(
+				input_file=config['hg38_rmdup_chr6_bam'],
+				output_file=config['snv_vcf'],
+				reference_fasta=config['reference_genome'],
+				threads=config['threads'],
+				platform=config['platform']
+			)
+		
+		elif config['genotyper'] == "deepvariant":
+			call_variants_deepvariant(
+				input_bam=config['hg38_rmdup_chr6_bam'],
+				output_vcf=config['snv_vcf'],
+				output_gvcf=config['snv_gvcf'],
+				platform=config['platform'],
+				deepvariant_sif=config['deepvariant_sif'],
+				reference_fasta=config['reference_genome'],
+				genotypes_dir=config['genotypes_dir'],
+				mapped_bam_dir=config['mapped_bam_dir'],
+				sample_ID=config['sample_ID']
+			)
+		
+		elif config['genotyper'] == "clair3":
+			call_variants_clair3(
+				input_bam=config['hg38_rmdup_chr6_bam'],
+				output_vcf=config['snv_vcf'],
+				platform=config['platform'],
+				reference_fasta=config['reference_genome'],
+				threads=config['threads'],
+				chr6_bed=config['chr6_bed'],
+				clair3_ont_model_path=config['clair3_ont_model_path'],
+				clair3_hifi_model_path=config['clair3_hifi_model_path'],
+				genotypes_dir=config['genotypes_dir'],
+				sample_ID=config['sample_ID']
+			)
+		
+		# call_structural_variants_pbsv(sample)
+		
+		call_structural_variants_sawfish(
 			input_bam=config['hg38_rmdup_chr6_bam'],
-			output_vcf=config['snv_vcf'],
-			output_gvcf=config['snv_gvcf'],
-			platform=config['platform'],
-			deepvariant_sif=config['deepvariant_sif'],
+			small_variant_calls=config['snv_vcf'],
+			output_vcf=config['sv_vcf'],
+			sv_dir=config['sv_dir'],
+			sawfish=config['sawfish'],
+			reference_fasta=config['reference_genome']
+		)
+		
+		genotype_tandem_repeats(
+			input_bam=config['hg38_rmdup_chr6_bam'],
+			output_vcf=config['tr_vcf'],
+			pbtrgt_dir=config['pbtrgt_dir'],
+			threads=config['threads'],
 			reference_fasta=config['reference_genome'],
-			genotypes_dir=config['genotypes_dir'],
-			mapped_bam_dir=config['mapped_bam_dir'],
+			pbtrgt_repeat_file=config['pbtrgt_repeat_file'],
+			original_cwd=config['ORIGINAL_CWD']
+		)
+		
+		phase_genotypes_hiphase(
+			input_bam=config['hg38_rmdup_chr6_bam'],
+			input_snv=config['snv_vcf'],
+			input_SV=config['sv_vcf'],
+			input_TR=config['tr_vcf'],
+			output_bam=config['hg38_rmdup_chr6_haplotag_bam'],
+			output_snv=config['hiphase_snv_vcf'],
+			output_SV=config['hiphase_sv_vcf'],
+			output_TR=config['hiphase_tr_vcf'],
+			output_summary_file=config['phased_summary'],
+			output_blocks_file=config['phased_blocks'],
+			output_stats_file=config['phased_stats'],
+			threads=config['threads'],
+			reference_fasta=config['reference_genome'],
+			phased_vcf_dir=config['phased_vcf_dir'],
 			sample_ID=config['sample_ID']
 		)
-	
-	elif config['genotyper'] == "clair3":
-		call_variants_clair3(
-			input_bam=config['hg38_rmdup_chr6_bam'],
-			output_vcf=config['snv_vcf'],
-			platform=config['platform'],
-			reference_fasta=config['reference_genome'],
-			threads=config['threads'],
-			chr6_bed=config['chr6_bed'],
-			clair3_ont_model_path=config['clair3_ont_model_path'],
-			clair3_hifi_model_path=config['clair3_hifi_model_path'],
-			genotypes_dir=config['genotypes_dir'],
-			sample_ID=config['sample_ID']
+		
+		merge_hiphase_vcfs(
+			input_snv=config['hiphase_snv_vcf'],
+			input_SV=config['hiphase_sv_vcf'],
+			input_TR=config['hiphase_tr_vcf'],
+			output_vcf=config['hiphase_joint_vcf'],
+			reference_fasta=config['reference_genome']
 		)
 	
-	# call_structural_variants_pbsv(sample)
-	
-	call_structural_variants_sawfish(
-		input_bam=config['hg38_rmdup_chr6_bam'],
-		small_variant_calls=config['snv_vcf'],
-		output_vcf=config['sv_vcf'],
-		sv_dir=config['sv_dir'],
-		sawfish=config['sawfish'],
-		reference_fasta=config['reference_genome']
-	)
-	
-	genotype_tandem_repeats(
-		input_bam=config['hg38_rmdup_chr6_bam'],
-		output_vcf=config['tr_vcf'],
-		pbtrgt_dir=config['pbtrgt_dir'],
-		threads=config['threads'],
-		reference_fasta=config['reference_genome'],
-		pbtrgt_repeat_file=config['pbtrgt_repeat_file'],
-		original_cwd=config['ORIGINAL_CWD']
-	)
-	
-	phase_genotypes_hiphase(
-		input_bam=config['hg38_rmdup_chr6_bam'],
-		input_snv=config['snv_vcf'],
-		input_SV=config['sv_vcf'],
-		input_TR=config['tr_vcf'],
-		output_bam=config['hg38_rmdup_chr6_haplotag_bam'],
-		output_snv=config['hiphase_snv_vcf'],
-		output_SV=config['hiphase_sv_vcf'],
-		output_TR=config['hiphase_tr_vcf'],
-		output_summary_file=config['phased_summary'],
-		output_blocks_file=config['phased_blocks'],
-		output_stats_file=config['phased_stats'],
-		threads=config['threads'],
-		reference_fasta=config['reference_genome'],
-		phased_vcf_dir=config['phased_vcf_dir'],
-		sample_ID=config['sample_ID']
-	)
-	
-	merge_hiphase_vcfs(
-		input_snv=config['hiphase_snv_vcf'],
-		input_SV=config['hiphase_sv_vcf'],
-		input_TR=config['hiphase_tr_vcf'],
-		output_vcf=config['hiphase_joint_vcf'],
-		reference_fasta=config['reference_genome']
-	)
+	else:
+		print("Insufficient reads for variant calling")
+		print("Sample {} had {} reads!".format(config['sample_ID'], chr6_read_count))
