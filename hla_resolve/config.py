@@ -33,9 +33,9 @@ clair3_hifi_model_path = "/hb/home/mglasena/.conda/envs/clair3/bin/models/hifi_r
 
 # Coverage Thresholds
 # Might have to relax if you didn't get the flanking regions of the gene (i.e., UTR)
-depth_thresh = 30
-prop_20x_thresh = 0.8
-prop_30x_thresh = 0.8
+depth_thresh = 10
+prop_20x_thresh = 0.0
+prop_30x_thresh = 0.0
 
 # Additional paths from reconstruct_fasta_methods.py
 vcf2fasta_script = "/hb/scratch/mglasena/vcf2fasta/vcf2fasta.py"
