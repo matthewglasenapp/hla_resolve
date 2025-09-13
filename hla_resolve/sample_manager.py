@@ -10,13 +10,12 @@ from config import (
 	longphase, sawfish, clair3_ont_model_path, clair3_hifi_model_path,
 	mosdepth_regions_file, depth_thresh, prop_20x_thresh, prop_30x_thresh,
 	mhc_start, mhc_stop, genes_bed, genes_of_interest, genes_of_interest_extended,
-	hla_genes_regions_file, vcf2fasta_script, reference_genome, 
+	hla_genes_regions_file, vcf2fasta_script, reference_genome_minimap2, reference_genome_vg,
 	DNA_bases, stop_codons, IMGT_XML, gff_dir
 )
 
 class Samples:
     # Class variables for reference file paths
-    reference_fasta = None
     deepvariant_sif = None
     tandem_repeat_bed = None
     chr6_bed = None
@@ -27,9 +26,8 @@ class Samples:
                  threads=1, read_group_string=None, clean_up=False):
         
         # Set the class variables based on data_dir
-        if not Samples.reference_fasta:
+        if not Samples.deepvariant_sif:
             data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
-            Samples.reference_fasta = os.path.join(data_dir, "reference/augmented_hg38.fa")
             Samples.deepvariant_sif = os.path.join(data_dir, "deepvariant_sif/deepvariant.sif")
             Samples.tandem_repeat_bed = os.path.join(data_dir, "repeats_bed/human_GRCh38_no_alt_analysis_set.trf.bed")
             Samples.chr6_bed = os.path.join(data_dir, "reference/chr6.bed")
@@ -271,7 +269,7 @@ class Samples:
         self.hg38_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.hg38.bam")
         self.pangenome_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.pangenome.bam")
         self.pg_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.pg.bam")
-        self.pg_reheader_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.pg.bam")
+        self.pg_reheader_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.pg.reheader.bam")
         self.pg_mapq_reassign_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.pg.mapq_reassign.bam")
         self.pg_mapq_reassign_mrkdup_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.pg.mapq_reassign.mrkdup.bam")
         self.hg38_mrkdup_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.hg38.mrkdup.bam")
@@ -332,6 +330,14 @@ def build_workflow_config(sample):
 	Build a configuration dictionary for workflows from a sample object.
 	This avoids passing the entire sample object to workflow functions.
 	"""
+	# Set reference genome based on aligner
+	if sample.aligner == "minimap2":
+		reference_genome = reference_genome_minimap2
+	elif sample.aligner == "vg":
+		reference_genome = reference_genome_vg
+	else:
+		raise ValueError(f"Unknown aligner: {sample.aligner}")
+	
 	config = {
 		# Core sample information
 		'sample_ID': sample.sample_ID,
@@ -429,7 +435,6 @@ def build_workflow_config(sample):
 		'genes_of_interest_extended': genes_of_interest_extended,
 		'hla_genes_regions_file': hla_genes_regions_file,
 		'vcf2fasta_script': vcf2fasta_script,
-		'reference_genome': reference_genome,
 		'DNA_bases': DNA_bases,
 		'stop_codons': stop_codons,
 		'IMGT_XML': IMGT_XML,

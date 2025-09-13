@@ -68,7 +68,7 @@ def preprocess_pacbio_sample(config):
 		
 		reassign_mapq(
 			bam_hg38=config['hg38_bam'],
-			bam_pg=config['pg_bam'],
+			bam_pg=config['pg_reheader_bam'],
 			reassigned_pg=config['pg_mapq_reassign_bam']
 		)
 	
