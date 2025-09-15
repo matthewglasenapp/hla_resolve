@@ -46,6 +46,7 @@ def trim_adapters(adapters, input_file, output_file, sample_ID, threads, adapter
 			subprocess.run(cutadapt_cmd, shell=True, check=True)
 
 			print(f"Trimmed reads written to: {output_file}")
+			print("\n\n")
 
 		else:
 			print("Trimming adapter sequences with fastplong in AUTO mode!")
@@ -60,6 +61,7 @@ def trim_adapters(adapters, input_file, output_file, sample_ID, threads, adapter
 			subprocess.run(fastplong_cmd, shell=True, check=False)
 
 			print(f"Trimmed reads written to: {output_file}")
+			print("\n\n")
 
 	else:
 		print("Users specified no adapters present")
