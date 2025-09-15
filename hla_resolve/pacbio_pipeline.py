@@ -18,9 +18,10 @@ from preprocess_methods import (
 from config import min_reads_sample
 
 def preprocess_pacbio_sample(config):
-	run_fastqc(
-		input_file=config['raw_fastq']
-	)
+	# run_fastqc(
+	# 	input_file=config['raw_fastq']
+	# )
+	# )
 	
 	trim_adapters(
 		adapters=config['adapters'],
@@ -33,9 +34,9 @@ def preprocess_pacbio_sample(config):
 		three_prime_adapter=config['three_prime_adapter']
 	)
 
-	run_fastqc(
-		input_file=config['trimmed_fastq']
-	)
+	# run_fastqc(
+	# 	input_file=config['trimmed_fastq']
+	# )
 	
 	mark_duplicates_pbmarkdup(
 		input_file=config['trimmed_fastq'],
