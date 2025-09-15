@@ -181,7 +181,10 @@ def align_to_reference_vg(vg, input_file, output_file, reheader_bam, sample_ID, 
 	rg_fields = dict(field.split(":", 1) for field in read_group_string.split("\\t")[1:])
 	read_group_id = rg_fields["ID"]
 
-	vg_command = f"{vg} giraffe -b {parameter_preset} -Z {reference_gbz} -f {input_file} -p -P -o BAM --threads {vg_threads} --ref-paths {ref_paths} -R {read_group_id} -N {sample_ID} | samtools sort -@ {samtools_threads} -o {output_file}"
+	hp_name = "/hb/scratch/mglasena/graph/hprc-v1.0-mc-grch38-minaf.0.1.hapl"
+	kmer_name = "/hb/scratch/mglasena/graph/HG002_kmc.kff"
+
+	vg_command = f"{vg} giraffe -b {parameter_preset} -Z {reference_gbz} --haplotype-name {hp_name} --kmer-name {kmer_name} --set-reference GRCh38 -f {input_file} -p -P -o BAM --threads {vg_threads} --ref-paths {ref_paths} -R {read_group_id} -N {sample_ID} | samtools sort -@ {samtools_threads} -o {output_file}"
 	index_bam = f"samtools index {output_file}"
 
 	subprocess.run(vg_command, shell=True, check=True)
