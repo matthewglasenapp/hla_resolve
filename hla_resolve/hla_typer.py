@@ -96,10 +96,12 @@ def build_g_group_dict_from_web():
 
 # Builds dictionary databases of allele's g group associations and code
 # Input: xml_file: path to XML file with referebnce database info
+#        ignore_unconfirmed: (bool) ignore XML database entries marked as 'unconfirmed'
+#        ignore_incomplete: (bool) ignore XML entries missing ANY features
 # Outputs: g_groups: {allele: g_group}
 #          sequence_data: {allele: {feature: sequence}}
 @print_time_taken
-def build_g_group_dict(xml_file):
+def build_g_group_dict(xml_file, ignore_unconfirmed=False, ignore_incomplete=False):
     # If None, pull from web
     if xml_file == None:
         build_g_group_dict_from_web()
@@ -120,6 +122,10 @@ def build_g_group_dict(xml_file):
     # From alleles, get every allele's g group
     alleles = root.find(tag('alleles'))
     for allele in alleles.findall(tag('allele')):
+        # Skip unconfirmed entries
+        if ignore_unconfirmed and allele.find(tag('releaseversions')).attrib['confirmed'] == "Unconfirmed":
+            continue
+
         # G group and class (I or II)
         g_group_xml = allele.find(tag('hla_g_group'))
         class_type = allele.find(tag('locus')).attrib['class']
@@ -137,6 +143,12 @@ def build_g_group_dict(xml_file):
         dna_sequence = sequence.find(tag('nucsequence'))
         features = sequence.findall(tag('feature'))
         if dna_sequence == None or features == None:
+            continue
+
+        # Check all features are present using their orders
+        feature_orders = sorted([int(feature.attrib['order']) for feature in features if 'order' in feature.attrib.keys()])
+        complete_order_list = list(range(1, len(feature_orders)+1))
+        if ignore_incomplete and feature_orders != complete_order_list:
             continue
 
         # Get full allele name and g group
@@ -619,7 +631,7 @@ def dist_to_truth_allele(sample_name, truth_data, sequence_db, sequence, logfile
 
         # Some alleles are not full. Ex: HLA-C*03:04:01. This is one of the HLA-C*03:04:01:* genes
         # Check if allele found. If so, continue as normal.
-        # If not, find partial match. Missing feilds are wildcards. Then proceede with first match    
+        # If not, find partial match. Missing fields are wildcards. Then proceede with first match
         correct_allele = match_partial(correct_allele, sequence_db)
 
         # Get sequence and calculate distance
@@ -640,7 +652,7 @@ def dist_to_truth_allele(sample_name, truth_data, sequence_db, sequence, logfile
 # Output: {sample_name: (g_group, distance)}
 
 @print_time_taken
-def pass_2_classification(sequence_data, allele_to_g_groups, results_dict, samples, truth_data=None, exon_only=True):
+def pass_2_classification(sequence_data, allele_to_g_groups, results_dict, samples, truth_data=None, exon_only=True, metric="edit_distance"):
     print("INFO: Beginning classification pass 2...")
 
     # {g_group: allele}
@@ -650,7 +662,7 @@ def pass_2_classification(sequence_data, allele_to_g_groups, results_dict, sampl
     all_allele_sequence_db = produce_allele_seq_db(sequence_data, exon_only=exon_only)
 
     # pass_2_logfile = None
-    pass_2_logfile = open("allele_assignment.log", "w")
+    pass_2_logfile = open("3_field_allele_assignment.log", "w")
     perfect = 0
     current = 0
 
@@ -692,7 +704,7 @@ def pass_2_classification(sequence_data, allele_to_g_groups, results_dict, sampl
             allele_sequence_db = all_allele_sequence_db
 
         # Re-use classification function
-        result = assign_classification_to_sample_full_seq(allele_sequence_db, samples[sample_name], sample_name, logfile=pass_2_logfile, eval_metric="edit_distance")
+        result = assign_classification_to_sample_full_seq(allele_sequence_db, samples[sample_name], sample_name, logfile=pass_2_logfile, eval_metric=metric)
 
         # If class is None, print warning. Will error in pass 3
         if result[0] == None:
@@ -719,7 +731,7 @@ def pass_2_classification(sequence_data, allele_to_g_groups, results_dict, sampl
 
 # Do a third pass, to deteremine 4th field based on introns/UTRs
 # Strip fourth field (if found) and classify based on subset where 
-# fourth feild is only difference.
+# fourth field is only difference.
 # Input: sequence_data: {allele: {feature: sequence}}
 #        results_dict: {sample_name: (allele, distance)}
 #        samples: {sample_name: sequence}
@@ -727,14 +739,14 @@ def pass_2_classification(sequence_data, allele_to_g_groups, results_dict, sampl
 #        exon_only: bool
 # Output: {sample_name: (g_group, distance)}
 @print_time_taken
-def pass_3_classification(sequence_data, results_dict, samples, truth_data=None):
+def pass_3_classification(sequence_data, results_dict, samples, truth_data=None, metric="identity"):
     print("INFO: Beginning classification pass 3...")
 
     # Precompute database of all sequences
     all_allele_sequence_db = produce_allele_seq_db(sequence_data, exon_only=False)
 
     # pass_3_logfile = None
-    pass_3_logfile = open("refined_allele_assignment.log", "w")
+    pass_3_logfile = open("allele_assignment.log", "w")
     perfect = 0
     current = 0
 
@@ -761,7 +773,7 @@ def pass_3_classification(sequence_data, results_dict, samples, truth_data=None)
             fields = fields[:-1]
         else:
             # If there is no fourth field, no need for wildcard search
-            pass_3_logfile.writelines(f"{sample_name} does not have fourth feild. Short circuit to {classified_allele}\n")
+            pass_3_logfile.writelines(f"{sample_name} does not have fourth field. Short circuit to {classified_allele}\n")
             results[sample_name] = (classified_allele,0,1)
             continue
 
@@ -783,7 +795,7 @@ def pass_3_classification(sequence_data, results_dict, samples, truth_data=None)
         allele_sequence_db = produce_allele_seq_db(sequence_data, selected_alleles=all_exon_matches, exon_only=False)
 
         # Same as pass 2, but this time, classify full sequence input against full sequence db
-        result = assign_classification_to_sample_full_seq(allele_sequence_db, samples[sample_name], sample_name, logfile=pass_3_logfile, eval_metric="identity")
+        result = assign_classification_to_sample_full_seq(allele_sequence_db, samples[sample_name], sample_name, logfile=pass_3_logfile, eval_metric=metric)
         if result[1] == 0:
             perfect += 1
         results[sample_name] = result
@@ -832,7 +844,7 @@ def output_results(results, file_path):
 
     # Swap alleles 1 and 2 when 2 > 1
     for entry in range(len(data)):
-        for i in range(1,6,2):
+        for i in range(1,len(unique_alleles),2):
             # Get alleles HLA-* 1 and 2
             allele_1 = data[entry][i]
             allele_2 = data[entry][i+1]
@@ -887,22 +899,69 @@ def load_truth_data(path, source = "IHW"):
 
     return sample_labels
 
+# Write out json file containing sequence data as JSON and G group info
+# Input:    reference_xml_file: (str) XML file with allele reference sequences
+#           samples_file: (str) fasta file full of input sample concatinated exons
+# Output:   (None) Writes to database_data.json
+@print_time_taken
+def write_json(sequence_data, g_group_dict):
+    import json
+
+    filename = "database_data.json"
+
+    g_group_to_allele = generate_allele_dict(g_group_dict)
+
+    # Reformat data. Currently in form [allele][feature_group] -> [(feature index, seq), ...]
+    # Want in form [allele][feature_group][index] -> seq
+    reformatted_sequence_data = {}
+    for allele in sequence_data.keys():
+        # [allele] entry
+        reformatted_sequence_data[allele] = {}
+
+        all_feature_data = sequence_data[allele]
+        for feature_name in all_feature_data.keys():
+            # [feature_group] entry
+            reformatted_sequence_data[allele][feature_name] = {}
+
+            # [(feature index, seq), ...] list
+            features = all_feature_data[feature_name]
+
+            # Create a mapping from the feature index to 0 based sequential index
+            feature_indicies = {x:i for i, x in enumerate(list(map(lambda x:x[0], features)))}
+
+            # For each of those features, create a [allele][feature_group][index] entry and assign sequence
+            for feature in features:
+                feature_index = feature[0]
+                feature_sequence = feature[1]
+                reformatted_sequence_data[allele][feature_name][feature_indicies[feature_index]] = feature_sequence
+
+    with open(filename, "w") as f:
+        json.dump({"sequence_data": sequence_data, "g_group_alleles": g_group_to_allele}, f, indent=4)
+
 # Runs all classification passes and writes results
 # Called by main() in the pipeline
 # Input:    reference_xml_file: (str) XML file with allele reference sequences
 #           samples_file: (str) fasta file full of input sample concatinated exons
-#           truth_file: (str | None) csv file with true allele calls, for tracing
 #           full_sample_file: (str | None) fasta file with full sample sequences for fourth field
+#           truth_file: (str | None) csv file with true allele calls, for tracing
+#           pass2_metric: (str) assignment metric to use during classification pass 2
+#           pass3_metric: (str) assignment metric to use during classification pass 3
+#           ignore_unconfirmed: (bool) ignore XML database entries marked as 'unconfirmed'
+#           ignore_incomplete: (bool) ignore XML entries missing ANY features
 # Output:   (None) Writes to assignement.log and output.csv files for each stage
-def run_classification(reference_xml_file, samples_file, full_sample_file=None, truth_file=None):
+def run_classification(reference_xml_file, samples_file, full_sample_file=None, truth_file=None, 
+                       pass2_metric="edit_distance", pass3_metric="identity", ignore_unconfirmed=False,
+                       ignore_incomplete=False):
 
     truth_data = load_truth_data(truth_file)
 
-    g_group_dict, sequence_data = build_g_group_dict(reference_xml_file)
+    g_group_dict, sequence_data = build_g_group_dict(reference_xml_file, ignore_unconfirmed, ignore_incomplete)
 
     g_group_common_sequences = get_g_group_exons(g_group_dict, sequence_data)
     if g_group_common_sequences == None:
         exit(1)
+
+    write_json(sequence_data, g_group_dict)
         
     samples = load_test_data(samples_file)
     NUM_SAMPLES = len(samples)
@@ -921,7 +980,7 @@ def run_classification(reference_xml_file, samples_file, full_sample_file=None, 
     output_results(g_group_classifications, "g_group_output.csv")
 
     print("INFO: Classifying the samples to an allele")
-    allele_classifications = pass_2_classification(sequence_data, g_group_dict, g_group_classifications, samples, truth_data=truth_data)
+    allele_classifications = pass_2_classification(sequence_data, g_group_dict, g_group_classifications, samples, truth_data=truth_data, metric=pass2_metric)
 
     print("INFO: Writing allele results")
     output_results(allele_classifications, "3_field_allele_output.csv")
@@ -930,7 +989,7 @@ def run_classification(reference_xml_file, samples_file, full_sample_file=None, 
         exit(0)
 
     print("INFO: Refining allele classifications based on non-coding regions")
-    refined_classifications = pass_3_classification(sequence_data, allele_classifications, full_samples, truth_data=truth_data)
+    refined_classifications = pass_3_classification(sequence_data, allele_classifications, full_samples, truth_data=truth_data, metric=pass3_metric)
 
     print("INFO: Writing refined allele results")
     output_results(refined_classifications, "allele_output.csv")
@@ -942,6 +1001,10 @@ if __name__ == "__main__":
     parser.add_argument('--samples', required=False, default="../data/HLA_Class_I_haplotypes.fa", help='Input FASTA file with full sequences')
     parser.add_argument('--truth', required=False, default=None, help='Input csv file containg truth data, for testing purposes')
     parser.add_argument("--full-sequence", required=False, default=None, help="To enable the third intron/UTR classification stage, supply full sequence data here")
+    parser.add_argument("--pass2-metric", required=False, default="edit_distance", help="Metric used to assign fourth field, 'edit_distance' (default), 'match_length', or 'identity'")
+    parser.add_argument("--pass3-metric", required=False, default="identity", help="Metric used to assign fourth field, 'edit_distance', 'match_length', or 'identity' (default)")
+    parser.add_argument("--ignore-unconfirmed", action='store_true', help="Do not consider 'uncomfirmed' database entries")
+    parser.add_argument("--ignore-incomplete", action='store_true', help="Do not consider database entries that are missing any features")
     
     args = parser.parse_args()
 
@@ -949,16 +1012,26 @@ if __name__ == "__main__":
     samples_file = args.samples
     truth_file = args.truth
     full_sample_file = args.full_sequence
+    pass3_metric = args.pass3_metric
+    pass2_metric = args.pass2_metric
+    ignore_unconfirmed = args.ignore_unconfirmed
+    ignore_incomplete = args.ignore_incomplete
 
-    run_classification(xml_file, samples_file, full_sample_file, truth_file)
+    run_classification(xml_file, samples_file, full_sample_file, truth_file, pass2_metric, pass3_metric, ignore_unconfirmed, ignore_incomplete)
 
 # Main entrypoint from pipeline
 # Input:    reference_xml_file: (str) Path to XML file with allele reference sequences
 #           hla_fasta_dir: (str) Path to directory containing pipeline output fasta files
 #           sample_ID: (str | int) ID number of the sample to be processed
+#           pass2_metric: (str) assignment metric to use during classification pass 2
+#           pass3_metric: (str) assignment metric to use during classification pass 3
+#           ignore_unconfirmed: (bool) ignore XML database entries marked as 'unconfirmed'
+#           ignore_incomplete: (bool) ignore XML entries missing ANY features
 # Output:   (None) Writes to assignement.log and output.csv files for each stage
-def main(reference_xml_file, hla_fasta_dir, sample_ID):
+def main(reference_xml_file, hla_fasta_dir, sample_ID, pass2_metric = "edit_distance", 
+         pass3_metric = "identity", ignore_unconfirmed = False, ignore_incomplete = False):
     samples_file = os.path.join(hla_fasta_dir, str(sample_ID) + "_HLA_haplotypes_CDS.fasta")
     full_sample_file = os.path.join(hla_fasta_dir, str(sample_ID) + "_HLA_haplotypes_gene.fasta")
 
-    run_classification(reference_xml_file, samples_file, full_sample_file)
+    run_classification(reference_xml_file, samples_file, full_sample_file, pass2_metric=pass2_metric, 
+                       pass3_metric=pass3_metric, ignore_unconfirmed=ignore_unconfirmed, ignore_incomplete=ignore_incomplete)
