@@ -38,11 +38,11 @@ def preprocess_pacbio_sample(config):
 	# 	input_file=config['trimmed_fastq']
 	# )
 	
-	mark_duplicates_pbmarkdup(
-		input_file=config['trimmed_fastq'],
-		output_file=config['trimmed_pbmarkdup_fastq'],
-		threads=config['threads']
-	)
+	# mark_duplicates_pbmarkdup(
+	# 	input_file=config['trimmed_fastq'],
+	# 	output_file=config['trimmed_pbmarkdup_fastq'],
+	# 	threads=config['threads']
+	# )
 	
 	# align_to_reference_minimap(
 	# 	input_file=config['trimmed_pbmarkdup_fastq_gz'],

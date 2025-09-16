@@ -221,7 +221,7 @@ def align_to_reference_vg(vg, input_file, output_file, reheader_bam, sample_ID, 
 	# subprocess.run(index_final_bam, shell=True, check=True)
 
 	clean_up = f"rm {output_file} {temp_sam_1} {temp_sam_2}"
-	subprocess.run(clean_up, shell=True, check=True)
+	#subprocess.run(clean_up, shell=True, check=True)
 
 def reassign_mapq(bam_hg38, bam_pg, reassigned_pg):
 	mapq_dict = dict()
