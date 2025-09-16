@@ -13,10 +13,10 @@ min_reads_sample = 100
 min_read_length = 300
 
 # Pangenome graph reference info 
-#reference_gbz = "/hb/scratch/ogarci12/hybridcapture_pangenome/ref/hprc-v1.0-mc-grch38-minaf.0.1.gbz"
-reference_gbz = "/hb/scratch/mglasena/graph/hprc-v2.0-mc-grch38.gbz"
-#ref_paths = "/hb/scratch/ogarci12/hybridcapture_pangenome/ref/hprc-v1.0-mc-grch38-minaf.0.1.dict"
-ref_paths = "/hb/scratch/mglasena/graph/grch38_primary.dict"
+reference_gbz = "/hb/scratch/ogarci12/hybridcapture_pangenome/ref/hprc-v1.0-mc-grch38-minaf.0.1.gbz"
+#reference_gbz = "/hb/scratch/mglasena/graph/hprc-v2.0-mc-grch38.gbz"
+ref_paths = "/hb/scratch/ogarci12/hybridcapture_pangenome/ref/hprc-v1.0-mc-grch38-minaf.0.1.dict"
+#ref_paths = "/hb/scratch/mglasena/graph/grch38_primary.dict"
 vg = "/hb/scratch/ogarci12/hybridcapture_pangenome/vg"
 mosdepth_regions_file = "/hb/scratch/mglasena/test_hla_resolve/hla_resolve/hla_resolve/hla_genes.bed"
 
