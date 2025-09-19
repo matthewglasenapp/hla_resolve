@@ -53,7 +53,11 @@ def main():
     elif workflow_config['platform'] == "ONT":
         preprocess_ont_sample(config=workflow_config)
     
-    resolve_alleles(config=workflow_config)
+    # Check if variant calling was successful before proceeding to HLA resolution
+    if os.path.exists(workflow_config['snv_vcf']):
+        resolve_alleles(config=workflow_config)
+    else:
+        print(f"Skipping HLA allele resolution for {workflow_config['sample_ID']} due to insufficient reads for variant calling")
     
     # Clean up intermediate files if requested
     cleanup_intermediate_files(config=workflow_config)
