@@ -118,7 +118,6 @@ def resolve_alleles(config):
 		shutil.rmtree(config['vcf2fasta_out_dir'])
 		os.makedirs(config['vcf2fasta_out_dir'], exist_ok=True)
 
-	phased_genes.append("HLA-A")
 	for gene in phased_genes:
 		if gene in config['genes_of_interest'] and gene in sufficient_coverage_genes:
 			gff_gene_name = convert_gene_name_for_gff(gene)
