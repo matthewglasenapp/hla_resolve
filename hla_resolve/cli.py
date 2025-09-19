@@ -50,7 +50,8 @@ def main():
     workflow_config = build_workflow_config(sample)
     
     if workflow_config['platform'] == "PACBIO":
-        preprocess_pacbio_sample(config=workflow_config)
+        #preprocess_pacbio_sample(config=workflow_config)
+        print("SKip!")
     elif workflow_config['platform'] == "ONT":
         preprocess_ont_sample(config=workflow_config)
     
