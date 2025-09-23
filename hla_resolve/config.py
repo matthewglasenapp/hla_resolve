@@ -43,7 +43,8 @@ prop_30x_thresh = 0.0
 vcf2fasta_script = "/hb/scratch/mglasena/vcf2fasta/vcf2fasta.py"
 # Reference genome paths - set based on aligner
 #reference_genome = "/hb/groups/cornejo_lab/matt/hla_capture/input_data/reference/GCA_000001405.15_GRCh38_no_alt_analysis_set.fa"
-reference_genome_minimap2 = "/hb/scratch/mglasena/test_hla_resolve/hla_resolve/hla_resolve/data/reference/augmented_hg38.fa"
+#reference_genome_minimap2 = "/hb/scratch/mglasena/test_hla_resolve/hla_resolve/hla_resolve/data/reference/augmented_hg38.fa"
+reference_genome_minimap2 = "/hb/scratch/mglasena/test_hla_resolve/hla_resolve/hla_resolve/data/reference/augmented_hg38_with_long_drb1.fa"
 reference_genome_vg = "/hb/groups/cornejo_lab/matt/hla_capture/input_data/reference/hprc-v1.0-chr-renamed.fa"
 
 gff_dir = "/hb/groups/cornejo_lab/matt/hla_capture/input_data/hla_gff"
