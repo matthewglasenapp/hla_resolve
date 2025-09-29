@@ -47,7 +47,8 @@ vcf2fasta_script = "/hb/scratch/mglasena/vcf2fasta/vcf2fasta.py"
 reference_genome_minimap2 = "/hb/scratch/mglasena/test_hla_resolve/hla_resolve/hla_resolve/data/reference/augmented_hg38_with_long_drb1.fa"
 reference_genome_vg = "/hb/groups/cornejo_lab/matt/hla_capture/input_data/reference/hprc-v1.0-chr-renamed.fa"
 
-gff_dir = "/hb/groups/cornejo_lab/matt/hla_capture/input_data/hla_gff"
+#gff_dir = "/hb/groups/cornejo_lab/matt/hla_capture/input_data/hla_gff"
+gff_dir = "/hb/groups/cornejo_lab/matt/hla_capture/input_data/hla_gff/coord_shift/"
 hla_genes_regions_file = "/hb/scratch/mglasena/test_hla_resolve/hla_resolve/hla_resolve/hla_genes.bed"
 
 # Additional paths and constants from investigate_haploblocks_methods.py
