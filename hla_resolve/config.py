@@ -18,7 +18,9 @@ reference_gbz = "/hb/scratch/ogarci12/hybridcapture_pangenome/ref/hprc-v1.0-mc-g
 ref_paths = "/hb/scratch/ogarci12/hybridcapture_pangenome/ref/hprc-v1.0-mc-grch38-minaf.0.1.dict"
 #ref_paths = "/hb/scratch/mglasena/graph/grch38_primary.dict"
 vg = "/hb/scratch/ogarci12/hybridcapture_pangenome/vg"
-mosdepth_regions_file = "/hb/scratch/mglasena/test_hla_resolve/hla_resolve/hla_resolve/hla_genes.bed"
+#mosdepth_regions_file = "/hb/scratch/mglasena/test_hla_resolve/hla_resolve/hla_resolve/hla_genes.bed"
+mosdepth_regions_file = "/hb/scratch/mglasena/test_hla_resolve/hla_resolve/hla_resolve/hla_genes.shifted.bed"
+
 
 # Transposase mosaic end binding sequence
 # The TE sequence (and its reverse complement) introduced during tagmentation still needs to be removed
@@ -49,10 +51,13 @@ reference_genome_vg = "/hb/groups/cornejo_lab/matt/hla_capture/input_data/refere
 
 #gff_dir = "/hb/groups/cornejo_lab/matt/hla_capture/input_data/hla_gff"
 gff_dir = "/hb/groups/cornejo_lab/matt/hla_capture/input_data/hla_gff/coord_shift/"
-hla_genes_regions_file = "/hb/scratch/mglasena/test_hla_resolve/hla_resolve/hla_resolve/hla_genes.bed"
+#hla_genes_regions_file = "/hb/scratch/mglasena/test_hla_resolve/hla_resolve/hla_resolve/hla_genes.bed"
+hla_genes_regions_file = "/hb/scratch/mglasena/test_hla_resolve/hla_resolve/hla_resolve/hla_genes.shifted.bed"
+
 
 # Additional paths and constants from investigate_haploblocks_methods.py
-genes_bed = "/hb/groups/cornejo_lab/matt/hla_capture/input_data/reference/parse_haploblocks_bed.bed"
+#genes_bed = "/hb/groups/cornejo_lab/matt/hla_capture/input_data/reference/parse_haploblocks_bed.bed"
+genes_bed = "/hb/groups/cornejo_lab/matt/hla_capture/input_data/reference/parse_haploblocks_bed.shifted.bed"
 genes_of_interest_extended = ("HLA-A", "HLA-B", "HLA-C", "HLA-DRB1", "HLA-DQA1", "HLA-DQA2", "HLA-DQB1", "HLA-DQB2", "HLA-DPA1", "HLA-DPB1")
 
 # Extended MHC coordinates
