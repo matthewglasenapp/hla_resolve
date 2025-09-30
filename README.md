@@ -48,12 +48,12 @@ Input data: PacBio Revio HiFi targeted sequencing reads from IHW09118, a female 
 
 ```
 python3 -m cli.py \
---input_file IHW09118.hifi_reads.bam \
---sample_name IHW09118 \
+--input_file IHW09122.hifi_reads.bam \
+--sample_name IHW09122 \
 --platform pacbio \
 --output_dir test \
 --aligner minimap2 \
---genotyper deepvariant \
+--genotyper bcftools \
 --trim_adapters \
 --adapter_file adapters.fasta \
 --threads 10
