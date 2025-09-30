@@ -44,7 +44,7 @@ Example: python3 -m cli.py --input_file reads.bam --sample_name HG002 --platform
 
 Demo example:
 
-Input data: PacBio Revio HiFi targeted sequencing reads from IHW09118, a female Aboriginal Australian sample from the International Histocompatibility Working Group catalog. 
+Input data: PacBio Revio HiFi targeted sequencing reads from IHW09122, a female Aboriginal Australian sample from the International Histocompatibility Working Group catalog. 
 
 ```
 python3 -m cli.py \
