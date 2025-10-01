@@ -71,6 +71,8 @@ def evaluate_gene_haploblocks(output_file, incomplete_file, sample_ID, genes_bed
 		# If the gene has 0 or 1 heterozygous sites, it is effectively fully phased
 		if len(gene_het_sites) <= 1:
 			gene_list.append(gene)
+			print(f"{sample_ID} {gene} has {len(gene_het_sites)} heterozygous sites")
+			print(f"Treating as fully phased")
 			continue
 
 		# If the gene is completely spanned by a single haploblock, it is fully phased 
@@ -115,6 +117,7 @@ def evaluate_gene_haploblocks(output_file, incomplete_file, sample_ID, genes_bed
 			num_pre_merge_haploblocks = len(overlapping_haploblocks)  # Track count before extension & merging
 			print(f"Processing {sample_ID} {gene}")
 			print(f"Overlapping unextended haploblocks: {len(overlapping_haploblocks)}")
+			print(overlapping_haploblocks)
 
 			if upstream_block:
 				overlapping_haploblocks.insert(0, upstream_block)
@@ -133,6 +136,7 @@ def evaluate_gene_haploblocks(output_file, incomplete_file, sample_ID, genes_bed
 				extended_haploblocks.append((extended_start, extended_stop))
 
 			print(f"Extended haploblocks: {len(extended_haploblocks)}")
+			print(extended_haploblocks)
 
 			# Step 2: Merge overlapping extended haploblocks
 			# merged_intervals = []
