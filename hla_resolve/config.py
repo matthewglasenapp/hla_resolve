@@ -71,3 +71,16 @@ stop_codons = ["TAA", "TAG", "TGA"]
 
 # IPD/IMGT HLA XML file
 IMGT_XML = "/hb/scratch/mglasena/test_hla_resolve/hla_resolve/hla_resolve/hla.xml"
+
+# GRCh38 HLA gene antigen recognition sequence coordinates
+# BED (0-based coordinates)
+ARS_dict = {
+	"HLA-A": "chr6:29942756-29943543",
+	"HLA-B": "chr6:31356166-31356957",
+	"HLA-C": "chr6:31271072-31271868",
+	"HLA-DPA1": "chr6:33069640-33069886",
+	"HLA-DPB1": "chr6:33080671-33080935",
+	"HLA-DQA1": "chr6:32641309-32641558",
+	"HLA-DQB1": "chr6:32664797-32665067",
+	"HLA-DRB1": "chr6:32584108-32584378"
+}

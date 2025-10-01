@@ -164,14 +164,27 @@ def evaluate_gene_haploblocks(output_file, incomplete_file, sample_ID, genes_bed
 
 			# Compute the proportion of the gene spanned by the largest extended haploblock
 			max_overlap = 0
+			largest_haploblock_start = None
+			largest_haploblock_stop = None
 
 			for start, stop in extended_haploblocks:
 				overlap_start = max(start, gene_start)
 				overlap_stop = min(stop, gene_stop)
 				overlap_length = max(0, overlap_stop - overlap_start)
-				max_overlap = max(max_overlap, overlap_length)
+				if overlap_length > max_overlap:
+					max_overlap = overlap_length
+					largest_haploblock_start = start
+					largest_haploblock_stop = stop
 			prop_overlap = max_overlap / gene_length
 			largest_overlap_string = f"{prop_overlap*100:.2f}%"
+
+			# Check to see if largest overlapping haploblock spans the gene's ARS
+			ARS_start = config[ARS_dict][gene][0]
+			ARS_stop = config[ARS_dict][gene][1]
+			if largest_haploblock_start <= ARS_start and largest_haploblock_stop >= ARS_stop:
+				print(f"{sample_ID} {gene} largest overlapping haploblock spans the ARS")
+				print(f"Largest overlapping haploblock: chr6:{largest_haploblock_start}-{largest_haploblock_stop}")
+				print("Using largest overlapping haploblock for allele typing")
 
 			# Use the pre-merge haploblock count, not merged count!
 			incomplete_data.append([sample_ID, gene, num_pre_merge_haploblocks, largest_overlap_string])
