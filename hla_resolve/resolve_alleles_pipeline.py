@@ -118,8 +118,8 @@ def resolve_alleles(config):
 		shutil.rmtree(config['vcf2fasta_out_dir'])
 		os.makedirs(config['vcf2fasta_out_dir'], exist_ok=True)
 
-	for gene in phased_genes:
-		if gene in config['genes_of_interest'] and gene in sufficient_coverage_genes:
+	for gene in config['genes_of_interest']:
+		if gene in phased_genes and gene in sufficient_coverage_genes:
 			gff_gene_name = convert_gene_name_for_gff(gene)
 			run_vcf2fasta(
 				vcf2fasta=config['vcf2fasta_script'],
@@ -138,6 +138,9 @@ def resolve_alleles(config):
 				reference_genome=config['reference_genome'],
 				gene=gene, 
 				feature="CDS")
+		
+		elif gene in sufficient_coverage_genes and not gene in phased_genes:
+			print(f"Gene {gene} was not fully phased. Recovering antigen recognition sequence and largest haplotype block.")
 	
 	parse_fastas(
 		sample_ID=config['sample_ID'],
