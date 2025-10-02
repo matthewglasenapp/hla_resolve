@@ -92,7 +92,6 @@ def evaluate_gene_haploblocks(output_file, incomplete_file, sample_ID, genes_bed
 					extended_start = max(upstream_het_sites) + 1
 				else:
 					extended_start = block_start
-				# removed clamping to gene_start
 
 				# Find closest het site downstream
 				downstream_het_sites = [h for h in het_sites if h > block_stop]
@@ -100,7 +99,6 @@ def evaluate_gene_haploblocks(output_file, incomplete_file, sample_ID, genes_bed
 					extended_stop = min(downstream_het_sites) - 1
 				else:
 					extended_stop = block_stop
-				# removed clamping to gene_stop
 
 				if extended_start <= gene_start and extended_stop >= gene_stop:
 					gene_list.append(gene)
@@ -121,9 +119,9 @@ def evaluate_gene_haploblocks(output_file, incomplete_file, sample_ID, genes_bed
 				elif block_stop >= gene_start and block_start <= gene_stop:
 					overlapping_haploblocks.append((block_start, block_stop))
 
-			num_pre_merge_haploblocks = len(overlapping_haploblocks)
+			num_raw_haploblocks = len(overlapping_haploblocks)
 			print(f"Processing {sample_ID} {gene}")
-			print(f"Overlapping unextended haploblocks: {len(overlapping_haploblocks)}")
+			print(f"Overlapping unextended haploblocks: {num_raw_haploblocks}")
 			print(overlapping_haploblocks)
 
 			if upstream_block:
@@ -141,14 +139,12 @@ def evaluate_gene_haploblocks(output_file, incomplete_file, sample_ID, genes_bed
 					extended_start = max(upstream_het_sites) + 1
 				else:
 					extended_start = block_start
-				# removed clamping to gene_start
 
 				downstream_het_sites = [h for h in het_sites if h > block_stop]
 				if downstream_het_sites:
 					extended_stop = min(downstream_het_sites) - 1
 				else:
 					extended_stop = block_stop
-				# removed clamping to gene_stop
 
 				extended_haploblocks.append((extended_start, extended_stop))
 
@@ -167,10 +163,7 @@ def evaluate_gene_haploblocks(output_file, incomplete_file, sample_ID, genes_bed
 			print(f"Extended haploblocks with gene overlap: {len(overlapping_extended_haploblocks)}")
 			print(overlapping_extended_haploblocks)
 
-			# Step 2: Merge overlapping extended haploblocks
-			# (left unchanged)
-
-			# Step 3: Best haploblock selection (unchanged)
+			# Step 3: Best haploblock selection
 			best_haploblock = None
 			if gene in ARS_dict:
 				ARS_start, ARS_stop = map(int, ARS_dict[gene].split(":")[1].split("-"))
@@ -180,19 +173,19 @@ def evaluate_gene_haploblocks(output_file, incomplete_file, sample_ID, genes_bed
 				
 				if largest_ars_spanning_block:
 					best_haploblock = largest_ars_spanning_block
+					unphased_genes[gene] = best_haploblock
 					print(f"{sample_ID} {gene} largest ARS-spanning haploblock: chr6:{largest_ars_spanning_block[0]}-{largest_ars_spanning_block[1]}")
 				else:
 					print(f"{sample_ID} {gene} no haploblocks span the ARS")
-			
-			if not best_haploblock:
-				max_overlap = 0
-				for start, stop in overlapping_extended_haploblocks:
-					overlap_start = max(start, gene_start)
-					overlap_stop = min(stop, gene_stop)
-					overlap_length = max(0, overlap_stop - overlap_start)
-					if overlap_length > max_overlap:
-						max_overlap = overlap_length
-						best_haploblock = (start, stop)
+					# Fall back to largest overlap
+					max_overlap = 0
+					for start, stop in overlapping_extended_haploblocks:
+						overlap_start = max(start, gene_start)
+						overlap_stop = min(stop, gene_stop)
+						overlap_length = max(0, overlap_stop - overlap_start)
+						if overlap_length > max_overlap:
+							max_overlap = overlap_length
+							best_haploblock = (start, stop)
 
 			if best_haploblock:
 				overlap_start = max(best_haploblock[0], gene_start)
@@ -203,7 +196,7 @@ def evaluate_gene_haploblocks(output_file, incomplete_file, sample_ID, genes_bed
 			else:
 				largest_overlap_string = "0.00%"
 
-			incomplete_data.append([sample_ID, gene, num_pre_merge_haploblocks, largest_overlap_string])
+			incomplete_data.append([sample_ID, gene, num_raw_haploblocks, largest_overlap_string])
 			print(f"Proportion of gene contained in largest overlapping haploblock: {largest_overlap_string}")
 
 	with open(output_file, "w", newline="") as csv_file:
@@ -218,4 +211,5 @@ def evaluate_gene_haploblocks(output_file, incomplete_file, sample_ID, genes_bed
 			csv_writer.writerow(["sample", "gene", "num_haploblocks", "largest_haploblock"])
 			csv_writer.writerows(incomplete_data)
 
+	print(unphased_genes)
 	return gene_list, unphased_genes
