@@ -81,7 +81,7 @@ def resolve_alleles(config):
 		mhc_stop=config['mhc_stop']
 	)
 
-	phased_genes = evaluate_gene_haploblocks(
+	phased_genes, unphased_genes = evaluate_gene_haploblocks(
 		output_file=config['phased_genes_tsv'],
 		incomplete_file=config['incomplete_genes_csv'],
 		sample_ID=config['sample_ID'],
@@ -120,7 +120,7 @@ def resolve_alleles(config):
 		os.makedirs(config['vcf2fasta_out_dir'], exist_ok=True)
 
 	for gene in config['genes_of_interest']:
-		if gene in phased_genes and gene in sufficient_coverage_genes:
+		if gene in sufficient_coverage_genes:
 			gff_gene_name = convert_gene_name_for_gff(gene)
 			run_vcf2fasta(
 				vcf2fasta=config['vcf2fasta_script'],
@@ -140,8 +140,10 @@ def resolve_alleles(config):
 				gene=gene, 
 				feature="CDS")
 		
-		elif gene in sufficient_coverage_genes and not gene in phased_genes:
+		elif gene in sufficient_coverage_genes and gene in unphased_genes:
 			print(f"Gene {gene} was not fully phased. Recovering antigen recognition sequence and largest haplotype block.")
+			print(f"Sample {config['sample_ID']} {gene} best haploblock: {unphased_genes[gene]}")
+			#Modify vcf2fasta output
 	
 	parse_fastas(
 		sample_ID=config['sample_ID'],
