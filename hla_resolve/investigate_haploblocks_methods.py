@@ -211,8 +211,7 @@ def evaluate_gene_haploblocks(output_file, incomplete_file, sample_ID, genes_bed
 
 			# Check to see if largest overlapping haploblock spans the gene's ARS
 			if gene in ARS_dict and largest_haploblock_start and largest_haploblock_stop:
-				ARS_start = ARS_dict[gene][0]
-				ARS_stop = ARS_dict[gene][1]
+				ARS_start, ARS_stop = map(int, ARS_dict[gene].split(":")[1].split("-"))
 				if largest_haploblock_start <= ARS_start and largest_haploblock_stop >= ARS_stop:
 					print(f"{sample_ID} {gene} largest overlapping haploblock spans the ARS")
 					print(f"Largest overlapping haploblock: chr6:{largest_haploblock_start}-{largest_haploblock_stop}")
