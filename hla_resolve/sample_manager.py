@@ -11,7 +11,7 @@ from config import (
 	mosdepth_regions_file, depth_thresh, prop_20x_thresh, prop_30x_thresh,
 	mhc_start, mhc_stop, genes_bed, genes_of_interest, genes_of_interest_extended,
 	hla_genes_regions_file, vcf2fasta_script, reference_genome_minimap2, reference_genome_vg,
-	DNA_bases, stop_codons, IMGT_XML, gff_dir
+	DNA_bases, stop_codons, IMGT_XML, gff_dir, ARS_dict
 )
 
 class Samples:

@@ -210,20 +210,22 @@ def evaluate_gene_haploblocks(output_file, incomplete_file, sample_ID, genes_bed
 			largest_overlap_string = f"{prop_overlap*100:.2f}%"
 
 			# Check to see if largest overlapping haploblock spans the gene's ARS
+			best_haploblock = []
 			if gene in ARS_dict and largest_haploblock_start and largest_haploblock_stop:
 				ARS_start, ARS_stop = map(int, ARS_dict[gene].split(":")[1].split("-"))
 				if largest_haploblock_start <= ARS_start and largest_haploblock_stop >= ARS_stop:
+					best_haploblock = [largest_haploblock_start, largest_haploblock_stop]
 					print(f"{sample_ID} {gene} largest overlapping haploblock spans the ARS")
 					print(f"Largest overlapping haploblock: chr6:{largest_haploblock_start}-{largest_haploblock_stop}")
 					print("Using largest overlapping haploblock for allele typing")
 				else:
-					print(f"{sample_ID} {gene} largest overlapping haploblock does not span the ARS")
 					# Find the largest haploblock that spans the ARS
 					ars_spanning_blocks = [(start, stop) for start, stop in overlapping_extended_haploblocks 
 										if start <= ARS_start and stop >= ARS_stop]
 					largest_ars_spanning_block = max(ars_spanning_blocks, key=lambda x: x[1] - x[0]) if ars_spanning_blocks else None
 					
 					if largest_ars_spanning_block:
+						best_haploblock = [largest_ars_spanning_block[0], largest_ars_spanning_block[1]]
 						print(f"{sample_ID} {gene} largest ARS-spanning haploblock: chr6:{largest_ars_spanning_block[0]}-{largest_ars_spanning_block[1]}")
 					else:
 						print(f"{sample_ID} {gene} no haploblocks span the ARS")
