@@ -39,9 +39,9 @@ def parse_haploblocks(input_vcf, input_haploblock_file, platform,sample_ID, mhc_
 		
 		# HiPhase and Longphase have slightly differently formatted haploblock tsv files. 
 		if platform == "PACBIO":
-			chromosome, start, stop = "chr6", int(fields[4]) - 1, int(fields[5])
+			chromosome, start, stop = "chr6", int(fields[4]), int(fields[5])
 		elif platform == "ONT":
-			chromosome, start, stop = "chr6", int(fields[3]) - 1, int(fields[4])
+			chromosome, start, stop = "chr6", int(fields[3]), int(fields[4])
 
 		if chromosome == "chr6" and stop > mhc_start:
 			haploblock_list.append([start,stop])
