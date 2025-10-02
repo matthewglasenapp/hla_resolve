@@ -438,6 +438,7 @@ def build_workflow_config(sample):
 		'DNA_bases': DNA_bases,
 		'stop_codons': stop_codons,
 		'IMGT_XML': IMGT_XML,
+		'ARS_dict': ARS_dict,
 	}
 	
 	# Platform-specific directories
