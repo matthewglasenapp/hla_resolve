@@ -49,7 +49,7 @@ def parse_haploblocks(input_vcf, input_haploblock_file, platform,sample_ID, mhc_
 	return heterozygous_sites, haploblock_list
 
 # Check whether each captured MHC gene is completely spanned by a haploblock
-def evaluate_gene_haploblocks(output_file, incomplete_file, sample_ID, genes_bed, genes_of_interest, het_sites, haploblocks):
+def evaluate_gene_haploblocks(output_file, incomplete_file, sample_ID, genes_bed, genes_of_interest, het_sites, haploblocks, ARS_dict=None):
 	# List of fully phased genes
 	haploblocks.sort()
 	gene_list = []
@@ -86,11 +86,20 @@ def evaluate_gene_haploblocks(output_file, incomplete_file, sample_ID, genes_bed
 			# Check to see if unphased genes become fully phased when extending haploblocks through homozygous regions
 			# Find first heterozygous site upstream of block start. Do not extend if no heterozygous sites. 
 			if block_start <= gene_stop and block_stop >= gene_start:
-				extended_start = max([h for h in het_sites if h < block_start], default=block_start)
+				# Find closest het site upstream and extend to one position after it
+				upstream_het_sites = [h for h in het_sites if h < block_start]
+				if upstream_het_sites:
+					extended_start = max(upstream_het_sites) + 1  # One position after the upstream het site
+				else:
+					extended_start = block_start
 				extended_start = max(extended_start, gene_start)
 
-				# Find first heterozgyous site downstream of block stop. Do not extend if no heterozygous sites
-				extended_stop = min([h for h in het_sites if h > block_stop], default=block_stop)
+				# Find closest het site downstream and extend to one position before it
+				downstream_het_sites = [h for h in het_sites if h > block_stop]
+				if downstream_het_sites:
+					extended_stop = min(downstream_het_sites) - 1  # One position before the downstream het site
+				else:
+					extended_stop = block_stop
 				extended_stop = min(extended_stop, gene_stop)
 
 				# Consider gene fully phased if haploblock extension through homozygous bases fully spans gene coordinates. 
@@ -127,16 +136,38 @@ def evaluate_gene_haploblocks(output_file, incomplete_file, sample_ID, genes_bed
 			# Step 1: Extend each haploblock independently
 			extended_haploblocks = []
 			for block_start, block_stop in overlapping_haploblocks:
-				extended_start = max([h for h in het_sites if h < block_start], default=block_start)
+				# Find the closest het site upstream and extend to one position before it
+				upstream_het_sites = [h for h in het_sites if h < block_start]
+				if upstream_het_sites:
+					extended_start = max(upstream_het_sites) + 1  # One position after the upstream het site
+				else:
+					extended_start = block_start
 				extended_start = max(extended_start, gene_start)
 
-				extended_stop = min([h for h in het_sites if h > block_stop], default=block_stop)
+				# Find the closest het site downstream and extend to one position before it
+				downstream_het_sites = [h for h in het_sites if h > block_stop]
+				if downstream_het_sites:
+					extended_stop = min(downstream_het_sites) - 1  # One position before the downstream het site
+				else:
+					extended_stop = block_stop
 				extended_stop = min(extended_stop, gene_stop)
 
 				extended_haploblocks.append((extended_start, extended_stop))
 
 			print(f"Extended haploblocks: {len(extended_haploblocks)}")
 			print(extended_haploblocks)
+			
+			# Filter out extended haploblocks that have 0 base overlap with the gene
+			overlapping_extended_haploblocks = []
+			for start, stop in extended_haploblocks:
+				overlap_start = max(start, gene_start)
+				overlap_stop = min(stop, gene_stop)
+				overlap_length = max(0, overlap_stop - overlap_start)
+				if overlap_length > 0:
+					overlapping_extended_haploblocks.append((start, stop))
+			
+			print(f"Extended haploblocks with gene overlap: {len(overlapping_extended_haploblocks)}")
+			print(overlapping_extended_haploblocks)
 
 			# Step 2: Merge overlapping extended haploblocks
 			# merged_intervals = []
@@ -167,7 +198,7 @@ def evaluate_gene_haploblocks(output_file, incomplete_file, sample_ID, genes_bed
 			largest_haploblock_start = None
 			largest_haploblock_stop = None
 
-			for start, stop in extended_haploblocks:
+			for start, stop in overlapping_extended_haploblocks:
 				overlap_start = max(start, gene_start)
 				overlap_stop = min(stop, gene_stop)
 				overlap_length = max(0, overlap_stop - overlap_start)
@@ -179,12 +210,13 @@ def evaluate_gene_haploblocks(output_file, incomplete_file, sample_ID, genes_bed
 			largest_overlap_string = f"{prop_overlap*100:.2f}%"
 
 			# Check to see if largest overlapping haploblock spans the gene's ARS
-			ARS_start = config[ARS_dict][gene][0]
-			ARS_stop = config[ARS_dict][gene][1]
-			if largest_haploblock_start <= ARS_start and largest_haploblock_stop >= ARS_stop:
-				print(f"{sample_ID} {gene} largest overlapping haploblock spans the ARS")
-				print(f"Largest overlapping haploblock: chr6:{largest_haploblock_start}-{largest_haploblock_stop}")
-				print("Using largest overlapping haploblock for allele typing")
+			if gene in ARS_dict and largest_haploblock_start and largest_haploblock_stop:
+				ARS_start = ARS_dict[gene][0]
+				ARS_stop = ARS_dict[gene][1]
+				if largest_haploblock_start <= ARS_start and largest_haploblock_stop >= ARS_stop:
+					print(f"{sample_ID} {gene} largest overlapping haploblock spans the ARS")
+					print(f"Largest overlapping haploblock: chr6:{largest_haploblock_start}-{largest_haploblock_stop}")
+					print("Using largest overlapping haploblock for allele typing")
 
 			# Use the pre-merge haploblock count, not merged count!
 			incomplete_data.append([sample_ID, gene, num_pre_merge_haploblocks, largest_overlap_string])

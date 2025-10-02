@@ -88,7 +88,8 @@ def resolve_alleles(config):
 		genes_bed=config['genes_bed'],  
 		genes_of_interest=config['genes_of_interest'],
 		het_sites=heterozygous_sites, 
-		haploblocks=haploblock_list)
+		haploblocks=haploblock_list,
+		ARS_dict=config.get('ARS_dict', None))
 	
 	# Print which genes were successfully phased
 	print("Phased Genes:")
