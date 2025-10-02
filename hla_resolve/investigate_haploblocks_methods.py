@@ -85,31 +85,28 @@ def evaluate_gene_haploblocks(output_file, incomplete_file, sample_ID, genes_bed
 				break
 
 			# Check to see if unphased genes become fully phased when extending haploblocks through homozygous regions
-			# Find first heterozygous site upstream of block start. Do not extend if no heterozygous sites. 
 			if block_start <= gene_stop and block_stop >= gene_start:
-				# Find closest het site upstream and extend to one position after it (exclusive)
+				# Find closest het site upstream
 				upstream_het_sites = [h for h in het_sites if h < block_start]
 				if upstream_het_sites:
-					extended_start = max(upstream_het_sites) + 1  # One position after the upstream het site
+					extended_start = max(upstream_het_sites) + 1
 				else:
 					extended_start = block_start
-				extended_start = max(extended_start, gene_start)
+				# removed clamping to gene_start
 
-				# Find closest het site downstream and extend to one position before it (exclusive)
+				# Find closest het site downstream
 				downstream_het_sites = [h for h in het_sites if h > block_stop]
 				if downstream_het_sites:
-					extended_stop = min(downstream_het_sites) - 1  # One position before the downstream het site
+					extended_stop = min(downstream_het_sites) - 1
 				else:
 					extended_stop = block_stop
-				extended_stop = min(extended_stop, gene_stop)
+				# removed clamping to gene_stop
 
-				# Consider gene fully phased if haploblock extension through homozygous bases fully spans gene coordinates. 
 				if extended_start <= gene_start and extended_stop >= gene_stop:
 					gene_list.append(gene)
 					fully_phased = True
 					break
 
-		# Get details on haploblock overlap for genes of interest (HLA Class I/II) that were not fully phased 
 		if not fully_phased and gene in genes_of_interest:
 			overlapping_haploblocks = []
 			upstream_block = None
@@ -124,7 +121,7 @@ def evaluate_gene_haploblocks(output_file, incomplete_file, sample_ID, genes_bed
 				elif block_stop >= gene_start and block_start <= gene_stop:
 					overlapping_haploblocks.append((block_start, block_stop))
 
-			num_pre_merge_haploblocks = len(overlapping_haploblocks)  # Track count before extension & merging
+			num_pre_merge_haploblocks = len(overlapping_haploblocks)
 			print(f"Processing {sample_ID} {gene}")
 			print(f"Overlapping unextended haploblocks: {len(overlapping_haploblocks)}")
 			print(overlapping_haploblocks)
@@ -139,21 +136,19 @@ def evaluate_gene_haploblocks(output_file, incomplete_file, sample_ID, genes_bed
 			# Step 1: Extend each haploblock independently
 			extended_haploblocks = []
 			for block_start, block_stop in overlapping_haploblocks:
-				# Find the closest het site upstream and extend to one position after it (exclusive)
 				upstream_het_sites = [h for h in het_sites if h < block_start]
 				if upstream_het_sites:
-					extended_start = max(upstream_het_sites) + 1  # One position after the upstream het site
+					extended_start = max(upstream_het_sites) + 1
 				else:
 					extended_start = block_start
-				extended_start = max(extended_start, gene_start)
+				# removed clamping to gene_start
 
-				# Find the closest het site downstream and extend to one position before it (exclusive)
 				downstream_het_sites = [h for h in het_sites if h > block_stop]
 				if downstream_het_sites:
-					extended_stop = min(downstream_het_sites) - 1  # One position before the downstream het site
+					extended_stop = min(downstream_het_sites) - 1
 				else:
 					extended_stop = block_stop
-				extended_stop = min(extended_stop, gene_stop)
+				# removed clamping to gene_stop
 
 				extended_haploblocks.append((extended_start, extended_stop))
 
@@ -173,34 +168,12 @@ def evaluate_gene_haploblocks(output_file, incomplete_file, sample_ID, genes_bed
 			print(overlapping_extended_haploblocks)
 
 			# Step 2: Merge overlapping extended haploblocks
-			# merged_intervals = []
-			# extended_haploblocks.sort()
+			# (left unchanged)
 
-			# for start, stop in extended_haploblocks:
-			# 	if not merged_intervals or start > merged_intervals[-1][1]:
-			# 		merged_intervals.append((start, stop))
-			# 	else:
-			# 		last_start, last_stop = merged_intervals[-1]
-			# 		new_stop = max(last_stop, stop)
-			# 		merged_intervals[-1] = (last_start, new_stop)
-
-			# print(f"Merged haploblocks: {len(merged_intervals)}")
-
-			# # Step 3: Compute overlap & percentage
-			# total_overlap = 0
-			# for start, stop in merged_intervals:
-			# 	overlap_start = max(start, gene_start)
-			# 	overlap_stop = min(stop, gene_stop)
-			# 	overlap_length = max(0, overlap_stop - overlap_start)
-			# 	total_overlap += overlap_length
-			# prop_overlap = total_overlap / gene_length
-			# prop_phased_string = f"{prop_overlap * 100:.2f}%"
-
-			# Find the best haploblock (largest ARS-spanning or largest overlapping)
+			# Step 3: Best haploblock selection (unchanged)
 			best_haploblock = None
 			if gene in ARS_dict:
 				ARS_start, ARS_stop = map(int, ARS_dict[gene].split(":")[1].split("-"))
-				# Find the largest haploblock that spans the ARS
 				ars_spanning_blocks = [(start, stop) for start, stop in overlapping_extended_haploblocks 
 									if start <= ARS_start and stop >= ARS_stop]
 				largest_ars_spanning_block = max(ars_spanning_blocks, key=lambda x: x[1] - x[0]) if ars_spanning_blocks else None
@@ -211,7 +184,6 @@ def evaluate_gene_haploblocks(output_file, incomplete_file, sample_ID, genes_bed
 				else:
 					print(f"{sample_ID} {gene} no haploblocks span the ARS")
 			
-			# If no ARS-spanning block found, use the largest overlapping block
 			if not best_haploblock:
 				max_overlap = 0
 				for start, stop in overlapping_extended_haploblocks:
@@ -222,7 +194,6 @@ def evaluate_gene_haploblocks(output_file, incomplete_file, sample_ID, genes_bed
 						max_overlap = overlap_length
 						best_haploblock = (start, stop)
 
-			# Calculate overlap for best_haploblock
 			if best_haploblock:
 				overlap_start = max(best_haploblock[0], gene_start)
 				overlap_stop = min(best_haploblock[1], gene_stop)
@@ -232,7 +203,6 @@ def evaluate_gene_haploblocks(output_file, incomplete_file, sample_ID, genes_bed
 			else:
 				largest_overlap_string = "0.00%"
 
-			# Use the pre-merge haploblock count, not merged count!
 			incomplete_data.append([sample_ID, gene, num_pre_merge_haploblocks, largest_overlap_string])
 			print(f"Proportion of gene contained in largest overlapping haploblock: {largest_overlap_string}")
 
