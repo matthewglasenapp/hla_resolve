@@ -194,7 +194,7 @@ def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA
 
 		if unphased_genes and gene in unphased_genes:
 			best_haploblock_start = unphased_genes[gene][0]
-			best_haploblock_end = unphased_genes[gene][1]
+			best_haploblock_end   = unphased_genes[gene][1]
 
 			if feat == "gene":
 				# Load gene coords (1-based genomic positions)
@@ -206,8 +206,9 @@ def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA
 				clamped_stop  = min(best_haploblock_end,   gene_dict[gene][1])
 
 				# Map haploblock genomic coords into gene FASTA indices
-				fasta_start = gene_coords.index(clamped_start)
-				fasta_stop  = gene_coords.index(clamped_stop)
+				idx1 = gene_coords.index(clamped_start)
+				idx2 = gene_coords.index(clamped_stop)
+				fasta_start, fasta_stop = sorted((idx1, idx2))
 
 				allele_1 = allele_1[fasta_start:fasta_stop+1]
 				allele_2 = allele_2[fasta_start:fasta_stop+1]
@@ -222,14 +223,16 @@ def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA
 				cds_overlap = [pos for pos in cds_coords if best_haploblock_start <= pos <= best_haploblock_end]
 
 				if cds_overlap:
-					cds_fasta_start = cds_coords.index(cds_overlap[0])
-					cds_fasta_stop  = cds_coords.index(cds_overlap[-1])
+					idx1 = cds_coords.index(cds_overlap[0])
+					idx2 = cds_coords.index(cds_overlap[-1])
+					cds_fasta_start, cds_fasta_stop = sorted((idx1, idx2))
+
 					allele_1 = allele_1[cds_fasta_start:cds_fasta_stop+1]
 					allele_2 = allele_2[cds_fasta_start:cds_fasta_stop+1]
 				else:
 					# no overlap between haploblock and CDS, wipe to empty
 					allele_1, allele_2 = "", ""
-				
+
 				pass_cds_counter = 0
 				for cds_start, cds_stop in CDS_dict[gene]:
 					if cds_stop < best_haploblock_start or cds_start > best_haploblock_end:
@@ -241,6 +244,7 @@ def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA
 						status = "partially overlapping"
 					logging_strings.append(f"{sample_ID} {gene} CDS {cds_start}-{cds_stop} is {status}")
 				logging_strings.append(f"{sample_ID} {gene}: {pass_cds_counter} CDS fully contained in haploblock")
+
 
 		if len(allele_1) == 0 or len(allele_2) == 0:
 			print(f"File {file} has no sequence!")
