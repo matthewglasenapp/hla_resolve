@@ -120,7 +120,7 @@ def resolve_alleles(config):
 		os.makedirs(config['vcf2fasta_out_dir'], exist_ok=True)
 
 	for gene in config['genes_of_interest']:
-		if gene in sufficient_coverage_genes:
+		if gene in sufficient_coverage_genes or gene in unphased_genes:
 			gff_gene_name = convert_gene_name_for_gff(gene)
 			run_vcf2fasta(
 				vcf2fasta=config['vcf2fasta_script'],
