@@ -92,10 +92,17 @@ def resolve_alleles(config):
 		ARS_dict=config.get('ARS_dict', None))
 	
 	# Print which genes were successfully phased
-	print("Phased Genes:")
+	print("Fully Phased Genes:")
 	for gene in config['genes_of_interest']:
 		if gene in phased_genes:
 			print(f"  {gene}")
+	print("\n")
+
+	print("Partially Phased Genes:")
+	for gene in config['genes_of_interest']:
+		if gene in unphased_genes:
+			print(f"  {gene}")
+	print("\n")
 	
 	if config['platform'] == "PACBIO":
 		input_vcf = config['hiphase_joint_vcf']

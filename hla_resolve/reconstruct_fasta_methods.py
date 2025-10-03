@@ -174,6 +174,7 @@ def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA
 
 	fasta_dict = dict()
 
+	logging_strings = []
 	for file in fasta_files:
 		if "_gene" in file:
 			feat = "gene"
@@ -237,26 +238,34 @@ def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA
 						pass_cds_counter += 1
 					else:
 						status = "partially overlapping"
-					print(f"{gene} CDS {cds_start}-{cds_stop} is {status}")
-				print(f"{gene}: {pass_cds_counter} CDS fully contained in haploblock")
+					logging_strings.append(f"{sample_ID} {gene} CDS {cds_start}-{cds_stop} is {status}")
+				logging_strings.append(f"{sample_ID} {gene}: {pass_cds_counter} CDS fully contained in haploblock")
 
+		print("\n" + "Sanity checking vcf2fasta output" + "\n")
+
+		for string in logging_strings:
+			print(string)
+		print("\n")
 
 		if len(allele_1) == 0 or len(allele_2) == 0:
 			print(f"File {file} has no sequence!")
 			continue
-		
-		if allele_1[0:3] != "ATG" or allele_2[0:3] != "ATG":
-			print(f"File {file} does not begin with start codon!")
-		
-		if not allele_1[-3:] in stop_codons or not allele_2[-3:] in stop_codons:
-			print(f"File {file} does not end with stop codon!")
-
+			
 		if not set(allele_1).issubset(DNA_bases):
 			print(f"{file} has invalid characters!")
 
 		if not set(allele_2).issubset(DNA_bases):
 			print(f"{file} has invalid characters!")
+		
+		if feat == "CDS":
+			if allele_1[0:3] != "ATG" or allele_2[0:3] != "ATG":
+				print(f"File {file} does not begin with start codon!")
+		
+			if not allele_1[-3:] in stop_codons or not allele_2[-3:] in stop_codons:
+				print(f"File {file} does not end with stop codon!")
 
+		print("\n")
+		
 		if feat not in fasta_dict:
 			fasta_dict[feat] = {}
 		if gene not in fasta_dict[feat]:
@@ -275,10 +284,8 @@ def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA
 			hap2_name = f"{sample_ID}_{gene}_2"
 			hap2_seq = haplotypes[1]
 			if gene in unphased_genes:
-				print(f"Gene {gene} is unphased")
 				hap1_name = f"{sample_ID}_{gene}_1_incomplete"
 				hap2_name = f"{sample_ID}_{gene}_2_incomplete"
-				print(hap1_name, hap2_name)
 
 			if feat == "gene":
 				gene_records.append(SeqRecord(Seq(hap1_seq), id=hap1_name, description = ""))
