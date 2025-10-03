@@ -182,6 +182,7 @@ def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA
 		gene = file.split("/")[-2].split(f"_{feat}")[0].upper().replace("_", "-")
 		with open(file, "r") as f:
 			lines = f.read().split(">")
+		# Old code
 		# Remove deletion characters
 		#allele_1 = lines[1].split("\n")[1].strip().replace("-","").strip()
 		#allele_2 = lines[2].split("\n")[1].strip().replace("-","").strip()
@@ -273,6 +274,11 @@ def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA
 			hap1_seq = haplotypes[0]
 			hap2_name = f"{sample_ID}_{gene}_2"
 			hap2_seq = haplotypes[1]
+			if gene in unphased_genes:
+				print(f"Gene {gene} is unphased")
+				hap1_name = f"{sample_ID}_{gene}_1_incomplete"
+				hap2_name = f"{sample_ID}_{gene}_2_incomplete"
+				print(hap1_name, hap2_name)
 
 			if feat == "gene":
 				gene_records.append(SeqRecord(Seq(hap1_seq), id=hap1_name, description = ""))
