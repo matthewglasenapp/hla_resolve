@@ -62,7 +62,7 @@ def resolve_alleles(config):
 	)
 	
 	# Step 2: FASTA reconstruction
-	print("Step 2: Reconstructing FASTA sequences...")
+	print("Reconstructing FASTA sequences")
 	if config['platform'] == "PACBIO":
 		phased_vcf = config['hiphase_joint_vcf']
 		haploblock_file = config['phased_blocks']
@@ -164,7 +164,7 @@ def resolve_alleles(config):
 	)
 	
 	# Step 3: HLA typing
-	print("Step 3: Typing HLA alleles...")
+	print("Typing HLA Alleles!")
 	original_dir = os.getcwd()
 	os.chdir(config['hla_typing_dir'])
 	
