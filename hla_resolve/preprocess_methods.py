@@ -676,12 +676,10 @@ def run_mosdepth(input_file, output_dir, sample_ID, regions_file, threads):
 	print("\n\n")
 
 def parse_mosdepth(regions_file, thresholds_file, depth_thresh, prop_20x_thresh, prop_30x_thresh):
-	print("Parsing mosdepth results!")
-	print("\n\n")
 	coverage_dict = dict()
 	sufficient_coverage_genes = []
 	
-	print("Gene,mean_depth,prop_20x,prop_30x")
+	print("Gene, Mean Depth, % Bases 20X, % Bases 30X")
 
 	with gzip.open(regions_file, "rt") as f1, gzip.open(thresholds_file,"rt") as f2:
 		regions = f1.read().splitlines()
@@ -700,7 +698,7 @@ def parse_mosdepth(regions_file, thresholds_file, depth_thresh, prop_20x_thresh,
 			prop_20x = num_20x / length
 			prop_30x = num_30x / length
 
-			print(gene, coverage_depth, prop_20x, prop_30x)
+			print(gene, f"{coverage_depth:.1f}", f"{prop_20x:.1f}%", f"{prop_30x:.1f}%")
 
 			if coverage_depth >= depth_thresh and prop_20x >= prop_20x_thresh and prop_30x >= prop_30x_thresh:
 				sufficient_coverage_genes.append(gene)

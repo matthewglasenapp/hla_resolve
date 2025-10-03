@@ -241,12 +241,6 @@ def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA
 					logging_strings.append(f"{sample_ID} {gene} CDS {cds_start}-{cds_stop} is {status}")
 				logging_strings.append(f"{sample_ID} {gene}: {pass_cds_counter} CDS fully contained in haploblock")
 
-		print("\n" + "Sanity checking vcf2fasta output" + "\n")
-
-		for string in logging_strings:
-			print(string)
-		print("\n")
-
 		if len(allele_1) == 0 or len(allele_2) == 0:
 			print(f"File {file} has no sequence!")
 			continue
@@ -274,6 +268,10 @@ def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA
 		fasta_dict[feat][gene].append(allele_1)
 		fasta_dict[feat][gene].append(allele_2)
 
+	for string in logging_strings:
+		print(string)
+		print("\n")
+	
 	gene_records = []
 	cds_records = []
 

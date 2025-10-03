@@ -42,11 +42,9 @@ def resolve_alleles(config):
 	2. FASTA sequence reconstruction 
 	3. HLA typing
 	4. Print results
-	"""
-	print("Starting HLA allele resolution workflow...")
-	
+	"""	
 	# Step 1: Coverage analysis
-	print("Step 1: Running coverage analysis...")
+	print("Running coverage analysis...")
 	run_mosdepth(
 		input_file=config['hg38_rmdup_chr6_bam'],
 		output_dir=config['mosdepth_dir'],

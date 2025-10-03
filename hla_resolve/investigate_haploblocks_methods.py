@@ -26,7 +26,7 @@ def parse_haploblocks(input_vcf, input_haploblock_file, platform,sample_ID, mhc_
 		if genotype in [(0, 1), (1, 0)]:
 			heterozygous_sites.append(record.pos)
 
-	print(f"Sample {sample_name} has {len(heterozygous_sites)} heterozygous extended MHC genotypes")
+	#print(f"Sample {sample_name} has {len(heterozygous_sites)} heterozygous extended MHC genotypes")
 
 	print(f"Parsing {sample_name} haploblock file: {input_haploblock_file}")
 	print("\n")
@@ -107,7 +107,7 @@ def evaluate_gene_haploblocks(output_file, incomplete_file, sample_ID, genes_bed
 					break
 
 		if not fully_phased and gene in genes_of_interest:
-			print(f"{sample_ID} {gene} is not fully phased" + "\n")
+			print(f"{sample_ID} {gene} is not fully phased")
 			overlapping_haploblocks = []
 			upstream_block = None
 			downstream_block = None
@@ -123,7 +123,7 @@ def evaluate_gene_haploblocks(output_file, incomplete_file, sample_ID, genes_bed
 
 			num_raw_haploblocks = len(overlapping_haploblocks)
 			print(f"{sample_ID} {gene} has {num_raw_haploblocks} overlapping unextended haploblocks")
-			print(f"{sample_ID} {gene} overlapping unextended haploblocks: {overlapping_haploblocks}" + "\n")
+			print(f"{sample_ID} {gene} overlapping unextended haploblocks: {overlapping_haploblocks}")
 
 			if upstream_block:
 				#print(f"Upstream block: {upstream_block}")
@@ -133,7 +133,7 @@ def evaluate_gene_haploblocks(output_file, incomplete_file, sample_ID, genes_bed
 				overlapping_haploblocks.append(downstream_block)
 
 			# Step 1: Extend each haploblock independently
-			print("Extending haploblocks through homozygous sites" + "\n")
+			print("Extending haploblocks through homozygous sites")
 			extended_haploblocks = []
 			for block_start, block_stop in overlapping_haploblocks:
 				upstream_het_sites = [h for h in het_sites if h < block_start]
@@ -163,7 +163,7 @@ def evaluate_gene_haploblocks(output_file, incomplete_file, sample_ID, genes_bed
 					overlapping_extended_haploblocks.append((start, stop))
 			
 			print(f"{sample_ID} {gene} has {len(overlapping_extended_haploblocks)} extended haploblocks with gene overlap")
-			print(f"{sample_ID} {gene} extended haploblocks with gene overlap: {overlapping_extended_haploblocks}" + "\n")
+			print(f"{sample_ID} {gene} extended haploblocks with gene overlap: {overlapping_extended_haploblocks}")
 
 			# Step 3: Best haploblock selection
 			best_haploblock = None
@@ -176,7 +176,7 @@ def evaluate_gene_haploblocks(output_file, incomplete_file, sample_ID, genes_bed
 				if largest_ars_spanning_block:
 					best_haploblock = largest_ars_spanning_block
 					unphased_genes[gene] = best_haploblock
-					print(f"{sample_ID} {gene} has a haploblock that fully spans the antigen recognition sequence" + "\n")
+					print(f"{sample_ID} {gene} has a haploblock that fully spans the antigen recognition sequence")
 					print(f"{sample_ID} {gene} largest ARS-spanning haploblock: chr6:{largest_ars_spanning_block[0]}-{largest_ars_spanning_block[1]}")
 				else:
 					print(f"{sample_ID} {gene} no haploblocks span the ARS")
