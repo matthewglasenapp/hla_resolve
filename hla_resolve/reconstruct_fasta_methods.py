@@ -167,6 +167,7 @@ def run_vcf2fasta(vcf2fasta, input_vcf, input_gff, reference_genome, output_dir,
 	subprocess.run(vcf2fasta_cmd, shell = True, check = True)
 
 def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA_bases, stop_codons, unphased_genes=None, gene_dict=None, CDS_dict=None, gff_dir=None):
+	print("\n")
 	find_cmd = f"find {vcf2fasta_output_dir} -type f > fasta_files.txt"
 	subprocess.run(find_cmd, shell = True, check = True)
 	fasta_files = open("fasta_files.txt", "r").read().splitlines()
@@ -266,6 +267,7 @@ def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA
 		fasta_dict[feat][gene].append(allele_1)
 		fasta_dict[feat][gene].append(allele_2)
 
+	print("\n")
 	print("Sanity check of partially phased genes")
 	for string in logging_strings:
 		print(string)
@@ -295,3 +297,4 @@ def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA
 	print(f"Wrote {len(gene_records)} records to {outfile_gene}")
 	SeqIO.write(cds_records, outfile_CDS, "fasta")
 	print(f"Wrote {len(cds_records)} records to {outfile_CDS}")
+	print("\n")
