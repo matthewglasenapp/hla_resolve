@@ -282,9 +282,9 @@ def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA
 			hap1_seq = haplotypes[0]
 			hap2_name = f"{sample_ID}_{gene}_2"
 			hap2_seq = haplotypes[1]
-			if gene in unphased_genes:
-				hap1_name = f"{sample_ID}_{gene}_1_incomplete"
-				hap2_name = f"{sample_ID}_{gene}_2_incomplete"
+			#if gene in unphased_genes:
+				#hap1_name = f"{sample_ID}_{gene}_1_incomplete"
+				#hap2_name = f"{sample_ID}_{gene}_2_incomplete"
 
 			if feat == "gene":
 				gene_records.append(SeqRecord(Seq(hap1_seq), id=hap1_name, description = ""))
