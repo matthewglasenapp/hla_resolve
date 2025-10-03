@@ -166,7 +166,7 @@ def run_vcf2fasta(vcf2fasta, input_vcf, input_gff, reference_genome, output_dir,
 	
 	subprocess.run(vcf2fasta_cmd, shell = True, check = True)
 
-def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA_bases, stop_codons):
+def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA_bases, stop_codons, unphased_genes=None, gene_dict=None, CDS_dict=None):
 	find_cmd = f"find {vcf2fasta_output_dir} -type f > fasta_files.txt"
 	subprocess.run(find_cmd, shell = True, check = True)
 	fasta_files = open("fasta_files.txt", "r").read().splitlines()
@@ -183,13 +183,69 @@ def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA
 		with open(file, "r") as f:
 			lines = f.read().split(">")
 		# Remove deletion characters
-		allele_1 = lines[1].split("\n")[1].strip().replace("-","").strip()
-		allele_2 = lines[2].split("\n")[1].strip().replace("-","").strip()
+		#allele_1 = lines[1].split("\n")[1].strip().replace("-","").strip()
+		#allele_2 = lines[2].split("\n")[1].strip().replace("-","").strip()
+		# Concatenate all lines after the header for each allele
+		allele_1 = "".join(lines[1].split("\n")[1:]).replace("-", "").strip()
+		allele_2 = "".join(lines[2].split("\n")[1:]).replace("-", "").strip()
 
+		if unphased_genes and gene in unphased_genes:
+			best_haploblock_start = unphased_genes[gene][0]
+			best_haploblock_end = unphased_genes[gene][1]
+
+			if feat == "gene":
+				# Load gene coords (1-based genomic positions)
+				gene_lower = gene.lower().replace("-", "_")
+				gene_coords = [int(item) for item in open(f"{gene_lower}_gene_coords.txt").read().splitlines()]
+
+				clamped_start = max(best_haploblock_start, gene_dict[gene][0])
+				clamped_stop  = min(best_haploblock_end,   gene_dict[gene][1])
+
+				# Map haploblock genomic coords into gene FASTA indices
+				fasta_start = gene_coords.index(clamped_start)
+				fasta_stop  = gene_coords.index(clamped_stop)
+
+				allele_1 = allele_1[fasta_start:fasta_stop+1]
+				allele_2 = allele_2[fasta_start:fasta_stop+1]
+
+			elif feat == "CDS":
+				# Load CDS coords (flattened genomic positions from all CDS exons)
+				gene_lower = gene.lower().replace("-", "_")
+				cds_coords = [int(item) for item in open(f"{gene_lower}_cds_sorted_coords.txt").read().splitlines()]
+
+				# Collect overlap of haploblock with CDS
+				cds_overlap = [pos for pos in cds_coords if best_haploblock_start <= pos <= best_haploblock_end]
+
+				if cds_overlap:
+					cds_fasta_start = cds_coords.index(cds_overlap[0])
+					cds_fasta_stop  = cds_coords.index(cds_overlap[-1])
+					allele_1 = allele_1[cds_fasta_start:cds_fasta_stop+1]
+					allele_2 = allele_2[cds_fasta_start:cds_fasta_stop+1]
+				else:
+					# no overlap between haploblock and CDS, wipe to empty
+					allele_1, allele_2 = "", ""
+				
+				pass_cds_counter = 0
+				for cds_start, cds_stop in CDS_dict[gene]:
+					if cds_stop < best_haploblock_start or cds_start > best_haploblock_end:
+						status = "outside haploblock"
+					elif cds_start >= best_haploblock_start and cds_stop <= best_haploblock_end:
+						status = "fully contained"
+						pass_cds_counter += 1
+					else:
+						status = "partially overlapping"
+					print(f"{gene} CDS {cds_start}-{cds_stop} is {status}")
+				print(f"{gene}: {pass_cds_counter} CDS fully contained in haploblock")
+
+
+		if len(allele_1) == 0 or len(allele_2) == 0:
+			print(f"File {file} has no sequence!")
+			continue
+		
 		if allele_1[0:3] != "ATG" or allele_2[0:3] != "ATG":
 			print(f"File {file} does not begin with start codon!")
 		
-		elif not allele_1[-3:] in stop_codons or not allele_2[-3:] in stop_codons:
+		if not allele_1[-3:] in stop_codons or not allele_2[-3:] in stop_codons:
 			print(f"File {file} does not end with stop codon!")
 
 		if not set(allele_1).issubset(DNA_bases):

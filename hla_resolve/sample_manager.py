@@ -11,7 +11,7 @@ from config import (
 	mosdepth_regions_file, depth_thresh, prop_20x_thresh, prop_30x_thresh,
 	mhc_start, mhc_stop, genes_bed, genes_of_interest, genes_of_interest_extended,
 	hla_genes_regions_file, vcf2fasta_script, reference_genome_minimap2, reference_genome_vg,
-	DNA_bases, stop_codons, IMGT_XML, gff_dir, ARS_dict
+	DNA_bases, stop_codons, IMGT_XML, gff_dir, ARS_dict, gene_dict, CDS_dict
 )
 
 class Samples:
@@ -439,6 +439,8 @@ def build_workflow_config(sample):
 		'stop_codons': stop_codons,
 		'IMGT_XML': IMGT_XML,
 		'ARS_dict': ARS_dict,
+		'gene_dict': gene_dict,
+		'CDS_dict': CDS_dict,
 	}
 	
 	# Platform-specific directories

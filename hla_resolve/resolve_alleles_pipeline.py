@@ -151,7 +151,10 @@ def resolve_alleles(config):
 		outfile_gene=config['hla_gene_fasta'],
 		outfile_CDS=config['hla_cds_fasta'],
 		DNA_bases=config['DNA_bases'],
-		stop_codons=config['stop_codons']
+		stop_codons=config['stop_codons'],
+		unphased_genes=unphased_genes,
+		gene_dict=config['gene_dict'],
+		CDS_dict=config['CDS_dict']
 	)
 	
 	# Step 3: HLA typing
