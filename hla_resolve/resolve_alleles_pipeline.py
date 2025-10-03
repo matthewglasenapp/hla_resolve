@@ -154,7 +154,8 @@ def resolve_alleles(config):
 		stop_codons=config['stop_codons'],
 		unphased_genes=unphased_genes,
 		gene_dict=config['gene_dict'],
-		CDS_dict=config['CDS_dict']
+		CDS_dict=config['CDS_dict'],
+		gff_dir=config['gff_dir']
 	)
 	
 	# Step 3: HLA typing

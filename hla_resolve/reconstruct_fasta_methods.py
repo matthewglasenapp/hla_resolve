@@ -166,7 +166,7 @@ def run_vcf2fasta(vcf2fasta, input_vcf, input_gff, reference_genome, output_dir,
 	
 	subprocess.run(vcf2fasta_cmd, shell = True, check = True)
 
-def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA_bases, stop_codons, unphased_genes=None, gene_dict=None, CDS_dict=None):
+def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA_bases, stop_codons, unphased_genes=None, gene_dict=None, CDS_dict=None, gff_dir=None):
 	find_cmd = f"find {vcf2fasta_output_dir} -type f > fasta_files.txt"
 	subprocess.run(find_cmd, shell = True, check = True)
 	fasta_files = open("fasta_files.txt", "r").read().splitlines()
@@ -196,7 +196,8 @@ def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA
 			if feat == "gene":
 				# Load gene coords (1-based genomic positions)
 				gene_lower = gene.lower().replace("-", "_")
-				gene_coords = [int(item) for item in open(f"{gene_lower}_gene_coords.txt").read().splitlines()]
+				gene_coords_file = os.path.join(gff_dir, f"{gene_lower}_gene_coords.txt")
+				gene_coords = [int(item) for item in open(gene_coords_file).read().splitlines()]
 
 				clamped_start = max(best_haploblock_start, gene_dict[gene][0])
 				clamped_stop  = min(best_haploblock_end,   gene_dict[gene][1])
@@ -211,7 +212,8 @@ def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA
 			elif feat == "CDS":
 				# Load CDS coords (flattened genomic positions from all CDS exons)
 				gene_lower = gene.lower().replace("-", "_")
-				cds_coords = [int(item) for item in open(f"{gene_lower}_cds_sorted_coords.txt").read().splitlines()]
+				cds_coords_file = os.path.join(gff_dir, f"{gene_lower}_cds_sorted_coords.txt")
+				cds_coords = [int(item) for item in open(cds_coords_file).read().splitlines()]
 
 				# Collect overlap of haploblock with CDS
 				cds_overlap = [pos for pos in cds_coords if best_haploblock_start <= pos <= best_haploblock_end]
