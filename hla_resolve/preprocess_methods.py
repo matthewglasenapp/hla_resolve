@@ -698,7 +698,7 @@ def parse_mosdepth(regions_file, thresholds_file, depth_thresh, prop_20x_thresh,
 			prop_20x = num_20x / length
 			prop_30x = num_30x / length
 
-			print(gene, f"{coverage_depth:.1f}", f"{prop_20x:.1f}%", f"{prop_30x:.1f}%")
+			print(gene, f"{coverage_depth:.1f}", f"{prop_20x*100:.1f}%", f"{prop_30x*100:.1f}%")
 
 			if coverage_depth >= depth_thresh and prop_20x >= prop_20x_thresh and prop_30x >= prop_30x_thresh:
 				sufficient_coverage_genes.append(gene)

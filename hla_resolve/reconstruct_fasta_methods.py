@@ -257,8 +257,6 @@ def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA
 		
 			if not allele_1[-3:] in stop_codons or not allele_2[-3:] in stop_codons:
 				print(f"File {file} does not end with stop codon!")
-
-		print("\n")
 		
 		if feat not in fasta_dict:
 			fasta_dict[feat] = {}
@@ -268,9 +266,10 @@ def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA
 		fasta_dict[feat][gene].append(allele_1)
 		fasta_dict[feat][gene].append(allele_2)
 
+	print("Sanity check of partially phased genes")
 	for string in logging_strings:
 		print(string)
-		print("\n")
+	print("\n")
 	
 	gene_records = []
 	cds_records = []
