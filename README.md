@@ -47,7 +47,7 @@ Demo example:
 Input data: PacBio Revio HiFi targeted sequencing reads from IHW09122, a female Aboriginal Australian sample from the International Histocompatibility Working Group catalog. 
 
 ```
-python3 -m cli.py \
+python3 -m hla_resolve/cli.py \
 --input_file IHW09122.hifi_reads.bam \
 --sample_name IHW09122 \
 --platform pacbio \
