@@ -11,7 +11,7 @@ from config import (
 	mosdepth_regions_file, depth_thresh, prop_20x_thresh, prop_30x_thresh,
 	mhc_start, mhc_stop, genes_bed, genes_of_interest, genes_of_interest_extended,
 	hla_genes_regions_file, vcf2fasta_script, reference_genome_minimap2, reference_genome_vg,
-	DNA_bases, stop_codons, IMGT_XML, gff_dir, ARS_dict, gene_dict, CDS_dict
+	DNA_bases, stop_codons, IMGT_XML, gff_dir, ARS_dict, gene_dict, CDS_dict, dummy_reference
 )
 
 class Samples:
@@ -379,6 +379,8 @@ def build_workflow_config(sample):
 		'trimmed_pbmarkdup_fastq': sample.trimmed_pbmarkdup_fastq,
 		'trimmed_pbmarkdup_fastq_gz': sample.trimmed_pbmarkdup_fastq_gz,
 		'hg38_bam': sample.hg38_bam,
+		'hg38_bam_drb': sample.hg38_bam_drb,
+		'DRB34_reads_file': sample.DRB34_reads_file,
 		'pangenome_bam': sample.pangenome_bam,
 		'pg_bam': sample.pg_bam,
 		'pg_reheader_bam': sample.pg_reheader_bam,
@@ -417,6 +419,7 @@ def build_workflow_config(sample):
 		
 		# Reference files and tool paths (from Samples class and config.py)
 		'reference_genome': reference_genome,
+		'dummy_reference': dummy_reference,
 		'deepvariant_sif': Samples.deepvariant_sif,
 		'chr6_bed': Samples.chr6_bed,
 		'tandem_repeat_bed': Samples.tandem_repeat_bed,
