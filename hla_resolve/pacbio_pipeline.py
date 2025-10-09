@@ -23,35 +23,35 @@ def preprocess_pacbio_sample(config):
 	# )
 	# )
 	
-	# trim_adapters(
-	# 	adapters=config['adapters'],
-	# 	input_file=config['raw_fastq'],
-	# 	output_file=config['trimmed_fastq'],
-	# 	sample_ID=config['sample_ID'],
-	# 	threads=config['threads'],
-	# 	adapter_file=config['adapter_file'],
-	# 	five_prime_adapter=config['five_prime_adapter'],
-	# 	three_prime_adapter=config['three_prime_adapter']
-	# )
+	trim_adapters(
+		adapters=config['adapters'],
+		input_file=config['raw_fastq'],
+		output_file=config['trimmed_fastq'],
+		sample_ID=config['sample_ID'],
+		threads=config['threads'],
+		adapter_file=config['adapter_file'],
+		five_prime_adapter=config['five_prime_adapter'],
+		three_prime_adapter=config['three_prime_adapter']
+	)
 
 	# run_fastqc(
 	# 	input_file=config['trimmed_fastq']
 	# )
 	
-	# mark_duplicates_pbmarkdup(
-	# 	input_file=config['trimmed_fastq'],
-	# 	output_file=config['trimmed_pbmarkdup_fastq'],
-	# 	threads=config['threads']
-	# )
+	mark_duplicates_pbmarkdup(
+		input_file=config['trimmed_fastq'],
+		output_file=config['trimmed_pbmarkdup_fastq'],
+		threads=config['threads']
+	)
 	
-	# align_to_reference_minimap(
-	# 	input_file=config['trimmed_pbmarkdup_fastq_gz'],
-	# 	output_file=config['hg38_bam'],
-	# 	read_group_string=config['read_group_string'],
-	# 	reference_fasta=config['reference_genome'],
-	# 	platform=config['platform'],
-	# 	threads=config['threads'],
-	# )
+	align_to_reference_minimap(
+		input_file=config['trimmed_pbmarkdup_fastq_gz'],
+		output_file=config['hg38_bam'],
+		read_group_string=config['read_group_string'],
+		reference_fasta=config['reference_genome'],
+		platform=config['platform'],
+		threads=config['threads'],
+	)
 	
 	if config['aligner'] == "vg":
 		align_to_reference_vg(
@@ -79,15 +79,14 @@ def preprocess_pacbio_sample(config):
 			threads=config['threads']
 		)
 	
-	# else:
-	# 	chr6_read_count = filter_reads(
-	# 		input_file=config['hg38_bam'],
-	# 		output_file=config['hg38_rmdup_chr6_bam'],
-	# 		threads=config['threads']
-	# 	)
+	else:
+		chr6_read_count = filter_reads(
+			input_file=config['hg38_bam'],
+			output_file=config['hg38_rmdup_chr6_bam'],
+			threads=config['threads']
+		)
 
-	#if chr6_read_count >= min_reads_sample:
-	if 1==1:
+	if chr6_read_count >= min_reads_sample:
 		if config['genotyper'] == "bcftools":
 			call_variants_bcftools(
 				input_file=config['hg38_rmdup_chr6_bam'],
