@@ -21,6 +21,8 @@ vg = "/hb/scratch/ogarci12/hybridcapture_pangenome/vg"
 mosdepth_regions_file = "/hb/scratch/mglasena/test_hla_resolve/hla_resolve/hla_resolve/hla_genes.bed"
 #mosdepth_regions_file = "/hb/scratch/mglasena/test_hla_resolve/hla_resolve/hla_resolve/hla_genes.shifted.bed"
 
+# Dummy reference for baiting DRB3 and DRB4 reads 
+dummy_reference = "/hb/scratch/mglasena/test_hla_resolve/hla_resolve/hla_resolve/data/reference/DRB_1_3_4.fa"
 
 # Transposase mosaic end binding sequence
 # The TE sequence (and its reverse complement) introduced during tagmentation still needs to be removed
