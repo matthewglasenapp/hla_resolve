@@ -48,7 +48,6 @@ def preprocess_pacbio_sample(config):
 	align_to_reference_minimap(
 		input_file=config['trimmed_pbmarkdup_fastq_gz'],
 		output_file=config['hg38_bam'],
-		output_dir=config['mapped_bam_dir'],
 		read_group_string=config['read_group_string'],
 		reference_fasta=config['reference_genome'],
 		platform=config['platform'],
