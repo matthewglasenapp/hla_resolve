@@ -267,6 +267,7 @@ class Samples:
         
         # BAM files
         self.hg38_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.hg38.bam")
+        self.hg38_bam_drb = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.hg38.bam.drb")
         self.pangenome_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.pangenome.bam")
         self.pg_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.pg.bam")
         self.pg_reheader_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.pg.reheader.bam")
@@ -322,6 +323,9 @@ class Samples:
         # Haploblock analysis files
         self.phased_genes_tsv = os.path.join(self.parsed_haploblock_dir, "phased_genes.tsv")
         self.incomplete_genes_csv = os.path.join(self.parsed_haploblock_dir, "incomplete.csv")
+
+        # DRB34 reads file
+        self.DRB34_reads_file = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.drb34_reads.txt")
         
 
 

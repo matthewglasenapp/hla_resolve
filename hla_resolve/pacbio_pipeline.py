@@ -7,6 +7,7 @@ from preprocess_methods import (
 	align_to_reference_vg,
 	reassign_mapq,
 	filter_reads,
+	bait_DRB_paralogs,
 	call_variants_bcftools,
 	call_variants_deepvariant,
 	call_variants_clair3,
@@ -47,10 +48,21 @@ def preprocess_pacbio_sample(config):
 	align_to_reference_minimap(
 		input_file=config['trimmed_pbmarkdup_fastq_gz'],
 		output_file=config['hg38_bam'],
+		output_dir=config['mapped_bam_dir'],
 		read_group_string=config['read_group_string'],
 		reference_fasta=config['reference_genome'],
 		platform=config['platform'],
 		threads=config['threads'],
+	)
+
+	bait_DRB_paralogs(
+		input_file=config['trimmed_pbmarkdup_fastq_gz'],
+		output_file=config['hg38_bam_drb'],
+		DRB34_reads_file=config['DRB34_reads_file'],
+		read_group_string=config['read_group_string'],
+		reference_fasta=config['dummy_reference'],
+		platform=config['platform'],
+		threads=config['threads']
 	)
 	
 	if config['aligner'] == "vg":
@@ -76,6 +88,7 @@ def preprocess_pacbio_sample(config):
 		chr6_read_count = filter_reads(
 			input_file=config['pg_mapq_reassign_bam'],
 			output_file=config['hg38_rmdup_chr6_bam'],
+			DRB34_reads_file=config['DRB34_reads_file'],
 			threads=config['threads']
 		)
 	
@@ -83,6 +96,7 @@ def preprocess_pacbio_sample(config):
 		chr6_read_count = filter_reads(
 			input_file=config['hg38_bam'],
 			output_file=config['hg38_rmdup_chr6_bam'],
+			DRB34_reads_file=config['DRB34_reads_file'],
 			threads=config['threads']
 		)
 

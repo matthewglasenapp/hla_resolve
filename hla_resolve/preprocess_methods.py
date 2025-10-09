@@ -166,6 +166,30 @@ def align_to_reference_minimap(input_file, output_file, read_group_string, refer
 	print(f"Mapped bam written to: {output_file}")
 	print("\n\n")
 
+def bait_DRB_paralogs(input_file, output_file, DRB34_reads_file, read_group_string, reference_fasta, platform, threads):
+	print("Screening for reads originating from HLA-DRB3 and HLA-DRB4!")
+
+	if platform == "PACBIO":
+		platform_string = "map-hifi"
+	elif platform == "ONT":
+		platform_string = "map-ont"
+	
+	minimap_threads = int(threads * 2 / 3)
+	samtools_threads = threads - minimap_threads
+	minimap_rg_string = "'{}'".format(read_group_string.replace("\t", "\\t"))
+
+	minimap2_cmd = f"minimap2 -Y -t {minimap_threads} -ax {platform_string} {reference_fasta} {input_file} -R {minimap_rg_string} | samtools sort -@ {samtools_threads} -o {output_file}"
+	index_bam = f"samtools index {output_file}"
+	
+	subprocess.run(minimap2_cmd, shell=True, check=True)
+	subprocess.run(index_bam, shell=True, check=True)
+	
+	get_drb34_cmd = f"samtools view -F 2304 {output_file} | awk '$3 ~ /DRB3|DRB4/' | cut -f1 | sort -u > {DRB34_reads_file}"
+	subprocess.run(get_drb34_cmd, shell=True, check=True)
+	
+	print(f"DRB3 and DRB4 read IDs written to: {DRB34_reads_file}")
+	print("\n\n")
+
 def align_to_reference_vg(vg, input_file, output_file, reheader_bam, sample_ID, read_group_string, reference_gbz, ref_paths, platform, threads):
 	print("Aligning reads to pangenome reference genome with vg giraffe!")
 	
@@ -259,7 +283,7 @@ def mark_duplicates_picard(input_file, output_file, metrics_file, temp_dir):
 	subprocess.run(mark_duplicates_cmd, shell=True, check=True)
 
 # Filer reads that did not map to chromosome 6
-def filter_reads(input_file, output_file, threads):
+def filter_reads(input_file, output_file, DRB34_reads_file, threads):
 	print("Excluding BAM records that don't map to chromosome 6!")
 
 	print(f"Samtools input file: {input_file}")
@@ -267,7 +291,7 @@ def filter_reads(input_file, output_file, threads):
 	# Extract chromosome 6 and exclude secondary and supplementary alignments
 	# samtools_cmd = "samtools view -@ {threads} -F 2304 -b {input_file} chr6 > '{output_file}'".format(threads = sample.threads, input_file = input_bam, output_file = output_bam)
 	# Use -h flag to preserve full header, then filter to chr6
-	samtools_cmd = f"samtools view -h -F 1024 -@ {threads} {input_file} chr6 | samtools view -b > '{output_file}'"
+	samtools_cmd = f"samtools view -h -F 2304 -@ {threads} {input_file} chr6 | grep -v -F -f {DRB34_reads_file} -- | samtools view -b -o {output_file}"
 	index_cmd = f"samtools index {output_file}"
 
 	subprocess.run(samtools_cmd, shell=True, check=True)
