@@ -86,7 +86,8 @@ def preprocess_pacbio_sample(config):
 	# 		threads=config['threads']
 	# 	)
 
-	if chr6_read_count >= min_reads_sample:
+	#if chr6_read_count >= min_reads_sample:
+	if 1==1:
 		if config['genotyper'] == "bcftools":
 			call_variants_bcftools(
 				input_file=config['hg38_rmdup_chr6_bam'],
