@@ -168,8 +168,14 @@ def run_vcf2fasta(vcf2fasta, input_vcf, input_gff, reference_genome, output_dir,
 
 def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA_bases, stop_codons, unphased_genes=None, gene_dict=None, CDS_dict=None, gff_dir=None):
 	print("\n")
+	print(f"DEBUG: Current working directory: {os.getcwd()}")
+	print(f"DEBUG: Looking for FASTA files in: {vcf2fasta_output_dir}")
 	find_cmd = f"find {vcf2fasta_output_dir} -type f > fasta_files.txt"
+	print(f"DEBUG: Running command: {find_cmd}")
 	subprocess.run(find_cmd, shell = True, check = True)
+	print(f"DEBUG: Checking if fasta_files.txt exists: {os.path.exists('fasta_files.txt')}")
+	if os.path.exists('fasta_files.txt'):
+		print(f"DEBUG: fasta_files.txt size: {os.path.getsize('fasta_files.txt')} bytes")
 	fasta_files = open("fasta_files.txt", "r").read().splitlines()
 	os.remove("fasta_files.txt")
 
