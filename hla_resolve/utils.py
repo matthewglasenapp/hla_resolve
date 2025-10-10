@@ -12,13 +12,18 @@ def check_required_commands():
         "bgzip",
         "cutadapt",
         "fastplong",
-        "fastqc",
+        # FASTQC only for dev
+        #"fastqc",
+        "java",
         "hiphase",
         "pbmarkdup",
-        "pbmm2",
-        "pbsv",
+        # pbmm2 deprecated for minimap2
+        #"pbmm2",
+        # pbsv depreceated for sawfish
+        #"pbsv",
         "pigz",
         "samtools",
+        # Only required for DeepVariant in dev mode
         "singularity",
         "sniffles",
         "tabix",
