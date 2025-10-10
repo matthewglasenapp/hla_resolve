@@ -13,7 +13,6 @@ def check_required_commands():
         "cutadapt",
         "fastplong",
         "fastqc",
-        "gatk",
         "hiphase",
         "pbmarkdup",
         "pbmm2",

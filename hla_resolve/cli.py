@@ -17,15 +17,16 @@ def main():
     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     epilog=textwrap.dedent("""\
         Examples:
-          python3 -m hla_resolve.cli --input_file reads.bam --sample_name HG002 --platform pacbio --output_dir out --aligner minimap2 --genotyper deepvariant --threads 10
+          python3 -m hla_resolve.cli --input_file reads.bam --sample_name HG002 --platform pacbio --output_dir out --threads 10
     """),
 )
     parser.add_argument("--input_file", required=True, help="Path to the raw sequencing reads file")
     parser.add_argument("--sample_name", required=True, help="Override the parsed sample name", default=None)
     parser.add_argument("--platform", choices=["pacbio", "ont"], required=True, help="Specify sequencing platform (pacbio, ont)")
     parser.add_argument("--output_dir", required=True, help="Output Directory", default=None)
-    parser.add_argument("--aligner", choices=["minimap2", "vg"], required=True, help="Tool for reference genome alignment", default=None)
-    parser.add_argument("--genotyper", choices=["bcftools", "clair3", "deepvariant"], required=False, help="Tool for genotyping", default="deepvariant")
+    # For public release, aligner and genotyper are fixed. Uncomment for development:
+    # parser.add_argument("--aligner", choices=["minimap2", "vg"], required=True, help="Tool for reference genome alignment", default=None)
+    # parser.add_argument("--genotyper", choices=["bcftools", "clair3", "deepvariant"], required=False, help="Tool for genotyping", default="deepvariant")
     parser.add_argument("--trim_adapters", action="store_true", help="Enable adapter trimming before processing")
     parser.add_argument("--adapter_file", type=str, required=False, default=None, help="Path to a file with custom adapter sequences (FASTA/FASTQ). If not provided, default adapters will be used.")
     parser.add_argument("--threads", type=int, required=False, help="Number of threads to use", default=6)
@@ -38,6 +39,10 @@ def main():
         parser.exit()
 
     args = parser.parse_args()
+    
+    # For public release: hardcode aligner and genotyper
+    args.aligner = "minimap2"
+    args.genotyper = "deepvariant"
 
     # Check that all required tools are installed
     check_required_commands()

@@ -1,0 +1,23 @@
+##gff-version 3
+##sequence-region   6 1 170805979
+#!genome-build Genome Reference Consortium GRCh38.p14
+#!genome-version GRCh38
+#!genome-date 2013-12
+#!genome-build-accession GCA_000001405.29
+#!genebuild-last-updated 2023-03
+6	ensembl_havana	gene	32756098	32763532	.	-	.	ID=gene:ENSG00000232629;Name=HLA-DQB2;biotype=protein_coding;description=major histocompatibility complex%2C class II%2C DQ beta 2 [Source:HGNC Symbol%3BAcc:HGNC:4945];gene_id=ENSG00000232629;logic_name=ensembl_havana_gene_homo_sapiens;version=9
+6	ensembl_havana	mRNA	32756098	32763532	.	-	.	ID=transcript:ENST00000437316;Parent=gene:ENSG00000232629;Name=HLA-DQB2-232;biotype=protein_coding;ccdsid=CCDS78128.1;tag=basic,Ensembl_canonical,MANE_Select;transcript_id=ENST00000437316;transcript_support_level=NA (assigned to previous version 6);version=7
+6	ensembl_havana	three_prime_UTR	32756098	32756452	.	-	.	Parent=transcript:ENST00000437316
+6	ensembl_havana	exon	32756098	32756466	.	-	.	Parent=transcript:ENST00000437316;Name=ENSE00001604683;constitutive=0;ensembl_end_phase=-1;ensembl_phase=1;exon_id=ENSE00001604683;rank=6;version=1
+6	ensembl_havana	CDS	32756453	32756466	.	-	2	ID=CDS:ENSP00000396330;Parent=transcript:ENST00000437316;protein_id=ENSP00000396330
+6	ensembl_havana	exon	32757281	32757304	.	-	.	Parent=transcript:ENST00000437316;Name=ENSE00001607434;constitutive=0;ensembl_end_phase=1;ensembl_phase=1;exon_id=ENSE00001607434;rank=5;version=1
+6	ensembl_havana	CDS	32757281	32757304	.	-	2	ID=CDS:ENSP00000396330;Parent=transcript:ENST00000437316;protein_id=ENSP00000396330
+6	ensembl_havana	exon	32757773	32757883	.	-	.	Parent=transcript:ENST00000437316;Name=ENSE00001703275;constitutive=0;ensembl_end_phase=1;ensembl_phase=1;exon_id=ENSE00001703275;rank=4;version=1
+6	ensembl_havana	CDS	32757773	32757883	.	-	2	ID=CDS:ENSP00000396330;Parent=transcript:ENST00000437316;protein_id=ENSP00000396330
+6	ensembl_havana	exon	32758850	32759131	.	-	.	Parent=transcript:ENST00000437316;Name=ENSE00001723559;constitutive=1;ensembl_end_phase=1;ensembl_phase=1;exon_id=ENSE00001723559;rank=3;version=1
+6	ensembl_havana	CDS	32758850	32759131	.	-	2	ID=CDS:ENSP00000396330;Parent=transcript:ENST00000437316;protein_id=ENSP00000396330
+6	ensembl_havana	exon	32761660	32761926	.	-	.	Parent=transcript:ENST00000437316;Name=ENSE00001775810;constitutive=1;ensembl_end_phase=1;ensembl_phase=1;exon_id=ENSE00001775810;rank=2;version=1
+6	ensembl_havana	CDS	32761660	32761926	.	-	2	ID=CDS:ENSP00000396330;Parent=transcript:ENST00000437316;protein_id=ENSP00000396330
+6	ensembl_havana	CDS	32763374	32763470	.	-	0	ID=CDS:ENSP00000396330;Parent=transcript:ENST00000437316;protein_id=ENSP00000396330
+6	ensembl_havana	exon	32763374	32763532	.	-	.	Parent=transcript:ENST00000437316;Name=ENSE00001942401;constitutive=0;ensembl_end_phase=1;ensembl_phase=-1;exon_id=ENSE00001942401;rank=1;version=1
+6	ensembl_havana	five_prime_UTR	32763471	32763532	.	-	.	Parent=transcript:ENST00000437316

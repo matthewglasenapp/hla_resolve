@@ -274,11 +274,11 @@ def reassign_mapq(bam_hg38, bam_pg, reassigned_pg):
 	if missing_reads:
 		print(f"{len(missing_reads)} reads in {bam_pg} were missing from {bam_hg38}")
 
-# Only marking duplicates for ONT data becuase pbmarkdup was used earlier for PacBio data
-def mark_duplicates_picard(input_file, output_file, metrics_file, temp_dir):
+# Only marking duplicates for ONT data because pbmarkdup was used earlier for PacBio data
+def mark_duplicates_picard(input_file, output_file, metrics_file, temp_dir, picard):
 	os.makedirs(temp_dir, exist_ok=True)
 	
-	mark_duplicates_cmd = f"gatk MarkDuplicates -I {input_file} -O {output_file} --TMP_DIR {temp_dir} -M {metrics_file} --CREATE_INDEX true --VALIDATION_STRINGENCY LENIENT"
+	mark_duplicates_cmd = f"java -jar {picard} MarkDuplicates -I {input_file} -O {output_file} --TMP_DIR {temp_dir} -M {metrics_file} --CREATE_INDEX true --VALIDATION_STRINGENCY LENIENT"
 	
 	subprocess.run(mark_duplicates_cmd, shell=True, check=True)
 

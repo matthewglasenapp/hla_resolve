@@ -59,7 +59,8 @@ def preprocess_ont_sample(config):
 			input_file=config['pg_mapq_reassign_bam'],
 			output_file=config['pg_mapq_reassign_mrkdup_bam'],
 			metrics_file=config['pg_mapq_reassign_mrkdup_metrics'],
-			temp_dir=os.path.join(config['mapped_bam_dir'], "mark_duplicates")
+			temp_dir=os.path.join(config['mapped_bam_dir'], "mark_duplicates"),
+			picard=config['picard']
 		)
 
 		chr6_read_count = filter_reads(
@@ -73,7 +74,8 @@ def preprocess_ont_sample(config):
 			input_file=config['hg38_bam'],
 			output_file=config['hg38_mrkdup_bam'],
 			metrics_file=config['hg38_mrkdup_metrics'],
-			temp_dir=os.path.join(config['mapped_bam_dir'], "mark_duplicates")
+			temp_dir=os.path.join(config['mapped_bam_dir'], "mark_duplicates"),
+			picard=config['picard']
 		)
 
 		chr6_read_count = filter_reads(

@@ -49,7 +49,7 @@ def resolve_alleles(config):
 		input_file=config['hg38_rmdup_chr6_bam'],
 		output_dir=config['mosdepth_dir'],
 		sample_ID=config['sample_ID'],
-		regions_file=config['mosdepth_regions_file'],
+		regions_file=config['hla_genes_regions_file'],
 		threads=config['threads']
 	)
 	

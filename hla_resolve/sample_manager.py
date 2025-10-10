@@ -6,38 +6,25 @@ import pysam
 from Bio import SeqIO
 from preprocess_methods import convert_bam_to_fastq
 from config import (
-	min_reads_sample, min_read_length, reference_gbz, ref_paths, vg, 
+	min_reads_sample, min_read_length, reference_genome_vg_gbz, reference_genome_vg_paths, vg, 
 	longphase, sawfish, clair3_ont_model_path, clair3_hifi_model_path,
-	mosdepth_regions_file, depth_thresh, prop_20x_thresh, prop_30x_thresh,
+	depth_thresh, prop_20x_thresh, prop_30x_thresh,
 	mhc_start, mhc_stop, genes_bed, genes_of_interest, genes_of_interest_extended,
 	hla_genes_regions_file, vcf2fasta_script, reference_genome_minimap2, reference_genome_vg,
-	DNA_bases, stop_codons, IMGT_XML, gff_dir, ARS_dict, gene_dict, CDS_dict, dummy_reference
+	DNA_bases, stop_codons, IMGT_XML, gff_dir, ARS_dict, gene_dict, CDS_dict, dummy_reference,
+	deepvariant_sif, tandem_repeat_bed, chr6_bed, pbtrgt_repeat_file, picard
 )
 
 class Samples:
-    # Class variables for reference file paths
-    deepvariant_sif = None
-    tandem_repeat_bed = None
-    chr6_bed = None
-    pbtrgt_repeat_file = None
+    # Class variables for reference file paths (imported from config.py)
+    deepvariant_sif = deepvariant_sif
+    tandem_repeat_bed = tandem_repeat_bed
+    chr6_bed = chr6_bed
+    pbtrgt_repeat_file = pbtrgt_repeat_file
     
     def __init__(self, input_file, sample_name, platform, output_dir, 
                  aligner, genotyper, trim_adapters=False, adapter_file=None, 
                  threads=1, read_group_string=None, clean_up=False):
-        
-        # Set the class variables based on data_dir
-        if not Samples.deepvariant_sif:
-            data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
-            Samples.deepvariant_sif = os.path.join(data_dir, "deepvariant_sif/deepvariant.sif")
-            Samples.tandem_repeat_bed = os.path.join(data_dir, "repeats_bed/human_GRCh38_no_alt_analysis_set.trf.bed")
-            Samples.chr6_bed = os.path.join(data_dir, "reference/chr6.bed")
-            Samples.pbtrgt_repeat_file = os.path.join(data_dir, "repeats_bed/test_chr6_polymorphic_repeats.hg38.bed")
-        
-        # Class variables are now accessed directly via Samples.class_variable_name
-        # No need to copy them to instance variables anymore
-        
-        # data_dir points directly to the data/ subdirectory
-        self.data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
         
         # Original initialization code
         self.ORIGINAL_CWD = os.getcwd()
@@ -424,14 +411,14 @@ def build_workflow_config(sample):
 		'chr6_bed': Samples.chr6_bed,
 		'tandem_repeat_bed': Samples.tandem_repeat_bed,
 		'pbtrgt_repeat_file': Samples.pbtrgt_repeat_file,
-		'reference_gbz': reference_gbz,
-		'ref_paths': ref_paths,
+		'reference_gbz': reference_genome_vg_gbz,
+		'ref_paths': reference_genome_vg_paths,
 		'vg': vg,
 		'longphase': longphase,
 		'sawfish': sawfish,
+		'picard': picard,
 		'clair3_ont_model_path': clair3_ont_model_path,
 		'clair3_hifi_model_path': clair3_hifi_model_path,
-		'mosdepth_regions_file': mosdepth_regions_file,
 		'depth_thresh': depth_thresh,
 		'prop_20x_thresh': prop_20x_thresh,
 		'prop_30x_thresh': prop_30x_thresh,

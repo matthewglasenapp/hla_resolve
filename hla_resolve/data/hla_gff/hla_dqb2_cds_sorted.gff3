@@ -1,0 +1,13 @@
+##gff-version 3
+##sequence-region   6 1 170805979
+#!genome-build Genome Reference Consortium GRCh38.p14
+#!genome-version GRCh38
+#!genome-date 2013-12
+#!genome-build-accession GCA_000001405.29
+#!genebuild-last-updated 2023-03
+chr6	ensembl_havana	CDS	32763374	32763470	.	-	0	ID=CDS:ENSP00000396330;Parent=transcript:ENST00000437316;protein_id=ENSP00000396330
+chr6	ensembl_havana	CDS	32761660	32761926	.	-	2	ID=CDS:ENSP00000396330;Parent=transcript:ENST00000437316;protein_id=ENSP00000396330
+chr6	ensembl_havana	CDS	32758850	32759131	.	-	2	ID=CDS:ENSP00000396330;Parent=transcript:ENST00000437316;protein_id=ENSP00000396330
+chr6	ensembl_havana	CDS	32757773	32757883	.	-	2	ID=CDS:ENSP00000396330;Parent=transcript:ENST00000437316;protein_id=ENSP00000396330
+chr6	ensembl_havana	CDS	32757281	32757304	.	-	2	ID=CDS:ENSP00000396330;Parent=transcript:ENST00000437316;protein_id=ENSP00000396330
+chr6	ensembl_havana	CDS	32756453	32756466	.	-	2	ID=CDS:ENSP00000396330;Parent=transcript:ENST00000437316;protein_id=ENSP00000396330
