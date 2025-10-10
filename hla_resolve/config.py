@@ -58,7 +58,7 @@ chr6_bed = os.path.join(_data_dir, "reference/chr6.bed")
 
 # GRCh38 tandem repeat definition file for pbtrgt
 # Downloaded from https://zenodo.org/records/8329210
-pbtrgt_repeat_file = os.path.join(_data_dir, "repeats_bed/test_chr6_polymorphic_repeats.hg38.bed")
+pbtrgt_repeat_file = os.path.join(_data_dir, "repeats_bed/chr6_polymorphic_repeats.hg38.bed")
 
 # GFF files of the HLA genes of interest for FASTA reconstruction with vcf2fasta
 # Used in reconstruct_fasta_methods.py
@@ -110,8 +110,10 @@ mhc_stop = 33409896
 DNA_bases = {"A", "T", "G", "C"}
 stop_codons = ["TAA", "TAG", "TGA"]
 
-# IPD/IMGT HLA XML file
-IMGT_XML = "/hb/scratch/mglasena/test_hla_resolve/hla_resolve/hla_resolve/hla.xml"
+# IPD/IMGT HLA XML file for HLA allele classification
+# Downloaded from https://github.com/ANHIG/IMGTHLA
+# Used in hla_typer.py for HLA typing
+IMGT_XML = os.path.join(_data_dir, "IPD_IMGT_XML/hla.xml")
 
 # GRCh38 HLA gene antigen recognition sequence coordinates (1-based coordinates, GFF format)
 # Used in evaluate_gene_haploblocks() function of investigate_haploblocks_methods.py 
