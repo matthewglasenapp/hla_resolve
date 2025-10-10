@@ -26,10 +26,6 @@ options:
                         Specify sequencing platform (pacbio, ont) (default: None)
   --output_dir OUTPUT_DIR
                         Output Directory (default: None)
-  --aligner {minimap2,vg}
-                        Tool for reference genome alignment (default: None)
-  --genotyper {bcftools,clair3,deepvariant}
-                        Tool for genotyping (default: deepvariant)
   --trim_adapters       Enable adapter trimming before processing (default: False)
   --adapter_file ADAPTER_FILE
                         Path to a file with custom adapter sequences (FASTA/FASTQ). If not provided, default adapters will be used. (default: None)
@@ -38,7 +34,7 @@ options:
                         Override the parsed read group string (default: None)
   --clean-up            Remove intermediate files (default: False)
 
-Example: python3 -m cli.py --input_file reads.bam --sample_name HG002 --platform pacbio --output_dir out --aligner minimap2 --genotyper deepvariant --threads
+Example: python3 -m cli.py --input_file reads.bam --sample_name HG002 --platform pacbio --output_dir out --threads
 10
 ```
 
@@ -52,8 +48,6 @@ python3 -m hla_resolve/cli.py \
 --sample_name IHW09122 \
 --platform pacbio \
 --output_dir test \
---aligner minimap2 \
---genotyper bcftools \
 --trim_adapters \
 --adapter_file adapters.fasta \
 --threads 10
