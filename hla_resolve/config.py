@@ -73,9 +73,10 @@ gff_dir = os.path.join(_data_dir, "hla_gff")
 hla_genes_regions_file = os.path.join(_data_dir, "mosdepth/hla_genes.bed")
 #hla_genes_regions_file = os.path.join(_data_dir, "mosdepth/hla_genes.shifted.bed")
 
-# Additional paths and constants from investigate_haploblocks_methods.py
-genes_bed = "/hb/groups/cornejo_lab/matt/hla_capture/input_data/reference/parse_haploblocks_bed.bed"
-#genes_bed = "/hb/groups/cornejo_lab/matt/hla_capture/input_data/reference/parse_haploblocks_bed.shifted.bed"
+# BED file for parsing haploblocks in the extended MHC region
+# Used in evaluate_gene_haploblocks() function of investigate_haploblocks_methods.py
+genes_bed = os.path.join(_data_dir, "reference/parse_haploblocks_bed.bed")
+#genes_bed = os.path.join(_data_dir, "reference/parse_haploblocks_bed.shifted.bed")
 genes_of_interest_extended = ("HLA-A", "HLA-B", "HLA-C", "HLA-DRB1", "HLA-DQA1", "HLA-DQA2", "HLA-DQB1", "HLA-DQB2", "HLA-DPA1", "HLA-DPB1")
 
 # Paramters
