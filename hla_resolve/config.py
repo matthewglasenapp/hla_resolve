@@ -13,8 +13,6 @@ genes_of_interest = ("HLA-A", "HLA-B", "HLA-C", "HLA-DPA1", "HLA-DPB1", "HLA-DQA
 # The contigs represent exon2 +/- 2kb, with the 270 bases of exon 2 hardmasked with "N"
 dummy_reference = os.path.join(_data_dir, "reference/DRB_1_3_4.fa")
 
-
-
 # Paths to several software tools installed from source
 longphase = "/hb/home/mglasena/software/longphase/longphase_linux-x64"
 prowler_trimmer = "/hb/home/mglasena/software/ProwlerTrimmer/TrimmerLarge.py"
@@ -28,7 +26,9 @@ picard = "/hb/home/mglasena/software/picard/picard.jar"
 clair3_ont_model_path = "/hb/home/mglasena/.conda/envs/clair3/bin/models/r941_prom_sup_g5014"
 clair3_hifi_model_path = "/hb/home/mglasena/.conda/envs/clair3/bin/models/hifi_revio"
 
-# Paths to reference genome for reference genome alignment with minimap2 
+# Paths to reference genome for reference genome alignment with minimap2
+
+# Reference fasta with added HLA-OLI/HLA-Y contig for baiting out reads originating from HLA-Y
 reference_genome_minimap2 = "/hb/scratch/mglasena/test_hla_resolve/hla_resolve/hla_resolve/data/reference/augmented_hg38.fa"
 #reference_genome_minimap2 = "/hb/scratch/mglasena/test_hla_resolve/hla_resolve/hla_resolve/data/reference/augmented_hg38_drb_alt.fa"
 #reference_genome_minimap2 = "/hb/scratch/mglasena/test_hla_resolve/hla_resolve/hla_resolve/data/reference/augmented_hg38_with_long_drb1.fa"
@@ -36,6 +36,8 @@ reference_genome_minimap2 = "/hb/scratch/mglasena/test_hla_resolve/hla_resolve/h
 # Paths to reference genome files for genome alignment to HPRC pangenome graph with vg giraffe
 # This approach is experimental and is not implemented in the current release
 # These files are only used when aligner == "vg"
+# Headers renamed using the following command: 
+# sed 's/^>GRCh38\.chr/>chr/' /hb/scratch/ogarci12/hybridcapture_pangenome/ref/hprc-v1.0-mc-grch38-minaf.0.1.fa > /hb/groups/cornejo_lab/matt/hla_capture/input_data/reference/hprc-v1.0-chr-renamed.fa
 reference_genome_vg = "/hb/groups/cornejo_lab/matt/hla_capture/input_data/reference/hprc-v1.0-chr-renamed.fa"
 reference_genome_vg_gbz = "/hb/scratch/ogarci12/hybridcapture_pangenome/ref/hprc-v1.0-mc-grch38-minaf.0.1.gbz"
 #reference_genome_vg_gbz = "/hb/scratch/mglasena/graph/hprc-v2.0-mc-grch38.gbz"
