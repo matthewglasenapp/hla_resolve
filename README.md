@@ -49,7 +49,7 @@ Input data: PacBio Revio HiFi targeted sequencing reads from IHW09122, a female 
 
 ```
 python3 -m hla_resolve/cli.py \
---input_file /demo/IHW09122.hifi_reads.bam \
+--input_file demo/IHW09122.hifi_reads.fastq.gz \
 --sample_name IHW09122 \
 --platform pacbio \
 --output_dir test \
