@@ -48,14 +48,14 @@ Demo example:
 Input data: PacBio Revio HiFi targeted sequencing reads from IHW09122, a female Aboriginal Australian sample from the International Histocompatibility Working Group catalog. 
 
 ```
-python3 -m hla_resolve/cli.py \
+python3 hla_resolve/cli.py \
 --input_file demo/IHW09122.hifi_reads.fastq.gz \
 --sample_name IHW09122 \
 --platform pacbio \
 --output_dir test \
 --trim_adapters \
---adapter_file adapters.fasta \
---threads 10
+--adapter_file demo/adapters.fasta \
+--threads 6
 ```
 
 The command will print the final star allele calls to STDOUT, along with important logging information, including coverage depth metrics, heterozygous genotypes that could not be phased, and the paths of intermediate files (e.g., BAM, VCF).
