@@ -34,8 +34,7 @@ options:
                         Override the parsed read group string (default: None)
   --clean-up            Remove intermediate files (default: False)
 
-Example: python3 -m cli.py --input_file reads.bam --sample_name HG002 --platform pacbio --output_dir out --threads
-10
+Example: python3 -m cli.py --input_file reads.bam --sample_name HG002 --platform pacbio --output_dir out --threads 6
 ```
 
 Demo example:
