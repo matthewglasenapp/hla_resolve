@@ -3,15 +3,17 @@ HLA typing from raw long-read sequencing data (FASTQ or unmapped BAM)
 
 **Authors:** [Matthew Glasenapp](https://github.com/matthewglasenapp), [Alex Symons](https://github.com/FlyingFish800), [Omar Cornejo](https://github.com/oeco28)
 
-Input: Demultiplexed, raw sequencing read files. One sample per file. The tool is compatible with WGS, WES, and targeted sequencing. Runtime will take longer with high-coverage WGS and WES, as all reads must be mapped to a human reference genome before restricting downstream analysis to the MHC region of chromosome 6. 
+Input: A single-sample, demultiplexed, raw long-read sequencing read file. The sequencing platforms currently supported are PacBio and ONT. The tool is compatible with WGS, WES, and targeted sequencing. 
 
 Output(s): HLA star allele calls based on the latest IPD-IMGT/HLA database. Star allele calls are provided for the following genes:
 ```
 HLA-A, HLA-B, HLA-C, HLA-DPA1, HLA-DPB1, HLA-DQA1, HLA-DQB1, HLA-DRB1 
 ```
+We are working to include the other HLA-DRB paralogs in a future release. 
+
 Haplotagged, mapped BAM files for chomosome 6 are provided for visualization with genome browsers such as IGV. Phased VCFs for chomrosome 6 are provided. Reconstructed, haploid (phased) nucleotide sequences are provided for each gene in fasta format. 
 
-Runtime: Depends heavily on the size of the raw sequence reads file and CPU allocation. MHC target capture data should run in < 30min with 6CPU and 25GB RAM.
+Runtime: Depends heavily on the size of the raw sequence reads file and CPU allocation. MHC target capture data should run in < 30min with 6CPU and 25GB RAM. Runtime will take longer with high-coverage WGS and WES, as all reads must be mapped to the human reference genome before restricting downstream analysis to the MHC region of chromosome 6. 
 
 ```
 usage: cli.py [-h] --input_file INPUT_FILE --sample_name SAMPLE_NAME --platform {pacbio,ont} --output_dir OUTPUT_DIR --aligner {minimap2,vg}
