@@ -5,7 +5,11 @@ HLA typing from raw long-read sequencing data (FASTQ or unmapped BAM)
 
 Input: Demultiplexed, raw sequencing read files. One sample per file. The tool is compatible with WGS, WES, and targeted sequencing. Runtime will take longer with high-coverage WGS and WES, as all reads must be mapped to a human reference genome before restricting downstream analysis to the MHC region of chromosome 6. 
 
-Output(s): HLA star allele calls based on the latest IPD-IMGT/HLA database. Star allele calls are provided for HLA-A, HLA-B, HLA-C, HLA-DRB1, HLA-DQA1, HLA-DQB1, HLA-DPA1, and HLA-DPB1. Haplotagged, mapped BAM files for chomosome 6 are provided for visualization with genome browsers such as IGV. Phased VCFs for chomrosome 6 are provided. Reconstructed, haploid (phased) nucleotide sequences are provided for each gene in fasta format. 
+Output(s): HLA star allele calls based on the latest IPD-IMGT/HLA database. Star allele calls are provided for the following genes:
+```
+HLA-A, HLA-B, HLA-C, HLA-DPA1, HLA-DPB1 HLA-DQA1, HLA-DQB1, HLA-DRB1 
+```
+Haplotagged, mapped BAM files for chomosome 6 are provided for visualization with genome browsers such as IGV. Phased VCFs for chomrosome 6 are provided. Reconstructed, haploid (phased) nucleotide sequences are provided for each gene in fasta format. 
 
 Runtime: Depends heavily on the size of the raw sequence reads file and CPU allocation. MHC target capture data should run in < 30min with 6CPU and 25GB RAM.
 
