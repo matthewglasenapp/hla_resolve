@@ -26,7 +26,7 @@ def main():
     parser.add_argument("--output_dir", required=True, help="Output Directory", default=None)
     # For public release, aligner and genotyper are fixed. Uncomment for development:
     # parser.add_argument("--aligner", choices=["minimap2", "vg"], required=True, help="Tool for reference genome alignment", default=None)
-    # parser.add_argument("--genotyper", choices=["bcftools", "clair3", "deepvariant"], required=False, help="Tool for genotyping", default="deepvariant")
+    # parser.add_argument("--genotyper", choices=["bcftools", "clair3", "deepvariant"], required=False, help="Tool for genotyping", default="bcftools")
     parser.add_argument("--trim_adapters", action="store_true", help="Enable adapter trimming before processing")
     parser.add_argument("--adapter_file", type=str, required=False, default=None, help="Path to a file with custom adapter sequences (FASTA/FASTQ). If not provided, default adapters will be used.")
     parser.add_argument("--threads", type=int, required=False, help="Number of threads to use", default=6)
@@ -42,7 +42,7 @@ def main():
     
     # For public release: hardcode aligner and genotyper
     args.aligner = "minimap2"
-    args.genotyper = "deepvariant"
+    args.genotyper = "bcftools"
 
     # Check that all required tools are installed
     check_required_commands()
