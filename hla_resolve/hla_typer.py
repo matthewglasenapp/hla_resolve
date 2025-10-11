@@ -1018,8 +1018,8 @@ if __name__ == "__main__":
     parser.add_argument('--samples', required=False, default="../data/HLA_Class_I_haplotypes.fa", help='Input FASTA file with full sequences')
     parser.add_argument('--truth', required=False, default=None, help='Input csv file containg truth data, for testing purposes')
     parser.add_argument("--full-sequence", required=False, default=None, help="To enable the third intron/UTR classification stage, supply full sequence data here")
-    parser.add_argument("--pass2-metric", required=False, default="edit_distance", help="Metric used to assign fourth field, 'edit_distance' (default), 'match_length', or 'identity'")
-    parser.add_argument("--pass3-metric", required=False, default="identity", help="Metric used to assign fourth field, 'edit_distance', 'match_length', or 'identity' (default)")
+    parser.add_argument("--pass2-metric", required=False, default="match_length", help="Metric used to assign fourth field, 'edit_distance' (default), 'match_length', or 'identity'")
+    parser.add_argument("--pass3-metric", required=False, default="match_length", help="Metric used to assign fourth field, 'edit_distance', 'match_length', or 'identity' (default)")
     parser.add_argument("--ignore-unconfirmed", action='store_true', help="Do not consider 'uncomfirmed' database entries")
     parser.add_argument("--ignore-incomplete", action='store_true', help="Do not consider database entries that are missing any features")
     
