@@ -112,8 +112,9 @@ def build_g_group_dict(xml_file, ignore_unconfirmed=False, ignore_incomplete=Fal
     tree = ET.parse(xml_file)
     root = tree.getroot()
 
-    # Dictionary translating an allele to g group
+    # Dictionary databases
     g_groups = dict()
+    p_groups = dict()
     sequence_data = dict()
 
     # All tags prefixed with this string
@@ -126,13 +127,8 @@ def build_g_group_dict(xml_file, ignore_unconfirmed=False, ignore_incomplete=Fal
         if ignore_unconfirmed and allele.find(tag('releaseversions')).attrib['confirmed'] == "Unconfirmed":
             continue
 
-        # G group and class (I or II)
-        g_group_xml = allele.find(tag('hla_g_group'))
+        # Class (I or II)
         class_type = allele.find(tag('locus')).attrib['class']
-        
-        # Skip alleles with no g group
-        if g_group_xml == None:
-            continue
         
         # Sequence section of file structure
         sequence = allele.find(tag('sequence'))
@@ -153,7 +149,6 @@ def build_g_group_dict(xml_file, ignore_unconfirmed=False, ignore_incomplete=Fal
 
         # Get full allele name and g group
         name = allele.attrib["name"]
-        g_group = g_group_xml.attrib["status"]
 
         # Collect sequences by type
         sequence_data[name] = dict()
@@ -186,10 +181,19 @@ def build_g_group_dict(xml_file, ignore_unconfirmed=False, ignore_incomplete=Fal
 
                 sequence_data[name]["peptide_binding_domain"].append((3, cut_sequence))
 
-        g_groups[name] = g_group
-        # print(g_group, type(g_group))
+        # Add G group if possible
+        g_group_xml = allele.find(tag('hla_g_group'))
+        if g_group_xml != None:
+            g_group = g_group_xml.attrib["status"]
+            g_groups[name] = g_group
 
-    return g_groups, sequence_data
+        # Add G group if possible
+        p_group_xml = allele.find(tag('hla_p_group'))
+        if p_group_xml != None:
+            p_group = p_group_xml.attrib["status"]
+            p_groups[name] = p_group
+
+    return g_groups, p_groups, sequence_data
 
 # Create dictionary containing all alleles within a g group
 # Input: allele_to_g_groups: {allele: g_group}
@@ -433,7 +437,7 @@ def assign_classification_to_sample_full_seq(full_sequence, sequence, full_sampl
         if len(same_dist) > 1:
             logfile.write(f"Equidistant for {full_sample_name}: {', '.join(same_dist)}\n")
 
-    return (*best, len(same_dist))
+    return (*best, same_dist)
 
 # Do first pass of classifiaction (to g group level)
 # Input: common_sequence: {g_group: sequence} Common ARS of each G group
@@ -650,7 +654,6 @@ def dist_to_truth_allele(sample_name, truth_data, sequence_db, sequence, logfile
 #        truth_data: {sample_name: {<gene>_<num>: allele}} | None
 #        exon_only: bool
 # Output: {sample_name: (g_group, distance)}
-
 @print_time_taken
 def pass_2_classification(sequence_data, allele_to_g_groups, results_dict, samples, truth_data=None, exon_only=True, metric="edit_distance"):
     print("INFO: Beginning classification pass 2...")
@@ -705,6 +708,13 @@ def pass_2_classification(sequence_data, allele_to_g_groups, results_dict, sampl
 
         # Re-use classification function
         result = assign_classification_to_sample_full_seq(allele_sequence_db, samples[sample_name], sample_name, logfile=pass_2_logfile, eval_metric=metric)
+        equidistant = result[-1]
+        if len(equidistant) > 1:
+            equidistant = sorted(equidistant)
+            old = result[0]
+            result = (equidistant[0], *result[1:])
+            
+            pass_2_logfile.writelines(f"{sample_name} picked lowest {old} -> {result}\n")
 
         # If class is None, print warning. Will error in pass 3
         if result[0] == None:
@@ -822,7 +832,12 @@ def pass_3_classification(sequence_data, results_dict, samples, truth_data=None,
 def output_results(results, file_path):
     # Helper functions to get sample name and allele
     get_name = lambda x:x.split("_")[0]
-    get_allele = lambda x:x.split("_")[1]+"_"+x.split("_")[-1]
+
+    def get_allele (x):
+        if "incomplete" in x:
+            return x.split("_")[1]+"_"+x.split("_")[-2]+"_incomplete"
+        else:
+            return x.split("_")[1]+"_"+x.split("_")[-1]
 
     # Get list of all samples and alleles
     entry_names = results.keys()
@@ -927,16 +942,18 @@ def write_json(sequence_data, g_group_dict):
             features = all_feature_data[feature_name]
 
             # Create a mapping from the feature index to 0 based sequential index
-            feature_indicies = {x:i for i, x in enumerate(list(map(lambda x:x[0], features)))}
+            # feature_indicies = {x:int(i) for i, x in enumerate(list(map(lambda x:x[0], features)))}
+
+            reformatted_sequence_data[allele][feature_name] = list(map(lambda x:x[1], features))
 
             # For each of those features, create a [allele][feature_group][index] entry and assign sequence
-            for feature in features:
-                feature_index = feature[0]
-                feature_sequence = feature[1]
-                reformatted_sequence_data[allele][feature_name][feature_indicies[feature_index]] = feature_sequence
+            # for feature in features:
+            #     feature_index = feature[0]
+            #     feature_sequence = feature[1]
+            #     reformatted_sequence_data[allele][feature_name][feature_indicies[feature_index]] = feature_sequence
 
     with open(filename, "w") as f:
-        json.dump({"sequence_data": sequence_data, "g_group_alleles": g_group_to_allele}, f, indent=4)
+        json.dump({"sequence_data": reformatted_sequence_data, "g_group_alleles": g_group_to_allele}, f, indent=4)
 
 # Runs all classification passes and writes results
 # Called by main() in the pipeline
@@ -955,7 +972,7 @@ def run_classification(reference_xml_file, samples_file, full_sample_file=None, 
 
     truth_data = load_truth_data(truth_file)
 
-    g_group_dict, sequence_data = build_g_group_dict(reference_xml_file, ignore_unconfirmed, ignore_incomplete)
+    g_group_dict, p_group_dict, sequence_data = build_g_group_dict(reference_xml_file, ignore_unconfirmed, ignore_incomplete)
 
     g_group_common_sequences = get_g_group_exons(g_group_dict, sequence_data)
     if g_group_common_sequences == None:
