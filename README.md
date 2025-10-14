@@ -45,12 +45,12 @@ Example: python3 -m cli.py --input_file reads.bam --sample_name HG002 --platform
 
 Demo example:
 
-Input data: PacBio Revio HiFi targeted sequencing reads from IHW09122, a female Aboriginal Australian sample from the International Histocompatibility Working Group catalog. 
+Input data: PacBio Revio HiFi targeted sequencing reads from IHW09200, a Southeast Asian sample from Thailand that was part of the 4th Asia-Oceania Histocompatibility Workshop (4AOHW) cell line panel.
 
 ```
 python3 hla_resolve/cli.py \
---input_file demo/IHW09122.hifi_reads.fastq.gz \
---sample_name IHW09122 \
+--input_file demo/IHW09200.hifi_reads.fastq.gz \
+--sample_name IHW09200 \
 --platform pacbio \
 --output_dir test \
 --trim_adapters \
