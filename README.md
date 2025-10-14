@@ -16,31 +16,38 @@ Haplotagged, mapped BAM files for chomosome 6 are provided for visualization wit
 Runtime: Depends heavily on the size of the raw sequence reads file and CPU allocation. MHC target capture data should run in < 30min with 6CPU and 20GB RAM. Runtime will take longer with high-coverage WGS and WES, as all reads must be mapped to the human reference genome before restricting downstream analysis to the MHC region of chromosome 6. 
 
 ```
-usage: cli.py [-h] --input_file INPUT_FILE --sample_name SAMPLE_NAME --platform {pacbio,ont} --output_dir OUTPUT_DIR --aligner {minimap2,vg}
-              [--genotyper {bcftools,clair3,deepvariant}] [--trim_adapters] [--adapter_file ADAPTER_FILE] [--threads THREADS]
-              [--read_group_string READ_GROUP_STRING] [--clean-up]
+usage: cli.py [-h] --input_file INPUT_FILE --sample_name SAMPLE_NAME
+              --platform {pacbio,ont} --output_dir OUTPUT_DIR
+              [--trim_adapters] [--adapter_file ADAPTER_FILE]
+              [--threads THREADS] [--read_group_string READ_GROUP_STRING]
+              [--clean-up]
 
 Run HLA-Resolve
 
-options:
+optional arguments:
   -h, --help            show this help message and exit
   --input_file INPUT_FILE
                         Path to the raw sequencing reads file (default: None)
   --sample_name SAMPLE_NAME
                         Override the parsed sample name (default: None)
   --platform {pacbio,ont}
-                        Specify sequencing platform (pacbio, ont) (default: None)
+                        Specify sequencing platform (pacbio, ont) (default:
+                        None)
   --output_dir OUTPUT_DIR
                         Output Directory (default: None)
-  --trim_adapters       Enable adapter trimming before processing (default: False)
+  --trim_adapters       Enable adapter trimming before processing (default:
+                        False)
   --adapter_file ADAPTER_FILE
-                        Path to a file with custom adapter sequences (FASTA/FASTQ). If not provided, default adapters will be used. (default: None)
+                        Path to a file with custom adapter sequences
+                        (FASTA/FASTQ). If not provided, default adapters will
+                        be used. (default: None)
   --threads THREADS     Number of threads to use (default: 6)
   --read_group_string READ_GROUP_STRING
                         Override the parsed read group string (default: None)
   --clean-up            Remove intermediate files (default: False)
 
-Example: python3 -m cli.py --input_file reads.bam --sample_name HG002 --platform pacbio --output_dir out --threads 6
+Examples: python3 -m hla_resolve.cli --input_file reads.bam --sample_name
+HG002 --platform pacbio --output_dir out --threads 10
 ```
 
 Demo example:
