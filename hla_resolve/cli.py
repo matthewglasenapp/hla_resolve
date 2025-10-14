@@ -17,7 +17,7 @@ def main():
     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     epilog=textwrap.dedent("""\
         Examples:
-          python3 -m hla_resolve.cli --input_file reads.bam --sample_name HG002 --platform pacbio --output_dir out --threads 10
+          python3 hla_resolve/cli.py --input_file reads.bam --sample_name HG002 --platform pacbio --output_dir out --threads 10
     """),
 )
     parser.add_argument("--input_file", required=True, help="Path to the raw sequencing reads file")
