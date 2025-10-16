@@ -39,7 +39,7 @@ def preprocess_ont_sample(config):
 	)
 
 	bait_DRB_paralogs(
-		input_file=config['trimmed_pbmarkdup_fastq_gz'],
+		input_file=config['trimmed_fastq'],
 		output_file=config['hg38_bam_drb'],
 		DRB34_reads_file=config['DRB34_reads_file'],
 		read_group_string=config['read_group_string'],
@@ -97,7 +97,7 @@ def preprocess_ont_sample(config):
 		picard=config['picard']
 	)
 
-	chr6_read_count = subprocess.run(f"samtools view -c {config['hg38_rmdup_chr6_bam']}", shell=True).stdout.strip()
+	chr6_read_count = int(subprocess.check_output(f"samtools view -c {config['hg38_rmdup_chr6_bam']}", shell=True).strip())
 
 	if chr6_read_count >= min_reads_sample:
 		if config['genotyper'] == "bcftools":
