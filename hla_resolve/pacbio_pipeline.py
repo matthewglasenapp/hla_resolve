@@ -1,4 +1,5 @@
 import os
+import subprocess
 from preprocess_methods import (
 	trim_adapters,
 	run_fastqc,
@@ -6,6 +7,7 @@ from preprocess_methods import (
 	align_to_reference_minimap,
 	align_to_reference_vg,
 	reassign_mapq,
+	mark_duplicates_picard,
 	filter_reads,
 	bait_DRB_paralogs,
 	call_variants_bcftools,
@@ -39,65 +41,103 @@ def preprocess_pacbio_sample(config):
 	# 	input_file=config['trimmed_fastq']
 	# )
 	
-	mark_duplicates_pbmarkdup(
-		input_file=config['trimmed_fastq'],
-		output_file=config['trimmed_pbmarkdup_fastq'],
-		threads=config['threads']
-	)
-	
-	align_to_reference_minimap(
-		input_file=config['trimmed_pbmarkdup_fastq_gz'],
-		output_file=config['hg38_bam'],
-		read_group_string=config['read_group_string'],
-		reference_fasta=config['reference_genome'],
-		platform=config['platform'],
-		threads=config['threads'],
-	)
-
-	bait_DRB_paralogs(
-		input_file=config['trimmed_pbmarkdup_fastq_gz'],
-		output_file=config['hg38_bam_drb'],
-		DRB34_reads_file=config['DRB34_reads_file'],
-		read_group_string=config['read_group_string'],
-		reference_fasta=config['dummy_reference'],
-		platform=config['platform'],
-		threads=config['threads']
-	)
-	
-	if config['aligner'] == "vg":
-		align_to_reference_vg(
-			vg=config['vg'],
-			input_file=config['trimmed_pbmarkdup_fastq_gz'],
-			output_file=config['pangenome_bam'],
-			reheader_bam=config['pg_reheader_bam'],
-			sample_ID=config['sample_ID'],
-			read_group_string=config['read_group_string'],
-			reference_gbz=config['reference_gbz'],
-			ref_paths=config['ref_paths'],
-			platform=config['platform'],
+	if config['scheme'] == "targeted":
+		mark_duplicates_pbmarkdup(
+			input_file=config['trimmed_fastq'],
+			output_file=config['trimmed_pbmarkdup_fastq'],
 			threads=config['threads']
 		)
 		
-		reassign_mapq(
-			bam_hg38=config['hg38_bam'],
-			bam_pg=config['pg_reheader_bam'],
-			reassigned_pg=config['pg_mapq_reassign_bam']
+		align_to_reference_minimap(
+			input_file=config['trimmed_pbmarkdup_fastq_gz'],
+			output_file=config['hg38_bam'],
+			read_group_string=config['read_group_string'],
+			reference_fasta=config['reference_genome'],
+			platform=config['platform'],
+			threads=config['threads'],
 		)
-	
-		chr6_read_count = filter_reads(
-			input_file=config['pg_mapq_reassign_bam'],
-			output_file=config['hg38_rmdup_chr6_bam'],
+
+		bait_DRB_paralogs(
+			input_file=config['trimmed_pbmarkdup_fastq_gz'],
+			output_file=config['hg38_bam_drb'],
 			DRB34_reads_file=config['DRB34_reads_file'],
+			read_group_string=config['read_group_string'],
+			reference_fasta=config['dummy_reference'],
+			platform=config['platform'],
 			threads=config['threads']
 		)
-	
-	else:
+
 		chr6_read_count = filter_reads(
 			input_file=config['hg38_bam'],
 			output_file=config['hg38_rmdup_chr6_bam'],
 			DRB34_reads_file=config['DRB34_reads_file'],
 			threads=config['threads']
 		)
+	
+	elif config['scheme'] == "WGS" or config['scheme'] == "WES":
+		align_to_reference_minimap(
+			input_file=config['trimmed_fastq'],
+			output_file=config['hg38_bam'],
+			read_group_string=config['read_group_string'],
+			reference_fasta=config['reference_genome'],
+			platform=config['platform'],
+			threads=config['threads'],
+		)
+
+		bait_DRB_paralogs(
+			input_file=config['trimmed_fastq'],
+			output_file=config['hg38_bam_drb'],
+			DRB34_reads_file=config['DRB34_reads_file'],
+			read_group_string=config['read_group_string'],
+			reference_fasta=config['dummy_reference'],
+			platform=config['platform'],
+			threads=config['threads']
+		)
+
+		filter_reads(
+			input_file=config['hg38_bam'],
+			output_file=config['hg38_chr6_bam'],
+			DRB34_reads_file=config['DRB34_reads_file'],
+			threads=config['threads']
+		)
+		
+		mark_duplicates_picard(
+			input_file=config['hg38_chr6_bam'],
+			output_file=config['hg38_rmdup_chr6_bam'],
+			metrics_file=config['hg38_mrkdup_metrics'],
+			temp_dir=os.path.join(config['mapped_bam_dir'], "mark_duplicates"),
+			picard=config['picard']
+		)
+
+		chr6_read_count = int(subprocess.check_output(f"samtools view -c {config['hg38_rmdup_chr6_bam']}", shell=True).strip())
+
+	# vg mapping discontinued
+	# if config['aligner'] == "vg":
+	# 	align_to_reference_vg(
+	# 		vg=config['vg'],
+	# 		input_file=config['trimmed_pbmarkdup_fastq_gz'],
+	# 		output_file=config['pangenome_bam'],
+	# 		reheader_bam=config['pg_reheader_bam'],
+	# 		sample_ID=config['sample_ID'],
+	# 		read_group_string=config['read_group_string'],
+	# 		reference_gbz=config['reference_gbz'],
+	# 		ref_paths=config['ref_paths'],
+	# 		platform=config['platform'],
+	# 		threads=config['threads']
+	# 	)
+		
+	# 	reassign_mapq(
+	# 		bam_hg38=config['hg38_bam'],
+	# 		bam_pg=config['pg_reheader_bam'],
+	# 		reassigned_pg=config['pg_mapq_reassign_bam']
+	# 	)
+	
+	# 	chr6_read_count = filter_reads(
+	# 		input_file=config['pg_mapq_reassign_bam'],
+	# 		output_file=config['hg38_rmdup_chr6_bam'],
+	# 		DRB34_reads_file=config['DRB34_reads_file'],
+	# 		threads=config['threads']
+	# 	)
 
 	if chr6_read_count >= min_reads_sample:
 		if config['genotyper'] == "bcftools":
