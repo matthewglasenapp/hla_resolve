@@ -24,11 +24,12 @@ class Samples:
     
     def __init__(self, input_file, sample_name, platform, output_dir, 
                  aligner, genotyper, trim_adapters=False, adapter_file=None, 
-                 threads=1, read_group_string=None, clean_up=False):
+                 threads=1, read_group_string=None, clean_up=False, scheme=None):
         
         # Original initialization code
         self.ORIGINAL_CWD = os.getcwd()
         self.input_file = os.path.realpath(os.path.abspath(input_file))
+        self.scheme = scheme
 
         if not os.path.exists(self.input_file):
             raise FileNotFoundError(f"Input file not found: {self.input_file}")
@@ -261,6 +262,8 @@ class Samples:
         self.pg_mapq_reassign_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.pg.mapq_reassign.bam")
         self.pg_mapq_reassign_mrkdup_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.pg.mapq_reassign.mrkdup.bam")
         self.hg38_mrkdup_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.hg38.mrkdup.bam")
+        # Intermediate file for filter_reads() - will be set based on scheme
+        self.hg38_filter_input_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.hg38.filter_input.bam")
         self.hg38_rmdup_chr6_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.hg38.rmdup.chr6.bam")
         self.hg38_rmdup_chr6_haplotag_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.hg38.rmdup.chr6.haplotag.bam")
         
@@ -336,6 +339,7 @@ def build_workflow_config(sample):
 		'platform': sample.platform,
 		'aligner': sample.aligner,
 		'genotyper': sample.genotyper,
+		'scheme': sample.scheme,
 		
 		# Adapter settings
 		'adapters': sample.adapters,
@@ -375,6 +379,7 @@ def build_workflow_config(sample):
 		'pg_mapq_reassign_mrkdup_bam': sample.pg_mapq_reassign_mrkdup_bam,
 		'hg38_mrkdup_bam': sample.hg38_mrkdup_bam,
 		'hg38_mrkdup_metrics': sample.hg38_mrkdup_metrics,
+		'hg38_filter_input_bam': sample.hg38_filter_input_bam,
 		'hg38_rmdup_chr6_bam': sample.hg38_rmdup_chr6_bam,
 		'hg38_rmdup_chr6_haplotag_bam': sample.hg38_rmdup_chr6_haplotag_bam,
 		'snv_vcf': sample.snv_vcf,

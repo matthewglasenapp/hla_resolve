@@ -16,6 +16,7 @@ dummy_reference = os.path.join(_data_dir, "reference/DRB_1_3_4.fa")
 # Paths to several software tools installed from source
 longphase = "/hb/home/mglasena/software/longphase/longphase_linux-x64"
 sawfish = "/hb/home/mglasena/software/sawfish-v2.0.3-x86_64-unknown-linux-gnu/bin/sawfish"
+# Install picard with wget https://github.com/broadinstitute/picard/releases/download/2.27.4/picard.jar
 picard = "/hb/home/mglasena/software/picard/picard.jar"
 
 # ProwlerTrimmer and vg were used in development mode. Install not necessary for public release.

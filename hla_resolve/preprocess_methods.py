@@ -275,7 +275,8 @@ def reassign_mapq(bam_hg38, bam_pg, reassigned_pg):
 	if missing_reads:
 		print(f"{len(missing_reads)} reads in {bam_pg} were missing from {bam_hg38}")
 
-# Only marking duplicates for ONT data because pbmarkdup was used earlier for PacBio data
+# Mark duplicates forONT data or WGS PacBio data
+# pbmarkdup used for targeted PacBio data but does not scale well for WGS data
 def mark_duplicates_picard(input_file, output_file, metrics_file, temp_dir, picard):
 	os.makedirs(temp_dir, exist_ok=True)
 	
