@@ -58,6 +58,7 @@ python3 hla_resolve/cli.py \
 --input_file demo/IHW09200.hifi_reads.fastq.gz \
 --sample_name IHW09200 \
 --platform pacbio \
+--scheme targeted \
 --output_dir test \
 --trim_adapters \
 --adapter_file demo/adapters.fasta \
