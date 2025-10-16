@@ -15,15 +15,20 @@ dummy_reference = os.path.join(_data_dir, "reference/DRB_1_3_4.fa")
 
 # Paths to several software tools installed from source
 longphase = "/hb/home/mglasena/software/longphase/longphase_linux-x64"
-prowler_trimmer = "/hb/home/mglasena/software/ProwlerTrimmer/TrimmerLarge.py"
 sawfish = "/hb/home/mglasena/software/sawfish-v2.0.3-x86_64-unknown-linux-gnu/bin/sawfish"
-#vcf2fasta_script = "/hb/scratch/mglasena/vcf2fasta/vcf2fasta.py"
-vcf2fasta_script = os.path.join(_data_dir, "vcf2fasta/vcf2fasta.py")
-vg = "/hb/scratch/ogarci12/hybridcapture_pangenome/vg"
 picard = "/hb/home/mglasena/software/picard/picard.jar"
 
+# ProwlerTrimmer and vg were used in development mode. Install not necessary for public release.
+prowler_trimmer = "/hb/home/mglasena/software/ProwlerTrimmer/TrimmerLarge.py"
+vg = "/hb/scratch/ogarci12/hybridcapture_pangenome/vg"
+
+# Path to vcf2fasta script
+# vcf2fasta was taken from https://github.com/yeeus/vcf2fasta and edited for my own purpose
+vcf2fasta_script = os.path.join(_data_dir, "vcf2fasta/vcf2fasta.py")
+
 # Paths to CLAIR3 models for ONT and HiFi data
-# Consequence of installing CLAR3 into a conda environment
+# Consequence of installing CLAIR3 into a conda environment
+# CLAIR3 not currenlty used in the public release
 clair3_ont_model_path = "/hb/home/mglasena/.conda/envs/clair3/bin/models/r941_prom_sup_g5014"
 clair3_hifi_model_path = "/hb/home/mglasena/.conda/envs/clair3/bin/models/hifi_revio"
 
@@ -46,6 +51,7 @@ reference_genome_vg_paths = "/hb/scratch/ogarci12/hybridcapture_pangenome/ref/hp
 #reference_genome_vg_paths = "/hb/scratch/mglasena/graph/grch38_primary.dict"
 
 # DeepVariant SIF file for variant calling with DeepVariant
+# DeepVariant not currenlty used in the public release
 deepvariant_sif = os.path.join(_data_dir, "deepvariant_sif/deepvariant.sif")
 
 # GRCh38 tandem repeat mask file for pbsv
