@@ -24,7 +24,7 @@ def convert_bam_to_fastq(input_file, output_file, platform, threads):
 		print("Converting ONT raw reads to fastq format using Samtools fastq!")
 		print(f"Samtools fastq input file: {input_file}")
 
-		samtools_fq_cmd = f"samtools fastq -@ {threads} {input_file} > {output_file}"
+		samtools_fq_cmd = f"samtools fastq -@ {threads} {input_file} | gzip > {output_file}"
 		
 		subprocess.run(samtools_fq_cmd, shell=True, check=True)
 	
