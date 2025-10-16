@@ -1,7 +1,9 @@
 import os
+import subprocess
 from preprocess_methods import (
 	trim_adapters,
 	align_to_reference_minimap,
+	bait_DRB_paralogs,
 	align_to_reference_vg,
 	reassign_mapq,
 	mark_duplicates_picard,
@@ -80,20 +82,22 @@ def preprocess_ont_sample(config):
 	# 		threads=config['threads']
 	# 	)
 
-	mark_duplicates_picard(
+	filter_reads(
 		input_file=config['hg38_bam'],
-		output_file=config['hg38_mrkdup_bam'],
+		output_file=config['hg38_chr6_bam'],
+		DRB34_reads_file=config['DRB34_reads_file'],
+		threads=config['threads']
+	)
+	
+	mark_duplicates_picard(
+		input_file=config['hg38_chr6_bam'],
+		output_file=config['hg38_rmdup_chr6_bam'],
 		metrics_file=config['hg38_mrkdup_metrics'],
 		temp_dir=os.path.join(config['mapped_bam_dir'], "mark_duplicates"),
 		picard=config['picard']
 	)
 
-	chr6_read_count = filter_reads(
-		input_file=config['hg38_mrkdup_bam'],
-		output_file=config['hg38_rmdup_chr6_bam'],
-		DRB34_reads_file=config['DRB34_reads_file'],
-		threads=config['threads']
-	)
+	chr6_read_count = subprocess.run(f"samtools view -c {config['hg38_rmdup_chr6_bam']}", shell=True).stdout.strip()
 
 	if chr6_read_count >= min_reads_sample:
 		if config['genotyper'] == "bcftools":

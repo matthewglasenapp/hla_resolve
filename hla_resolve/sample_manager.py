@@ -256,14 +256,13 @@ class Samples:
         # BAM files
         self.hg38_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.hg38.bam")
         self.hg38_bam_drb = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.hg38.bam.drb")
+        self.hg38_chr6_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.hg38.chr6.bam")
         self.pangenome_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.pangenome.bam")
         self.pg_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.pg.bam")
         self.pg_reheader_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.pg.reheader.bam")
         self.pg_mapq_reassign_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.pg.mapq_reassign.bam")
         self.pg_mapq_reassign_mrkdup_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.pg.mapq_reassign.mrkdup.bam")
         self.hg38_mrkdup_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.hg38.mrkdup.bam")
-        # Intermediate file for filter_reads() - will be set based on scheme
-        self.hg38_filter_input_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.hg38.filter_input.bam")
         self.hg38_rmdup_chr6_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.hg38.rmdup.chr6.bam")
         self.hg38_rmdup_chr6_haplotag_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.hg38.rmdup.chr6.haplotag.bam")
         
@@ -371,6 +370,7 @@ def build_workflow_config(sample):
 		'trimmed_pbmarkdup_fastq_gz': sample.trimmed_pbmarkdup_fastq_gz,
 		'hg38_bam': sample.hg38_bam,
 		'hg38_bam_drb': sample.hg38_bam_drb,
+		'hg38_chr6_bam': sample.hg38_chr6_bam,
 		'DRB34_reads_file': sample.DRB34_reads_file,
 		'pangenome_bam': sample.pangenome_bam,
 		'pg_bam': sample.pg_bam,
@@ -379,7 +379,6 @@ def build_workflow_config(sample):
 		'pg_mapq_reassign_mrkdup_bam': sample.pg_mapq_reassign_mrkdup_bam,
 		'hg38_mrkdup_bam': sample.hg38_mrkdup_bam,
 		'hg38_mrkdup_metrics': sample.hg38_mrkdup_metrics,
-		'hg38_filter_input_bam': sample.hg38_filter_input_bam,
 		'hg38_rmdup_chr6_bam': sample.hg38_rmdup_chr6_bam,
 		'hg38_rmdup_chr6_haplotag_bam': sample.hg38_rmdup_chr6_haplotag_bam,
 		'snv_vcf': sample.snv_vcf,
