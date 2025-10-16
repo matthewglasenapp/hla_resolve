@@ -17,11 +17,12 @@ dummy_reference = os.path.join(_data_dir, "reference/DRB_1_3_4.fa")
 longphase = "/hb/home/mglasena/software/longphase/longphase_linux-x64"
 prowler_trimmer = "/hb/home/mglasena/software/ProwlerTrimmer/TrimmerLarge.py"
 sawfish = "/hb/home/mglasena/software/sawfish-v2.0.3-x86_64-unknown-linux-gnu/bin/sawfish"
-vcf2fasta_script = "/hb/scratch/mglasena/vcf2fasta/vcf2fasta.py"
+#vcf2fasta_script = "/hb/scratch/mglasena/vcf2fasta/vcf2fasta.py"
+vcf2fasta_script = os.path.join(_data_dir, "vcf2fasta/vcf2fasta.py")
 vg = "/hb/scratch/ogarci12/hybridcapture_pangenome/vg"
 picard = "/hb/home/mglasena/software/picard/picard.jar"
 
-# Paths to CLAR3 models for ONT and HiFi data
+# Paths to CLAIR3 models for ONT and HiFi data
 # Consequence of installing CLAR3 into a conda environment
 clair3_ont_model_path = "/hb/home/mglasena/.conda/envs/clair3/bin/models/r941_prom_sup_g5014"
 clair3_hifi_model_path = "/hb/home/mglasena/.conda/envs/clair3/bin/models/hifi_revio"
