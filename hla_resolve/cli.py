@@ -16,13 +16,14 @@ def main():
     description="Run HLA-Resolve",
     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     epilog=textwrap.dedent("""\
-        Examples:
-          python3 hla_resolve/cli.py --input_file reads.bam --sample_name HG002 --platform pacbio --output_dir out --threads 10
+        Example:
+          python3 hla_resolve/cli.py --input_file reads.bam --sample_name HG002 --platform pacbio --scheme targeted --output_dir out --threads 10
     """),
 )
     parser.add_argument("--input_file", required=True, help="Path to the raw sequencing reads file")
     parser.add_argument("--sample_name", required=True, help="Override the parsed sample name", default=None)
     parser.add_argument("--platform", choices=["pacbio", "ont"], required=True, help="Specify sequencing platform (pacbio, ont)")
+    parser.add_argument("--scheme", choices=["WGS", "WES", "targeted"], required=True, help="Sequencing scheme")
     parser.add_argument("--output_dir", required=True, help="Output Directory", default=None)
     # For public release, aligner and genotyper are fixed. Uncomment for development:
     # parser.add_argument("--aligner", choices=["minimap2", "vg"], required=True, help="Tool for reference genome alignment", default=None)
@@ -31,7 +32,6 @@ def main():
     parser.add_argument("--adapter_file", type=str, required=False, default=None, help="Path to a file with custom adapter sequences (FASTA/FASTQ). If not provided, default adapters will be used.")
     parser.add_argument("--threads", type=int, required=False, help="Number of threads to use", default=6)
     parser.add_argument("--read_group_string", required=False, help="Override the parsed read group string", default=None)
-    parser.add_argument("--scheme", choices=["WGS", "WES", "targeted"], required=True, help="Sequencing scheme")
     parser.add_argument("--clean-up", action="store_true", help="Remove intermediate files")
     
     # Show help and exit if no arguments were provided
