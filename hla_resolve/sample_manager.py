@@ -374,6 +374,7 @@ def build_workflow_config(sample):
 		'pg_mapq_reassign_bam': sample.pg_mapq_reassign_bam,
 		'pg_mapq_reassign_mrkdup_bam': sample.pg_mapq_reassign_mrkdup_bam,
 		'hg38_mrkdup_bam': sample.hg38_mrkdup_bam,
+		'hg38_mrkdup_metrics': sample.hg38_mrkdup_metrics,
 		'hg38_rmdup_chr6_bam': sample.hg38_rmdup_chr6_bam,
 		'hg38_rmdup_chr6_haplotag_bam': sample.hg38_rmdup_chr6_haplotag_bam,
 		'snv_vcf': sample.snv_vcf,
