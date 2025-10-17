@@ -284,6 +284,9 @@ def mark_duplicates_picard(input_file, output_file, metrics_file, temp_dir, pica
 	
 	subprocess.run(mark_duplicates_cmd, shell=True, check=True)
 
+	index_bam = f"samtools index {output_file}"
+	subprocess.run(index_bam, shell=True, check=True)
+
 # Filer reads that did not map to chromosome 6
 def filter_reads(input_file, output_file, DRB34_reads_file, threads):
 	print("Excluding BAM records that don't map to chromosome 6!")
