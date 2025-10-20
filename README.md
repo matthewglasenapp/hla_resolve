@@ -1,3 +1,14 @@
+<p align="center">
+  <img src="images/hla_resolve.png" alt="Logo" width="200"/>
+</p>
+
+<hr>
+
+<h1 align="center">HLA-RESOLVE</h1>
+
+<hr>
+
+
 # HLA Resolve
 HLA typing from raw long-read sequencing data (FASTQ or unmapped BAM)
 
