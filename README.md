@@ -2,8 +2,6 @@
   <img src="images/hla_resolve.png" alt="HLA-RESOLVE Logo" width="300"/>
 </p>
 
-<h1 align="center">HLA-RESOLVE</h1>
-
 <p align="center"><b>HLA typing from raw long-read sequencing data</b></p>
 
 **Authors:** [Matthew Glasenapp](https://github.com/matthewglasenapp), [Alex Symons](https://github.com/FlyingFish800), [Omar Cornejo](https://github.com/oeco28)
