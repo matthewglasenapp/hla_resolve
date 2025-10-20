@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="images/hla_resolve.png" alt="HLA-RESOLVE Logo" width="500"/>
+  <img src="images/hla_resolve.png" alt="HLA-RESOLVE Logo" width="300"/>
 </p>
 
 <h1 align="center">HLA-RESOLVE</h1>
