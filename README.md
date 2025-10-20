@@ -1,16 +1,10 @@
 <p align="center">
-  <img src="images/hla_resolve.png" alt="Logo" width="200"/>
+  <img src="images/hla-resolve-logo.png" alt="HLA-RESOLVE Logo" width="200"/>
 </p>
-
-<hr>
 
 <h1 align="center">HLA-RESOLVE</h1>
 
-<hr>
-
-
-# HLA Resolve
-HLA typing from raw long-read sequencing data (FASTQ or unmapped BAM)
+<p align="center"><b>HLA typing from raw long-read sequencing data</b></p>
 
 **Authors:** [Matthew Glasenapp](https://github.com/matthewglasenapp), [Alex Symons](https://github.com/FlyingFish800), [Omar Cornejo](https://github.com/oeco28)
 
