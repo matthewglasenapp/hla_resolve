@@ -1,19 +1,19 @@
 import os
 import shutil
-from preprocess_methods import (
+from .preprocess_methods import (
 	run_mosdepth,
 	parse_mosdepth
 )
-from investigate_haploblocks_methods import (
+from .investigate_haploblocks_methods import (
 	parse_haploblocks,
 	evaluate_gene_haploblocks
 )
-from reconstruct_fasta_methods import (
+from .reconstruct_fasta_methods import (
 	filter_vcf,
 	run_vcf2fasta,
 	parse_fastas
 )
-from hla_typer import main as classify_hla_alleles
+from .hla_typer import main as classify_hla_alleles
 
 def convert_gene_name_for_gff(gene_name):
 	"""
