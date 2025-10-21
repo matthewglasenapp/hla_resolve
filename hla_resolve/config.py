@@ -31,15 +31,19 @@ def ensure_reference_genome():
             subprocess.run(["gunzip", "GCA_000001405.15_GRCh38_no_alt_analysis_set.fna.gz"], check=True)
             
             # Index reference
+            print("Indexing reference genome...")
             subprocess.run(["samtools", "faidx", str(ref_file)], check=True)
             
             # Build augmented reference
             hla_y_file = ref_dir / "hla_y_scaffold.fasta"
             if hla_y_file.exists():
+                print("Augmenting reference genome...")
+                print("Do not exit!")
                 subprocess.run([
                     "bash", "-c", 
                     f"cat {ref_file} {hla_y_file} > {augmented_file}"
                 ], check=True)
+                print("Indexing augmented reference...")
                 subprocess.run(["samtools", "faidx", str(augmented_file)], check=True)
             else:
                 print(f"Warning: {hla_y_file} not found, skipping augmented reference")
