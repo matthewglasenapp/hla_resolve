@@ -28,7 +28,7 @@ conda activate hla_resolve
 pip install -e hla_resolve
 hla_resolve --help
 ```
-The first trime ``hla_resolve`` is executed, it will download the required reference genome from NCBI and picard.jar from the Broad Institute.
+The first trime ``hla_resolve`` is executed, it will download the required reference genome from NCBI, picard.jar from the Broad Institute, and hla.xml from the IPD-IMGT/HLA database. 
 
 Note: HLA-Resolve depends on several PacBio command-line utilities that are distributed only as precompiled Linux binaries through the Bioconda channel (pbmarkdup, pbtk, hiphase, trgt). Because these packages are not built or supported for macOS (osx-64 / osx-arm64), HLA-Resolve cannot be fully installed or executed natively on a MacBook or other macOS device.
 
