@@ -1,8 +1,76 @@
 # Configuration constants and paths for HLA-Resolve
 import os
+import subprocess
+from pathlib import Path
 
 # Get the data directory relative to this config file
 _data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+
+def ensure_reference_genome():
+    """Download reference genome if not present"""
+    ref_dir = Path(_data_dir) / "reference"
+    ref_file = ref_dir / "GCA_000001405.15_GRCh38_no_alt_analysis_set.fna"
+    augmented_file = ref_dir / "augmented_hg38.fa"
+    
+    if not ref_file.exists():
+        print("Reference genome not found!")
+        print("Downloading reference genome!")
+        
+        # Change to reference directory
+        original_cwd = os.getcwd()
+        os.chdir(ref_dir)
+        
+        try:
+            # Download
+            subprocess.run([
+                "wget", 
+                "https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/001/405/GCA_000001405.15_GRCh38/seqs_for_alignment_pipelines.ucsc_ids/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna.gz"
+            ], check=True)
+            
+            # Decompress
+            subprocess.run(["gunzip", "GCA_000001405.15_GRCh38_no_alt_analysis_set.fna.gz"], check=True)
+            
+            # Index reference
+            subprocess.run(["samtools", "faidx", str(ref_file)], check=True)
+            
+            # Build augmented reference
+            hla_y_file = ref_dir / "hla_y_scaffold.fasta"
+            if hla_y_file.exists():
+                subprocess.run([
+                    "bash", "-c", 
+                    f"cat {ref_file} {hla_y_file} > {augmented_file}"
+                ], check=True)
+                subprocess.run(["samtools", "faidx", str(augmented_file)], check=True)
+            else:
+                print(f"Warning: {hla_y_file} not found, skipping augmented reference")
+            
+            print("Reference genome download complete!")
+            
+        finally:
+            # Always return to original directory
+            os.chdir(original_cwd)
+
+def ensure_picard():
+    """Download Picard if not present"""
+    picard_dir = Path(_data_dir) / "picard"
+    picard_jar = picard_dir / "picard.jar"
+    
+    if not picard_jar.exists():
+        print("Picard not found! Downloading Picard")
+        picard_dir.mkdir(parents=True, exist_ok=True)
+        
+        subprocess.run([
+            "wget", 
+            "https://github.com/broadinstitute/picard/releases/download/2.27.4/picard.jar",
+            "-O", str(picard_jar)
+        ], check=True)
+        print("Picard download complete!")
+    
+    return str(picard_jar)
+
+# Download reference genome and Picard on first import
+ensure_reference_genome()
+picard = ensure_picard()
 
 # HLA genes of interest for HLA typing
 genes_of_interest = ("HLA-A", "HLA-B", "HLA-C", "HLA-DPA1", "HLA-DPB1", "HLA-DQA1", "HLA-DQB1", "HLA-DRB1")
@@ -16,8 +84,6 @@ dummy_reference = os.path.join(_data_dir, "reference/DRB_1_3_4.fa")
 # Paths to several software tools installed from source
 longphase = "/hb/home/mglasena/software/longphase/longphase_linux-x64"
 sawfish = "/hb/home/mglasena/software/sawfish-v2.0.3-x86_64-unknown-linux-gnu/bin/sawfish"
-# Install picard with wget https://github.com/broadinstitute/picard/releases/download/2.27.4/picard.jar
-picard = "/hb/home/mglasena/software/picard/picard.jar"
 
 # ProwlerTrimmer and vg were used in development mode. Install not necessary for public release.
 prowler_trimmer = "/hb/home/mglasena/software/ProwlerTrimmer/TrimmerLarge.py"
