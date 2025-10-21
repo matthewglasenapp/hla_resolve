@@ -32,13 +32,13 @@ git clone https://github.com/matthewglasenapp/hla_resolve
 conda env create -f hla_resolve/environment.yml
 conda activate hla_resolve
 pip install -e hla_resolve
-python3 hla_resolve/cli.py
+hla_resolve --help
 ```
 
 # Quick Start
 
 ```
-usage: cli.py [-h] --input_file INPUT_FILE --sample_name SAMPLE_NAME --platform {pacbio,ont} --scheme
+usage: hla_resolve [-h] --input_file INPUT_FILE --sample_name SAMPLE_NAME --platform {pacbio,ont} --scheme
               {WGS,WES,targeted} --output_dir OUTPUT_DIR [--trim_adapters] [--adapter_file ADAPTER_FILE]
               [--threads THREADS] [--read_group_string READ_GROUP_STRING] [--clean-up]
 
@@ -74,7 +74,7 @@ Example: python3 hla_resolve/cli.py --input_file reads.bam --sample_name HG002 -
 Input data: PacBio Revio HiFi targeted sequencing reads from IHW09200, a Southeast Asian sample from Thailand that was part of the 4th Asia-Oceania Histocompatibility Workshop (4AOHW) cell line panel.
 
 ```
-python3 hla_resolve/cli.py \
+hla_resolve \
 --input_file demo/IHW09200.hifi_reads.fastq.gz \
 --sample_name IHW09200 \
 --platform pacbio \
