@@ -1,7 +1,10 @@
 # Configuration constants and paths for HLA-Resolve
 import os
 import subprocess
+import requests
+import datetime
 from pathlib import Path
+from zipfile import ZipFile
 
 # Get the data directory relative to this config file
 _data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
@@ -72,9 +75,62 @@ def ensure_picard():
     
     return str(picard_jar)
 
-# Download reference genome and Picard on first import
+def ensure_hla_xml():
+    """Download HLA XML database if not present or outdated"""
+    xml_dir = Path(_data_dir) / "IPD_IMGT_XML"
+    xml_file = xml_dir / "hla.xml"
+    zip_file = xml_dir / "hla.xml.zip"
+    db_url = "https://ftp.ebi.ac.uk/pub/databases/ipd/imgt/hla/xml/hla.xml.zip"
+    
+    # Create directory if it doesn't exist
+    xml_dir.mkdir(parents=True, exist_ok=True)
+    
+    # If file exists, check if up to date
+    if xml_file.exists():
+        try:
+            # Get file last modified timestamp
+            file_modified = datetime.datetime.fromtimestamp(os.path.getmtime(xml_file))
+            
+            # Get database last modified timestamp
+            response = requests.head(db_url)
+            response.raise_for_status()
+            db_modified_str = response.headers.get('Last-Modified')
+            db_modified = datetime.datetime.strptime(db_modified_str, '%a, %d %b %Y %H:%M:%S %Z')
+            
+            # If file is more recent than latest database update, no need to get new file
+            if file_modified > db_modified:
+                print("INFO: Cached HLA XML database is up-to-date")
+                return
+            else:
+                print("INFO: Cached HLA XML database is not up-to-date. Redownloading...")
+                if zip_file.exists():
+                    zip_file.unlink()
+        except Exception as e:
+            print(f"Warning: Could not check HLA XML database version: {e}")
+            print("INFO: Redownloading HLA XML database...")
+    else:
+        print("INFO: No cached HLA XML database. Downloading...")
+    
+    # Download the zip file
+    print("Downloading HLA XML database...")
+    subprocess.run([
+        "wget", 
+        db_url,
+        "-O", str(zip_file)
+    ], check=True)
+    
+    # Extract using zipfile library
+    with ZipFile(zip_file) as zip_ref:
+        zip_ref.extractall(xml_dir)
+    
+    # Remove zip file
+    zip_file.unlink()
+    print("HLA XML database download complete!")
+
+# Download reference genome, Picard, and HLA XML database on first import
 ensure_reference_genome()
 picard = ensure_picard()
+ensure_hla_xml()
 
 # HLA genes of interest for HLA typing
 genes_of_interest = ("HLA-A", "HLA-B", "HLA-C", "HLA-DPA1", "HLA-DPB1", "HLA-DQA1", "HLA-DQB1", "HLA-DRB1")
