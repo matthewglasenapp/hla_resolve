@@ -19,7 +19,7 @@ Haplotagged, mapped BAM files for chomosome 6 are provided for visualization wit
 
 Runtime: Depends heavily on the size of the raw sequence reads file and CPU allocation. MHC target capture data should run in < 30min with 6CPU and 20GB RAM. Runtime will take longer with high-coverage WGS and WES, as all reads must be mapped to the human reference genome before restricting downstream analysis to the MHC region of chromosome 6. 
 
-##Installation
+# Installation
 ```
 git clone https://github.com/matthewglasenapp/hla_resolve
 conda env create -f hla_resolve/environment.yml
