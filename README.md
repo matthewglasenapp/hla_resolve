@@ -27,6 +27,8 @@ conda activate hla_resolve
 python3 hla_resolve/cli.py
 ```
 
+# Quick Start
+
 ```
 usage: cli.py [-h] --input_file INPUT_FILE --sample_name SAMPLE_NAME --platform {pacbio,ont} --scheme
               {WGS,WES,targeted} --output_dir OUTPUT_DIR [--trim_adapters] [--adapter_file ADAPTER_FILE]
