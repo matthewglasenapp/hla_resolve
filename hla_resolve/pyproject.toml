@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hla_resolve"
+version = "0.1.0"
+description = "HLA typing from raw long-read sequencing data"
+readme = "README.md"
+requires-python = ">=3.8"
+authors = [
+  { name = "Matthew Glasenapp" },
+  { name = "Alex Symons" },
+  { name = "Omar Cornejo" }
+]
+
+# No need to duplicate dependencies from environment.yml
+dependencies = []
+
+[project.scripts]
+hla_resolve = "hla_resolve.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
