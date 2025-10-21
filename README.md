@@ -7,9 +7,16 @@
 
 **Authors:** [Matthew Glasenapp](https://github.com/matthewglasenapp), [Alex Symons](https://github.com/FlyingFish800), [Omar Cornejo](https://github.com/oeco28)
 
-Input: A raw, single-sample (demultiplexed) long-read sequencing read file in FASTQ or unmapped BAM format. The program automatically detects input file format and can handle both compressed and uncompressed input. The sequencing platforms currently supported are PacBio and ONT. The tool is compatible with WGS, WES, and targeted sequencing schemes. 
+**Input:**  
+&nbsp;&nbsp;A raw, single-sample (demultiplexed) long-read sequencing read file in FASTQ or unmapped BAM format.  
+&nbsp;&nbsp;The program automatically detects the input file format and can handle both compressed and uncompressed input.  
+&nbsp;&nbsp;The sequencing platforms currently supported are PacBio and ONT.  
+&nbsp;&nbsp;The tool is compatible with WGS, WES, and targeted sequencing schemes.  
 
-Output(s): HLA star allele calls based on the latest IPD-IMGT/HLA database. Star allele calls are provided for the following genes:
+**Output(s):**  
+&nbsp;&nbsp;HLA star allele calls based on the latest IPD-IMGT/HLA database.  
+&nbsp;&nbsp;Star allele calls are provided for the following genes:  
+
 ```
 HLA-A, HLA-B, HLA-C, HLA-DPA1, HLA-DPB1, HLA-DQA1, HLA-DQB1, HLA-DRB1 
 ```
