@@ -31,6 +31,7 @@ def ensure_reference_genome():
             ], check=True)
             
             # Decompress
+            print("Decompressing reference genome")
             subprocess.run(["gunzip", "GCA_000001405.15_GRCh38_no_alt_analysis_set.fna.gz"], check=True)
             
             # Index reference
