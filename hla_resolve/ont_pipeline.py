@@ -1,6 +1,6 @@
 import os
 import subprocess
-from preprocess_methods import (
+from .preprocess_methods import (
 	trim_adapters,
 	align_to_reference_minimap,
 	bait_DRB_paralogs,
@@ -15,7 +15,7 @@ from preprocess_methods import (
 	phase_genotypes_longphase,
 	merge_longphase_vcfs
 )
-from config import min_reads_sample
+from .config import min_reads_sample
 
 def preprocess_ont_sample(config):
 	trim_adapters(

@@ -3,13 +3,13 @@ import os
 import textwrap
 import argparse
 import sys
-from sample_manager import Samples
-from utils import check_required_commands
-from sample_manager import build_workflow_config
-from ont_pipeline import preprocess_ont_sample
-from pacbio_pipeline import preprocess_pacbio_sample
-from resolve_alleles_pipeline import resolve_alleles
-from cleanup import cleanup_intermediate_files
+from .sample_manager import Samples
+from .utils import check_required_commands
+from .sample_manager import build_workflow_config
+from .ont_pipeline import preprocess_ont_sample
+from .pacbio_pipeline import preprocess_pacbio_sample
+from .resolve_alleles_pipeline import resolve_alleles
+from .cleanup import cleanup_intermediate_files
 
 def main():
     parser = argparse.ArgumentParser(

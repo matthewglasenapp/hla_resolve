@@ -4,8 +4,8 @@ import subprocess
 import json
 import pysam
 from Bio import SeqIO
-from preprocess_methods import convert_bam_to_fastq
-from config import (
+from .preprocess_methods import convert_bam_to_fastq
+from .config import (
 	min_reads_sample, min_read_length, reference_genome_vg_gbz, reference_genome_vg_paths, vg, 
 	longphase, sawfish, clair3_ont_model_path, clair3_hifi_model_path,
 	depth_thresh, prop_20x_thresh, prop_30x_thresh,

@@ -1,6 +1,6 @@
 import os
 import subprocess
-from preprocess_methods import (
+from .preprocess_methods import (
 	trim_adapters,
 	run_fastqc,
 	mark_duplicates_pbmarkdup,
@@ -18,7 +18,7 @@ from preprocess_methods import (
 	phase_genotypes_hiphase,
 	merge_hiphase_vcfs
 )
-from config import min_reads_sample
+from .config import min_reads_sample
 
 def preprocess_pacbio_sample(config):
 	# run_fastqc(
