@@ -104,8 +104,9 @@ def build_g_group_dict_from_web():
 def build_g_group_dict(xml_file, ignore_unconfirmed=False, ignore_incomplete=False):
     # If None, pull from web
     if xml_file == None:
-        build_g_group_dict_from_web()
-        xml_file = "./tmp/hla.xml"
+        #build_g_group_dict_from_web()
+        #xml_file = "./tmp/hla.xml"
+        xml_file = os.path.join(os.path.dirname(__file__), "data", "IPD_IMGT_XML", "hla.xml")
 
     # Parse metadata XML file
     print("INFO: Parsing metadata XML file")
