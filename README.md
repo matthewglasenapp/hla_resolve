@@ -34,6 +34,8 @@ conda activate hla_resolve
 pip install -e hla_resolve
 hla_resolve --help
 ```
+The first trime ``hla_resolve`` is executed, it will download the required reference genome from NCBI and picard.jar from the Broad Institute.
+
 
 # Quick Start
 
