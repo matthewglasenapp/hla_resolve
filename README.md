@@ -31,6 +31,7 @@ Runtime: Depends heavily on the size of the raw sequence reads file and CPU allo
 git clone https://github.com/matthewglasenapp/hla_resolve
 conda env create -f hla_resolve/environment.yml
 conda activate hla_resolve
+pip install -e hla_resolve
 python3 hla_resolve/cli.py
 ```
 
