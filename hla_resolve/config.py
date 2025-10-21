@@ -57,6 +57,38 @@ def ensure_reference_genome():
             # Always return to original directory
             os.chdir(original_cwd)
 
+def ensure_longphase():
+    """Download and extract longphase if not present"""
+    longphase_dir = Path(_data_dir) / "longphase"
+    longphase_bin = longphase_dir / "longphase_linux-x64"
+    tar_file = longphase_dir / "longphase_linux-x64.tar.xz"
+    
+    if not longphase_bin.exists():
+        print("Longphase not found! Downloading longphase...")
+        longphase_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Download
+        subprocess.run([
+            "wget", 
+            "https://github.com/twolinin/longphase/releases/download/v2.0/longphase_linux-x64.tar.xz",
+            "-O", str(tar_file)
+        ], check=True)
+        
+        # Extract
+        print("Extracting longphase...")
+        subprocess.run([
+            "tar", "-xJf", str(tar_file), "-C", str(longphase_dir)
+        ], check=True)
+        
+        # Make executable
+        subprocess.run(["chmod", "+x", str(longphase_bin)], check=True)
+        
+        # Remove tar file
+        tar_file.unlink()
+        print("Longphase download complete!")
+    
+    return str(longphase_bin)
+
 def ensure_picard():
     """Download Picard if not present"""
     picard_dir = Path(_data_dir) / "picard"
@@ -76,40 +108,22 @@ def ensure_picard():
     return str(picard_jar)
 
 def ensure_hla_xml():
-    """Download HLA XML database if not present or outdated"""
+    """Download HLA XML database (IPD-IMGT/HLA Release 3.61.0) if not present"""
     xml_dir = Path(_data_dir) / "IPD_IMGT_XML"
     xml_file = xml_dir / "hla.xml"
     zip_file = xml_dir / "hla.xml.zip"
-    db_url = "https://ftp.ebi.ac.uk/pub/databases/ipd/imgt/hla/xml/hla.xml.zip"
+    # Specific release URL for IPD-IMGT/HLA Release 3.61.0
+    db_url = "wget https://raw.githubusercontent.com/ANHIG/IMGTHLA/93c70bcfe271a737bc75b7ca7f5f9844bf65136d/xml/hla.xml.zip"
     
     # Create directory if it doesn't exist
     xml_dir.mkdir(parents=True, exist_ok=True)
     
-    # If file exists, check if up to date
+    # If file exists, no need to download (using specific release)
     if xml_file.exists():
-        try:
-            # Get file last modified timestamp
-            file_modified = datetime.datetime.fromtimestamp(os.path.getmtime(xml_file))
-            
-            # Get database last modified timestamp
-            response = requests.head(db_url)
-            response.raise_for_status()
-            db_modified_str = response.headers.get('Last-Modified')
-            db_modified = datetime.datetime.strptime(db_modified_str, '%a, %d %b %Y %H:%M:%S %Z')
-            
-            # If file is more recent than latest database update, no need to get new file
-            if file_modified > db_modified:
-                print("INFO: Cached HLA XML database is up-to-date")
-                return
-            else:
-                print("INFO: Cached HLA XML database is not up-to-date. Redownloading...")
-                if zip_file.exists():
-                    zip_file.unlink()
-        except Exception as e:
-            print(f"Warning: Could not check HLA XML database version: {e}")
-            print("INFO: Redownloading HLA XML database...")
+        print("INFO: HLA XML database (Release 3.61.0) already present")
+        return
     else:
-        print("INFO: No cached HLA XML database. Downloading...")
+        print("INFO: Downloading HLA XML database (IPD-IMGT/HLA Release 3.61.0)...")
     
     # Download the zip file
     print("Downloading HLA XML database...")
@@ -127,9 +141,10 @@ def ensure_hla_xml():
     zip_file.unlink()
     print("HLA XML database download complete!")
 
-# Download reference genome, Picard, and HLA XML database on first import
+# Download reference genome, Picard, longphase, and HLA XML database on first import
 ensure_reference_genome()
 picard = ensure_picard()
+longphase = ensure_longphase()
 ensure_hla_xml()
 
 # HLA genes of interest for HLA typing
@@ -142,7 +157,6 @@ genes_of_interest = ("HLA-A", "HLA-B", "HLA-C", "HLA-DPA1", "HLA-DPB1", "HLA-DQA
 dummy_reference = os.path.join(_data_dir, "reference/DRB_1_3_4.fa")
 
 # Paths to several software tools installed from source
-longphase = "/hb/home/mglasena/software/longphase/longphase_linux-x64"
 sawfish = "/hb/home/mglasena/software/sawfish-v2.0.3-x86_64-unknown-linux-gnu/bin/sawfish"
 
 # ProwlerTrimmer and vg were used in development mode. Install not necessary for public release.
