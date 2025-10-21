@@ -62,7 +62,7 @@ optional arguments:
                         Override the parsed read group string (default: None)
   --clean-up            Remove intermediate files (default: False)
 
-Example: python3 hla_resolve/cli.py --input_file reads.bam --sample_name HG002 --platform pacbio --scheme targeted --output_dir out --threads 10
+Example: hla_resolve --input_file reads.bam --sample_name HG002 --platform pacbio --scheme targeted --output_dir out --threads 10
 
 ```
 
