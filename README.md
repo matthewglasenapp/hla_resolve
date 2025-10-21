@@ -61,7 +61,7 @@ Example: python3 hla_resolve/cli.py --input_file reads.bam --sample_name HG002 -
 
 ```
 
-Demo example:
+# Demo
 
 Input data: PacBio Revio HiFi targeted sequencing reads from IHW09200, a Southeast Asian sample from Thailand that was part of the 4th Asia-Oceania Histocompatibility Workshop (4AOHW) cell line panel.
 
