@@ -75,13 +75,13 @@ Input data: PacBio Revio HiFi targeted sequencing reads from IHW09200, a Southea
 
 ```
 hla_resolve \
---input_file demo/IHW09200.hifi_reads.fastq.gz \
+--input_file hla_resolve/demo/IHW09200.hifi_reads.fastq.gz \
 --sample_name IHW09200 \
 --platform pacbio \
 --scheme targeted \
 --output_dir test \
 --trim_adapters \
---adapter_file demo/adapters.fasta \
+--adapter_file hla_resolve/demo/adapters.fasta \
 --threads 6
 ```
 
