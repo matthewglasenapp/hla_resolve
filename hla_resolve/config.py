@@ -121,7 +121,7 @@ def ensure_hla_xml():
     
     # If file exists, no need to download (using specific release)
     if xml_file.exists():
-        print("INFO: HLA XML database (Release 3.61.0) already present")
+        #print("INFO: HLA XML database (Release 3.61.0) already present")
         return
     else:
         print("INFO: Downloading HLA XML database (IPD-IMGT/HLA Release 3.61.0)...")
