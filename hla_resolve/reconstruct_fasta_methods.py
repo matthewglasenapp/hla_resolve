@@ -170,33 +170,65 @@ def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA
 	print("\n")
 	print(f"DEBUG: Current working directory: {os.getcwd()}")
 	print(f"DEBUG: Looking for FASTA files in: {vcf2fasta_output_dir}")
-	find_cmd = f"find {vcf2fasta_output_dir} -type f > fasta_files.txt"
+	
+	# Use subprocess.run with capture_output to avoid race conditions with temporary files
+	find_cmd = f"find {vcf2fasta_output_dir} -type f"
 	print(f"DEBUG: Running command: {find_cmd}")
-	subprocess.run(find_cmd, shell = True, check = True)
-	print(f"DEBUG: Checking if fasta_files.txt exists: {os.path.exists('fasta_files.txt')}")
-	if os.path.exists('fasta_files.txt'):
-		print(f"DEBUG: fasta_files.txt size: {os.path.getsize('fasta_files.txt')} bytes")
-	fasta_files = open("fasta_files.txt", "r").read().splitlines()
-	os.remove("fasta_files.txt")
+	result = subprocess.run(find_cmd, shell=True, check=True, capture_output=True, text=True)
+	fasta_files = result.stdout.strip().split('\n') if result.stdout.strip() else []
+	print(f"DEBUG: Found {len(fasta_files)} FASTA files")
+	
+	# Check if any FASTA files were found
+	if not fasta_files:
+		print(f"ERROR: No FASTA files found in {vcf2fasta_output_dir}")
+
+		raise FileNotFoundError(f"No FASTA files found in {vcf2fasta_output_dir}")
 
 	fasta_dict = dict()
 
 	logging_strings = []
 	for file in fasta_files:
+		# Validate file exists and is readable
+		if not os.path.exists(file):
+			print(f"WARNING: File {file} does not exist, skipping")
+			continue
+		if not os.access(file, os.R_OK):
+			print(f"WARNING: File {file} is not readable, skipping")
+			continue
+		
 		if "_gene" in file:
 			feat = "gene"
 		elif "_CDS" in file:
 			feat = "CDS"
+		else:
+			print(f"WARNING: File {file} does not contain '_gene' or '_CDS', skipping")
+			continue
+			
 		gene = file.split("/")[-2].split(f"_{feat}")[0].upper().replace("_", "-")
-		with open(file, "r") as f:
-			lines = f.read().split(">")
+		
+		try:
+			with open(file, "r") as f:
+				lines = f.read().split(">")
+		except (IOError, OSError) as e:
+			print(f"ERROR: Failed to read file {file}: {e}")
+			continue
+		
+		# Validate FASTA structure - should have at least 3 parts (empty, allele1, allele2)
+		if len(lines) < 3:
+			print(f"WARNING: File {file} has insufficient FASTA entries (expected 2 alleles, found {len(lines)-1}), skipping")
+			continue
+		
 		# Old code
 		# Remove deletion characters
 		#allele_1 = lines[1].split("\n")[1].strip().replace("-","").strip()
 		#allele_2 = lines[2].split("\n")[1].strip().replace("-","").strip()
 		# Concatenate all lines after the header for each allele
-		allele_1 = "".join(lines[1].split("\n")[1:]).replace("-", "").strip()
-		allele_2 = "".join(lines[2].split("\n")[1:]).replace("-", "").strip()
+		try:
+			allele_1 = "".join(lines[1].split("\n")[1:]).replace("-", "").strip()
+			allele_2 = "".join(lines[2].split("\n")[1:]).replace("-", "").strip()
+		except IndexError as e:
+			print(f"ERROR: Failed to parse FASTA alleles from {file}: {e}")
+			continue
 
 		if unphased_genes and gene in unphased_genes:
 			best_haploblock_start = unphased_genes[gene][0]

@@ -28,7 +28,21 @@ def print_results(config):
 	results_file = os.path.join(config['hla_typing_dir'], "allele_output.csv")
 	if os.path.exists(results_file):
 		with open(results_file, "r") as f:
-			results = f.read().splitlines()[1].split(",")[1:]
+			lines = f.read().splitlines()
+		
+		# Check if file has at least 2 lines (header + data)
+		if len(lines) < 2:
+			print(f"Warning: Results file {results_file} exists but contains insufficient data (only {len(lines)} lines)")
+			return
+		
+		# Check if the data line has enough columns
+		data_line = lines[1]
+		data_parts = data_line.split(",")
+		if len(data_parts) < 2:
+			print(f"Warning: Results file {results_file} data line has insufficient columns: {data_line}")
+			return
+		
+		results = data_parts[1:]
 		print(f"{config['sample_ID']} HLA Star Allele Calls:")
 		for item in results:
 			print(f"  {item}")
