@@ -57,22 +57,22 @@ def preprocess_pacbio_sample(config):
 			threads=config['threads'],
 		)
 
-		bait_DRB_paralogs(
-			input_file=config['trimmed_pbmarkdup_fastq_gz'],
-			output_file=config['hg38_bam_drb'],
-			DRB34_reads_file=config['DRB34_reads_file'],
-			read_group_string=config['read_group_string'],
-			reference_fasta=config['dummy_reference'],
-			platform=config['platform'],
-			threads=config['threads']
-		)
+		# bait_DRB_paralogs(
+		# 	input_file=config['trimmed_pbmarkdup_fastq_gz'],
+		# 	output_file=config['hg38_bam_drb'],
+		# 	DRB34_reads_file=config['DRB34_reads_file'],
+		# 	read_group_string=config['read_group_string'],
+		# 	reference_fasta=config['dummy_reference'],
+		# 	platform=config['platform'],
+		# 	threads=config['threads']
+		# )
 
-		chr6_read_count = filter_reads(
-			input_file=config['hg38_bam'],
-			output_file=config['hg38_rmdup_chr6_bam'],
-			DRB34_reads_file=config['DRB34_reads_file'],
-			threads=config['threads']
-		)
+		# chr6_read_count = filter_reads(
+		# 	input_file=config['hg38_bam'],
+		# 	output_file=config['hg38_rmdup_chr6_bam'],
+		# 	DRB34_reads_file=config['DRB34_reads_file'],
+		# 	threads=config['threads']
+		# )
 	
 	elif config['scheme'] == "WGS" or config['scheme'] == "WES":
 		align_to_reference_minimap(
@@ -139,7 +139,8 @@ def preprocess_pacbio_sample(config):
 	# 		threads=config['threads']
 	# 	)
 
-	if chr6_read_count >= min_reads_sample:
+	#if chr6_read_count >= min_reads_sample:
+	if 1 == 2:
 		if config['genotyper'] == "bcftools":
 			call_variants_bcftools(
 				input_file=config['hg38_rmdup_chr6_bam'],

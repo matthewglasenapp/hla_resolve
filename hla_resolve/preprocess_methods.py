@@ -468,7 +468,10 @@ def call_structural_variants_sawfish(input_bam, small_variant_calls, output_vcf,
 def call_structural_variants_sniffles(input_bam, output_vcf, threads, reference_fasta, chr6_bed, tandem_repeat_bed):
 	print("Calling structural variants with Sniffles!")
 	
-	sniffles_cmd = f"sniffles --output-rnames --allow-overwrite -t {threads} --reference {reference_fasta} --regions {chr6_bed} -i {input_bam} -v {output_vcf} --tandem-repeats {tandem_repeat_bed}"
+	#sniffles_cmd = f"sniffles --output-rnames --allow-overwrite -t {threads} --reference {reference_fasta} --regions {chr6_bed} -i {input_bam} -v {output_vcf} --tandem-repeats {tandem_repeat_bed}"
+	# Run single-threaded
+	sniffles_cmd = f"sniffles --output-rnames --allow-overwrite -t 1 --reference {reference_fasta} --regions {chr6_bed} -i {input_bam} -v {output_vcf} --tandem-repeats {tandem_repeat_bed}"
+
 	subprocess.run(sniffles_cmd, shell=True, check=True)
 
 	print(f"Sniffles SV VCF written to: {output_vcf}")

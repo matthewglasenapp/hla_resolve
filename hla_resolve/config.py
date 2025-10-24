@@ -236,7 +236,7 @@ genes_of_interest_extended = ("HLA-A", "HLA-B", "HLA-C", "HLA-DRB1", "HLA-DQA1",
 # Set threshold at which variant calling should not proceed
 # chr6_read_count is returned by filter_reads() function
 # Variant calling requires that chr6_read_count >= min_reads_sample:
-min_reads_sample = 100
+min_reads_sample = 1000
 
 # This program is for long-read data only. Require that mean read length is at least 300 bp or higher
 # is returned by run_fastplong(), called within parse_input_file() of sample_manager.py
