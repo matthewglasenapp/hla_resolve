@@ -17,7 +17,7 @@ dependencies:
   - pysam=0.23.3
   - Bio=1.8.0
   - sawfish=2.0.3
-  - sniffles=2.6.3
+  - sniffles=2.7.0
   - trgt=4.0.0
   - minimap2=2.30
   - mosdepth=0.3.10
