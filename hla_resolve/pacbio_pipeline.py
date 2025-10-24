@@ -52,7 +52,8 @@ def preprocess_pacbio_sample(config):
 			input_file=config['trimmed_pbmarkdup_fastq_gz'],
 			output_file=config['hg38_bam'],
 			read_group_string=config['read_group_string'],
-			reference_fasta=config['reference_genome'],
+			#reference_fasta=config['reference_genome'],
+			reference_fasta="/hb/scratch/mglasena/alex_install/hla_resolve/hla_resolve/data/reference/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna",
 			platform=config['platform'],
 			threads=config['threads'],
 		)
