@@ -17,8 +17,9 @@ def filter_vcf(input_vcf, pass_vcf, fail_vcf, pass_unphased, filtered_vcf, unpha
 				'(GT="1/1" || GT="2/2" || GT="3/3" || GT="4/4" || GT="5/5" || '
 				'GT="0|1" || GT="1|0" || GT="1|2" || GT="2|1" || GT="2|3" || GT="3|2") && '
 				'(ALT!~"^<") && '
-				'((REF~"^[ACGT]$" && ALT~"^[ACGT]$" && (GQ="." || (GQ>=20 && QUAL>=10))) || '
-				'((REF!~"^[ACGT]$" || ALT!~"^[ACGT]$") && (GQ="." || GQ>=10)))'
+				'(FMT/DP>=10) && '
+				'((REF~"^[ACGT]$" && ALT~"^[ACGT]$" && (GQ="." || (GQ>=60 && QUAL>=30))) || '
+				'((REF!~"^[ACGT]$" || ALT!~"^[ACGT]$") && (GQ="." || GQ>=40)))'
 			)
 		else:
 			keep_expr = (
@@ -33,8 +34,9 @@ def filter_vcf(input_vcf, pass_vcf, fail_vcf, pass_unphased, filtered_vcf, unpha
 			unphased_expr = (
 				'(ALT~"^<" || '
 				'((GT="0/1" || GT="1/0" || GT="1/2" || GT="2/1" || GT="2/3" || GT="3/2") && '
-				'((REF~"^[ACGT]$" && ALT~"^[ACGT]$" && (GQ="." || (GQ>=20 && QUAL>=10))) || '
-				'((REF!~"^[ACGT]$" || ALT!~"^[ACGT]$") && (GQ="." || GQ>=10)))))'
+				'(FMT/DP>=10) && '
+				'((REF~"^[ACGT]$" && ALT~"^[ACGT]$" && (GQ="." || (GQ>=60 && QUAL>=30))) || '
+				'((REF!~"^[ACGT]$" || ALT!~"^[ACGT]$") && (GQ="." || GQ>=40)))))'
 			)
 		else:
 			unphased_expr = (
