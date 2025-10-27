@@ -222,8 +222,10 @@ def align_to_reference_vg(vg, input_file, output_file, reheader_bam, sample_ID, 
 
 	# Reheader
 	output_dir = os.path.dirname(output_file)
-	temp_sam_1 = os.path.join(output_dir, sample_ID + "_temp1.sam")
-	temp_sam_2 = os.path.join(output_dir, sample_ID + "_temp2.sam")
+	import uuid
+	unique_id = uuid.uuid4().hex[:8]
+	temp_sam_1 = os.path.join(output_dir, sample_ID + f"_temp1_{unique_id}.sam")
+	temp_sam_2 = os.path.join(output_dir, sample_ID + f"_temp2_{unique_id}.sam")
 	convert_to_sam = f"samtools view -h {output_file} > {temp_sam_1}"
 	rename_records = f"sed \"s/\\<GRCh38\\.chr/chr/g\" {temp_sam_1} > {temp_sam_2}"
 	convert_to_bam = f"samtools view -b -o {reheader_bam} {temp_sam_2}"
