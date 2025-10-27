@@ -118,16 +118,16 @@ def ensure_hla_xml():
     # Specific release URL for IPD-IMGT/HLA Release 3.60.0
     #db_url = "https://raw.githubusercontent.com/ANHIG/IMGTHLA/652dbe954426f117a9f3619826fc4e3687713d90/xml/hla.xml.zip" 
     # Specific release URL for IPD-IMGT/HLA Release 3.62.0
-    db_url = "https://github.com/ANHIG/IMGTHLA/blob/Latest/xml/hla.xml.zip"
+    db_url = "https://raw.githubusercontent.com/ANHIG/IMGTHLA/Latest/xml/hla.xml.zip"
     # Create directory if it doesn't exist
     xml_dir.mkdir(parents=True, exist_ok=True)
     
     # If file exists, no need to download (using specific release)
     if xml_file.exists():
-        #print("INFO: HLA XML database (Release 3.61.0) already present")
+        #print("INFO: HLA XML database already present")
         return
     else:
-        print("INFO: Downloading HLA XML database (IPD-IMGT/HLA Release 3.61.0)...")
+        print("INFO: Downloading HLA XML database")
     
     # Download the zip file
     print("Downloading HLA XML database...")
