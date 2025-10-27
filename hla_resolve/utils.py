@@ -24,7 +24,7 @@ def check_required_commands():
         "pigz",
         "samtools",
         # Only required for DeepVariant in dev mode
-        "singularity",
+        #"singularity",
         "sniffles",
         "tabix",
         "trgt",
