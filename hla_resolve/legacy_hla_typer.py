@@ -103,19 +103,15 @@ def build_g_group_dict_from_web():
 @print_time_taken
 def build_g_group_dict(xml_file, ignore_unconfirmed=False, ignore_incomplete=False):
     # If None, pull from web
-    # if xml_file == None:
-    #     build_g_group_dict_from_web()
-    #     xml_file = "./tmp/hla.xml"
+    if xml_file == None:
+        #build_g_group_dict_from_web()
+        #xml_file = "./tmp/hla.xml"
+        xml_file = os.path.join(os.path.dirname(__file__), "data", "IPD_IMGT_XML", "hla.xml")
 
     # Parse metadata XML file
     print("INFO: Parsing metadata XML file")
     tree = ET.parse(xml_file)
     root = tree.getroot()
-
-    # Handle version specific changes
-    version = root.attrib['version']
-    print("INFO: XML version:", version)
-    group_accessor = "name" if version > "3.61.0" else "status"
 
     # Dictionary databases
     g_groups = dict()
@@ -189,13 +185,13 @@ def build_g_group_dict(xml_file, ignore_unconfirmed=False, ignore_incomplete=Fal
         # Add G group if possible
         g_group_xml = allele.find(tag('hla_g_group'))
         if g_group_xml != None:
-            g_group = g_group_xml.attrib[group_accessor]
+            g_group = g_group_xml.attrib["status"]
             g_groups[name] = g_group
 
         # Add G group if possible
         p_group_xml = allele.find(tag('hla_p_group'))
         if p_group_xml != None:
-            p_group = p_group_xml.attrib[group_accessor]
+            p_group = p_group_xml.attrib["status"]
             p_groups[name] = p_group
 
     return g_groups, p_groups, sequence_data
@@ -876,7 +872,7 @@ def output_results(results, file_path):
                     data[entry][i+1] = allele_1
             
     # Turn into dataframe and output to csv file
-    df = pd.DataFrame(data, columns=["sample"]+unique_alleles)
+    df = pd.DataFrame(data, columns=["sampleID"]+unique_alleles)
     df.to_csv(file_path, index=False)
 
 
@@ -904,7 +900,7 @@ def load_truth_data(path, source = "IHW"):
     # Ensure all alleles in truth set begin with (A|B|C)*
     for col in ["A_1","A_2","B_1","B_2","C_1","C_2"]:
         letter = col[0]
-        missing_prefix = ~truth_df[col].str.contains(rf"{letter}\*", regex=True)
+        missing_prefix = ~truth_df[col].str.contains(f"{letter}\*", regex=True)
         truth_df[col][missing_prefix] = f"{letter}*"+truth_df[col][missing_prefix] 
 
     # Build dictionary of allele labels for samples
@@ -1023,8 +1019,8 @@ if __name__ == "__main__":
     parser.add_argument('--samples', required=False, default="../data/HLA_Class_I_haplotypes.fa", help='Input FASTA file with full sequences')
     parser.add_argument('--truth', required=False, default=None, help='Input csv file containg truth data, for testing purposes')
     parser.add_argument("--full-sequence", required=False, default=None, help="To enable the third intron/UTR classification stage, supply full sequence data here")
-    parser.add_argument("--pass2-metric", required=False, default="match_length", help="Metric used to assign fourth field, 'edit_distance', 'match_length' (default), or 'identity'")
-    parser.add_argument("--pass3-metric", required=False, default="match_length", help="Metric used to assign fourth field, 'edit_distance', 'match_length' (default), or 'identity'")
+    parser.add_argument("--pass2-metric", required=False, default="match_length", help="Metric used to assign fourth field, 'edit_distance' (default), 'match_length', or 'identity'")
+    parser.add_argument("--pass3-metric", required=False, default="match_length", help="Metric used to assign fourth field, 'edit_distance', 'match_length', or 'identity' (default)")
     parser.add_argument("--ignore-unconfirmed", action='store_true', help="Do not consider 'uncomfirmed' database entries")
     parser.add_argument("--ignore-incomplete", action='store_true', help="Do not consider database entries that are missing any features")
     
@@ -1050,7 +1046,7 @@ if __name__ == "__main__":
 #           ignore_unconfirmed: (bool) ignore XML database entries marked as 'unconfirmed'
 #           ignore_incomplete: (bool) ignore XML entries missing ANY features
 # Output:   (None) Writes to assignement.log and output.csv files for each stage
-def main(reference_xml_file, hla_fasta_dir, sample_ID, pass2_metric = "match_length",
+def main(reference_xml_file, hla_fasta_dir, sample_ID, pass2_metric = "match_length", 
          pass3_metric = "match_length", ignore_unconfirmed = False, ignore_incomplete = False):
     samples_file = os.path.join(hla_fasta_dir, str(sample_ID) + "_HLA_haplotypes_CDS.fasta")
     full_sample_file = os.path.join(hla_fasta_dir, str(sample_ID) + "_HLA_haplotypes_gene.fasta")
