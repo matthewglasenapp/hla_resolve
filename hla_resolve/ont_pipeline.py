@@ -97,8 +97,9 @@ def preprocess_ont_sample(config):
 		picard=config['picard']
 	)
 
-	chr6_read_count = int(subprocess.check_output(f"samtools view -c {config['hg38_rmdup_chr6_bam']}", shell=True).strip())
-	if chr6_read_count >= min_reads_sample:
+	#chr6_read_count = int(subprocess.check_output(f"samtools view -c {config['hg38_rmdup_chr6_bam']}", shell=True).strip())
+	#if chr6_read_count >= min_reads_sample:
+	if 1 == 2:
 		if config['genotyper'] == "bcftools":
 			call_variants_bcftools(
 				input_file=config['hg38_rmdup_chr6_bam'],
@@ -167,4 +168,4 @@ def preprocess_ont_sample(config):
 	
 	else:
 		print("Insufficient reads for variant calling")
-		print("Sample {} had {} reads!".format(config['sample_ID'], chr6_read_count))
+		#print("Sample {} had {} reads!".format(config['sample_ID'], chr6_read_count))
