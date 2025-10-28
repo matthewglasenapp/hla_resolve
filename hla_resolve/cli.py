@@ -46,7 +46,7 @@ def main():
     args.genotyper = "bcftools"
 
     # Check that all required tools are installed
-    #check_required_commands()
+    check_required_commands()
     
     start_time = time.time()
     

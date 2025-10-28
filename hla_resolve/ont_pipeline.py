@@ -121,49 +121,49 @@ def preprocess_ont_sample(config):
 		# 		sample_ID=config['sample_ID']
 		# 	)
 		# elif config['genotyper'] == "clair3":
-		call_variants_clair3(
+		# call_variants_clair3(
+		# 	input_bam=config['hg38_rmdup_chr6_bam'],
+		# 	output_vcf=config['snv_vcf'],
+		# 	platform=config['platform'],
+		# 	reference_fasta=config['reference_genome'],
+		# 	threads=config['threads'],
+		# 	chr6_bed=config['chr6_bed'],
+		# 	clair3_ont_model_path=config['clair3_ont_model_path'],
+		# 	clair3_hifi_model_path=config['clair3_hifi_model_path'],
+		# 	genotypes_dir=config['genotypes_dir'],
+		# 	sample_ID=config['sample_ID']
+		# )
+		call_structural_variants_sniffles(
 			input_bam=config['hg38_rmdup_chr6_bam'],
-			output_vcf=config['snv_vcf'],
-			platform=config['platform'],
+			output_vcf=config['sv_vcf'],
+			threads=config['threads'],
+			reference_fasta=config['reference_genome'],
+			chr6_bed=config['chr6_bed'],
+			tandem_repeat_bed=config['tandem_repeat_bed']
+		)
+		phase_genotypes_longphase(
+			input_bam=config['hg38_rmdup_chr6_bam'],
+			input_SNV_vcf=config['snv_vcf'],
+			input_SV_vcf=config['sv_vcf'],
+			output_blocks_file=config['phased_haploblocks'],
+			output_gtf_file=config['phased_haploblocks_gtf'],
+			phased_vcf=config['longphase_vcf'],
+			phased_SV_vcf=config['longphase_sv_vcf'],
+			haplotagged_bam=config['hg38_rmdup_chr6_haplotag_bam'],
+			longphase=config['longphase'],
 			reference_fasta=config['reference_genome'],
 			threads=config['threads'],
-			chr6_bed=config['chr6_bed'],
-			clair3_ont_model_path=config['clair3_ont_model_path'],
-			clair3_hifi_model_path=config['clair3_hifi_model_path'],
-			genotypes_dir=config['genotypes_dir'],
+			phased_vcf_dir=config['phased_vcf_dir'],
 			sample_ID=config['sample_ID']
 		)
-		# call_structural_variants_sniffles(
-		# 	input_bam=config['hg38_rmdup_chr6_bam'],
-		# 	output_vcf=config['sv_vcf'],
-		# 	threads=config['threads'],
-		# 	reference_fasta=config['reference_genome'],
-		# 	chr6_bed=config['chr6_bed'],
-		# 	tandem_repeat_bed=config['tandem_repeat_bed']
-		# )
-		# phase_genotypes_longphase(
-		# 	input_bam=config['hg38_rmdup_chr6_bam'],
-		# 	input_SNV_vcf=config['snv_vcf'],
-		# 	input_SV_vcf=config['sv_vcf'],
-		# 	output_blocks_file=config['phased_haploblocks'],
-		# 	output_gtf_file=config['phased_haploblocks_gtf'],
-		# 	phased_vcf=config['longphase_vcf'],
-		# 	phased_SV_vcf=config['longphase_sv_vcf'],
-		# 	haplotagged_bam=config['hg38_rmdup_chr6_haplotag_bam'],
-		# 	longphase=config['longphase'],
-		# 	reference_fasta=config['reference_genome'],
-		# 	threads=config['threads'],
-		# 	phased_vcf_dir=config['phased_vcf_dir'],
-		# 	sample_ID=config['sample_ID']
-		# )
-		# merge_longphase_vcfs(
-		# 	phased_vcf=config['longphase_vcf'],
-		# 	phased_SV_vcf=config['longphase_sv_vcf'],
-		# 	merged_vcf=config['longphase_merged_vcf'],
-		# 	reference_fasta=config['reference_genome'],
-		# 	phased_vcf_dir=config['phased_vcf_dir'],
-		# 	sample_ID=config['sample_ID']
-		# )
+		merge_longphase_vcfs(
+			phased_vcf=config['longphase_vcf'],
+			phased_SV_vcf=config['longphase_sv_vcf'],
+			merged_vcf=config['longphase_merged_vcf'],
+			reference_fasta=config['reference_genome'],
+			phased_vcf_dir=config['phased_vcf_dir'],
+			sample_ID=config['sample_ID']
+		)
 	
 	else:
 		print("Insufficient reads for variant calling")
