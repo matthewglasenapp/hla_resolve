@@ -621,7 +621,9 @@ def phase_genotypes_longphase(input_bam, input_SNV_vcf, input_SV_vcf, output_blo
 	print(f"Input SV VCF: {input_SV_vcf}")
 
 	phased_vcf_prefix = phased_vcf.split(".vcf.gz")[0]
-	longphase_phase_cmd = f"{longphase} phase -s {input_SNV_vcf} --sv-file {input_SV_vcf} -b {input_bam} -r {reference_fasta} -t {threads} -o {phased_vcf_prefix} --ont"
+	longphase_phase_cmd = f"{longphase} phase -s {input_SNV_vcf} --sv-file {input_SV_vcf} -b {input_bam} -r {reference_fasta} -t {threads} -o {phased_vcf_prefix} --ont --indels"
+	# Try different parameter set 
+	#longphase_phase_cmd = f"{longphase} phase -s {input_SNV_vcf} --sv-file {input_SV_vcf} -b {input_bam} -r {reference_fasta} -t {threads} -o {phased_vcf_prefix} ---mismatchRate=10"
 
 	# Compress and index SNV VCF
 	compress_cmd = f"bgzip -f {phased_vcf_prefix}.vcf"
