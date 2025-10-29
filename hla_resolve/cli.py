@@ -43,7 +43,7 @@ def main():
     
     # For public release: hardcode aligner and genotyper
     args.aligner = "minimap2"
-    args.genotyper = "clair3"
+    args.genotyper = "bcftools"
 
     # Check that all required tools are installed
     check_required_commands()
