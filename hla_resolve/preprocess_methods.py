@@ -298,8 +298,7 @@ def filter_reads(input_file, output_file, DRB34_reads_file, threads):
 	# Extract chromosome 6 and exclude secondary and supplementary alignments
 	# samtools_cmd = "samtools view -@ {threads} -F 2304 -b {input_file} chr6 > '{output_file}'".format(threads = sample.threads, input_file = input_bam, output_file = output_bam)
 	# Use -h flag to preserve full header, then filter to chr6
-	#samtools_cmd = f"samtools view -h -F 2304 -@ {threads} {input_file} chr6:28000000-34000000 | grep -v -F -f {DRB34_reads_file} -- | samtools view -b -o {output_file}"
-	samtools_cmd = f"samtools view -h -F 2304 -@ {threads} {input_file} chr6:28000000-34000000 | samtools view -b -o {output_file}"
+	samtools_cmd = f"samtools view -h -F 2304 -@ {threads} {input_file} chr6:28000000-34000000 | grep -v -F -f {DRB34_reads_file} -- | samtools view -b -o {output_file}"
 
 	index_cmd = f"samtools index {output_file}"
 

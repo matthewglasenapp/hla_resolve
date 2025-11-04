@@ -18,35 +18,35 @@ from .preprocess_methods import (
 from .config import min_reads_sample
 
 def preprocess_ont_sample(config):
-	# trim_adapters(
-	# 	adapters=config['adapters'],
-	# 	input_file=config['raw_fastq'],
-	# 	output_file=config['trimmed_fastq'],
-	# 	sample_ID=config['sample_ID'],
-	# 	threads=config['threads'],
-	# 	adapter_file=config['adapter_file'],
-	# 	five_prime_adapter=config['five_prime_adapter'],
-	# 	three_prime_adapter=config['three_prime_adapter']
-	# )
+	trim_adapters(
+		adapters=config['adapters'],
+		input_file=config['raw_fastq'],
+		output_file=config['trimmed_fastq'],
+		sample_ID=config['sample_ID'],
+		threads=config['threads'],
+		adapter_file=config['adapter_file'],
+		five_prime_adapter=config['five_prime_adapter'],
+		three_prime_adapter=config['three_prime_adapter']
+	)
 	
-	# align_to_reference_minimap(
-	# 	input_file=config['trimmed_fastq'],
-	# 	output_file=config['hg38_bam'],
-	# 	read_group_string=config['read_group_string'],
-	# 	reference_fasta=config['reference_genome'],
-	# 	platform=config['platform'],
-	# 	threads=config['threads']
-	# )
+	align_to_reference_minimap(
+		input_file=config['trimmed_fastq'],
+		output_file=config['hg38_bam'],
+		read_group_string=config['read_group_string'],
+		reference_fasta=config['reference_genome'],
+		platform=config['platform'],
+		threads=config['threads']
+	)
 
-	# bait_DRB_paralogs(
-	# 	input_file=config['trimmed_fastq'],
-	# 	output_file=config['hg38_bam_drb'],
-	# 	DRB34_reads_file=config['DRB34_reads_file'],
-	# 	read_group_string=config['read_group_string'],
-	# 	reference_fasta=config['dummy_reference'],
-	# 	platform=config['platform'],
-	# 	threads=config['threads']
-	# )
+	bait_DRB_paralogs(
+		input_file=config['trimmed_fastq'],
+		output_file=config['hg38_bam_drb'],
+		DRB34_reads_file=config['DRB34_reads_file'],
+		read_group_string=config['read_group_string'],
+		reference_fasta=config['dummy_reference'],
+		platform=config['platform'],
+		threads=config['threads']
+	)
 	
 	# vg mapping discontinued
 	# if config['aligner'] == "vg":
@@ -97,9 +97,8 @@ def preprocess_ont_sample(config):
 		picard=config['picard']
 	)
 
-	#chr6_read_count = int(subprocess.check_output(f"samtools view -c {config['hg38_rmdup_chr6_bam']}", shell=True).strip())
-	#if chr6_read_count >= min_reads_sample:
-	if 1 ==2:
+	chr6_read_count = int(subprocess.check_output(f"samtools view -c {config['hg38_rmdup_chr6_bam']}", shell=True).strip())
+	if chr6_read_count >= min_reads_sample:
 		if config['genotyper'] == "bcftools":
 			call_variants_bcftools(
 				input_file=config['hg38_rmdup_chr6_bam'],
@@ -168,4 +167,4 @@ def preprocess_ont_sample(config):
 	
 	else:
 		print("Insufficient reads for variant calling")
-		#print("Sample {} had {} reads!".format(config['sample_ID'], chr6_read_count))
+		print("Sample {} had {} reads!".format(config['sample_ID'], chr6_read_count))
