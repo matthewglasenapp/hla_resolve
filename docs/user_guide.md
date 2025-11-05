@@ -19,35 +19,40 @@ Matt note to self: If an updated version of vcf2fasta is used in a future versio
 
 3. Before running vcf2fasta in phased mode, you need to ensure that the genes you’re making fastas for are fully contained within a single phase set. Vcf2fasta will apply the variants to the hap1 and hap2 fasta, but if there are two or more phase sets contained within your gene, it could cause a switch error.
 
-4. I made minor edits to vcf2fasta/v2f/functions.py to address issues with the getPloidy() and getPhased() functions. Originally, both functions relied on the first variant record to infer ploidy and phasing status. If that first record contained missing genotypes or was of an unexpected format, the program exited with an error. 
+4. I made minor edits to `vcf2fasta/v2f/functions.py` to address issues with the `getPloidy()` and `getPhased()` functions. Originally, both functions relied on the first variant record to infer ploidy and phasing status. If that first record contained missing genotypes or was of an unexpected format, the program exited with an error.  
 
-The updated versions now iterate through the VCF until they encounter a valid genotype, allowing assignment of ploidy and phasing information even when the first variant is missing or incomplete. 
+    The updated versions now iterate through the VCF until they encounter a valid genotype, allowing assignment of ploidy and phasing information even when the first variant is missing or incomplete.  
 
-Functional Changes
-1. getPloidy()
+    **Functional Changes**
 
-- def getPloidy(vcf):
--     var = [ y for x,y in next(vcf.fetch()).samples.items() ]
--     p = [ len(v.get('GT')) for v in var if v.get('GT')[0] is not None ]
--     return p[0]
-+ def getPloidy(vcf):
-+     for rec in vcf.fetch():
-+         for sample in rec.samples.values():
-+             gt = sample.get('GT')
-+             if gt and all(g is not None for g in gt):
-+                 return len(gt)
-+     raise ValueError("No valid genotypes found to infer ploidy.")
+    **1. `getPloidy()`**
 
-2. getPhased()
+    ```diff
+    - def getPloidy(vcf):
+    -     var = [ y for x,y in next(vcf.fetch()).samples.items() ]
+    -     p = [ len(v.get('GT')) for v in var if v.get('GT')[0] is not None ]
+    -     return p[0]
+    + def getPloidy(vcf):
+    +     for rec in vcf.fetch():
+    +         for sample in rec.samples.values():
+    +             gt = sample.get('GT')
+    +             if gt and all(g is not None for g in gt):
+    +                 return len(gt)
+    +     raise ValueError("No valid genotypes found to infer ploidy.")
+    ```
 
-- def getPhased(vcf):
--     var = [ y for x,y in next(vcf.fetch()).samples.items() ]
--     p = any([ not v.phased for v in var ])
--     return not p
-+ def getPhased(vcf):
-+     for rec in vcf.fetch():
-+         for sample in rec.samples.values():
-+             gt = sample.get('GT')
-+             if gt and all(g is not None for g in gt):
-+                 return sample.phased
-+     raise ValueError("No phased genotypes found to determine phasing.")
+    **2. `getPhased()`**
+
+    ```diff
+    - def getPhased(vcf):
+    -     var = [ y for x,y in next(vcf.fetch()).samples.items() ]
+    -     p = any([ not v.phased for v in var ])
+    -     return not p
+    + def getPhased(vcf):
+    +     for rec in vcf.fetch():
+    +         for sample in rec.samples.values():
+    +             gt = sample.get('GT')
+    +             if gt and all(g is not None for g in gt):
+    +                 return sample.phased
+    +     raise ValueError("No phased genotypes found to determine phasing.")
+    ```
