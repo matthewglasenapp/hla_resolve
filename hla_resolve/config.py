@@ -180,7 +180,8 @@ clair3_hifi_model_path = "/hb/home/mglasena/.conda/envs/clair3/bin/models/hifi_r
 # Paths to reference genome for reference genome alignment with minimap2
 
 # Reference fasta with added HLA-OLI/HLA-Y contig for baiting out reads originating from HLA-Y
-reference_genome_minimap2 = os.path.join(_data_dir, "reference/augmented_hg38.fa")
+reference_genome_minimap2 = "/hb/scratch/mglasena/alex_install/hla_resolve/hla_resolve/data/reference/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna"
+#reference_genome_minimap2 = os.path.join(_data_dir, "reference/augmented_hg38.fa")
 #reference_genome_minimap2 = os.path.join(_data_dir, "reference/augmented_hg38_drb_alt.fa")
 #reference_genome_minimap2 = os.path.join(_data_dir, "reference/augmented_hg38_with_long_drb1.fa")
 
