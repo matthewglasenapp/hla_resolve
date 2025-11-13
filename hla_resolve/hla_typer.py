@@ -850,14 +850,31 @@ def pass_3_classification(sequence_data, results_dict, samples, truth_data=None,
 # Output: None
 @print_time_taken
 def output_results(results, file_path):
-    # Helper functions to get sample name and allele
-    get_name = lambda x:x.split("_")[0]
+    def get_name(x):
+        parts = x.split("_")
+        out = []
+        for p in parts:
+            if p.startswith("HLA-"):
+                break
+            out.append(p)
+        return "_".join(out)
 
-    def get_allele (x):
-        if "incomplete" in x:
-            return x.split("_")[1]+"_"+x.split("_")[-2]+"_incomplete"
-        else:
-            return x.split("_")[1]+"_"+x.split("_")[-1]
+    def get_allele(x):
+        parts = x.split("_")
+
+        # gene
+        gene = None
+        for p in parts:
+            if p.startswith("HLA-"):
+                gene = p
+                break
+        if gene is None:
+            raise ValueError(f"Could not find HLA gene in entry: {x}")
+
+        # index is last element
+        idx = parts[-1]
+
+        return f"{gene}_{idx}"
 
     # Get list of all samples and alleles
     entry_names = results.keys()
