@@ -342,8 +342,16 @@ def assign_classification_to_sample(common_sequenes, sequence, sample_name, logf
     best = (None, None, 0) # (class_name, distance, num_matches)
     same_dist = []
 
-    hla_gene = sample_name.split("_")[1]
-    hla_gene = hla_gene[hla_gene.index("-")+1:] + "*"
+    parts = sample_name.split("_")
+
+    hla_gene = None
+    for p in parts:
+        if p.startswith("HLA-"):
+            hla_gene = p.split("-")[1] + "*"
+            break
+    
+    if hla_gene is None:
+        raise ValueError(f"Could not find HLA gene in sample: {sample_name}")
 
     # Go through each reference sequence and find closest match
     for class_name, exons in common_sequenes.items():
