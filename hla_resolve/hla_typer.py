@@ -402,8 +402,15 @@ def assign_classification_to_sample_full_seq(full_sequence, sequence, full_sampl
 
     # Grab gene to narrow search
     # TODO: Is this reliable way to grab gene? Yes.
-    hla_gene = full_sample_name.split("_")[1]
-    hla_gene = hla_gene[hla_gene.index("-")+1:] + "*"
+    parts = full_sample_name.split("_")
+    hla_gene = None
+    for p in parts:
+        if p.startswith("HLA-"):
+            hla_gene = p.split("-")[1] + "*"
+            break
+    
+    if hla_gene is None:
+        raise ValueError(f"Could not find HLA gene in sample: {full_sample_name}")
 
     for class_name, sequence_data in full_sequence.items():
         # Skip if not the same gene
