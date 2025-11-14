@@ -22,6 +22,20 @@ non_matching_exons = {"HLA-C*07:02:01:17N": "C*07:02:01G",
                       "HLA-DRB4*01:03:41N": "DRB4*01:01:01G",
                       "HLA-DMB*01:05": "DMB*01:01:01G"}
 
+# Get Gene from sample name
+def get_gene(sample_name, astrisk = True):
+    # Get HLA-<gene>_<idx> portion, then get portion between '_' and '-'
+    hla_gene_index = sample_name[sample_name.find("HLA"):]
+    hla_gene = hla_gene_index.split("_")[0]
+    hla_gene = hla_gene[hla_gene.index("-")+1:]
+    if astrisk: hla_gene = hla_gene + "*"
+    return hla_gene
+
+# Get sample ID from sample name
+def get_sampleid(sample_name):
+    # Get everything before 'HLA'
+    return sample_name[:sample_name.find("HLA")-1]
+
 # Function decorator to print time taken to run a function
 def print_time_taken(fun):
     def wrapper(self, *args, **kwargs):
@@ -342,16 +356,7 @@ def assign_classification_to_sample(common_sequenes, sequence, sample_name, logf
     best = (None, None, 0) # (class_name, distance, num_matches)
     same_dist = []
 
-    parts = sample_name.split("_")
-
-    hla_gene = None
-    for p in parts:
-        if p.startswith("HLA-"):
-            hla_gene = p.split("-")[1] + "*"
-            break
-    
-    if hla_gene is None:
-        raise ValueError(f"Could not find HLA gene in sample: {sample_name}")
+    hla_gene = get_gene(sample_name)
 
     # Go through each reference sequence and find closest match
     for class_name, exons in common_sequenes.items():
@@ -400,17 +405,7 @@ def assign_classification_to_sample_full_seq(full_sequence, sequence, full_sampl
     best = (None, None, None, None) # (class_name, distance, match_length, identity)
     same_dist = []
 
-    # Grab gene to narrow search
-    # TODO: Is this reliable way to grab gene? Yes.
-    parts = full_sample_name.split("_")
-    hla_gene = None
-    for p in parts:
-        if p.startswith("HLA-"):
-            hla_gene = p.split("-")[1] + "*"
-            break
-    
-    if hla_gene is None:
-        raise ValueError(f"Could not find HLA gene in sample: {full_sample_name}")
+    hla_gene = get_gene(full_sample_name)
 
     for class_name, sequence_data in full_sequence.items():
         # Skip if not the same gene
@@ -574,8 +569,7 @@ def get_allele(sample_name, truth_data, index=None):
 
     # This will run twice for each sample/gene pair, so grab the index
     # Get gene/index with form <gene>_<index>. Ex: A_1
-    hla_gene = sample_name.split("_")[1]
-    hla_gene = hla_gene[hla_gene.index("-")+1:]
+    hla_gene = get_gene(sample_name)
 
     # If index is None, grab from sample name. Otherwise use provided
     if index == None:
@@ -831,7 +825,7 @@ def pass_3_classification(sequence_data, results_dict, samples, truth_data=None,
         results[sample_name] = result
 
         # Get just unique string corresponding to sample
-        sample_id = sample_name.split("_")[0]
+        sample_id = get_sampleid(sample_name)
 
         # If truth data was given and has an entry of this sample
         if truth_data != None and sample_id in truth_data.keys():
@@ -850,35 +844,16 @@ def pass_3_classification(sequence_data, results_dict, samples, truth_data=None,
 # Output: None
 @print_time_taken
 def output_results(results, file_path):
-    def get_name(x):
-        parts = x.split("_")
-        out = []
-        for p in parts:
-            if p.startswith("HLA-"):
-                break
-            out.append(p)
-        return "_".join(out)
-
-    def get_allele(x):
-        parts = x.split("_")
-
-        # gene
-        gene = None
-        for p in parts:
-            if p.startswith("HLA-"):
-                gene = p
-                break
-        if gene is None:
-            raise ValueError(f"Could not find HLA gene in entry: {x}")
-
-        # index is last element
-        idx = parts[-1]
-
-        return f"{gene}_{idx}"
+    # Helper functions to get allele
+    def get_allele (x):
+        if "incomplete" in x:
+            return "HLA-"+get_gene(x, astrisk=False)+"_"+x.split("_")[-2]+"_incomplete"
+        else:
+            return "HLA-"+get_gene(x, astrisk=False)+"_"+x.split("_")[-1]
 
     # Get list of all samples and alleles
     entry_names = results.keys()
-    unique_samples = sorted(list(set(map(get_name, entry_names))))
+    unique_samples = sorted(list(set(map(get_sampleid, entry_names))))
     unique_alleles = sorted(list(set(map(get_allele, entry_names))))
 
     # Array containing sample id, and empty slots for allele classification
@@ -886,7 +861,7 @@ def output_results(results, file_path):
     
     # Go through each entry in the results, and add it to the data array
     for entry, classification in results.items():
-        sample_name = get_name(entry)
+        sample_name = get_sampleid(entry)
         sample_allele = get_allele(entry)
 
         # Insert classification into correct slot in array
