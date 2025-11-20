@@ -122,7 +122,7 @@ def main():
 
     # Matt's patch
     phased = True
-    #print("Forcing treatment as phased")
+    print('Treating as \"phased\"')
 
     # output directory and print feature
     if args.feat:
