@@ -17,7 +17,7 @@ Another bug is that vcf2fasta checks the first genotype of the overall vcf to de
 -     print('No phased genotypes found on first variant. Treating as "unphased"')
 - else:
 -     print('Phased genotypes found on first variant. Treating as "phased"')
-+## Matt's patch: forcibly treat all input as phased
++ # Matt's patch: forcibly treat all input as phased
 + phased = True
 + print('Treating as "phased"')
 ```
