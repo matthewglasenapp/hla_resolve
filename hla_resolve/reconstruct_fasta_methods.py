@@ -262,7 +262,7 @@ def filter_vcf_gene(input_vcf, gene, filter_region, pass_vcf, fail_vcf, pass_unp
 		chrom = rec.chrom
 		pos = rec.pos
 
-		print(f"[INFO] {gene}: Allowing single unphased heterozygous site at {chrom}:{pos}")
+		print(f"Allowing single unphased heterozygous site at {gene} {chrom}:{pos}" + "\n")
 
 		# Build whitelist condition for this one variant only
 		whitelist_expr = f'(CHROM="{chrom}" && POS={pos})'
