@@ -303,32 +303,34 @@ def filter_vcf_gene(input_vcf, gene, filter_region, pass_vcf, fail_vcf, pass_unp
 	with open(unphased_overlap_tsv, "r") as f:
 		overlap_lines = f.read().splitlines()
 
-	counter = 0
-	header = ""
-	overlap_dict = dict()
+	header = None
+	records_for_this_gene = []
+
 	for line in overlap_lines:
 		if line.startswith("#CHROM"):
 			header = line
+			continue
+
 		if not line.startswith("chr6"):
 			continue
-		counter += 1
+
 		gene_name = line.split("\t")[-1].split("_")[0]
+
+		# Only keep variants for the gene currently being filtered
+		if gene_name != gene:
+			continue
+
 		record = line.split("\t")[:-4]
 		new_record = "\t".join(record)
-		if not gene_name in overlap_dict:
-			overlap_dict[gene_name] = [new_record]
-		else:
-			overlap_dict[gene_name].append(new_record)
+		records_for_this_gene.append(new_record)
 
-	if counter > 0:
-		print(f"The following {counter} unphased variants overlapped with {gene} and could not be applied")
+	if len(records_for_this_gene) > 0:
+		print(f"The following {len(records_for_this_gene)} unphased variants overlapped with {gene} and could not be applied\n")
+		print(gene)
+		print(header)
+		for record in records_for_this_gene:
+			print(record)
 		print("\n")
-		for gene_name, records in overlap_dict.items():
-			print(gene_name)
-			print(header)
-			for record in records:
-				print(record)
-			print("\n")
 
 def run_vcf2fasta(vcf2fasta, input_vcf, input_gff, reference_genome, output_dir, gene, feature):
 	gene_id = gene.lower().replace("-", "_")
