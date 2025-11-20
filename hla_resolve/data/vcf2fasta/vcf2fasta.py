@@ -114,11 +114,15 @@ def main():
     print('Ploidy is:', ploidy)
 
     # are genotypes phased
-    phased = v2f.getPhased(vcf)
-    if not phased:
-        print('No phased genotypes found on first variant. Treating as \"unphased\"')
-    else:
-        print('Phased genotypes found on first variant. Treating as \"phased\"')
+    # phased = v2f.getPhased(vcf)
+    # if not phased:
+    #     print('No phased genotypes found on first variant. Treating as \"unphased\"')
+    # else:
+    #     print('Phased genotypes found on first variant. Treating as \"phased\"')
+
+    # Matt's patch
+    phased = True
+    #print("Forcing treatment as phased")
 
     # output directory and print feature
     if args.feat:

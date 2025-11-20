@@ -9,7 +9,8 @@ from .investigate_haploblocks_methods import (
 	evaluate_gene_haploblocks
 )
 from .reconstruct_fasta_methods import (
-	filter_vcf,
+	filter_vcf_full,
+	filter_vcf_gene,
 	run_vcf2fasta,
 	parse_fastas
 )
@@ -121,7 +122,7 @@ def resolve_alleles(config):
 	elif config['platform'] == "ONT":
 		input_vcf = config['longphase_merged_vcf']
 	
-	filter_vcf(
+	filter_vcf_full(
 		input_vcf=input_vcf,
 		pass_vcf=config['pass_vcf'],
 		fail_vcf=config['fail_vcf'],
@@ -133,6 +134,39 @@ def resolve_alleles(config):
 		hla_genes_regions_file=config['hla_genes_regions_file']
 	)
 	
+	# Filter phased VCF by gene region
+	gene_filtered_vcfs = {}
+	for gene in config['genes_of_interest']:
+		gff_gene_name = convert_gene_name_for_gff(gene)
+		gff_file = os.path.join(config['gff_dir'], gff_gene_name + "_gene.gff3")
+		gff_lines = [line.split("\t") for line in open(gff_file, "r").read().splitlines() if not line.startswith("#")]
+		gff_record = gff_lines[0]
+		chromosome, start, stop = gff_record[0], gff_record[3], gff_record[4]
+		filter_region = f"{chromosome}:{start}-{stop}"
+
+		# Create gene-specific output file paths in single_gene_vcf subdirectory
+		gene_pass_vcf = os.path.join(config['single_gene_vcf_dir'], f"{config['sample_ID']}_{gene}_PASS.vcf.gz")
+		gene_fail_vcf = os.path.join(config['single_gene_vcf_dir'], f"{config['sample_ID']}_{gene}_FAIL.vcf.gz")
+		gene_pass_unphased_vcf = os.path.join(config['single_gene_vcf_dir'], f"{config['sample_ID']}_{gene}_PASS_UNPHASED.vcf.gz")
+		gene_filtered_vcf = os.path.join(config['single_gene_vcf_dir'], f"{config['sample_ID']}_{gene}_filtered.vcf.gz")
+		gene_unphased_tsv = os.path.join(config['single_gene_vcf_dir'], f"{config['sample_ID']}_{gene}.unphased.tsv")
+
+		filter_vcf_gene(
+			input_vcf=input_vcf,
+			gene=gene,
+			filter_region=filter_region,
+			pass_vcf=gene_pass_vcf,
+			fail_vcf=gene_fail_vcf,
+			pass_unphased=gene_pass_unphased_vcf,
+			filtered_vcf=gene_filtered_vcf,
+			unphased_overlap_tsv=gene_unphased_tsv,
+			platform=config['platform'],
+			genotyper=config['genotyper'],
+			hla_genes_regions_file=config['hla_genes_regions_file']
+		)
+		
+		gene_filtered_vcfs[gene] = gene_pass_vcf
+	
 	# Reset vcf2fasta_out_dir for sequential runs 
 	if any(os.scandir(config['vcf2fasta_out_dir'])):
 		shutil.rmtree(config['vcf2fasta_out_dir'])
@@ -140,10 +174,12 @@ def resolve_alleles(config):
 
 	for gene in config['genes_of_interest']:
 		if gene in sufficient_coverage_genes or gene in unphased_genes:
+			gene_filtered_vcf = gene_filtered_vcfs.get(gene)
+				
 			gff_gene_name = convert_gene_name_for_gff(gene)
 			run_vcf2fasta(
 				vcf2fasta=config['vcf2fasta_script'],
-				input_vcf=config['filtered_vcf'],
+				input_vcf=gene_filtered_vcf,
 				output_dir=os.path.join(config['vcf2fasta_out_dir'], gene),
 				input_gff=os.path.join(config['gff_dir'], gff_gene_name + "_gene.gff3"),
 				reference_genome=config['reference_genome'],
@@ -152,7 +188,7 @@ def resolve_alleles(config):
 			
 			run_vcf2fasta(
 				vcf2fasta=config['vcf2fasta_script'],
-				input_vcf=config['filtered_vcf'],
+				input_vcf=gene_filtered_vcf,
 				output_dir=os.path.join(config['vcf2fasta_out_dir'], gene),
 				input_gff=os.path.join(config['gff_dir'], gff_gene_name + "_cds_sorted.gff3"),
 				reference_genome=config['reference_genome'],

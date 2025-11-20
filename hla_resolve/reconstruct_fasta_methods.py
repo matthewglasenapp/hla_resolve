@@ -5,7 +5,7 @@ from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio import SeqIO
 
-def filter_vcf(input_vcf, pass_vcf, fail_vcf, pass_unphased, filtered_vcf, unphased_overlap_tsv, platform, genotyper, hla_genes_regions_file):
+def filter_vcf_full(input_vcf, pass_vcf, fail_vcf, pass_unphased, filtered_vcf, unphased_overlap_tsv, platform, genotyper, hla_genes_regions_file):
 	# bcftools call does not have a FILTER=PASS annotation, so drop that from the filtering expression
 	# Include homozygous ALT (both biallelic and multiallelic) and phased heterozygous
 	# Exclude symbolic variants 
@@ -103,6 +103,203 @@ def filter_vcf(input_vcf, pass_vcf, fail_vcf, pass_unphased, filtered_vcf, unpha
 	)
 	
 	# Report overlapping variants that could not be applied 
+	# with open(unphased_overlap_tsv, "r") as f:
+	# 	overlap_lines = f.read().splitlines()
+
+	# counter = 0
+	# header = ""
+	# overlap_dict = dict()
+	# for line in overlap_lines:
+	# 	if line.startswith("#CHROM"):
+	# 		header = line
+	# 	if not line.startswith("chr6"):
+	# 		continue
+	# 	counter += 1
+	# 	gene = line.split("\t")[-1].split("_")[0]
+	# 	record = line.split("\t")[:-4]
+	# 	new_record = "\t".join(record)
+	# 	if not gene in overlap_dict:
+	# 		overlap_dict[gene] = [new_record]
+	# 	else:
+	# 		overlap_dict[gene].append(new_record)
+
+	# print(f"The following {counter} unphased variants overlapped with an HLA gene and could not be applied")
+	# print("\n")
+	# for gene, records in overlap_dict.items():
+	# 	print(gene)
+	# 	print(header)
+	# 	for record in records:
+	# 		print(record)
+	# 	print("\n")
+
+	# Find first phased variant
+	# vcf = pysam.VariantFile(pass_vcf)
+	# first_phased_pos = None
+	# chrom = None
+
+	# for record in vcf:
+	# 	for sample_data in record.samples.values():
+	# 		if sample_data.phased:
+	# 			first_phased_pos = record.pos
+	# 			chrom = record.chrom
+	# 			break
+	# 	if first_phased_pos:
+	# 		break
+
+	# if not first_phased_pos:
+	# 	raise ValueError(f"No phased variants found in {pass_vcf}")
+
+	# region = f"{chrom}:{first_phased_pos}-"
+
+	# # Filter VCF from the first phased variant onward
+	# subprocess.run(
+	# 	f"bcftools view -r {region} {pass_vcf} -Oz -o {filtered_vcf}",
+	# 	shell=True, check=True
+	# )
+	# subprocess.run(f"bcftools index {filtered_vcf}", shell=True, check=True)
+
+def filter_vcf_gene(input_vcf, gene, filter_region, pass_vcf, fail_vcf, pass_unphased, filtered_vcf, unphased_overlap_tsv, platform, genotyper, hla_genes_regions_file):
+	region_vcf = filtered_vcf.replace(".vcf.gz", f".{gene}.region.vcf.gz")
+	subprocess.run(
+		f"bcftools view -r {filter_region} {input_vcf} -Oz -o {region_vcf}",
+		shell=True, check=True
+	)
+	subprocess.run(f"bcftools index -f {region_vcf}", shell=True, check=True)
+
+	# Address edge-case of one unphased heteterozygous genotype in the gene region
+	vcf_region = pysam.VariantFile(region_vcf)
+
+	het_sites = []
+	unphased_hets = []
+
+	for rec in vcf_region:
+		sample = list(rec.samples.values())[0]
+		gt = sample.get('GT')
+
+		if gt is None or None in gt:
+			continue
+
+		# heterozygous?
+		if len(set(gt)) == 2:
+			het_sites.append(rec)
+
+			# unphased?
+			if not sample.phased:
+				unphased_hets.append(rec)
+
+	# If exactly ONE heterozygous site AND it is unphased, allow it to pass
+	allow_single_unphased = (len(het_sites) == 1 and len(unphased_hets) == 1)
+
+	if platform == "ONT":
+		# For ONT data, skip TRID-related filtering entirely
+		if genotyper == "bcftools":
+			keep_expr = (
+				'(GT="1/1" || GT="2/2" || GT="3/3" || GT="4/4" || GT="5/5" || '
+				'GT="0|1" || GT="1|0" || GT="1|2" || GT="2|1" || GT="2|3" || GT="3|2") && '
+				'(ALT!~"^<") && '
+				'(FMT/DP>=10) && '
+				'((REF~"^[ACGT]$" && ALT~"^[ACGT]$" && (GQ="." || (GQ>=60 && QUAL>=30))) || '
+				'((REF!~"^[ACGT]$" || ALT!~"^[ACGT]$") && (GQ="." || GQ>=40)))'
+			)
+		else:
+			keep_expr = (
+				'(FILTER="PASS") && '
+				'(ALT!~"^<") && '
+				'(GT="1/1" || GT="2/2" || GT="3/3" || GT="4/4" || GT="5/5" || '
+				'GT="0|1" || GT="1|0" || GT="1|2" || GT="2|1" || GT="2|3" || GT="3|2")'
+			)
+
+		# For unphased_expr, skip TRID check as well
+		if genotyper == "bcftools":
+			unphased_expr = (
+				'(ALT~"^<" || '
+				'((GT="0/1" || GT="1/0" || GT="1/2" || GT="2/1" || GT="2/3" || GT="3/2") && '
+				'(FMT/DP>=10) && '
+				'((REF~"^[ACGT]$" && ALT~"^[ACGT]$" && (GQ="." || (GQ>=60 && QUAL>=30))) || '
+				'((REF!~"^[ACGT]$" || ALT!~"^[ACGT]$") && (GQ="." || GQ>=40)))))'
+			)
+		else:
+			unphased_expr = (
+				'(FILTER="PASS") && '
+				'(GT="0/1" || GT="1/0" || GT="1/2" || GT="2/1" || GT="2/3" || GT="3/2")'
+			)
+
+	else:
+		# PacBio TRID-aware expressions
+		if genotyper == "bcftools":
+			keep_expr = (
+				'TRID=="" && '
+				'(GT="1/1" || GT="2/2" || GT="3/3" || GT="4/4" || GT="5/5" || '
+				'GT="0|1" || GT="1|0" || GT="1|2" || GT="2|1" || GT="2|3" || GT="3|2") && '
+				'(ALT!~"^<") && '
+				'((REF~"^[ACGT]$" && ALT~"^[ACGT]$" && (GQ="." || (GQ>=20 && QUAL>=10))) || '
+				'((REF!~"^[ACGT]$" || ALT!~"^[ACGT]$") && (GQ="." || GQ>=10)))'
+			)
+		else:
+			keep_expr = (
+				'(FILTER="PASS") && '
+				'(ALT!~"^<") && '
+				'(GT="1/1" || GT="2/2" || GT="3/3" || GT="4/4" || GT="5/5" || '
+				'GT="0|1" || GT="1|0" || GT="1|2" || GT="2|1" || GT="2|3" || GT="3|2")'
+			)
+
+		if genotyper == "bcftools":
+			unphased_expr = (
+				'(TRID!="" || ALT~"^<" || '
+				'((GT="0/1" || GT="1/0" || GT="1/2" || GT="2/1" || GT="2/3" || GT="3/2") && '
+				'((REF~"^[ACGT]$" && ALT~"^[ACGT]$" && (GQ="." || (GQ>=20 && QUAL>=10))) || '
+				'((REF!~"^[ACGT]$" || ALT!~"^[ACGT]$") && (GQ="." || GQ>=10)))))'
+			)
+		else:
+			unphased_expr = (
+				'((FILTER="PASS") && (GT="0/1" || GT="1/0" || '
+				'GT="1/2" || GT="2/1" || GT="2/3" || GT="3/2")) || TRID!=""'
+			)
+
+	# Filter expression override if exactly one unphased heterozygous genotype exists
+	if allow_single_unphased:
+		rec = unphased_hets[0]
+		chrom = rec.chrom
+		pos = rec.pos
+
+		print(f"[INFO] {gene}: Allowing single unphased heterozygous site at {chrom}:{pos}")
+
+		# Build whitelist condition for this one variant only
+		whitelist_expr = f'(CHROM="{chrom}" && POS={pos})'
+
+		# New keep_expr = (normal high-quality) OR (this one unphased het)
+		keep_expr = f'(({keep_expr}) || {whitelist_expr})'
+
+		# Make unphased_expr match nothing
+		unphased_expr = 'GT="0/0"'
+	
+	# Create new pass-filter VCF
+	subprocess.run(
+		f'bcftools view -i \'{keep_expr}\' {region_vcf} -Oz -o {pass_vcf}',
+		shell=True, check=True
+	)
+	subprocess.run(f"bcftools index -f {pass_vcf}", shell=True, check=True)
+
+	# Create new fail-filter vcf
+	subprocess.run(
+		f'bcftools view -e \'{keep_expr}\' {region_vcf} -Oz -o {fail_vcf}',
+		shell=True, check=True
+	)
+	subprocess.run(f"bcftools index -f {fail_vcf}", shell=True, check=True)
+
+	subprocess.run(
+		f'bcftools view -i \'{unphased_expr}\' {fail_vcf} -Oz -o {pass_unphased}',
+		shell=True, check=True
+	)
+	subprocess.run(f"bcftools index -f {pass_unphased}", shell=True, check=True)
+
+	# Intersect unphased PASS heterozygous genotypes from the fail-filter vcf with HLA BED to get overlapping variants that could not be applied
+	subprocess.run(
+		f'bedtools intersect -a {pass_unphased} -b {hla_genes_regions_file} -wa -wb -header > {unphased_overlap_tsv}',
+		shell=True, check=True
+	)
+	
+	# Report overlapping variants that could not be applied 
 	with open(unphased_overlap_tsv, "r") as f:
 		overlap_lines = f.read().splitlines()
 
@@ -115,48 +312,23 @@ def filter_vcf(input_vcf, pass_vcf, fail_vcf, pass_unphased, filtered_vcf, unpha
 		if not line.startswith("chr6"):
 			continue
 		counter += 1
-		gene = line.split("\t")[-1].split("_")[0]
+		gene_name = line.split("\t")[-1].split("_")[0]
 		record = line.split("\t")[:-4]
 		new_record = "\t".join(record)
-		if not gene in overlap_dict:
-			overlap_dict[gene] = [new_record]
+		if not gene_name in overlap_dict:
+			overlap_dict[gene_name] = [new_record]
 		else:
-			overlap_dict[gene].append(new_record)
+			overlap_dict[gene_name].append(new_record)
 
-	print(f"The following {counter} unphased variants overlapped with an HLA gene and could not be applied")
-	print("\n")
-	for gene, records in overlap_dict.items():
-		print(gene)
-		print(header)
-		for record in records:
-			print(record)
+	if counter > 0:
+		print(f"The following {counter} unphased variants overlapped with {gene} and could not be applied")
 		print("\n")
-
-	# Step 2: Find first phased variant
-	vcf = pysam.VariantFile(pass_vcf)
-	first_phased_pos = None
-	chrom = None
-
-	for record in vcf:
-		for sample_data in record.samples.values():
-			if sample_data.phased:
-				first_phased_pos = record.pos
-				chrom = record.chrom
-				break
-		if first_phased_pos:
-			break
-
-	if not first_phased_pos:
-		raise ValueError(f"No phased variants found in {pass_vcf}")
-
-	region = f"{chrom}:{first_phased_pos}-"
-
-	# Step 3: Filter VCF from the first phased variant onward
-	subprocess.run(
-		f"bcftools view -r {region} {pass_vcf} -Oz -o {filtered_vcf}",
-		shell=True, check=True
-	)
-	subprocess.run(f"bcftools index {filtered_vcf}", shell=True, check=True)
+		for gene_name, records in overlap_dict.items():
+			print(gene_name)
+			print(header)
+			for record in records:
+				print(record)
+			print("\n")
 
 def run_vcf2fasta(vcf2fasta, input_vcf, input_gff, reference_genome, output_dir, gene, feature):
 	gene_id = gene.lower().replace("-", "_")
