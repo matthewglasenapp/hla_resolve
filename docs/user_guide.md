@@ -18,8 +18,8 @@ Another bug is that vcf2fasta checks the first genotype of the overall vcf to de
 - else:
 -     print('Phased genotypes found on first variant. Treating as "phased"')
 +## Matt's patch: forcibly treat all input as phased
-+phased = True
-+print('Treating as "phased"')
++ phased = True
++ print('Treating as "phased"')
 ```
 
 When vcf2fasta treats a VCF as "phased," it treats unphased heterozygous genotypes as phased and arbitrarily assigns each allele to a haplotype. This means that unphased heterozygous genotypes must be removed from the phased VCF prior to running vcf2fasta. 
