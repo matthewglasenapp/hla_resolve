@@ -2,7 +2,16 @@
 
 Documentation for HLA-Resolve.
 
-## 1. Notes on the use of vcf2fasta. 
+## 1. Preparing phased VCF for vcf2fasta
+Following phasing with HiPhase or longphase, the SNV and SV VCFs are merged and normalized with bcftools. The following steps are taken to prepare the VCF records for use with vcf2fasta. 
+1. Filter the joint phased VCF by gene. The gene coordinates are defined by the GRCh38 GFF3 records.
+2. Check for the edge-case of 1 unphased heterozygous genotype in the gene region (see section 2. Notes on the use of vcf2fasta). 
+3. Bin genotypes into three different VCFs.  
+    a. Pass-filter genotypes with unphased heterozygous genotypes removed  
+    b. Fail-filter genotypes  
+    c. Pass-filter unphased heterozygous genotypes. These will be reported as they will not be able to be applied during haplotype reconstruction with vcf2fasta  
+
+## 2. Notes on the use of vcf2fasta. 
 
 The vcf2fasta included in hla_resolve/data was originally written by Santiago Sanchez-Ramirez https://github.com/santiagosnchez/vcf2fasta. Unfortunately, it is no longer maintained. Quanyu Chen (yeeus) forked the repository and made some updates https://github.com/yeeus/vcf2fasta. This is the base version that is included under hla_resolve/data/vcf2fasta/, with a few minor edits of my own.
 
