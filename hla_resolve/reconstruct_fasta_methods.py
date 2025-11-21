@@ -179,6 +179,9 @@ def filter_vcf_gene(input_vcf, gene, filter_region, pass_vcf, fail_vcf, pass_unp
 
 		if gt is None or None in gt:
 			continue
+	
+		if "TRID" in rec.info:
+			continue
 
 		# Check if genotype is heterozygous
 		if len(set(gt)) == 2:
