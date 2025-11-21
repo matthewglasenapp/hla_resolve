@@ -22,7 +22,7 @@ Another bug is that vcf2fasta checks the first genotype of the overall vcf to de
 + print('Treating as "phased"')
 ```
 
-When vcf2fasta treats a VCF as "phased," it treats unphased heterozygous genotypes as phased and arbitrarily assigns each allele to a haplotype. This means that unphased heterozygous genotypes must be removed from the phased VCF prior to running vcf2fasta. 
+When vcf2fasta treats a VCF as "phased," it treats unphased heterozygous genotypes as phased and arbitrarily assigns each allele to a haplotype. This means that unphased heterozygous genotypes must be removed from the phased VCF prior to running vcf2fasta. However, if there is only one heterozygous genotype in the single-gene VCF and it remains unphased, it should not be filtered before vcf2fasta. Because we care only about phased haplotypes within genes, it doesn’t matter which haplotype gets which allele in this scenario. The two reconstructed haplotypes will be correct. However, the standard pipeline removes unphased heterozygous genotypes from the vcf before vcf2fasta, because when operating in “phased’ mode, if there is a mix of phased and unphased heterozygous genotypes, vcf2fasta randomly assigns alleles from the unphased heterozygous genotypes to haplotypes, resulting in inevitable switch errors. I addressed the edge case of a single (unphased) heterozygous genotype in reconstruct_fasta_methods.py.
 
 Matt note to self: If an updated version of vcf2fasta is used in a future version of hla_resolve, I will need to change the files in hla_resolve/data/hla_gff, including make_coords.py.
 
