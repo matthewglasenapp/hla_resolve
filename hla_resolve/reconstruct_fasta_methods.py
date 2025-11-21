@@ -102,6 +102,7 @@ def filter_vcf_full(input_vcf, pass_vcf, fail_vcf, pass_unphased, filtered_vcf, 
 		shell=True, check=True
 	)
 	
+	# Legacy code from before switching to single-gene VCFs as input to vcf2fasta. 
 	# Report overlapping variants that could not be applied 
 	# with open(unphased_overlap_tsv, "r") as f:
 	# 	overlap_lines = f.read().splitlines()
@@ -179,11 +180,11 @@ def filter_vcf_gene(input_vcf, gene, filter_region, pass_vcf, fail_vcf, pass_unp
 		if gt is None or None in gt:
 			continue
 
-		# heterozygous?
+		# Check if genotype is heterozygous
 		if len(set(gt)) == 2:
 			het_sites.append(rec)
 
-			# unphased?
+			# Check if heterozygous genotype is unphased
 			if not sample.phased:
 				unphased_hets.append(rec)
 
@@ -267,7 +268,7 @@ def filter_vcf_gene(input_vcf, gene, filter_region, pass_vcf, fail_vcf, pass_unp
 		# Build whitelist condition for this one variant only
 		whitelist_expr = f'(CHROM="{chrom}" && POS={pos})'
 
-		# New keep_expr = (normal high-quality) OR (this one unphased het)
+		# Modify keep_expr to include the whitelist_expr
 		keep_expr = f'(({keep_expr}) || {whitelist_expr})'
 
 		# Make unphased_expr match nothing
@@ -287,13 +288,14 @@ def filter_vcf_gene(input_vcf, gene, filter_region, pass_vcf, fail_vcf, pass_unp
 	)
 	subprocess.run(f"bcftools index -f {fail_vcf}", shell=True, check=True)
 
+	# Created new pass-filter VCF for unphased heterozygous genotypes
 	subprocess.run(
 		f'bcftools view -i \'{unphased_expr}\' {fail_vcf} -Oz -o {pass_unphased}',
 		shell=True, check=True
 	)
 	subprocess.run(f"bcftools index -f {pass_unphased}", shell=True, check=True)
 
-	# Intersect unphased PASS heterozygous genotypes from the fail-filter vcf with HLA BED to get overlapping variants that could not be applied
+	# Intersect unphased PASS heterozygous genotypes with gene coordinates to get overlapping variants that could not be applied
 	subprocess.run(
 		f'bedtools intersect -a {pass_unphased} -b {hla_genes_regions_file} -wa -wb -header > {unphased_overlap_tsv}',
 		shell=True, check=True
