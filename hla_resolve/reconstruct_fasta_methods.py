@@ -172,17 +172,21 @@ def filter_vcf_gene(input_vcf, gene, filter_region, pass_vcf, fail_vcf, pass_unp
 
 	het_sites = []
 	unphased_hets = []
+	valid_dna = set("ACGTN")
 
 	for rec in vcf_region:
+		if "TRID" in rec.info:
+			continue
+		
+		if any(set(str(a)) - valid_dna for a in rec.alts):
+			continue
+		
 		sample = list(rec.samples.values())[0]
 		gt = sample.get('GT')
 
 		if gt is None or None in gt:
 			continue
 	
-		if "TRID" in rec.info:
-			continue
-
 		# Check if genotype is heterozygous
 		if len(set(gt)) == 2:
 			het_sites.append(rec)
