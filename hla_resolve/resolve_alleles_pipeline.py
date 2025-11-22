@@ -145,27 +145,27 @@ def resolve_alleles(config):
 		filter_region = f"{chromosome}:{start}-{stop}"
 
 		# Create gene-specific output file paths in single_gene_vcf subdirectory
+		gene_symbolic_vcf = os.path.join(config['single_gene_vcf_dir'], f"{config['sample_ID']}_{gene}.symbolic.vcf.gz")
 		gene_pass_vcf = os.path.join(config['single_gene_vcf_dir'], f"{config['sample_ID']}_{gene}_PASS.vcf.gz")
 		gene_fail_vcf = os.path.join(config['single_gene_vcf_dir'], f"{config['sample_ID']}_{gene}_FAIL.vcf.gz")
 		gene_pass_unphased_vcf = os.path.join(config['single_gene_vcf_dir'], f"{config['sample_ID']}_{gene}_PASS_UNPHASED.vcf.gz")
-		gene_filtered_vcf = os.path.join(config['single_gene_vcf_dir'], f"{config['sample_ID']}_{gene}_filtered.vcf.gz")
-		gene_unphased_tsv = os.path.join(config['single_gene_vcf_dir'], f"{config['sample_ID']}_{gene}.unphased.tsv")
+		gene_filtered_vcf = os.path.join(config['single_gene_vcf_dir'], f"{config['sample_ID']}_{gene}_PASS_phased.vcf.gz")
 
 		filter_vcf_gene(
 			input_vcf=input_vcf,
 			gene=gene,
 			filter_region=filter_region,
+			symbolic_vcf=gene_symbolic_vcf,
 			pass_vcf=gene_pass_vcf,
 			fail_vcf=gene_fail_vcf,
 			pass_unphased=gene_pass_unphased_vcf,
 			filtered_vcf=gene_filtered_vcf,
-			unphased_overlap_tsv=gene_unphased_tsv,
 			platform=config['platform'],
 			genotyper=config['genotyper'],
 			hla_genes_regions_file=config['hla_genes_regions_file']
 		)
 		
-		gene_filtered_vcfs[gene] = gene_pass_vcf
+		gene_filtered_vcfs[gene] = gene_filtered_vcf
 	
 	# Reset vcf2fasta_out_dir for sequential runs 
 	if any(os.scandir(config['vcf2fasta_out_dir'])):
