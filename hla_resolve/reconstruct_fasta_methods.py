@@ -342,6 +342,7 @@ def legacy_filter_vcf_gene(input_vcf, gene, filter_region, pass_vcf, fail_vcf, p
 		print("\n")
 
 def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail_vcf, pass_unphased, filtered_vcf, platform, genotyper, hla_genes_regions_file):
+    # Extract region
     region_vcf = filtered_vcf.replace(".vcf.gz", f".{gene}.region.vcf.gz")
     cmd = f"bcftools view -r {filter_region} {input_vcf} -Oz -o {region_vcf}"
     subprocess.run(cmd, shell=True, check=True)
@@ -352,6 +353,7 @@ def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail
     pass_out = pysam.VariantFile(pass_vcf, "wz", header=vf.header)
     fail_out = pysam.VariantFile(fail_vcf, "wz", header=vf.header)
 
+    # ========== PASS/FAIL CLASSIFICATION ==========
     for rec in vf:
 
         # symbolic
@@ -365,7 +367,7 @@ def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail
             sym_out.write(rec)
             continue
 
-        # sawfish sv
+        # sawfish SV
         rec_id = rec.id or ""
         if rec_id.startswith("sawfish:") or (
             "SVTYPE" in rec.info and rec.info["SVTYPE"] not in (None, "", ".")
@@ -376,6 +378,7 @@ def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail
                 fail_out.write(rec)
             continue
 
+        # small variants
         sample = list(rec.samples.values())[0]
         dp = sample.get("DP")
         gq = sample.get("GQ")
@@ -409,38 +412,58 @@ def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail
     subprocess.run(f"bcftools index -f {pass_vcf}", shell=True, check=True)
     subprocess.run(f"bcftools index -f {fail_vcf}", shell=True, check=True)
 
-    het_expr = '(GT="0/1" || GT="1/0" || GT="1/2" || GT="2/1" || GT="2/3" || GT="3/2")'
+    # ========== WHITELIST LOGIC (RESTORED) ==========
+    het_sites = []
+    unphased_hets = []
 
-    cmd = f"bcftools view -i '{het_expr}' {pass_vcf} -Oz -o {pass_unphased}"
+    pass_vf = pysam.VariantFile(pass_vcf)
+    for rec in pass_vf:
+        sample = list(rec.samples.values())[0]
+        gt = sample.get("GT")
+        if gt is None or None in gt:
+            continue
+        if len(set(gt)) == 2:  # heterozygous
+            het_sites.append(rec)
+            if not sample.phased:
+                unphased_hets.append(rec)
+
+    allow_single_unphased = (len(het_sites) == 1 and len(unphased_hets) == 1)
+
+    if allow_single_unphased:
+        rec = unphased_hets[0]
+        chrom = rec.chrom
+        pos = rec.pos
+        whitelist = f'(CHROM="{chrom}" && POS={pos})'
+        # keep everything phased + this one site
+        het_expr = (
+            '(GT="0/1" || GT="1/0" || GT="1/2" || GT="2/1" || GT="2/3" || GT="3/2")'
+        )
+        # unphased_expr matches nothing
+        unphased_expr = 'GT="9/9"'
+        keep_expr = f'((! {het_expr}) || {whitelist})'
+    else:
+        het_expr = '(GT="0/1" || GT="1/0" || GT="1/2" || GT="2/1" || GT="2/3" || GT="3/2")'
+        unphased_expr = het_expr
+        keep_expr = f'!({het_expr})'
+
+    # extract unphased PASS
+    cmd = f"bcftools view -i '{unphased_expr}' {pass_vcf} -Oz -o {pass_unphased}"
     subprocess.run(cmd, shell=True, check=True)
     subprocess.run(f"bcftools index -f {pass_unphased}", shell=True, check=True)
 
-    cmd = f"bcftools view -e '{het_expr}' {pass_vcf} -Oz -o {filtered_vcf}"
+    # extract phased PASS (final filtered VCF)
+    cmd = f"bcftools view -i '{keep_expr}' {pass_vcf} -Oz -o {filtered_vcf}"
     subprocess.run(cmd, shell=True, check=True)
     subprocess.run(f"bcftools index -f {filtered_vcf}", shell=True, check=True)
 
-    # print unphased PASS variants
-    unph_vf = pysam.VariantFile(pass_unphased)
-    records = [rec for rec in unph_vf]
+    # ========== PRINT UNPHASED RECORDS NEATLY ==========
+    unph = pysam.VariantFile(pass_unphased)
+    records = [rec for rec in unph]
 
     if records:
         print(f"\nUnphased PASS variants in {gene}:\n")
-        print("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tSAMPLE")
         for rec in records:
-            s = list(rec.samples.values())[0]
-            line = [
-                rec.chrom,
-                str(rec.pos),
-                rec.id if rec.id else ".",
-                rec.ref,
-                ",".join(rec.alts),
-                str(rec.qual) if rec.qual is not None else ".",
-                ";".join(rec.filter.keys()) if rec.filter else ".",
-                str(rec.info),
-                ":".join(rec.format.keys()),
-                str(s)
-            ]
-            print("\t".join(line))
+            print(str(rec).strip())
         print()
 
 def run_vcf2fasta(vcf2fasta, input_vcf, input_gff, reference_genome, output_dir, gene, feature):
