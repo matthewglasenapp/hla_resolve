@@ -440,7 +440,7 @@ def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail
         )
         # unphased_expr matches nothing
         unphased_expr = 'GT="9/9"'
-        keep_expr = f'((! {het_expr}) || {whitelist})'
+        keep_expr = f'(!({het_expr}) || {whitelist})'
     else:
         het_expr = '(GT="0/1" || GT="1/0" || GT="1/2" || GT="2/1" || GT="2/3" || GT="3/2")'
         unphased_expr = het_expr
