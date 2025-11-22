@@ -5,12 +5,16 @@ Documentation for HLA-Resolve.
 ## 1. Preparing phased VCF for vcf2fasta
 Following phasing with HiPhase or longphase, the SNV and SV VCFs are merged and normalized with bcftools. The following steps are taken to prepare the VCF records for use with vcf2fasta. 
 1. Filter the joint phased VCF by gene. The gene coordinates are defined by the GRCh38 GFF3 records.
-2. Check for the edge-case of 1 unphased heterozygous genotype in the gene region (see section 2. Notes on the use of vcf2fasta). 
-3. Bin genotypes into three different VCFs.  
-    a. Pass-filter genotypes with unphased heterozygous genotypes removed  
-    b. Fail-filter genotypes  
-    c. Pass-filter unphased heterozygous genotypes. These will be reported as they will not be able to be applied during haplotype reconstruction with vcf2fasta  
 
+2. Send all symbolic variants to <sample>_<gene>.symbolic.vcf.gz. These variant types (e.g., TRID, BND, DUP, INV) are not currently compatible with vcf2fasta. These variants will not participate in quality filtering or be used downstream, but are kept for record. 
+
+3. Apply hard filters to all non-symbolic variants and send QC-pass variants to <sample>_<gene>.PASS.vcf.gz and QC-fail variants to <sample>_<gene>.FAIL.vcf.gz. The hard filters for SNVs are QUAL>=10, GQ>=20, and DP>=10. The hard filters for bcftools indels are GQ>=10 and DP>=10. GQ is allowed to be missing. Sawfish non-symbolic SV genotypes (e.g., insertion, deletion) are filtered separately, scanning only for FILTER=PASS. 
+
+4. Count heterozgyous genotypes to address edge-case of a single heterozygous genotype that is unphased. If there is only one heterozygous genotype and it is unphased, generate a whitespace expression that allows it to be retained. 
+
+5. Filter the QC-pass genotypes (<sample>_<gene>.PASS.vcf.gz) to remove unphased heterozygous genotypes. If there is only one heterozygous genotype, and it is unphased, it will be retained due to the whitespace expression. The QC-pass genotypes with unphased heterozygous genotypes removed is <sample>_<gene>.PASS_phased.vcf.gz. Unphased heterozygous genotypes will be sent to <sample>_<gene>.PASS_unphased_hets.vcf.gz. 
+
+Both symbolic genotypes and unphased QC-pass heterozygous genotypes that overlap an HLA gene will be reported. These records cannot be incorporated into the vcf2fasta haplotype reconstruction, but may confer important information. 
 ## 2. Notes on the use of vcf2fasta. 
 
 The vcf2fasta included in hla_resolve/data was originally written by Santiago Sanchez-Ramirez https://github.com/santiagosnchez/vcf2fasta. Unfortunately, it is no longer maintained. Quanyu Chen (yeeus) forked the repository and made some updates https://github.com/yeeus/vcf2fasta. This is the base version that is included under hla_resolve/data/vcf2fasta/, with a few minor edits of my own.
