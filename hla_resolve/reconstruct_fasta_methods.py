@@ -434,19 +434,28 @@ def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail
 		'GT="2/1"', 'GT="2/3"', 'GT="3/2"'
 	]
 
-	# unphased PASS variants always use the positive filter
-	unphased_expr = " || ".join(het_clauses)
-
 	if allow_single_unphased:
-		rec = unphased_hets[0]     # <-- critical fix
-		chrom = rec.chrom
-		pos   = rec.pos
+		# one heterozygous site, unphased → treat as fully phased
+		chosen = unphased_hets[0]
+		chrom = chosen.chrom
+		pos   = chosen.pos
 
+		# NEGATED form for "keep all non-hets"
 		negated = " && ".join([f'{c.replace("=", "!=")}' for c in het_clauses])
+
+		# whitelist the one unphased site so it remains in phased VCF
 		whitelist = f'(CHROM="{chrom}" && POS={pos})'
 
 		keep_expr = f'({negated}) || {whitelist}'
+
+		# IMPORTANT: prevent *anything* from being written to pass_unphased
+		unphased_expr = 'GT="9/9"'     # matches nothing
+
 	else:
+		# Normal case: send all heterozygous unphased variants to pass_unphased
+		unphased_expr = " || ".join(het_clauses)
+
+		# phased variants = everything NOT matching the het genotypes
 		keep_expr = " && ".join([f'{c.replace("=", "!=")}' for c in het_clauses])
 
 	# extract unphased PASS
