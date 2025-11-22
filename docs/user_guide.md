@@ -10,7 +10,7 @@ Following phasing with HiPhase or longphase, the SNV and SV VCFs are merged and 
 
 3. Apply hard filters to all non-symbolic variants and send QC-pass variants to <sample>_<gene>.PASS.vcf.gz and QC-fail variants to <sample>_<gene>.FAIL.vcf.gz. The hard filters for SNVs are QUAL>=10, GQ>=20, and DP>=10. The hard filters for bcftools indels are GQ>=10 and DP>=10. GQ is allowed to be missing. Sawfish non-symbolic SV genotypes (e.g., insertion, deletion) are filtered separately, scanning only for FILTER=PASS. 
 
-4. Count heterozgyous genotypes to address edge-case of a single heterozygous genotype that is unphased. If there is only one heterozygous genotype and it is unphased, generate a whitespace expression that allows it to be retained. 
+4. Count heterozgyous genotypes to address edge-case of a single heterozygous genotype that is unphased. If there is only one heterozygous genotype and it is unphased, generate a whitespace expression that allows it to be retained in the QC-pass phased genotype VCF.
 
 5. Filter the QC-pass genotypes (<sample>_<gene>.PASS.vcf.gz) to remove unphased heterozygous genotypes. If there is only one heterozygous genotype, and it is unphased, it will be retained due to the whitespace expression. The QC-pass genotypes with unphased heterozygous genotypes removed is <sample>_<gene>.PASS_phased.vcf.gz. Unphased heterozygous genotypes will be sent to <sample>_<gene>.PASS_unphased_hets.vcf.gz. 
 
