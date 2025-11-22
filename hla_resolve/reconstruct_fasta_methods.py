@@ -342,132 +342,131 @@ def legacy_filter_vcf_gene(input_vcf, gene, filter_region, pass_vcf, fail_vcf, p
 		print("\n")
 
 def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail_vcf, pass_unphased, filtered_vcf, platform, genotyper, hla_genes_regions_file):
-    # Extract region
-    region_vcf = filtered_vcf.replace(".vcf.gz", f".{gene}.region.vcf.gz")
-    cmd = f"bcftools view -r {filter_region} {input_vcf} -Oz -o {region_vcf}"
-    subprocess.run(cmd, shell=True, check=True)
-    subprocess.run(f"bcftools index -f {region_vcf}", shell=True, check=True)
+	# Extract region
+	region_vcf = filtered_vcf.replace(".vcf.gz", f".{gene}.region.vcf.gz")
+	cmd = f"bcftools view -r {filter_region} {input_vcf} -Oz -o {region_vcf}"
+	subprocess.run(cmd, shell=True, check=True)
+	subprocess.run(f"bcftools index -f {region_vcf}", shell=True, check=True)
 
-    vf = pysam.VariantFile(region_vcf)
-    sym_out = pysam.VariantFile(symbolic_vcf, "wz", header=vf.header)
-    pass_out = pysam.VariantFile(pass_vcf, "wz", header=vf.header)
-    fail_out = pysam.VariantFile(fail_vcf, "wz", header=vf.header)
+	vf = pysam.VariantFile(region_vcf)
+	sym_out = pysam.VariantFile(symbolic_vcf, "wz", header=vf.header)
+	pass_out = pysam.VariantFile(pass_vcf, "wz", header=vf.header)
+	fail_out = pysam.VariantFile(fail_vcf, "wz", header=vf.header)
 
-    # ========== PASS/FAIL CLASSIFICATION ==========
-    for rec in vf:
+	# ========== PASS/FAIL CLASSIFICATION ==========
+	for rec in vf:
 
-        # symbolic
-        if (
-            ("TRID" in rec.info and rec.info["TRID"] not in (None, "", ".")) or
-            rec.alts is None or
-            any(str(a).startswith("<") for a in rec.alts) or
-            any("]" in str(a) or "[" in str(a) for a in rec.alts) or
-            any(set(str(a)) - set("ACGTN") for a in rec.alts)
-        ):
-            sym_out.write(rec)
-            continue
+		# symbolic
+		if (
+			("TRID" in rec.info and rec.info["TRID"] not in (None, "", ".")) or
+			rec.alts is None or
+			any(str(a).startswith("<") for a in rec.alts) or
+			any("]" in str(a) or "[" in str(a) for a in rec.alts) or
+			any(set(str(a)) - set("ACGTN") for a in rec.alts)
+		):
+			sym_out.write(rec)
+			continue
 
-        # sawfish SV
-        rec_id = rec.id or ""
-        if rec_id.startswith("sawfish:") or (
-            "SVTYPE" in rec.info and rec.info["SVTYPE"] not in (None, "", ".")
-        ):
-            if rec.filter.keys() == ["PASS"] or rec.filter.keys() == []:
-                pass_out.write(rec)
-            else:
-                fail_out.write(rec)
-            continue
+		# sawfish SV
+		rec_id = rec.id or ""
+		if rec_id.startswith("sawfish:") or (
+			"SVTYPE" in rec.info and rec.info["SVTYPE"] not in (None, "", ".")
+		):
+			if rec.filter.keys() == ["PASS"] or rec.filter.keys() == []:
+				pass_out.write(rec)
+			else:
+				fail_out.write(rec)
+			continue
 
-        # small variants
-        sample = list(rec.samples.values())[0]
-        dp = sample.get("DP")
-        gq = sample.get("GQ")
-        qual = rec.qual or 0
-        ref = rec.ref
-        alt = rec.alts[0]
+		# small variants
+		sample = list(rec.samples.values())[0]
+		dp = sample.get("DP")
+		gq = sample.get("GQ")
+		qual = rec.qual or 0
+		ref = rec.ref
+		alt = rec.alts[0]
 
-        # DP filter
-        if dp is None or dp < 10:
-            fail_out.write(rec)
-            continue
+		# DP filter
+		if dp is None or dp < 10:
+			fail_out.write(rec)
+			continue
 
-        # SNP
-        if len(ref) == 1 and len(alt) == 1:
-            if gq not in (None, ".") and gq < 20:
-                fail_out.write(rec); continue
-            if qual < 10:
-                fail_out.write(rec); continue
-            pass_out.write(rec); continue
+		# SNP
+		if len(ref) == 1 and len(alt) == 1:
+			if gq not in (None, ".") and gq < 20:
+				fail_out.write(rec); continue
+			if qual < 10:
+				fail_out.write(rec); continue
+			pass_out.write(rec); continue
 
-        # INDEL
-        if gq not in (None, ".") and gq < 10:
-            fail_out.write(rec); continue
-        pass_out.write(rec)
+		# INDEL
+		if gq not in (None, ".") and gq < 10:
+			fail_out.write(rec); continue
+		pass_out.write(rec)
 
-    sym_out.close()
-    pass_out.close()
-    fail_out.close()
+	sym_out.close()
+	pass_out.close()
+	fail_out.close()
 
-    subprocess.run(f"bcftools index -f {symbolic_vcf}", shell=True, check=True)
-    subprocess.run(f"bcftools index -f {pass_vcf}", shell=True, check=True)
-    subprocess.run(f"bcftools index -f {fail_vcf}", shell=True, check=True)
+	subprocess.run(f"bcftools index -f {symbolic_vcf}", shell=True, check=True)
+	subprocess.run(f"bcftools index -f {pass_vcf}", shell=True, check=True)
+	subprocess.run(f"bcftools index -f {fail_vcf}", shell=True, check=True)
 
-    # ========== WHITELIST LOGIC (RESTORED) ==========
-    het_sites = []
-    unphased_hets = []
+	# ========== WHITELIST LOGIC (RESTORED) ==========
+	het_sites = []
+	unphased_hets = []
 
-    pass_vf = pysam.VariantFile(pass_vcf)
-    for rec in pass_vf:
-        sample = list(rec.samples.values())[0]
-        gt = sample.get("GT")
-        if gt is None or None in gt:
-            continue
-        if len(set(gt)) == 2:  # heterozygous
-            het_sites.append(rec)
-            if not sample.phased:
-                unphased_hets.append(rec)
+	pass_vf = pysam.VariantFile(pass_vcf)
+	for rec in pass_vf:
+		sample = list(rec.samples.values())[0]
+		gt = sample.get("GT")
+		if gt is None or None in gt:
+			continue
+		if len(set(gt)) == 2:  # heterozygous
+			het_sites.append(rec)
+			if not sample.phased:
+				unphased_hets.append(rec)
 
-    allow_single_unphased = (len(het_sites) == 1 and len(unphased_hets) == 1)
+	allow_single_unphased = (len(het_sites) == 1 and len(unphased_hets) == 1)
 
-    if allow_single_unphased:
-        rec = unphased_hets[0]
-        chrom = rec.chrom
-        pos = rec.pos
-        whitelist = f'(CHROM="{chrom}" && POS={pos})'
+	if allow_single_unphased:
+		rec = unphased_hets[0]
+		chrom = rec.chrom
+		pos = rec.pos
+		whitelist = f'(CHROM="{chrom}" && POS={pos})'
 
-        het_expr = 'GT="0/1" || GT="1/0" || GT="1/2" || GT="2/1" || GT="2/3" || GT="3/2"'
+		het_expr = 'GT="0/1" || GT="1/0" || GT="1/2" || GT="2/1" || GT="2/3" || GT="3/2"'
+		unphased_expr = 'GT="9/9"'
 
-        unphased_expr = 'GT="9/9"'
+		# CORRECT bcftools syntax:
+		keep_expr = f'!( {het_expr} ) || {whitelist}'
 
-        # IMPORTANT: bcftools requires (!( ... ))
-        keep_expr = f'((!( {het_expr} )) || {whitelist})'
+	else:
+		het_expr = 'GT="0/1" || GT="1/0" || GT="1/2" || GT="2/1" || GT="2/3" || GT="3/2"'
+		unphased_expr = het_expr
 
-    else:
-        het_expr = 'GT="0/1" || GT="1/0" || GT="1/2" || GT="2/1" || GT="2/3" || GT="3/2"'
-        unphased_expr = het_expr
+		# CORRECT bcftools syntax:
+		keep_expr = f'!( {het_expr} )'
 
-        # IMPORTANT: bcftools requires (!( ... ))
-        keep_expr = f'(!( {het_expr} ))'
+	# extract unphased PASS
+	cmd = f"bcftools view -i '{unphased_expr}' {pass_vcf} -Oz -o {pass_unphased}"
+	subprocess.run(cmd, shell=True, check=True)
+	subprocess.run(f"bcftools index -f {pass_unphased}", shell=True, check=True)
 
-    # extract unphased PASS
-    cmd = f"bcftools view -i '{unphased_expr}' {pass_vcf} -Oz -o {pass_unphased}"
-    subprocess.run(cmd, shell=True, check=True)
-    subprocess.run(f"bcftools index -f {pass_unphased}", shell=True, check=True)
+	# extract phased PASS (final filtered VCF)
+	cmd = f"bcftools view -i '{keep_expr}' {pass_vcf} -Oz -o {filtered_vcf}"
+	subprocess.run(cmd, shell=True, check=True)
+	subprocess.run(f"bcftools index -f {filtered_vcf}", shell=True, check=True)
 
-    # extract phased PASS (final filtered VCF)
-    cmd = f"bcftools view -i '{keep_expr}' {pass_vcf} -Oz -o {filtered_vcf}"
-    subprocess.run(cmd, shell=True, check=True)
-    subprocess.run(f"bcftools index -f {filtered_vcf}", shell=True, check=True)
+	# ========== PRINT UNPHASED RECORDS NEATLY ==========
+	unph = pysam.VariantFile(pass_unphased)
+	records = [rec for rec in unph]
 
-    # ========== PRINT UNPHASED RECORDS NEATLY ==========
-    unph = pysam.VariantFile(pass_unphased)
-    records = [rec for rec in unph]
-
-    if records:
-        print(f"\nUnphased PASS variants in {gene}:\n")
-        for rec in records:
-            print(str(rec).strip())
-        print()
+	if records:
+		print(f"\nUnphased PASS variants in {gene}:\n")
+		for rec in records:
+			print(str(rec).strip())
+		print()
 
 def run_vcf2fasta(vcf2fasta, input_vcf, input_gff, reference_genome, output_dir, gene, feature):
 	gene_id = gene.lower().replace("-", "_")
