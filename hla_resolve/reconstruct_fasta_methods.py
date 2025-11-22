@@ -429,24 +429,25 @@ def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail
 
 	allow_single_unphased = (len(het_sites) == 1 and len(unphased_hets) == 1)
 
+	het_clauses = [
+		'GT="0/1"', 'GT="1/0"', 'GT="1/2"',
+		'GT="2/1"', 'GT="2/3"', 'GT="3/2"'
+	]
+
+	# unphased PASS variants always use the positive filter
+	unphased_expr = " || ".join(het_clauses)
+
 	if allow_single_unphased:
-		rec = unphased_hets[0]
+		rec = unphased_hets[0]     # <-- critical fix
 		chrom = rec.chrom
-		pos = rec.pos
+		pos   = rec.pos
+
+		negated = " && ".join([f'{c.replace("=", "!=")}' for c in het_clauses])
 		whitelist = f'(CHROM="{chrom}" && POS={pos})'
 
-		het_expr = 'GT="0/1" || GT="1/0" || GT="1/2" || GT="2/1" || GT="2/3" || GT="3/2"'
-		unphased_expr = 'GT="9/9"'
-
-		# CORRECT bcftools syntax:
-		keep_expr = f'!( {het_expr} ) || {whitelist}'
-
+		keep_expr = f'({negated}) || {whitelist}'
 	else:
-		het_expr = 'GT="0/1" || GT="1/0" || GT="1/2" || GT="2/1" || GT="2/3" || GT="3/2"'
-		unphased_expr = het_expr
-
-		# CORRECT bcftools syntax:
-		keep_expr = f'!( {het_expr} )'
+		keep_expr = " && ".join([f'{c.replace("=", "!=")}' for c in het_clauses])
 
 	# extract unphased PASS
 	cmd = f"bcftools view -i '{unphased_expr}' {pass_vcf} -Oz -o {pass_unphased}"
