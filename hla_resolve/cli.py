@@ -55,10 +55,10 @@ def main():
     # Build workflow configuration from sample object
     workflow_config = build_workflow_config(sample)
     
-    # if workflow_config['platform'] == "PACBIO":
-    #     preprocess_pacbio_sample(config=workflow_config)
-    # elif workflow_config['platform'] == "ONT":
-    #     preprocess_ont_sample(config=workflow_config)
+    if workflow_config['platform'] == "PACBIO":
+        preprocess_pacbio_sample(config=workflow_config)
+    elif workflow_config['platform'] == "ONT":
+        preprocess_ont_sample(config=workflow_config)
     
     # Check if variant calling was successful before proceeding to HLA resolution
     if os.path.exists(workflow_config['snv_vcf']):
