@@ -387,7 +387,7 @@ def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail
 		alt = rec.alts[0]
 
 		# DP filter
-		if dp is None or dp < 10:
+		if dp is None or dp < 2:
 			fail_out.write(rec)
 			continue
 
