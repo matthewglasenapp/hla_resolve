@@ -108,6 +108,8 @@ def evaluate_gene_haploblocks(output_file, incomplete_file, sample_ID, genes_bed
 
 		if not fully_phased and gene in genes_of_interest:
 			print(f"{sample_ID} {gene} is not fully phased")
+			print(f"Entering haplotype rescue mode for {gene}!")
+			print(f"Searching for the largest CDS-overlapped haplotype block!")
 			overlapping_haploblocks = []
 			upstream_block = None
 			downstream_block = None
