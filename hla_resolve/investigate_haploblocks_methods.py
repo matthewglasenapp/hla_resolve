@@ -1,3 +1,4 @@
+from operator import ge
 import os
 import csv
 import json
@@ -77,8 +78,12 @@ def evaluate_gene_haploblocks(output_file, incomplete_file, sample_ID, genes_bed
 		if len(gene_het_sites) <= 1:
 			gene_list.append(gene)
 			if gene in genes_of_interest:
-				print(f"{sample_ID} {gene} has {len(gene_het_sites)} heterozygous sites")
-				print(f"Treating as fully phased" + "\n")
+				if len(gene_het_sites) == 0:
+					print(f"{sample_ID} {gene} has 0 QC-Pass heterozygous genotypes")
+					print(f"Treating as fully phased" + "\n")
+				elif len(gene_het_sites) == 1:
+					print(f"{sample_ID} {gene} has 1 QC-Pass heterozygous genotype")
+					print(f"Treating as fully phased" + "\n")
 			continue
 
 		# If the gene is completely spanned by a single haploblock, it is fully phased 
