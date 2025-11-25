@@ -54,6 +54,7 @@ def evaluate_gene_haploblocks(output_file, incomplete_file, sample_ID, genes_bed
 	haploblocks.sort()
 	gene_list = []
 	unphased_genes = dict()
+	do_not_type_genes = []
 	
 	# List of genes with partially overlapping haploblock
 	incomplete_data = []
@@ -183,6 +184,7 @@ def evaluate_gene_haploblocks(output_file, incomplete_file, sample_ID, genes_bed
 				else:
 					print(f"{sample_ID} {gene} no haploblocks span the ARS")
 					print(f"{sample_ID} {gene} typing will not be performed" + "\n")
+					do_not_type_genes.append(gene)
 					# Fall back to largest overlap
 					max_overlap = 0
 					for start, stop in overlapping_extended_haploblocks:
@@ -219,4 +221,4 @@ def evaluate_gene_haploblocks(output_file, incomplete_file, sample_ID, genes_bed
 			csv_writer.writerows(incomplete_data)
 
 	#print(f"Unphased genes: {unphased_genes}")
-	return gene_list, unphased_genes
+	return gene_list, unphased_genes, do_not_type_genes
