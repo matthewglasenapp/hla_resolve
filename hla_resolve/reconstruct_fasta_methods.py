@@ -343,7 +343,10 @@ def legacy_filter_vcf_gene(input_vcf, gene, filter_region, pass_vcf, fail_vcf, p
 
 def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail_vcf, pass_unphased, filtered_vcf, platform, genotyper, hla_genes_regions_file):
 	# Extract region
-	region_vcf = filtered_vcf.replace(".vcf.gz", f".{gene}.region.vcf.gz")
+	base = os.path.basename(filtered_vcf)
+	prefix = base.replace("_PASS_phased.vcf.gz", "")
+	region_vcf = os.path.join(os.path.dirname(filtered_vcf), f"{prefix}.vcf.gz")
+
 	cmd = f"bcftools view -r {filter_region} {input_vcf} -Oz -o {region_vcf}"
 	subprocess.run(cmd, shell=True, check=True)
 	subprocess.run(f"bcftools index -f {region_vcf}", shell=True, check=True)
@@ -427,6 +430,7 @@ def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail
 			if not sample.phased:
 				unphased_hets.append(rec)
 
+	print(f"[DEBUG] {gene}: het={len(het_sites)}, unphased={len(unphased_hets)}")
 	allow_single_unphased = (len(het_sites) == 1 and len(unphased_hets) == 1)
 
 	het_clauses = [
@@ -489,16 +493,10 @@ def run_vcf2fasta(vcf2fasta, input_vcf, input_gff, reference_genome, output_dir,
 	subprocess.run(vcf2fasta_cmd, shell = True, check = True)
 
 def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA_bases, stop_codons, unphased_genes=None, gene_dict=None, CDS_dict=None, gff_dir=None):
-	print("\n")
-	print(f"DEBUG: Current working directory: {os.getcwd()}")
-	print(f"DEBUG: Looking for FASTA files in: {vcf2fasta_output_dir}")
-	
 	# Use subprocess.run with capture_output to avoid race conditions with temporary files
 	find_cmd = f"find {vcf2fasta_output_dir} -type f"
-	print(f"DEBUG: Running command: {find_cmd}")
 	result = subprocess.run(find_cmd, shell=True, check=True, capture_output=True, text=True)
 	fasta_files = result.stdout.strip().split('\n') if result.stdout.strip() else []
-	print(f"DEBUG: Found {len(fasta_files)} FASTA files")
 	
 	# Check if any FASTA files were found
 	if not fasta_files:
