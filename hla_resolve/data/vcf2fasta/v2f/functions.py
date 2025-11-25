@@ -83,15 +83,15 @@ def getSequences(
 		vrec_list.sort(key=lambda r: r.pos, reverse=True)
 
 		for vrec in vrec_list:
-			print("DEBUG_REVERSED",
-				  "gene=", gene,
-				  "chrom=", chrom,
-				  "start=", start,
-				  "end=", end,
-				  "vrec.pos=", vrec.pos,
-				  "ref=", vrec.ref,
-				  "alt=", vrec.alts,
-				  file=sys.stderr)
+			# print("DEBUG_REVERSED",
+			# 	  "gene=", gene,
+			# 	  "chrom=", chrom,
+			# 	  "start=", start,
+			# 	  "end=", end,
+			# 	  "vrec.pos=", vrec.pos,
+			# 	  "ref=", vrec.ref,
+			# 	  "alt=", vrec.alts,
+			# 	  file=sys.stderr)
 
 			varsites += 1
 
