@@ -85,7 +85,7 @@ Matt note to self: If an updated version of vcf2fasta is used in a future versio
     +     raise ValueError("No phased genotypes found to determine phasing.")
     ```
 
-5. I made minor edits to the indel-handling code in v2f/functions.py. The original version applied variants from low to high genomic coordinates and used a running offset to adjust positions after insertions and deletions. This breaks when a SNP and an indel overlap, because the sequence is modified before the indel’s position is calculated, causing the indel to be skipped. The fix was to remove the shifting offset entirely and apply the variants from right to left (highest to lowest coordinate).
+5. I made minor edits to the indel-handling code in v2f/functions.py. The original version applied variants from low to high genomic coordinates and used a running offset to adjust positions after insertions and deletions. I noticed this can break when a SNP and an indel overlap, causing the indel to be skipped. The fix was to remove the shifting offset entirely and apply the variants from right to left (highest to lowest coordinate).
 
 ```diff
 -        posadd = 0
