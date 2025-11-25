@@ -81,6 +81,17 @@ def getSequences(
 		posadd = 0
 		for vrec in vcf.fetch(chrom, start, end):
 			print("DEBUG VREC", gene, chrom, start, end, "rec.pos=", vrec.pos, "REF=", vrec.ref, "ALT=", vrec.alts, file=sys.stderr)
+			print(
+			"DEBUG",
+			"gene=", gene,
+			"chrom=", chrom,
+			"start=", start,
+			"end=", end,
+			"vrec.pos=", vrec.pos,
+			"ref=", vrec.ref,
+			"alt=", vrec.alts,
+			"posadd=", posadd,
+			file=sys.stderr)
 			# count variants within feature
 			varsites += 1
 			# get seq position of variant
