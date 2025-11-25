@@ -76,34 +76,41 @@ def getSequences(
 		refseq = ref.fetch(chrom, start, end).upper()
 		# propagate reference sequence to all samples
 		for sample in seqs[featname].keys(): tmpseqs[sample] = refseq
-		# initialize posiitive or negative postions to extend
-		# in case of indels
-		posadd = 0
-		for vrec in vcf.fetch(chrom, start, end):
-			print("DEBUG VREC", gene, chrom, start, end, "rec.pos=", vrec.pos, "REF=", vrec.ref, "ALT=", vrec.alts, file=sys.stderr)
-			print(
-			"DEBUG",
-			"gene=", gene,
-			"chrom=", chrom,
-			"start=", start,
-			"end=", end,
-			"vrec.pos=", vrec.pos,
-			"ref=", vrec.ref,
-			"alt=", vrec.alts,
-			"posadd=", posadd,
-			file=sys.stderr)
-			# count variants within feature
+		# --- NEW BLOCK: FIX FOR INDEL COORDINATE DRIFT ---
+		vrec_list = list(vcf.fetch(chrom, start, end))
+
+		# sort from highest to lowest coordinate
+		vrec_list.sort(key=lambda r: r.pos, reverse=True)
+
+		for vrec in vrec_list:
+			print("DEBUG_REVERSED",
+				  "gene=", gene,
+				  "chrom=", chrom,
+				  "start=", start,
+				  "end=", end,
+				  "vrec.pos=", vrec.pos,
+				  "ref=", vrec.ref,
+				  "alt=", vrec.alts,
+				  file=sys.stderr)
+
 			varsites += 1
-			# get seq position of variant
-			pos = vrec.pos - start - 1 + posadd
-			# get a dict of extended alleles, including indels
-			alleles,max_len = getAlleles(vrec, ploidy, phased, args.addref)
+
+			# compute 0-based index in reference slice
+			pos = vrec.pos - start - 1
+
+			alleles, max_len = getAlleles(vrec, ploidy, phased, args.addref)
 			ref_len = len(vrec.ref)
+
 			for sample in alleles.keys():
-				tmpseqs[sample] = UpdateSeq(alleles, sample, pos, ref_len, tmpseqs[sample])
-			# this is the cumulative number of positions to add if
-			# positions are take or are added to the sequence
-			posadd += max_len - ref_len
+				tmpseqs[sample] = UpdateSeq(
+					alleles,
+					sample,
+					pos,
+					ref_len,
+					tmpseqs[sample]
+				)
+		# --- END NEW BLOCK ---
+
 		# reverse complement sequence if needed
 		if strand == "-":
 			for sample in seqs[featname].keys(): seqs[featname][sample] = seqs[featname][sample] + revcomp(tmpseqs[sample])
