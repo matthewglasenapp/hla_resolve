@@ -22,9 +22,12 @@ def parse_haploblocks(input_vcf, input_haploblock_file, platform,sample_ID, mhc_
 		if sample_name not in record.samples:
 			raise ValueError(f"Sample '{sample_name}' not found in {input_vcf}")
 
-		genotype = record.samples[sample_name]["GT"]
-		if genotype in [(0, 1), (1, 0)]:
-			heterozygous_sites.append(record.pos)
+		gt = record.samples[sample_name]["GT"]
+		if gt is not None and len(gt) == 2 and gt[0] is not None and gt[1] is not None and gt[0] != gt[1]:
+			qual = record.qual or 0
+			gq   = record.samples[sample_name].get("GQ", 0)
+			if qual >= 10 and gq >= 20:
+				heterozygous_sites.append(record.pos)
 
 	#print(f"Sample {sample_name} has {len(heterozygous_sites)} heterozygous extended MHC genotypes")
 
