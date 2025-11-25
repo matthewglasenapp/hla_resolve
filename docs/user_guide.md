@@ -84,3 +84,32 @@ Matt note to self: If an updated version of vcf2fasta is used in a future versio
     +                 return sample.phased
     +     raise ValueError("No phased genotypes found to determine phasing.")
     ```
+
+5. I made minor edits to the indel-handling code in v2f/functions.py. The original version applied variants from low to high genomic coordinates and used a running offset to adjust positions after insertions and deletions. This breaks when a SNP and an indel overlap, because the sequence is modified before the indel’s position is calculated, causing the indel to be skipped. The fix was to remove the shifting offset entirely and apply the variants from right to left (highest to lowest coordinate).
+
+```diff
+-        posadd = 0
+-        for vrec in vcf.fetch(chrom, start, end):
+-            pos = vrec.pos - start - 1 + posadd
+-            alleles, max_len = getAlleles(vrec, ploidy, phased, args.addref)
+-            ref_len = len(vrec.ref)
+-            for sample in alleles.keys():
+-                tmpseqs[sample] = UpdateSeq(alleles, sample, pos, ref_len, tmpseqs[sample])
+-            posadd += (max_len - ref_len)
+
++        vrec_list = list(vcf.fetch(chrom, start, end))
++        vrec_list.sort(key=lambda r: r.pos, reverse=True)
++
++        for vrec in vrec_list:
++            pos = vrec.pos - start - 1
++            alleles, max_len = getAlleles(vrec, ploidy, phased, args.addref)
++            ref_len = len(vrec.ref)
++            for sample in alleles.keys():
++                tmpseqs[sample] = UpdateSeq(
++                    alleles,
++                    sample,
++                    pos,
++                    ref_len,
++                    tmpseqs[sample]
++                )
+```
