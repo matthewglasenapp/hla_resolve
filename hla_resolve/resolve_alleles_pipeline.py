@@ -58,7 +58,6 @@ def resolve_alleles(config):
 	3. HLA typing
 	4. Print results
 	"""	
-	# Step 1: Coverage analysis
 	print("Running coverage analysis...")
 	run_mosdepth(
 		input_file=config['hg38_rmdup_chr6_bam'],
@@ -76,7 +75,6 @@ def resolve_alleles(config):
 		prop_30x_thresh=config['prop_30x_thresh']
 	)
 	
-	# Step 2: FASTA reconstruction
 	print("Reconstructing FASTA sequences")
 	if config['platform'] == "PACBIO":
 		phased_vcf = config['hiphase_joint_vcf']
