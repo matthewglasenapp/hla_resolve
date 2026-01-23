@@ -12,7 +12,7 @@ For detailed usage instructions, configuration options, and explanations of inte
 [HLA-Resolve User Guide](https://github.com/matthewglasenapp/hla_resolve/blob/main/docs/user_guide.md).
 
 #### Input
-A raw, single-sample (demultiplexed) long-read sequencing file in FASTQ or unmapped BAM format. The program automatically detects the input file format and supports both compressed and uncompressed input. Supported sequencing platforms include PacBio and ONT. The tool is compatible with WGS, WES, and targeted sequencing schemes.
+A raw, single-sample (demultiplexed) long-read sequencing file in FASTQ or unmapped BAM format (compressed or uncompressed). Supported platforms include PacBio and ONT. The tool is compatible with WGS, WES, and targeted sequencing schemes.
 
 #### Output(s)
 
