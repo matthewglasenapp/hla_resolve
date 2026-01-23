@@ -1,4 +1,4 @@
-# HLA-Resolve Documentation
+# HLA-Resolve User Guide
 
 Documentation for HLA-Resolve.
 
