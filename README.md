@@ -7,32 +7,30 @@
 
 **Authors:** [Matthew Glasenapp](https://github.com/matthewglasenapp), [Alex Symons](https://github.com/FlyingFish800), [Omar Cornejo](https://github.com/oeco28)
 
-#### Input 
-A raw, single-sample (demultiplexed) long-read sequencing read file in FASTQ or unmapped BAM format. 
+#### Documentation
+For detailed usage instructions, configuration options, and explanations of intermediate files, see the
+[HLA-Resolve User Guide](https://github.com/matthewglasenapp/hla_resolve/blob/main/docs/user_guide.md).
 
-The program automatically detects the input file format and can handle both compressed and uncompressed input. 
-
-The sequencing platforms currently supported are PacBio and ONT. The tool is compatible with WGS, WES, and targeted sequencing schemes.  
+#### Input
+A raw, single-sample (demultiplexed) long-read sequencing file in FASTQ or unmapped BAM format. The program automatically detects the input file format and supports both compressed and uncompressed input. Supported sequencing platforms include PacBio and ONT. The tool is compatible with WGS, WES, and targeted sequencing schemes.
 
 #### Output(s)
 
 **Primary Results**
 
-HLA star allele calls based on the latest IPD-IMGT/HLA database. 
-
-Star allele calls are provided for the following genes:  
+HLA star-allele calls bfor the following genes:
 
 ```
-HLA-A, HLA-B, HLA-C, HLA-DPA1, HLA-DPB1, HLA-DQA1, HLA-DQB1, HLA-DRB1 
+HLA-A, HLA-B, HLA-C, HLA-DPA1, HLA-DPB1, HLA-DQA1, HLA-DQB1, HLA-DRB1
 ```
 
 **Intermediate Files**
-- Haplotagged, mapped BAMs for chomosome 6, which can be visualized with genome browsers, such as IGV
-- Phased VCFs for chomrosome 6
-- Reconstructed haplotype nucleotide sequences for each gene in FASTA format
+- Haplotagged, mapped BAMs for chromosome 6 (for visualization in genome browsers such as IGV)
+- Phased VCFs (chromosome 6 and individual gene)
+- Reconstructed haplotype nucleotide sequences for each HLA gene in FASTA format
 
 #### Runtime and Required Resources
-Depends heavily on the size of the raw sequence reads file and CPU allocation. MHC target capture data should run in < 30min with 6CPU and 20GB RAM. Runtime will take longer with high-coverage WGS and WES, as all reads must be mapped to the human reference genome before restricting downstream analysis to the MHC region of chromosome 6. 
+Runtime depends heavily on input file size and available compute resources. Targeted MHC capture data typically completes in **<30 minutes** using **6 CPUs and 20 GB RAM**. Runtime increases for high-coverage WGS or WES datasets, as all reads are first mapped to the human reference genome prior to restricting downstream analysis to the MHC region on chromosome 6.
 
 #### Planned Features (In Development)
 
