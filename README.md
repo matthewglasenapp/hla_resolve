@@ -14,11 +14,20 @@ Output: HLA star allele calls based on the latest IPD-IMGT/HLA database. Star al
 ```
 HLA-A, HLA-B, HLA-C, HLA-DPA1, HLA-DPB1, HLA-DQA1, HLA-DQB1, HLA-DRB1 
 ```
-We are working to include the other HLA-DRB paralogs in a future release. 
-
 Haplotagged, mapped BAM files for chomosome 6 are provided for visualization with genome browsers such as IGV. Phased VCFs for chomrosome 6 are provided. Reconstructed, haploid (phased) nucleotide sequences are provided for each gene in fasta format. 
 
 Runtime: Depends heavily on the size of the raw sequence reads file and CPU allocation. MHC target capture data should run in < 30min with 6CPU and 20GB RAM. Runtime will take longer with high-coverage WGS and WES, as all reads must be mapped to the human reference genome before restricting downstream analysis to the MHC region of chromosome 6. 
+
+### Planned Features (In Development)
+
+1. HLA typing at P-group resolution
+2. HLA typing for additional HLA Class I protein-coding genes and pseudogenes  
+   (HLA-E, HLA-F, HLA-G; HLA-H, HLA-J, HLA-K, HLA-L, HLA-S, HLA-V, HLA-W)
+3. HLA typing for additional HLA Class II protein-coding genes  
+   (HLA-DRB3, HLA-DRB4, HLA-DRB5)
+4. CYP21A2 star-allele calling
+5. Option to use DeepVariant or Clair3 for genotyping
+
 
 # Installation
 ```
