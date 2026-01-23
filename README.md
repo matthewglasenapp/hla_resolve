@@ -8,7 +8,11 @@
 **Authors:** [Matthew Glasenapp](https://github.com/matthewglasenapp), [Alex Symons](https://github.com/FlyingFish800), [Omar Cornejo](https://github.com/oeco28)
 
 #### Input 
-A raw, single-sample (demultiplexed) long-read sequencing read file in FASTQ or unmapped BAM format. The program automatically detects the input file format and can handle both compressed and uncompressed input. The sequencing platforms currently supported are PacBio and ONT. The tool is compatible with WGS, WES, and targeted sequencing schemes.  
+A raw, single-sample (demultiplexed) long-read sequencing read file in FASTQ or unmapped BAM format. 
+
+The program automatically detects the input file format and can handle both compressed and uncompressed input. 
+
+The sequencing platforms currently supported are PacBio and ONT. The tool is compatible with WGS, WES, and targeted sequencing schemes.  
 
 #### Output(s)
 
