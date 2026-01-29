@@ -11,8 +11,7 @@
 For detailed usage instructions, configuration options, and explanations of intermediate files, see the
 [HLA-Resolve User Guide](https://github.com/matthewglasenapp/hla_resolve/blob/main/docs/user_guide.md).
 
-**⚠️ Note:** HLA-Resolve has been fully validated for PacBio HiFi reads.  
-ONT support is still in development, but available for beta testing.
+**⚠️ Note:** HLA-Resolve has been fully validated for PacBio HiFi reads. ONT support is still in development, but available for beta testing.
 
 #### Input
 A raw, single-sample (demultiplexed) long-read sequencing file in FASTQ or unmapped BAM format (compressed or uncompressed). Supported platforms include PacBio and ONT. The tool is compatible with WGS, WES, and targeted sequencing schemes.
