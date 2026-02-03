@@ -7,18 +7,43 @@
 
 **Authors:** [Matthew Glasenapp](https://github.com/matthewglasenapp), [Alex Symons](https://github.com/FlyingFish800), [Omar Cornejo](https://github.com/oeco28)
 
-Input: A raw, single-sample (demultiplexed) long-read sequencing read file in FASTQ or unmapped BAM format. The program automatically detects the input file format and can handle both compressed and uncompressed input. The sequencing platforms currently supported are PacBio and ONT. The tool is compatible with WGS, WES, and targeted sequencing schemes.  
+#### Documentation
+For detailed usage instructions, configuration options, and explanations of intermediate files, see the
+[HLA-Resolve User Guide](https://github.com/matthewglasenapp/hla_resolve/blob/main/docs/user_guide.md).
 
-Output: HLA star allele calls based on the latest IPD-IMGT/HLA database. Star allele calls are provided for the following genes:  
+**⚠️ Note:** HLA-Resolve has been fully validated for PacBio HiFi reads. ONT support is still in development, but available for beta testing.
+
+#### Input
+A raw, single-sample (demultiplexed) long-read sequencing file in FASTQ or unmapped BAM format (compressed or uncompressed). Supported platforms include PacBio and ONT. The tool is compatible with WGS, WES, and targeted sequencing schemes.
+
+#### Output(s)
+
+**Primary Results**
+
+HLA star-allele calls bfor the following genes:
 
 ```
-HLA-A, HLA-B, HLA-C, HLA-DPA1, HLA-DPB1, HLA-DQA1, HLA-DQB1, HLA-DRB1 
+HLA-A, HLA-B, HLA-C, HLA-DPA1, HLA-DPB1, HLA-DQA1, HLA-DQB1, HLA-DRB1
 ```
-We are working to include the other HLA-DRB paralogs in a future release. 
 
-Haplotagged, mapped BAM files for chomosome 6 are provided for visualization with genome browsers such as IGV. Phased VCFs for chomrosome 6 are provided. Reconstructed, haploid (phased) nucleotide sequences are provided for each gene in fasta format. 
+**Intermediate Files**
+- Haplotagged, mapped BAMs for chromosome 6 (for visualization in genome browsers such as IGV)
+- Phased VCFs (chromosome 6 and individual gene)
+- Reconstructed haplotype nucleotide sequences for each HLA gene in FASTA format
 
-Runtime: Depends heavily on the size of the raw sequence reads file and CPU allocation. MHC target capture data should run in < 30min with 6CPU and 20GB RAM. Runtime will take longer with high-coverage WGS and WES, as all reads must be mapped to the human reference genome before restricting downstream analysis to the MHC region of chromosome 6. 
+#### Runtime and Required Resources
+Runtime depends heavily on input file size and available compute resources. Targeted MHC capture data typically completes in **<30 minutes** using **6 CPUs and 20 GB RAM**. Runtime increases for high-coverage WGS or WES datasets, as all reads are first mapped to the human reference genome prior to restricting downstream analysis to the MHC region on chromosome 6.
+
+#### Planned Features (In Development)
+
+1. HLA typing at P-group resolution
+2. HLA typing for additional HLA Class I protein-coding genes and pseudogenes  
+   (HLA-E, HLA-F, HLA-G; HLA-H, HLA-J, HLA-K, HLA-L, HLA-S, HLA-V, HLA-W)
+3. HLA typing for additional HLA Class II protein-coding genes  
+   (HLA-DRB3, HLA-DRB4, HLA-DRB5)
+4. CYP21A2 star-allele calling
+5. Option to use DeepVariant or Clair3 for genotyping
+
 
 # Installation
 ```
