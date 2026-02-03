@@ -275,6 +275,7 @@ class Samples:
         self.snv_vcf = os.path.join(self.genotypes_dir, f"{self.sample_ID}.vcf.gz")
         self.snv_gvcf = os.path.join(self.genotypes_dir, f"{self.sample_ID}.g.vcf.gz")
         self.sv_vcf = os.path.join(self.sv_dir, f"{self.sample_ID}.SV.vcf.gz")
+        self.sv_svsig = os.path.join(self.sv_dir, f"{self.sample_ID}.svsig.gz")
         self.tr_vcf = os.path.join(self.pbtrgt_dir, f"{self.sample_ID}.TR.vcf.gz") if hasattr(self, 'pbtrgt_dir') else None
         
         # Phased VCF files
@@ -386,6 +387,7 @@ def build_workflow_config(sample):
 		'snv_vcf': sample.snv_vcf,
 		'snv_gvcf': sample.snv_gvcf,
 		'sv_vcf': sample.sv_vcf,
+		'sv_svsig': sample.sv_svsig,
 		'tr_vcf': sample.tr_vcf,
 		'hiphase_snv_vcf': sample.hiphase_snv_vcf,
 		'hiphase_sv_vcf': sample.hiphase_sv_vcf,

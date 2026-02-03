@@ -13,6 +13,7 @@ from .preprocess_methods import (
 	call_variants_bcftools,
 	call_variants_deepvariant,
 	call_variants_clair3,
+	call_structural_variants_pbsv,
 	call_structural_variants_sawfish,
 	genotype_tandem_repeats,
 	phase_genotypes_hiphase,
@@ -176,16 +177,23 @@ def preprocess_pacbio_sample(config):
 				sample_ID=config['sample_ID']
 			)
 		
-		# call_structural_variants_pbsv(sample)
-		
-		call_structural_variants_sawfish(
+		call_structural_variants_pbsv(
 			input_bam=config['hg38_rmdup_chr6_bam'],
-			small_variant_calls=config['snv_vcf'],
-			output_vcf=config['sv_vcf'],
-			sv_dir=config['sv_dir'],
-			sawfish=config['sawfish'],
+			output_svsig=config['sv_svsig'],
+			output_vcf=config['sv_vcf'].replace('.vcf.gz', '.vcf'),
+			threads=config['threads'],
+			tandem_repeat_bed=config['tandem_repeat_bed'],
 			reference_fasta=config['reference_genome']
 		)
+
+		# call_structural_variants_sawfish(
+		# 	input_bam=config['hg38_rmdup_chr6_bam'],
+		# 	small_variant_calls=config['snv_vcf'],
+		# 	output_vcf=config['sv_vcf'],
+		# 	sv_dir=config['sv_dir'],
+		# 	sawfish=config['sawfish'],
+		# 	reference_fasta=config['reference_genome']
+		# )
 		
 		genotype_tandem_repeats(
 			input_bam=config['hg38_rmdup_chr6_bam'],

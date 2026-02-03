@@ -4,7 +4,7 @@ import textwrap
 import argparse
 import sys
 from .sample_manager import Samples
-from .utils import check_required_commands
+from .utils import check_required_commands, setup_logging
 from .sample_manager import build_workflow_config
 from .ont_pipeline import preprocess_ont_sample
 from .pacbio_pipeline import preprocess_pacbio_sample
@@ -44,6 +44,8 @@ def main():
     # For public release: hardcode aligner and genotyper
     args.aligner = "minimap2"
     args.genotyper = "bcftools"
+
+    setup_logging(output_dir=args.output_dir, sample_name=args.sample_name)
 
     # Check that all required tools are installed
     check_required_commands()
