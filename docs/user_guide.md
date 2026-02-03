@@ -151,7 +151,7 @@ Following phasing with HiPhase or longphase, the SNV and SV VCFs are merged and 
 
 2. Send all symbolic variants to SAMPLE_GENE.symbolic.vcf.gz. These variant types (e.g., TRID, BND, DUP, INV) are not currently compatible with vcf2fasta. These variants will not participate in quality filtering or be used downstream, but are kept for record. 
 
-3. Apply hard filters to all non-symbolic variants and send QC-pass variants to sample_gene.PASS.vcf.gz and QC-fail variants to SAMPLE_GENE.FAIL.vcf.gz. The hard filters for SNVs are QUAL>=10, GQ>=20, and DP>=10. The hard filters for bcftools indels are GQ>=10 and DP>=10. GQ is allowed to be missing. Sawfish non-symbolic SV genotypes (e.g., insertion, deletion) are filtered separately, scanning only for FILTER=PASS. 
+3. Apply hard filters to all non-symbolic variants and send QC-pass variants to sample_gene.PASS.vcf.gz and QC-fail variants to SAMPLE_GENE.FAIL.vcf.gz. The hard filters for SNVs are QUAL>=10, GQ>=20, and DP>=10. The hard filters for bcftools indels are GQ>=10 and DP>=10. GQ is allowed to be missing. Pbsv non-symbolic SV genotypes (e.g., insertion, deletion) are filtered separately, scanning only for FILTER=PASS. 
 
 4. Count heterozgyous genotypes to address edge-case of a single heterozygous genotype that is unphased. If there is only one heterozygous genotype and it is unphased, generate a whitespace expression that allows it to be retained in the QC-pass phased genotype VCF.
 
