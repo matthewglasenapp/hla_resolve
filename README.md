@@ -118,7 +118,7 @@ Intermediate files will be written to the following dirctories. The user can spe
 | `fastq_trimmed/`          | Fastq reads with adapters/barcodes trimmed, if specified by user. If no trimming is specified, will be a copy of the reads in `fastq_raw/` |
 | `mapped_bam/`             | Contains BAM files from reference genome alignments                        |
 | `genotype_calls/`         | Contains the raw small variant genotype calls (`.vcf.gz`) from the user-specified genotyping tool |
-| `structural_variant_vcf/` | Contains the SV genotype calls from either Sniffles (ONT) or sawfish (PacBio) |
+| `structural_variant_vcf/` | Contains the SV genotype calls from either Sniffles (ONT) or pbsv (PacBio) |
 | `pbtrgt_vcf/`             | Contains the tandem repeat genotypes from TRGT (PacBio-only)               |
 | `phased_vcf/`             | Contains phased genotype calls from joint phasing of small variants, structural variants, and tandem repeat genotypes (PacBio only) |
 | `mosdepth/`               | Contains coverage depth output files from mosdepth for the HLA genes        |
