@@ -151,13 +151,13 @@ Following phasing with HiPhase or longphase, the SNV and SV VCFs are merged and 
 
 2. Send all symbolic variants to SAMPLE_GENE.symbolic.vcf.gz. These variant types (e.g., TRID, BND, DUP, INV) are not currently compatible with vcf2fasta. These variants will not participate in quality filtering or be used downstream, but are kept for record. 
 
-3. Apply hard filters to all non-symbolic variants and send QC-pass variants to sample_gene.PASS.vcf.gz and QC-fail variants to SAMPLE_GENE.FAIL.vcf.gz. The hard filters for SNVs are QUAL>=10, GQ>=20, and DP>=10. The hard filters for bcftools indels are GQ>=10 and DP>=10. GQ is allowed to be missing. Pbsv non-symbolic SV genotypes (e.g., insertion, deletion) are filtered separately, scanning only for FILTER=PASS. 
+3. Apply hard filters to all non-symbolic variants and send QC-pass variants to sample_gene.PASS.vcf.gz and QC-fail variants to SAMPLE_GENE.FAIL.vcf.gz. The hard filters for SNVs are QUAL ≥ 10, GQ ≥ 20, and DP > 2. The hard filters for bcftools indels are GQ ≥ 10 and DP > 2, with GQ allowed to be missing. Pbsv non-symbolic SV genotypes (e.g., insertion, deletion) are filtered separately, scanning only for FILTER=PASS. 
 
-4. Count heterozgyous genotypes to address edge-case of a single heterozygous genotype that is unphased. If there is only one heterozygous genotype and it is unphased, generate a whitespace expression that allows it to be retained in the QC-pass phased genotype VCF.
+4. Count heterozygous genotypes to address edge-case of a single heterozygous genotype that is unphased. If there is only one heterozygous genotype and it is unphased, generate a whitespace expression that allows it to be retained in the QC-pass phased genotype VCF.
 
 5. Filter the QC-pass genotypes (SAMPLE_GENE.PASS.vcf.gz) to remove unphased heterozygous genotypes. If there is only one heterozygous genotype and it is unphased, it will be retained due to the whitelist rule. The QC-pass genotypes with unphased heterozygous genotypes removed are written to SAMPLE_GENE.PASS_phased.vcf.gz. Unphased heterozygous genotypes are written to SAMPLE_GENE.PASS_unphased_hets.vcf.gz.
 
-Both symbolic genotypes and unphased QC-pass heterozygous genotypes that overlap an HLA gene will be reported. These records cannot be incorporated into the vcf2fasta haplotype reconstruction, but may confer important information. 
+6. Both symbolic genotypes and unphased QC-pass heterozygous genotypes that overlap an HLA gene will be reported. These records cannot be incorporated into the vcf2fasta haplotype reconstruction, but may confer important information. 
 
 ## 3. Notes on the use of vcf2fasta. 
 
