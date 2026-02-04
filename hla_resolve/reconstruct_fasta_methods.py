@@ -222,6 +222,11 @@ def filter_vcf_gene_test(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf,
 
 	vf_sv_pass.close()
 
+	# Debug: Print collected SV regions
+	print(f"[SV-OVERLAP] {gene}: Collected {len(sv_regions)} PASS pbsv SV regions for overlap checking")
+	for sv_start, sv_end, sv_haps in sv_regions:
+		print(f"[SV-OVERLAP]   SV region: {sv_start}-{sv_end}, haplotypes: {sv_haps}")
+
 	# Helper function: check if variant overlaps a PASS SV on the same haplotype
 	def overlaps_sv_same_haplotype(pos, ref_len, var_haplotypes):
 		var_end = pos + ref_len - 1
@@ -236,6 +241,7 @@ def filter_vcf_gene_test(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf,
 	pass_out = pysam.VariantFile(pass_vcf, "wz", header=vf.header)
 	fail_out = pysam.VariantFile(fail_vcf, "wz", header=vf.header)
 	sv_overlap_out = pysam.VariantFile(sv_overlap_vcf, "wz", header=vf.header)
+	sv_overlap_count = 0  # Counter for suppressed variants
 
 	# ========== PASS/FAIL CLASSIFICATION ==========
 	for rec in vf:
@@ -277,6 +283,8 @@ def filter_vcf_gene_test(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf,
 
 			if var_haplotypes and overlaps_sv_same_haplotype(rec.pos, len(rec.ref), var_haplotypes):
 				# This small variant overlaps a PASS SV on the same haplotype - write to sv_overlap file
+				sv_overlap_count += 1
+				print(f"[SV-OVERLAP]   Suppressed: {rec.chrom}:{rec.pos} {rec.ref}>{rec.alts[0]} GT={gt} haps={var_haplotypes}")
 				sv_overlap_out.write(rec)
 				continue
 
@@ -318,6 +326,8 @@ def filter_vcf_gene_test(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf,
 	pass_out.close()
 	fail_out.close()
 	sv_overlap_out.close()
+
+	print(f"[SV-OVERLAP] {gene}: Total small variants suppressed due to SV overlap: {sv_overlap_count}")
 
 	subprocess.run(f"bcftools index -f {symbolic_vcf}", shell=True, check=True)
 	subprocess.run(f"bcftools index -f {pass_vcf}", shell=True, check=True)
