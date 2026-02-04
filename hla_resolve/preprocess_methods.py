@@ -398,6 +398,7 @@ def call_variants_bcftools(input_file, output_file, reference_fasta, platform, t
 		f"-f {reference_fasta} -d 1000000 -r chr6:28000000-34000000 "
 		f"-a FORMAT/DP,AD,ADF,ADR,SP {input_file} | "
 		f"bcftools call -mv -f GQ --threads {call_threads} -Ou | "
+		f"bcftools norm -f {reference_fasta} -m -any -Ou | "
 		f"bcftools view -i '(TYPE=\"snp\" && GQ>=20 && QUAL>=10) || (TYPE=\"indel\" && GQ>=10)' "
 		f"-Oz -o {output_file}")		
 
