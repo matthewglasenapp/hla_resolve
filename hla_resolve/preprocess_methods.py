@@ -397,8 +397,11 @@ def call_variants_bcftools(input_file, output_file, reference_fasta, platform, t
 		f"-f {reference_fasta} -d 1000000 -r chr6:28000000-34000000 "
 		f"-a FORMAT/DP,AD,ADF,ADR,SP {input_file} | "
 		f"bcftools call -mv -f GQ --threads {call_threads} -Ou | "
-		f"bcftools view -i '(TYPE=\"snp\" && GQ>=20 && QUAL>=10) || (TYPE=\"indel\" && GQ>=10)' "
-		f"-Oz -o {output_file}")		
+		f"bcftools view -i "
+		f"'(TYPE=\"snp\" && GQ>=20 && QUAL>=10) || "
+		f"(TYPE=\"indel\" && GQ>=10 && ABS(strlen(ALT)-strlen(REF))<=50)' "
+		f"-Oz -o {output_file}"
+	)
 
 	subprocess.run(bcftools_command, shell=True, check=True)
 	subprocess.run(f"tabix -p vcf {output_file}", shell=True, check=True)
