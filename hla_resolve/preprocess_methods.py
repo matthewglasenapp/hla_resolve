@@ -392,6 +392,8 @@ def call_variants_bcftools(input_file, output_file, reference_fasta, platform, t
 	pileup_threads = str(threads // 2)
 	call_threads = str(threads // 2)
 
+	# Keep SNPs with GQ>=20 and QUAL>=10
+	# Keep indels with GQ>=10. Require REF and ALT length <= 50bp and length difference <= 50bp
 	bcftools_command = (
 		f"bcftools mpileup --config {config} --threads {pileup_threads} "
 		f"-f {reference_fasta} -d 1000000 -r chr6:28000000-34000000 "
@@ -405,7 +407,6 @@ def call_variants_bcftools(input_file, output_file, reference_fasta, platform, t
 		f"abs(strlen(REF)-strlen(ALT))<=50)' "
 		f"-Oz -o {output_file}"
 	)
-
 
 	subprocess.run(bcftools_command, shell=True, check=True)
 	subprocess.run(f"tabix -p vcf {output_file}", shell=True, check=True)
