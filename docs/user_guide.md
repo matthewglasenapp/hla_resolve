@@ -256,3 +256,29 @@ Matt note to self: If an updated version of vcf2fasta is used in a future versio
 +                    tmpseqs[sample]
 +                )
 ```
+
+6. Fixed crash when vcf2fasta receives an empty VCF (no variant records). The original code attempted to get sample names from the first variant record, which fails with a `StopIteration` error when the VCF has no variants. The fix retrieves sample names from the VCF header, which is always present.
+
+    **vcf2fasta.py main():**
+
+    ```diff
+    - samples = [ x for x,y in next(vcf.fetch()).samples.items() ]
+    + # get a list of samples from header (works even if VCF has no variants)
+    + samples = list(vcf.header.samples)
+    ```
+
+7. Updated `getPloidy()` to return a default ploidy of 2 (diploid) when the VCF contains no variants, rather than raising an error. This allows vcf2fasta to output reference sequences for genes with no variants.
+
+    **v2f/functions.py `getPloidy()`:**
+
+    ```diff
+      def getPloidy(vcf):
+          for rec in vcf.fetch():
+              for sample in rec.samples.values():
+                  gt = sample.get('GT')
+                  if gt and all(g is not None for g in gt):
+                      return len(gt)
+    -     raise ValueError("No valid genotypes found to infer ploidy.")
+    +     # Default to diploid if no variants found (empty VCF)
+    +     return 2
+    ```
