@@ -392,31 +392,13 @@ def call_variants_bcftools(input_file, output_file, reference_fasta, platform, t
 	pileup_threads = str(threads // 2)
 	call_threads = str(threads // 2)
 
-	# Original flawed command (left for record, leave commented out)
 	bcftools_command = (
 		f"bcftools mpileup --config {config} --threads {pileup_threads} "
 		f"-f {reference_fasta} -d 1000000 -r chr6:28000000-34000000 "
 		f"-a FORMAT/DP,AD,ADF,ADR,SP {input_file} | "
 		f"bcftools call -mv -f GQ --threads {call_threads} -Ou | "
-		f"bcftools norm -f {reference_fasta} -m -any -Ou | "
 		f"bcftools view -i '(TYPE=\"snp\" && GQ>=20 && QUAL>=10) || (TYPE=\"indel\" && GQ>=10)' "
-		f"-Oz -o {output_file}")		
-
-	# Keep SNPs with GQ>=20 and QUAL>=10
-	# Keep indels with GQ>=10. Require REF and ALT length <= 50bp and length difference <= 50bp
-	# bcftools_command = (
-	# 	f"bcftools mpileup --config {config} --threads {pileup_threads} "
-	# 	f"-f {reference_fasta} -d 1000000 -r chr6:28000000-34000000 "
-	# 	f"-a FORMAT/DP,AD,ADF,ADR,SP {input_file} | "
-	# 	f"bcftools call -mv -f GQ --threads {call_threads} -Ou | "
-	# 	f"bcftools norm -f {reference_fasta} -m -any -Ou | "
-	# 	f"bcftools view -i "
-	# 	f"'(TYPE=\"snp\" && GQ>=20 && QUAL>=10) || "
-	# 	f"(TYPE=\"indel\" && GQ>=10 && "
-	# 	f"strlen(REF)<=50 && strlen(ALT)<=50 && "
-	# 	f"abs(strlen(REF)-strlen(ALT))<=50)' "
-	# 	f"-Oz -o {output_file}"
-	# )
+		f"-Oz -o {output_file}")
 
 	subprocess.run(bcftools_command, shell=True, check=True)
 	subprocess.run(f"tabix -p vcf {output_file}", shell=True, check=True)

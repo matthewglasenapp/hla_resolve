@@ -274,17 +274,23 @@ def filter_vcf_gene_test(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf,
 
 		# ========== SV OVERLAP CHECK ==========
 		# Skip non-SV variants that overlap a PASS SV on the same haplotype
-		# Only apply haplotype-aware suppression for phased variants
-		if sample.phased:
+		# Only apply haplotype-aware suppression for phased indels ≥30bp
+		# Never suppress SNPs - they are real variants near SV breakpoints
+		ref_len = len(rec.ref)
+		alt_len = len(rec.alts[0]) if rec.alts else 0
+		indel_size = abs(ref_len - alt_len)
+		is_snp = (ref_len == 1 and alt_len == 1)
+
+		if sample.phased and not is_snp and indel_size >= 30:
 			var_haplotypes = set()
 			for i, allele in enumerate(gt):
 				if allele is not None and allele > 0:
 					var_haplotypes.add(i)
 
 			if var_haplotypes and overlaps_sv_same_haplotype(rec.pos, len(rec.ref), var_haplotypes):
-				# This small variant overlaps a PASS SV on the same haplotype - write to sv_overlap file
+				# This indel overlaps a PASS SV on the same haplotype - write to sv_overlap file
 				sv_overlap_count += 1
-				print(f"[SV-OVERLAP]   Suppressed: {rec.chrom}:{rec.pos} {rec.ref}>{rec.alts[0]} GT={gt} haps={var_haplotypes}")
+				print(f"[SV-OVERLAP]   Suppressed indel ({indel_size}bp): {rec.chrom}:{rec.pos} {rec.ref[:20]}...>{rec.alts[0][:20]}... GT={gt} haps={var_haplotypes}")
 				sv_overlap_out.write(rec)
 				continue
 
