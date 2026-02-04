@@ -43,8 +43,8 @@ def main():
     
     # For public release: hardcode aligner and genotyper
     args.aligner = "minimap2"
-    args.genotyper = "bcftools"
-    #args.genotyper = "deepvariant"
+    #args.genotyper = "bcftools"
+    args.genotyper = "deepvariant"
 
     setup_logging(output_dir=args.output_dir, sample_name=args.sample_name)
 
