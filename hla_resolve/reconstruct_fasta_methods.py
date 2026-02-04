@@ -358,6 +358,12 @@ def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail
 
 	# ========== PASS/FAIL CLASSIFICATION ==========
 	for rec in vf:
+		sample = list(rec.samples.values())[0]
+		gt = sample.get("GT")
+
+		# HARD EXCLUDE — must not exist downstream
+		if gt is None or None in gt:
+			continue
 
 		# symbolic
 		if (
@@ -375,6 +381,14 @@ def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail
 		if rec_id.startswith("sawfish:") or (
 			"SVTYPE" in rec.info and rec.info["SVTYPE"] not in (None, "", ".")
 		):
+			if rec.filter.keys() == ["PASS"] or rec.filter.keys() == []:
+				pass_out.write(rec)
+			else:
+				fail_out.write(rec)
+			continue
+
+		# DeepVariant specific filtering
+		if genotyper == "deepvariant":
 			if rec.filter.keys() == ["PASS"] or rec.filter.keys() == []:
 				pass_out.write(rec)
 			else:
