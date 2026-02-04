@@ -9,7 +9,6 @@ from .investigate_haploblocks_methods import (
 	evaluate_gene_haploblocks
 )
 from .reconstruct_fasta_methods import (
-	filter_vcf_full,
 	filter_vcf_gene,
 	run_vcf2fasta,
 	parse_fastas
@@ -119,19 +118,7 @@ def resolve_alleles(config):
 		input_vcf = config['hiphase_joint_vcf']
 	elif config['platform'] == "ONT":
 		input_vcf = config['longphase_merged_vcf']
-	
-	filter_vcf_full(
-		input_vcf=input_vcf,
-		pass_vcf=config['pass_vcf'],
-		fail_vcf=config['fail_vcf'],
-		pass_unphased=config['pass_unphased_vcf'],
-		filtered_vcf=config['filtered_vcf'],
-		unphased_overlap_tsv=config['unphased_tsv'],
-		platform=config['platform'],
-		genotyper=config['genotyper'],
-		hla_genes_regions_file=config['hla_genes_regions_file']
-	)
-	
+
 	# Filter phased VCF by gene region
 	gene_filtered_vcfs = {}
 	for gene in config['genes_of_interest']:
@@ -146,6 +133,7 @@ def resolve_alleles(config):
 		gene_symbolic_vcf = os.path.join(config['single_gene_vcf_dir'], f"{config['sample_ID']}_{gene}.symbolic.vcf.gz")
 		gene_pass_vcf = os.path.join(config['single_gene_vcf_dir'], f"{config['sample_ID']}_{gene}_PASS.vcf.gz")
 		gene_fail_vcf = os.path.join(config['single_gene_vcf_dir'], f"{config['sample_ID']}_{gene}_FAIL.vcf.gz")
+		gene_sv_overlap_vcf = os.path.join(config['single_gene_vcf_dir'], f"{config['sample_ID']}_{gene}_sv_overlap.vcf.gz")
 		gene_pass_unphased_vcf = os.path.join(config['single_gene_vcf_dir'], f"{config['sample_ID']}_{gene}_PASS_UNPHASED.vcf.gz")
 		gene_filtered_vcf = os.path.join(config['single_gene_vcf_dir'], f"{config['sample_ID']}_{gene}_PASS_phased.vcf.gz")
 
@@ -156,6 +144,7 @@ def resolve_alleles(config):
 			symbolic_vcf=gene_symbolic_vcf,
 			pass_vcf=gene_pass_vcf,
 			fail_vcf=gene_fail_vcf,
+			sv_overlap_vcf=gene_sv_overlap_vcf,
 			pass_unphased=gene_pass_unphased_vcf,
 			filtered_vcf=gene_filtered_vcf,
 			platform=config['platform'],
