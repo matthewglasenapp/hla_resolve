@@ -259,7 +259,7 @@ Matt note to self: If an updated version of vcf2fasta is used in a future versio
 
 6. Fixed crash when vcf2fasta receives an empty VCF (no variant records). The original code attempted to get sample names from the first variant record, which fails with a `StopIteration` error when the VCF has no variants. The fix retrieves sample names from the VCF header, which is always present.
 
-    **vcf2fasta.py line 104:**
+    **vcf2fasta.py main():**
 
     ```diff
     - samples = [ x for x,y in next(vcf.fetch()).samples.items() ]
