@@ -5,7 +5,162 @@ from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio import SeqIO
 
-def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail_vcf, sv_overlap_vcf, pass_unphased, filtered_vcf, platform, genotyper, hla_genes_regions_file):
+def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail_vcf, pass_unphased, filtered_vcf, platform, genotyper, hla_genes_regions_file):
+	# Extract region
+	base = os.path.basename(filtered_vcf)
+	prefix = base.replace("_PASS_phased.vcf.gz", "")
+	region_vcf = os.path.join(os.path.dirname(filtered_vcf), f"{prefix}.vcf.gz")
+
+	cmd = f"bcftools view -r {filter_region} {input_vcf} -Oz -o {region_vcf}"
+	subprocess.run(cmd, shell=True, check=True)
+	subprocess.run(f"bcftools index -f {region_vcf}", shell=True, check=True)
+
+	vf = pysam.VariantFile(region_vcf)
+	sym_out = pysam.VariantFile(symbolic_vcf, "wz", header=vf.header)
+	pass_out = pysam.VariantFile(pass_vcf, "wz", header=vf.header)
+	fail_out = pysam.VariantFile(fail_vcf, "wz", header=vf.header)
+
+	# ========== PASS/FAIL CLASSIFICATION ==========
+	for rec in vf:
+		sample = list(rec.samples.values())[0]
+		gt = sample.get("GT")
+
+		# HARD EXCLUDE — must not exist downstream
+		if gt is None or None in gt:
+			continue
+
+		# symbolic
+		if (
+			("TRID" in rec.info and rec.info["TRID"] not in (None, "", ".")) or
+			rec.alts is None or
+			any(str(a).startswith("<") for a in rec.alts) or
+			any("]" in str(a) or "[" in str(a) for a in rec.alts) or
+			any(set(str(a)) - set("ACGTN") for a in rec.alts)
+		):
+			sym_out.write(rec)
+			continue
+
+		# pbsv SV (ID starts with "pbsv.")
+		rec_id = rec.id or ""
+		if rec_id.startswith("pbsv."):
+			if rec.filter.keys() == ["PASS"] or rec.filter.keys() == []:
+				pass_out.write(rec)
+			else:
+				fail_out.write(rec)
+			continue
+
+		# DeepVariant specific filtering
+		if genotyper == "deepvariant":
+			if rec.filter.keys() == ["PASS"] or rec.filter.keys() == []:
+				pass_out.write(rec)
+			else:
+				fail_out.write(rec)
+			continue
+
+		# small variants
+		sample = list(rec.samples.values())[0]
+		dp = sample.get("DP")
+		gq = sample.get("GQ")
+		qual = rec.qual or 0
+		ref = rec.ref
+		alt = rec.alts[0]
+
+		# DP filter
+		if dp is None or dp < 2:
+			fail_out.write(rec)
+			continue
+
+		# SNP
+		if len(ref) == 1 and len(alt) == 1:
+			if gq not in (None, ".") and gq < 20:
+				fail_out.write(rec); continue
+			if qual < 10:
+				fail_out.write(rec); continue
+			pass_out.write(rec); continue
+
+		# INDEL
+		if gq not in (None, ".") and gq < 10:
+			fail_out.write(rec); continue
+		pass_out.write(rec)
+
+	sym_out.close()
+	pass_out.close()
+	fail_out.close()
+
+	subprocess.run(f"bcftools index -f {symbolic_vcf}", shell=True, check=True)
+	subprocess.run(f"bcftools index -f {pass_vcf}", shell=True, check=True)
+	subprocess.run(f"bcftools index -f {fail_vcf}", shell=True, check=True)
+
+	# ========== WHITELIST LOGIC ==========
+	het_sites = []
+	unphased_hets = []
+
+	pass_vf = pysam.VariantFile(pass_vcf)
+	for rec in pass_vf:
+		sample = list(rec.samples.values())[0]
+		gt = sample.get("GT")
+		if gt is None or None in gt:
+			continue
+		if len(set(gt)) == 2:  # heterozygous
+			het_sites.append(rec)
+			if not sample.phased:
+				unphased_hets.append(rec)
+
+	print(f"[DEBUG] {gene}: het={len(het_sites)}, unphased={len(unphased_hets)}")
+	allow_single_unphased = (len(het_sites) == 1 and len(unphased_hets) == 1)
+
+	het_clauses = [
+		'GT="0/1"', 'GT="1/0"', 'GT="1/2"',
+		'GT="2/1"', 'GT="2/3"', 'GT="3/2"'
+	]
+
+	if allow_single_unphased:
+		# one heterozygous site, unphased → treat as fully phased
+		chosen = unphased_hets[0]
+		chrom = chosen.chrom
+		pos   = chosen.pos
+
+		# NEGATED form for "keep all non-hets"
+		negated = " && ".join([f'{c.replace("=", "!=")}' for c in het_clauses])
+
+		# whitelist the one unphased site so it remains in phased VCF
+		whitelist = f'(CHROM="{chrom}" && POS={pos})'
+
+		keep_expr = f'({negated}) || {whitelist}'
+
+		# IMPORTANT: prevent *anything* from being written to pass_unphased
+		unphased_expr = 'GT="9/9"'     # matches nothing
+
+	else:
+		# Normal case: send all heterozygous unphased variants to pass_unphased
+		unphased_expr = " || ".join(het_clauses)
+
+		# phased variants = everything NOT matching the het genotypes
+		keep_expr = " && ".join([f'{c.replace("=", "!=")}' for c in het_clauses])
+
+	# extract unphased PASS
+	cmd = f"bcftools view -i '{unphased_expr}' {pass_vcf} -Oz -o {pass_unphased}"
+	subprocess.run(cmd, shell=True, check=True)
+	subprocess.run(f"bcftools index -f {pass_unphased}", shell=True, check=True)
+
+	# extract phased PASS (final filtered VCF)
+	cmd = f"bcftools view -i '{keep_expr}' {pass_vcf} -Oz -o {filtered_vcf}"
+	subprocess.run(cmd, shell=True, check=True)
+	subprocess.run(f"bcftools index -f {filtered_vcf}", shell=True, check=True)
+
+	# ========== PRINT UNPHASED RECORDS NEATLY ==========
+	unph = pysam.VariantFile(pass_unphased)
+	records = [rec for rec in unph]
+
+	if records:
+		print(f"\nUnphased PASS variants in {gene}:\n")
+		for rec in records:
+			print(str(rec).strip())
+		print()
+
+
+def filter_vcf_gene_test(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail_vcf, sv_overlap_vcf, pass_unphased, filtered_vcf, platform, genotyper, hla_genes_regions_file):
+	"""Version with SV overlap suppression logic - kept for testing"""
 	# Extract region
 	base = os.path.basename(filtered_vcf)
 	prefix = base.replace("_PASS_phased.vcf.gz", "")

@@ -133,7 +133,6 @@ def resolve_alleles(config):
 		gene_symbolic_vcf = os.path.join(config['single_gene_vcf_dir'], f"{config['sample_ID']}_{gene}.symbolic.vcf.gz")
 		gene_pass_vcf = os.path.join(config['single_gene_vcf_dir'], f"{config['sample_ID']}_{gene}_PASS.vcf.gz")
 		gene_fail_vcf = os.path.join(config['single_gene_vcf_dir'], f"{config['sample_ID']}_{gene}_FAIL.vcf.gz")
-		gene_sv_overlap_vcf = os.path.join(config['single_gene_vcf_dir'], f"{config['sample_ID']}_{gene}_sv_overlap.vcf.gz")
 		gene_pass_unphased_vcf = os.path.join(config['single_gene_vcf_dir'], f"{config['sample_ID']}_{gene}_PASS_UNPHASED.vcf.gz")
 		gene_filtered_vcf = os.path.join(config['single_gene_vcf_dir'], f"{config['sample_ID']}_{gene}_PASS_phased.vcf.gz")
 
@@ -144,7 +143,6 @@ def resolve_alleles(config):
 			symbolic_vcf=gene_symbolic_vcf,
 			pass_vcf=gene_pass_vcf,
 			fail_vcf=gene_fail_vcf,
-			sv_overlap_vcf=gene_sv_overlap_vcf,
 			pass_unphased=gene_pass_unphased_vcf,
 			filtered_vcf=gene_filtered_vcf,
 			platform=config['platform'],
