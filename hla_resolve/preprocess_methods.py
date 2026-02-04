@@ -392,6 +392,18 @@ def call_variants_bcftools(input_file, output_file, reference_fasta, platform, t
 	pileup_threads = str(threads // 2)
 	call_threads = str(threads // 2)
 
+	# Original flawed command (left for record)
+	# bcftools_command = (
+    # 	f"bcftools mpileup --config {config} --threads {pileup_threads} "
+    # 	f"-f {reference_fasta} -d 1000000 -r chr6:28000000-34000000 "
+    # 	f"-a FORMAT/DP,AD,ADF,ADR,SP {input_file} | "
+    # 	f"bcftools call -mv -f GQ --threads {call_threads} -Ou | "
+    # 	f"bcftools view -i "
+    # 	f"'(TYPE=\"snp\" && GQ>=20 && QUAL>=10) || "
+    # 	f"(TYPE=\"indel\" && GQ>=10)' "
+    # 	f"-Oz -o {output_file}"
+	# )
+
 	# Keep SNPs with GQ>=20 and QUAL>=10
 	# Keep indels with GQ>=10. Require REF and ALT length <= 50bp and length difference <= 50bp
 	bcftools_command = (
