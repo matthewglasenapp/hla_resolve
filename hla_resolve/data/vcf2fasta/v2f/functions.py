@@ -412,7 +412,8 @@ def getPloidy(vcf):
 			gt = sample.get('GT')
 			if gt and all(g is not None for g in gt):
 				return len(gt)
-	raise ValueError("No valid genotypes found to infer ploidy.")
+	# Default to diploid if no variants found (empty VCF)
+	return 2
 
 def getPhased(vcf):
 	for rec in vcf.fetch():

@@ -100,8 +100,8 @@ def main():
     # read variant file and get samples
     print('Reading VCF file [',args.vcf,'] ... ', end='', sep='')
     vcf = pysam.VariantFile(args.vcf)
-    # get a list of samples
-    samples = [ x for x,y in next(vcf.fetch()).samples.items() ]
+    # get a list of samples from header (works even if VCF has no variants)
+    samples = list(vcf.header.samples)
     print('done')
 
     # read genome reference file
