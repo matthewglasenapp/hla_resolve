@@ -401,10 +401,11 @@ def call_variants_bcftools(input_file, output_file, reference_fasta, platform, t
 		f"bcftools view -i "
 		f"'(TYPE=\"snp\" && GQ>=20 && QUAL>=10) || "
 		f"(TYPE=\"indel\" && GQ>=10 && "
-		f"max(strlen(REF),strlen(ALT))<=50 && "
+		f"strlen(REF)<=50 && strlen(ALT)<=50 && "
 		f"abs(strlen(REF)-strlen(ALT))<=50)' "
 		f"-Oz -o {output_file}"
 	)
+
 
 	subprocess.run(bcftools_command, shell=True, check=True)
 	subprocess.run(f"tabix -p vcf {output_file}", shell=True, check=True)
