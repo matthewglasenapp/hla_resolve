@@ -458,7 +458,19 @@ def assign_classification_to_sample_full_seq(full_sequence, sequence, full_sampl
             best = (class_name, distance, match_len, seq_identity, mismatch_identity)
             same_dist = [class_name]
         elif metric == best_metric:
-            same_dist += [class_name]
+            # Tiebreaker: when using mismatch metric, prefer longer match_length
+            if eval_metric == "mismatch":
+                if match_len > best[2]:
+                    # New candidate has longer alignment - replace best
+                    best = (class_name, distance, match_len, seq_identity, mismatch_identity)
+                    same_dist = [class_name]
+                elif match_len == best[2]:
+                    # Still tied after tiebreaker
+                    same_dist += [class_name]
+                # else: match_len < best[2], ignore this candidate
+            else:
+                # For other metrics, no tiebreaker - just track ties
+                same_dist += [class_name]
 
     if logfile != None:
         logfile.write(f"For {full_sample_name}, assigned {best[0]} dist {best[1]} len {best[2]} id {best[3]} mismatch_id {best[4]} using {eval_metric}\n")

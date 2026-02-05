@@ -408,6 +408,10 @@ def pass_1_classification(common_sequenes, samples, g_groups_dict, truth_data=No
     perfect = 0
     current = 0
 
+    # Track results by gene
+    gene_totals = {}
+    gene_perfect = {}
+
     pass_1_logfile = open("g_group_assignment.log", "w")
 
     for sample_name, sample_sequence in samples.items():
@@ -417,13 +421,31 @@ def pass_1_classification(common_sequenes, samples, g_groups_dict, truth_data=No
 
         result = assign_classification_to_sample(common_sequenes, sample_sequence, sample_name, logfile=pass_1_logfile)
         results[sample_name] = result
+
+        # Track by gene
+        gene = get_gene(sample_name, astrisk=False)
+        if gene not in gene_totals:
+            gene_totals[gene] = 0
+            gene_perfect[gene] = 0
+        gene_totals[gene] += 1
+
         if result[1] == 0:
             perfect += 1
+            gene_perfect[gene] += 1
 
     if pass_1_logfile != None:
         pass_1_logfile.close()
 
-    print(f"INFO: 0 distance g group assignments: {perfect}/{len(samples)}. See logfile for details")
+    print(f"\nINFO: 0 distance g group assignments: {perfect}/{len(samples)}")
+    print("\n" + "="*60)
+    print("PASS 1 G-GROUP ASSIGNMENT BY GENE:")
+    print("="*60)
+    for gene in sorted(gene_totals.keys()):
+        total = gene_totals[gene]
+        perf = gene_perfect[gene]
+        pct = (perf / total * 100) if total > 0 else 0
+        print(f"  {gene:6s}: {perf:3d}/{total:3d} = {pct:5.1f}%")
+    print("="*60 + "\n")
 
     return results
 
@@ -746,26 +768,53 @@ def run_classification_beta(reference_xml_file, samples_file, full_sample_file, 
 
     print("INFO: Beta classification complete. Analyze", output_csv, "to determine optimal metric.")
 
+def run_pass1_only(reference_xml_file, samples_file):
+    """Run only pass 1 classification and output G-group assignment by gene"""
+
+    g_group_dict, p_group_dict, sequence_data = build_g_group_dict(reference_xml_file)
+
+    g_group_common_sequences = get_g_group_exons(g_group_dict, sequence_data)
+    if g_group_common_sequences == None:
+        exit(1)
+
+    samples = load_test_data(samples_file)
+
+    print("INFO: Classifying samples to G group (PASS 1 ONLY)")
+    g_group_classifications = pass_1_classification(g_group_common_sequences, samples, g_group_dict)
+
+    print("INFO: Pass 1 complete. Exiting (--pass1-only mode).")
+
+
 # CLI interface
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Beta HLA Typer - Metric Analysis')
     parser.add_argument('--hla-xml', required=True, help='Input hla.xml reference file')
     parser.add_argument('--samples', required=True, help='Input FASTA file with CDS sequences')
-    parser.add_argument('--full-sequence', required=True, help='Input FASTA file with full gene sequences')
-    parser.add_argument('--truth', required=True, help='Input CSV file containing truth data')
+    parser.add_argument('--full-sequence', required=False, help='Input FASTA file with full gene sequences')
+    parser.add_argument('--truth', required=False, help='Input CSV file containing truth data')
     parser.add_argument("--pass2-metric", default="match_length", help="Metric for pass 2")
     parser.add_argument("--output", default="pass3_metrics.csv", help="Output CSV for metric analysis")
+    parser.add_argument("--pass1-only", action='store_true', help="Only run pass 1 (G-group assignment) and exit")
 
     args = parser.parse_args()
 
-    run_classification_beta(
-        reference_xml_file=args.hla_xml,
-        samples_file=args.samples,
-        full_sample_file=args.full_sequence,
-        truth_file=args.truth,
-        pass2_metric=args.pass2_metric,
-        output_csv=args.output
-    )
+    if args.pass1_only:
+        run_pass1_only(
+            reference_xml_file=args.hla_xml,
+            samples_file=args.samples
+        )
+    else:
+        if not args.full_sequence or not args.truth:
+            print("ERROR: --full-sequence and --truth are required unless using --pass1-only")
+            exit(1)
+        run_classification_beta(
+            reference_xml_file=args.hla_xml,
+            samples_file=args.samples,
+            full_sample_file=args.full_sequence,
+            truth_file=args.truth,
+            pass2_metric=args.pass2_metric,
+            output_csv=args.output
+        )
 
 # Pipeline entrypoint
 def main(reference_xml_file, hla_fasta_dir, sample_ID, truth_file,
