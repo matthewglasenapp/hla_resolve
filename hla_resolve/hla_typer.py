@@ -420,9 +420,7 @@ def assign_classification_to_sample_full_seq(full_sequence, sequence, full_sampl
             distance = distance/match_len
 
         # Sequence identity, 1 - (edit distance/match length)
-        #seq_identity = 1 - (distance / match_len)
-        #Test new identity
-        seq_identity = match_len / (match_len + distance)
+        seq_identity = 1 - (distance / match_len)
 
         # LUT for evaluation metric based on provided choice
         metrics = {"edit_distance": distance, "match_length": match_len, "identity": seq_identity}
@@ -1033,7 +1031,7 @@ if __name__ == "__main__":
     parser.add_argument('--truth', required=False, default=None, help='Input csv file containg truth data, for testing purposes')
     parser.add_argument("--full-sequence", required=False, default=None, help="To enable the third intron/UTR classification stage, supply full sequence data here")
     parser.add_argument("--pass2-metric", required=False, default="match_length", help="Metric used to assign fourth field, 'edit_distance', 'match_length' (default), or 'identity'")
-    parser.add_argument("--pass3-metric", required=False, default="match_length", help="Metric used to assign fourth field, 'edit_distance', 'match_length' (default), or 'identity'")
+    parser.add_argument("--pass3-metric", required=False, default="identity", help="Metric used to assign fourth field, 'edit_distance', 'match_length' (default), or 'identity'")
     parser.add_argument("--ignore-unconfirmed", action='store_true', help="Do not consider 'uncomfirmed' database entries")
     parser.add_argument("--ignore-incomplete", action='store_true', help="Do not consider database entries that are missing any features")
     
