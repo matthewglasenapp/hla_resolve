@@ -231,13 +231,14 @@ def generate_allele_dict(allele_to_g_groups):
 # Inputs:   sequence: sample sequence (str)
 #           sequence_data: reference sequence (str)
 #           get_length: return length (bool) (optional)
-# Output:   edit distance (int), match_length (int) (optional)
-def get_distance(sequence, sequence_data, get_length=False, gap_compressed=True):
+#           get_mismatches: return mismatch count (bool) (optional)
+# Output:   edit distance (int), match_length (int) (optional), mismatches (int) (optional)
+def get_distance(sequence, sequence_data, get_length=False, gap_compressed=True, get_mismatches=False):
     # Don't spend extra time calculating locations unless necessary
     task = "distance"
-    
+
     # If gap compressed enabled, or match length, we need to calculate full path
-    if gap_compressed or get_length:
+    if gap_compressed or get_length or get_mismatches:
         task = "path"
 
     # Ensure first argument is shorter sequence
@@ -247,7 +248,7 @@ def get_distance(sequence, sequence_data, get_length=False, gap_compressed=True)
         results = edlib.align(sequence_data, sequence, task=task, mode="HW")
 
     edit_distance = results["editDistance"]
-    
+
     # If using gap compressed distance, adjust to remove extra distance
     if gap_compressed:
         # Find all instances of insertion or deletion in cigar
@@ -271,8 +272,17 @@ def get_distance(sequence, sequence_data, get_length=False, gap_compressed=True)
             length = int(match.group(1))
             match_length += length
 
+        # If we also want mismatches, calculate and return all three
+        if get_mismatches:
+            mismatches = 0
+            pattern = r"(\d+)(X)"
+            for match in re.finditer(pattern, results["cigar"]):
+                length = int(match.group(1))
+                mismatches += length
+            return edit_distance, match_length, mismatches
+
         return edit_distance, match_length
-    
+
     # Otherwise just return edit distance
     return edit_distance
 
@@ -398,11 +408,11 @@ def assign_classification_to_sample(common_sequenes, sequence, sample_name, logf
 #        full_sample_name: (str) Name of sample
 #        logfile: (file | None) (optional)
 #        norm_distance: (bool)
-#        eval_metric: (str: "edit_distance" | "match_length" | "identity")
+#        eval_metric: (str: "edit_distance" | "match_length" | "identity" | "mismatch")
 # Output: (class, distance, match_length, num_equidistant)
 
 def assign_classification_to_sample_full_seq(full_sequence, sequence, full_sample_name, logfile=None, norm_distance=False, eval_metric="edit_distance"):
-    best = (None, None, None, None) # (class_name, distance, match_length, identity)
+    best = (None, None, None, None, None) # (class_name, distance, match_length, identity, mismatch_identity)
     same_dist = []
 
     hla_gene = get_gene(full_sample_name)
@@ -413,7 +423,7 @@ def assign_classification_to_sample_full_seq(full_sequence, sequence, full_sampl
             continue
 
         # Get distance metrics between test and sample sequences
-        distance, match_len = get_distance(sequence, sequence_data, get_length=True)
+        distance, match_len, mismatches = get_distance(sequence, sequence_data, get_length=True, get_mismatches=True)
 
         # Normalize edit distance by match length if this is enabled
         if norm_distance:
@@ -422,33 +432,36 @@ def assign_classification_to_sample_full_seq(full_sequence, sequence, full_sampl
         # Sequence identity, 1 - (edit distance/match length)
         seq_identity = 1 - (distance / match_len)
 
+        # Mismatch-only identity: matches / (matches + mismatches), ignores gaps
+        mismatch_identity = match_len / (match_len + mismatches) if (match_len + mismatches) > 0 else 0
+
         # LUT for evaluation metric based on provided choice
-        metrics = {"edit_distance": distance, "match_length": match_len, "identity": seq_identity}
-        metric_idxs = {"edit_distance": 1, "match_length": 2, "identity": 3} # Index into saved best match
+        metrics = {"edit_distance": distance, "match_length": match_len, "identity": seq_identity, "mismatch": mismatch_identity}
+        metric_idxs = {"edit_distance": 1, "match_length": 2, "identity": 3, "mismatch": 4} # Index into saved best match
 
         # Get index into best match based on chosen evaluation metric
         metric_idx = metric_idxs[eval_metric]
-        
+
         # Grab desired metric from saved best match
         best_metric = best[metric_idx]
 
         # Get desired metric for the current test sample
         metric = metrics[eval_metric]
 
-        # Either choose to maximize or minimize metric. Min(edit dist), or Max(match len OR identity)
+        # Either choose to maximize or minimize metric. Min(edit dist), or Max(match len OR identity OR mismatch)
         maximize = lambda : metric > best_metric
         minimize = lambda : metric < best_metric
         cmp_fn = minimize if eval_metric == "edit_distance" else maximize
 
         # If first sample, or closest sample, set as best
         if best_metric == None or cmp_fn():
-            best = (class_name, distance, match_len, seq_identity)
+            best = (class_name, distance, match_len, seq_identity, mismatch_identity)
             same_dist = [class_name]
         elif metric == best_metric:
             same_dist += [class_name]
-    
+
     if logfile != None:
-        logfile.write(f"For {full_sample_name}, assigned {best[0]} dist {best[1]} len {best[2]} id {best[3]} using {eval_metric}\n")
+        logfile.write(f"For {full_sample_name}, assigned {best[0]} dist {best[1]} len {best[2]} id {best[3]} mismatch_id {best[4]} using {eval_metric}\n")
         if len(same_dist) > 1:
             logfile.write(f"Equidistant for {full_sample_name}: {', '.join(same_dist)}\n")
 
@@ -978,8 +991,8 @@ def write_json(sequence_data, g_group_dict):
 #           ignore_unconfirmed: (bool) ignore XML database entries marked as 'unconfirmed'
 #           ignore_incomplete: (bool) ignore XML entries missing ANY features
 # Output:   (None) Writes to assignement.log and output.csv files for each stage
-def run_classification(reference_xml_file, samples_file, full_sample_file=None, truth_file=None, 
-                       pass2_metric="edit_distance", pass3_metric="identity", ignore_unconfirmed=False,
+def run_classification(reference_xml_file, samples_file, full_sample_file=None, truth_file=None,
+                       pass2_metric="edit_distance", pass3_metric="mismatch", ignore_unconfirmed=False,
                        ignore_incomplete=False):
 
     truth_data = load_truth_data(truth_file)
@@ -1031,7 +1044,7 @@ if __name__ == "__main__":
     parser.add_argument('--truth', required=False, default=None, help='Input csv file containg truth data, for testing purposes')
     parser.add_argument("--full-sequence", required=False, default=None, help="To enable the third intron/UTR classification stage, supply full sequence data here")
     parser.add_argument("--pass2-metric", required=False, default="match_length", help="Metric used to assign fourth field, 'edit_distance', 'match_length' (default), or 'identity'")
-    parser.add_argument("--pass3-metric", required=False, default="identity", help="Metric used to assign fourth field, 'edit_distance', 'match_length' (default), or 'identity'")
+    parser.add_argument("--pass3-metric", required=False, default="mismatch", help="Metric used to assign fourth field, 'edit_distance', 'match_length', 'identity', or 'mismatch' (default)")
     parser.add_argument("--ignore-unconfirmed", action='store_true', help="Do not consider 'uncomfirmed' database entries")
     parser.add_argument("--ignore-incomplete", action='store_true', help="Do not consider database entries that are missing any features")
     
@@ -1058,7 +1071,7 @@ if __name__ == "__main__":
 #           ignore_incomplete: (bool) ignore XML entries missing ANY features
 # Output:   (None) Writes to assignement.log and output.csv files for each stage
 def main(reference_xml_file, hla_fasta_dir, sample_ID, pass2_metric = "match_length",
-         pass3_metric = "identity", ignore_unconfirmed = False, ignore_incomplete = False):
+         pass3_metric = "mismatch", ignore_unconfirmed = False, ignore_incomplete = False):
     samples_file = os.path.join(hla_fasta_dir, str(sample_ID) + "_HLA_haplotypes_CDS.fasta")
     full_sample_file = os.path.join(hla_fasta_dir, str(sample_ID) + "_HLA_haplotypes_gene.fasta")
 
