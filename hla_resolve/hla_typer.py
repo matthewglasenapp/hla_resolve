@@ -420,7 +420,9 @@ def assign_classification_to_sample_full_seq(full_sequence, sequence, full_sampl
             distance = distance/match_len
 
         # Sequence identity, 1 - (edit distance/match length)
-        seq_identity = 1 - (distance / match_len)
+        #seq_identity = 1 - (distance / match_len)
+        #Test new identity
+        seq_identity = match_len / (match_len + distance)
 
         # LUT for evaluation metric based on provided choice
         metrics = {"edit_distance": distance, "match_length": match_len, "identity": seq_identity}
