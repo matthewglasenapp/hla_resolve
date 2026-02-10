@@ -231,14 +231,13 @@ def generate_allele_dict(allele_to_g_groups):
 # Inputs:   sequence: sample sequence (str)
 #           sequence_data: reference sequence (str)
 #           get_length: return length (bool) (optional)
-#           get_mismatches: return mismatch count (bool) (optional)
-# Output:   edit distance (int), match_length (int) (optional), mismatches (int) (optional)
-def get_distance(sequence, sequence_data, get_length=False, gap_compressed=True, get_mismatches=False):
+# Output:   edit distance (int), match_length (int) (optional)
+def get_distance(sequence, sequence_data, get_length=False, gap_compressed=True, get_detailed=False):
     # Don't spend extra time calculating locations unless necessary
     task = "distance"
-
+    
     # If gap compressed enabled, or match length, we need to calculate full path
-    if gap_compressed or get_length or get_mismatches:
+    if gap_compressed or get_length:
         task = "path"
 
     # Ensure first argument is shorter sequence
@@ -248,9 +247,9 @@ def get_distance(sequence, sequence_data, get_length=False, gap_compressed=True,
         results = edlib.align(sequence_data, sequence, task=task, mode="HW")
 
     edit_distance = results["editDistance"]
-
+    
     # If using gap compressed distance, adjust to remove extra distance
-    if gap_compressed:
+    if gap_compressed or get_distance:
         # Find all instances of insertion or deletion in cigar
         pattern = r"(\d+)(I|D)"
         for match in re.finditer(pattern, results["cigar"]):
@@ -263,8 +262,9 @@ def get_distance(sequence, sequence_data, get_length=False, gap_compressed=True,
                 edit_distance -= length - 1
 
     # If we want to get match length, calculate from cigar and return it too
-    if get_length:
+    if get_length or get_detailed:
         match_length = 0
+        mis_match_length = 0
 
         # Sum all matches
         pattern = r"(\d+)(=)"
@@ -272,17 +272,18 @@ def get_distance(sequence, sequence_data, get_length=False, gap_compressed=True,
             length = int(match.group(1))
             match_length += length
 
-        # If we also want mismatches, calculate and return all three
-        if get_mismatches:
-            mismatches = 0
-            pattern = r"(\d+)(X)"
-            for match in re.finditer(pattern, results["cigar"]):
-                length = int(match.group(1))
-                mismatches += length
-            return edit_distance, match_length, mismatches
+        # Sum all matches
+        pattern = r"(\d+)(X)"
+        for match in re.finditer(pattern, results["cigar"]):
+            length = int(match.group(1))
+            mis_match_length += length
 
-        return edit_distance, match_length
+        if get_detailed:
+            prop_mismatch = match_length / (match_length + mis_match_length) if (match_length + mis_match_length) > 0 else 0
+            return (results["cigar"], results["locations"][0][0], results["locations"][0][1], results["editDistance"], edit_distance, prop_mismatch, match_length)
 
+        return edit_distance, match_length, mis_match_length
+    
     # Otherwise just return edit distance
     return edit_distance
 
@@ -408,9 +409,8 @@ def assign_classification_to_sample(common_sequenes, sequence, sample_name, logf
 #        full_sample_name: (str) Name of sample
 #        logfile: (file | None) (optional)
 #        norm_distance: (bool)
-#        eval_metric: (str: "edit_distance" | "match_length" | "identity" | "mismatch")
+#        eval_metric: (str: "edit_distance" | "match_length" | "identity")
 # Output: (class, distance, match_length, num_equidistant)
-
 def assign_classification_to_sample_full_seq(full_sequence, sequence, full_sample_name, logfile=None, norm_distance=False, eval_metric="edit_distance"):
     best = (None, None, None, None, None) # (class_name, distance, match_length, identity, mismatch_identity)
     same_dist = []
@@ -423,7 +423,7 @@ def assign_classification_to_sample_full_seq(full_sequence, sequence, full_sampl
             continue
 
         # Get distance metrics between test and sample sequences
-        distance, match_len, mismatches = get_distance(sequence, sequence_data, get_length=True, get_mismatches=True)
+        distance, match_len, mismatch_len = get_distance(sequence, sequence_data, get_length=True)
 
         # Normalize edit distance by match length if this is enabled
         if norm_distance:
@@ -432,23 +432,22 @@ def assign_classification_to_sample_full_seq(full_sequence, sequence, full_sampl
         # Sequence identity, 1 - (edit distance/match length)
         seq_identity = 1 - (distance / match_len)
 
-        # Mismatch-only identity: matches / (matches + mismatches), ignores gaps
-        mismatch_identity = match_len / (match_len + mismatches) if (match_len + mismatches) > 0 else 0
+        mismatch_identity = match_len / (match_len + mismatch_len) if (match_len+mismatch_len) > 0 else 0
 
         # LUT for evaluation metric based on provided choice
-        metrics = {"edit_distance": distance, "match_length": match_len, "identity": seq_identity, "mismatch": mismatch_identity}
-        metric_idxs = {"edit_distance": 1, "match_length": 2, "identity": 3, "mismatch": 4} # Index into saved best match
+        metrics = {"edit_distance": distance, "match_length": match_len, "identity": seq_identity, "mismatch_identity": mismatch_identity}
+        metric_idxs = {"edit_distance": 1, "match_length": 2, "identity": 3, "mismatch_identity": 4} # Index into saved best match
 
         # Get index into best match based on chosen evaluation metric
         metric_idx = metric_idxs[eval_metric]
-
+        
         # Grab desired metric from saved best match
         best_metric = best[metric_idx]
 
         # Get desired metric for the current test sample
         metric = metrics[eval_metric]
 
-        # Either choose to maximize or minimize metric. Min(edit dist), or Max(match len OR identity OR mismatch)
+        # Either choose to maximize or minimize metric. Min(edit dist), or Max(match len OR identity)
         maximize = lambda : metric > best_metric
         minimize = lambda : metric < best_metric
         cmp_fn = minimize if eval_metric == "edit_distance" else maximize
@@ -458,22 +457,16 @@ def assign_classification_to_sample_full_seq(full_sequence, sequence, full_sampl
             best = (class_name, distance, match_len, seq_identity, mismatch_identity)
             same_dist = [class_name]
         elif metric == best_metric:
-            # Tiebreaker: when using mismatch metric, prefer longer match_length
-            if eval_metric == "mismatch":
+            if eval_metric == "mismatch_identity":
                 if match_len > best[2]:
-                    # New candidate has longer alignment - replace best
                     best = (class_name, distance, match_len, seq_identity, mismatch_identity)
                     same_dist = [class_name]
                 elif match_len == best[2]:
-                    # Still tied after tiebreaker
                     same_dist += [class_name]
-                # else: match_len < best[2], ignore this candidate
-            else:
-                # For other metrics, no tiebreaker - just track ties
-                same_dist += [class_name]
-
+            else: same_dist += [class_name]
+    
     if logfile != None:
-        logfile.write(f"For {full_sample_name}, assigned {best[0]} dist {best[1]} len {best[2]} id {best[3]} mismatch_id {best[4]} using {eval_metric}\n")
+        logfile.write(f"For {full_sample_name}, assigned {best[0]} dist {best[1]} len {best[2]} id {best[3]} mismatch {best[4]} using {eval_metric}\n")
         if len(same_dist) > 1:
             logfile.write(f"Equidistant for {full_sample_name}: {', '.join(same_dist)}\n")
 
@@ -788,8 +781,11 @@ def pass_2_classification(sequence_data, allele_to_g_groups, results_dict, sampl
 #        exon_only: bool
 # Output: {sample_name: (g_group, distance)}
 @print_time_taken
-def pass_3_classification(sequence_data, results_dict, samples, truth_data=None, metric="identity"):
+def pass_3_classification(sequence_data, results_dict, samples, truth_data=None, metric="identity", generate_query_ref_comp=False):
     print("INFO: Beginning classification pass 3...")
+
+    headers = ["sample", "ref_allele_name", "CIGAR", "alignment_path_start", "alignment_path_stop", "raw_edit", "gc_edit", "prop_mismatch", "match_length"]
+    entries = {header:[] for header in headers}
 
     # Precompute database of all sequences
     all_allele_sequence_db = produce_allele_seq_db(sequence_data, exon_only=False)
@@ -849,6 +845,10 @@ def pass_3_classification(sequence_data, results_dict, samples, truth_data=None,
             perfect += 1
         results[sample_name] = result
 
+
+        pass_3_logfile.writelines(f"Sample: {samples[sample_name]}\n")
+        pass_3_logfile.writelines(f"Result: {allele_sequence_db[result[0]]}\n")
+
         # Get just unique string corresponding to sample
         sample_id = get_sampleid(sample_name)
 
@@ -856,19 +856,35 @@ def pass_3_classification(sequence_data, results_dict, samples, truth_data=None,
         if truth_data != None and sample_id in truth_data.keys():
             dist_to_truth_allele(sample_name, truth_data, all_allele_sequence_db, samples[sample_name], pass_3_logfile)
 
+        if generate_query_ref_comp:
+            detailed_metrics = get_distance(allele_sequence_db[result[0]], samples[sample_name], get_detailed=True)
+            entries["sample"].append(sample_name)
+            entries["ref_allele_name"].append(result[0])
+            entries["CIGAR"].append(detailed_metrics[0])
+            entries["alignment_path_start"].append(detailed_metrics[1])
+            entries["alignment_path_stop"].append(detailed_metrics[2])
+            entries["raw_edit"].append(detailed_metrics[3])
+            entries["gc_edit"].append(detailed_metrics[4])
+            entries["prop_mismatch"].append(detailed_metrics[5])
+            entries["match_length"].append(detailed_metrics[6])
+
     if pass_3_logfile != None:
         pass_3_logfile.close()
 
     print(f"INFO: 0 distance refined allele assignments: {perfect}/{len(samples)}. See logfile for details")
+
+    if generate_query_ref_comp:
+        pd.DataFrame(entries, columns=headers).to_csv("sample_ref_comp.csv", index=False)
 
     return results
 
 # Write results to csv file
 # Input: results: {sample_name: (g_group, distance)}
 #        file_path: path to output file
+#        equidistant_file_path: Path to file which should contain all equidistant options
 # Output: None
 @print_time_taken
-def output_results(results, file_path):
+def output_results(results, file_path, equidistant_file_path=None):
     # Helper functions to get allele
     def get_allele (x):
         if "incomplete" in x:
@@ -883,6 +899,9 @@ def output_results(results, file_path):
 
     # Array containing sample id, and empty slots for allele classification
     data = [[sample] + [None] * len(unique_alleles) for sample in unique_samples]
+
+    if equidistant_file_path:
+        data_equidist = [[sample] + [None] * len(unique_alleles) for sample in unique_samples]
     
     # Go through each entry in the results, and add it to the data array
     for entry, classification in results.items():
@@ -893,6 +912,9 @@ def output_results(results, file_path):
         name_index = unique_samples.index(sample_name)
         allele_index = unique_alleles.index(sample_allele)
         data[name_index][allele_index+1] = classification[0]
+
+        if equidistant_file_path:
+            data_equidist[name_index][allele_index+1] = ";".join(classification[-1])
 
     # Swap alleles 1 and 2 when 2 > 1
     for entry in range(len(data)):
@@ -911,6 +933,9 @@ def output_results(results, file_path):
     df = pd.DataFrame(data, columns=["sample"]+unique_alleles)
     df.to_csv(file_path, index=False)
 
+    if equidistant_file_path != None:
+        df_equidist = pd.DataFrame(data_equidist, columns=["sample"]+unique_alleles)
+        df_equidist.to_csv(equidistant_file_path, index=False)
 
 # Load a dictionary with truth data from the file if provided
 # Inputs:   path: (str | None)
@@ -1003,9 +1028,9 @@ def write_json(sequence_data, g_group_dict):
 #           ignore_unconfirmed: (bool) ignore XML database entries marked as 'unconfirmed'
 #           ignore_incomplete: (bool) ignore XML entries missing ANY features
 # Output:   (None) Writes to assignement.log and output.csv files for each stage
-def run_classification(reference_xml_file, samples_file, full_sample_file=None, truth_file=None,
-                       pass2_metric="edit_distance", pass3_metric="mismatch", ignore_unconfirmed=False,
-                       ignore_incomplete=False):
+def run_classification(reference_xml_file, samples_file, full_sample_file=None, truth_file=None, 
+                       pass2_metric="edit_distance", pass3_metric="mismatch_identity", ignore_unconfirmed=False,
+                       ignore_incomplete=False, write_full=False, generate_query_ref_comp=False):
 
     truth_data = load_truth_data(truth_file)
 
@@ -1031,22 +1056,22 @@ def run_classification(reference_xml_file, samples_file, full_sample_file=None, 
     g_group_classifications = pass_1_classification(g_group_common_sequences, samples, g_group_dict, truth_data=truth_data)
 
     print("INFO: Writing g group results")
-    output_results(g_group_classifications, "g_group_output.csv")
+    output_results(g_group_classifications, "g_group_output.csv", "g_group_output_full.csv" if write_full else None)
 
     print("INFO: Classifying the samples to an allele")
     allele_classifications = pass_2_classification(sequence_data, g_group_dict, g_group_classifications, samples, truth_data=truth_data, metric=pass2_metric)
 
     print("INFO: Writing allele results")
-    output_results(allele_classifications, "3_field_allele_output.csv")
+    output_results(allele_classifications, "3_field_allele_output.csv", "3_field_allele_output_full.csv" if write_full else None)
     
     if full_sample_file == None:
         exit(0)
 
-    print("INFO: Refining allele classifications based on non-coding regions")
-    refined_classifications = pass_3_classification(sequence_data, allele_classifications, full_samples, truth_data=truth_data, metric=pass3_metric)
+    print("INFO: Refining allele classifications based on non-coding regions", pass3_metric)
+    refined_classifications = pass_3_classification(sequence_data, allele_classifications, full_samples, truth_data=truth_data, metric=pass3_metric, generate_query_ref_comp=generate_query_ref_comp)
 
     print("INFO: Writing refined allele results")
-    output_results(refined_classifications, "allele_output.csv")
+    output_results(refined_classifications, "allele_output.csv", "allele_output_full.csv" if write_full else None)
 
 # CLI interface used for testing
 if __name__ == "__main__":
@@ -1055,10 +1080,12 @@ if __name__ == "__main__":
     parser.add_argument('--samples', required=False, default="../data/HLA_Class_I_haplotypes.fa", help='Input FASTA file with full sequences')
     parser.add_argument('--truth', required=False, default=None, help='Input csv file containg truth data, for testing purposes')
     parser.add_argument("--full-sequence", required=False, default=None, help="To enable the third intron/UTR classification stage, supply full sequence data here")
-    parser.add_argument("--pass2-metric", required=False, default="match_length", help="Metric used to assign fourth field, 'edit_distance', 'match_length' (default), or 'identity'")
-    parser.add_argument("--pass3-metric", required=False, default="mismatch", help="Metric used to assign fourth field, 'edit_distance', 'match_length', 'identity', or 'mismatch' (default)")
+    parser.add_argument("--pass2-metric", required=False, default="match_length", help="Metric used to assign fourth field, 'edit_distance', 'match_length' (default), 'identity' or 'mismatch_identity'")
+    parser.add_argument("--pass3-metric", required=False, default="match_length", help="Metric used to assign fourth field, 'edit_distance', 'match_length' (default), 'identity' or 'mismatch_identity'")
     parser.add_argument("--ignore-unconfirmed", action='store_true', help="Do not consider 'uncomfirmed' database entries")
     parser.add_argument("--ignore-incomplete", action='store_true', help="Do not consider database entries that are missing any features")
+    parser.add_argument("--write-full", action='store_true', help="Write all equidistant options to a file that ends with ..._full.csv")
+    parser.add_argument("--generate-query-ref-comp", action='store_true', help="Generate CSV containing query-reference comparisons. File is named 'sample_ref_comp.csv'")
     
     args = parser.parse_args()
 
@@ -1070,8 +1097,10 @@ if __name__ == "__main__":
     pass2_metric = args.pass2_metric
     ignore_unconfirmed = args.ignore_unconfirmed
     ignore_incomplete = args.ignore_incomplete
+    write_full = args.write_full
+    generate_query_ref_comp = args.generate_query_ref_comp
 
-    run_classification(xml_file, samples_file, full_sample_file, truth_file, pass2_metric, pass3_metric, ignore_unconfirmed, ignore_incomplete)
+    run_classification(xml_file, samples_file, full_sample_file, truth_file, pass2_metric, pass3_metric, ignore_unconfirmed, ignore_incomplete, write_full, generate_query_ref_comp)
 
 # Main entrypoint from pipeline
 # Input:    reference_xml_file: (str) Path to XML file with allele reference sequences
@@ -1083,7 +1112,7 @@ if __name__ == "__main__":
 #           ignore_incomplete: (bool) ignore XML entries missing ANY features
 # Output:   (None) Writes to assignement.log and output.csv files for each stage
 def main(reference_xml_file, hla_fasta_dir, sample_ID, pass2_metric = "match_length",
-         pass3_metric = "mismatch", ignore_unconfirmed = False, ignore_incomplete = False):
+         pass3_metric = "mismatch_identity", ignore_unconfirmed = False, ignore_incomplete = False):
     samples_file = os.path.join(hla_fasta_dir, str(sample_ID) + "_HLA_haplotypes_CDS.fasta")
     full_sample_file = os.path.join(hla_fasta_dir, str(sample_ID) + "_HLA_haplotypes_gene.fasta")
 
