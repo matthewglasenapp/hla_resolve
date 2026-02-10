@@ -40,9 +40,10 @@ def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail
 			sym_out.write(rec)
 			continue
 
-		# pbsv SV (ID starts with "pbsv.")
+		# pbsv SV (ID starts with "pbsv.") or Sniffles(Sniffles2) SVs from ONT
 		rec_id = rec.id or ""
-		if rec_id.startswith("pbsv."):
+		rec_id_l = rec_id.lower()
+		if rec_id_l.startswith("pbsv.") or rec_id_l.startswith("sniffles"):
 			if rec.filter.keys() == ["PASS"] or rec.filter.keys() == []:
 				pass_out.write(rec)
 			else:
@@ -175,9 +176,10 @@ def filter_vcf_gene_test(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf,
 	vf_sv_pass = pysam.VariantFile(region_vcf)
 
 	for rec in vf_sv_pass:
-		# Check if this is a pbsv SV call (ID starts with "pbsv.")
+		# Check if this is a pbsv SV call (ID starts with "pbsv.") or a Sniffles/Sniffles2 call
 		rec_id = rec.id or ""
-		if rec_id.startswith("pbsv."):
+		rec_id_l = rec.id.lower() if rec.id else ""
+		if rec_id_l.startswith("pbsv.") or rec_id_l.startswith("sniffles"):
 			# Only include PASS SVs
 			filter_keys = list(rec.filter.keys())
 			if filter_keys == [] or filter_keys == ["PASS"]:
@@ -263,9 +265,10 @@ def filter_vcf_gene_test(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf,
 			sym_out.write(rec)
 			continue
 
-		# pbsv SV (ID starts with "pbsv.")
+		# pbsv SV (ID starts with "pbsv.") or Sniffles/Sniffles2 SVs
 		rec_id = rec.id or ""
-		if rec_id.startswith("pbsv."):
+		rec_id_l = rec_id.lower()
+		if rec_id_l.startswith("pbsv.") or rec_id_l.startswith("sniffles"):
 			if rec.filter.keys() == ["PASS"] or rec.filter.keys() == []:
 				pass_out.write(rec)
 			else:
