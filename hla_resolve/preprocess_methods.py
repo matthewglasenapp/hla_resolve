@@ -637,7 +637,7 @@ def phase_genotypes_longphase(input_bam, input_SNV_vcf, input_SV_vcf, output_blo
 	index_SV_cmd = f"bcftools index {phased_SV_vcf}"
 	tabix_SV_cmd = f"tabix {phased_SV_vcf}"
 
-	haplotagged_bam_prefix = haplotagged_bam.split(".bam")[0]
+	haplotagged_bam_prefix = haplotagged_bam.rsplit(".bam", 1)[0]
 	longphase_haplotag_cmd = f"{longphase} haplotag -r {reference_fasta} -s {phased_vcf} --sv-file {phased_SV_vcf} -b {input_bam} -t {threads} -o {haplotagged_bam_prefix}"
 
 	whatshap_stats_cmd = f"whatshap stats --block-list={output_blocks_file} --gtf={output_gtf_file} {phased_vcf}"
