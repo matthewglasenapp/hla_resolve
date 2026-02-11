@@ -191,6 +191,58 @@ def bait_DRB_paralogs(input_file, output_file, DRB34_reads_file, read_group_stri
 	print(f"DRB3 and DRB4 read IDs written to: {DRB34_reads_file}")
 	print("\n\n")
 
+def classify_DRB_reads(input_file, output_file, DRB34_reads_file, read_group_string, reference_fasta, platform, threads):
+	"""
+	Identify reads originating from DRB3/DRB4 using competitive mapping
+	against a multi-allele reference containing representative genomic
+	sequences from DRB1, DRB3, and DRB4.
+
+	For each read, minimap2 picks the best-matching allele as the primary
+	alignment. If the best match is a DRB3 or DRB4 allele, that read ID
+	is written to DRB34_reads_file for downstream removal by filter_reads().
+	"""
+	print("Classifying DRB reads using multi-allele competitive mapping!")
+
+	if platform == "PACBIO":
+		platform_string = "map-hifi"
+	elif platform == "ONT":
+		platform_string = "map-ont"
+
+	minimap_threads = int(threads * 2 / 3)
+	samtools_threads = threads - minimap_threads
+	minimap_rg_string = "'{}'".format(read_group_string.replace("\t", "\\t"))
+
+	# Map reads against the multi-allele DRB reference (DRB1, DRB3, DRB4 alleles)
+	minimap2_cmd = f"minimap2 -Y -t {minimap_threads} -ax {platform_string} {reference_fasta} {input_file} -R {minimap_rg_string} | samtools sort -@ {samtools_threads} -o {output_file}"
+	index_bam = f"samtools index {output_file}"
+
+	subprocess.run(minimap2_cmd, shell=True, check=True)
+	subprocess.run(index_bam, shell=True, check=True)
+
+	# For each read, check which allele the primary alignment landed on.
+	# If the best-matching allele is DRB3 or DRB4, flag that read for removal.
+	drb34_read_ids = set()
+
+	with pysam.AlignmentFile(output_file, "rb") as bam:
+		for read in bam:
+			# Skip secondary, supplementary, and unmapped reads
+			if read.is_secondary or read.is_supplementary or read.is_unmapped:
+				continue
+
+			# Check which gene the best-matching allele belongs to
+			reference_name = read.reference_name  # e.g. "DRB3*01:01:02:01"
+			if reference_name.startswith("DRB3") or reference_name.startswith("DRB4"):
+				drb34_read_ids.add(read.query_name)
+
+	# Write flagged read IDs to file (same format as bait_DRB_paralogs output)
+	with open(DRB34_reads_file, "w") as f:
+		for read_id in sorted(drb34_read_ids):
+			f.write(read_id + "\n")
+
+	print(f"Classified {len(drb34_read_ids)} reads as DRB3/DRB4")
+	print(f"DRB3 and DRB4 read IDs written to: {DRB34_reads_file}")
+	print("\n\n")
+
 def align_to_reference_vg(vg, input_file, output_file, reheader_bam, sample_ID, read_group_string, reference_gbz, ref_paths, platform, threads):
 	print("Aligning reads to pangenome reference genome with vg giraffe!")
 	

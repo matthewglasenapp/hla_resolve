@@ -10,6 +10,7 @@ from .preprocess_methods import (
 	mark_duplicates_picard,
 	filter_reads,
 	bait_DRB_paralogs,
+	classify_DRB_reads,
 	call_variants_bcftools,
 	call_variants_deepvariant,
 	call_variants_clair3,
@@ -58,12 +59,12 @@ def preprocess_pacbio_sample(config):
 			threads=config['threads'],
 		)
 
-		bait_DRB_paralogs(
+		classify_DRB_reads(
 			input_file=config['trimmed_pbmarkdup_fastq_gz'],
 			output_file=config['hg38_bam_drb'],
 			DRB34_reads_file=config['DRB34_reads_file'],
 			read_group_string=config['read_group_string'],
-			reference_fasta=config['dummy_reference'],
+			reference_fasta=config['drb_multiallele_reference'],
 			platform=config['platform'],
 			threads=config['threads']
 		)
@@ -85,12 +86,12 @@ def preprocess_pacbio_sample(config):
 			threads=config['threads'],
 		)
 
-		bait_DRB_paralogs(
+		classify_DRB_reads(
 			input_file=config['trimmed_fastq'],
 			output_file=config['hg38_bam_drb'],
 			DRB34_reads_file=config['DRB34_reads_file'],
 			read_group_string=config['read_group_string'],
-			reference_fasta=config['dummy_reference'],
+			reference_fasta=config['drb_multiallele_reference'],
 			platform=config['platform'],
 			threads=config['threads']
 		)

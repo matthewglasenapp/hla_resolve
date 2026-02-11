@@ -160,6 +160,12 @@ genes_of_interest = ("HLA-A", "HLA-B", "HLA-C", "HLA-DPA1", "HLA-DPB1", "HLA-DQA
 # The contigs represent exon2 +/- 2kb, with the 270 bases of exon 2 hardmasked with "N"
 dummy_reference = os.path.join(_data_dir, "reference/DRB_1_3_4.fa")
 
+# Multi-allele DRB reference for competitive read classification
+# Contains one full-length genomic sequence per allele group from IPD-IMGT/HLA:
+# 13 DRB1 alleles (groups 01-16), 3 DRB3 alleles, 1 DRB4 allele
+# Used in classify_DRB_reads() function of preprocess_methods.py
+drb_multiallele_reference = os.path.join(_data_dir, "reference/DRB_reference.fa")
+
 # Paths to several software tools installed from source
 sawfish = "/hb/home/mglasena/software/sawfish-v2.0.3-x86_64-unknown-linux-gnu/bin/sawfish"
 

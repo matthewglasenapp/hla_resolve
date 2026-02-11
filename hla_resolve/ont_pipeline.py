@@ -4,6 +4,7 @@ from .preprocess_methods import (
 	trim_adapters,
 	align_to_reference_minimap,
 	bait_DRB_paralogs,
+	classify_DRB_reads,
 	align_to_reference_vg,
 	reassign_mapq,
 	mark_duplicates_picard,
@@ -38,12 +39,12 @@ def preprocess_ont_sample(config):
 		threads=config['threads']
 	)
 
-	bait_DRB_paralogs(
+	classify_DRB_reads(
 		input_file=config['trimmed_fastq'],
 		output_file=config['hg38_bam_drb'],
 		DRB34_reads_file=config['DRB34_reads_file'],
 		read_group_string=config['read_group_string'],
-		reference_fasta=config['dummy_reference'],
+		reference_fasta=config['drb_multiallele_reference'],
 		platform=config['platform'],
 		threads=config['threads']
 	)
