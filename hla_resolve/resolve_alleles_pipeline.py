@@ -201,9 +201,10 @@ def resolve_alleles(config):
 	os.chdir(config['hla_typing_dir'])
 	
 	classify_hla_alleles(
-		reference_xml_file=config['IMGT_XML'], 
-		hla_fasta_dir=config['hla_fasta_dir'], 
-		sample_ID=config['sample_ID']
+		reference_xml_file=config['IMGT_XML'],
+		hla_fasta_dir=config['hla_fasta_dir'],
+		sample_ID=config['sample_ID'],
+		generate_query_ref_comp=True
 	)
 	
 	os.chdir(original_dir)
