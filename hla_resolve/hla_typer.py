@@ -1081,7 +1081,7 @@ if __name__ == "__main__":
     parser.add_argument('--truth', required=False, default=None, help='Input csv file containg truth data, for testing purposes')
     parser.add_argument("--full-sequence", required=False, default=None, help="To enable the third intron/UTR classification stage, supply full sequence data here")
     parser.add_argument("--pass2-metric", required=False, default="match_length", help="Metric used to assign fourth field, 'edit_distance', 'match_length' (default), 'identity' or 'mismatch_identity'")
-    parser.add_argument("--pass3-metric", required=False, default="match_length", help="Metric used to assign fourth field, 'edit_distance', 'match_length' (default), 'identity' or 'mismatch_identity'")
+    parser.add_argument("--pass3-metric", required=False, default="mismatch_identity", help="Metric used to assign fourth field, 'edit_distance', 'match_length', 'identity' or 'mismatch_identity' (default)")
     parser.add_argument("--ignore-unconfirmed", action='store_true', help="Do not consider 'uncomfirmed' database entries")
     parser.add_argument("--ignore-incomplete", action='store_true', help="Do not consider database entries that are missing any features")
     parser.add_argument("--write-full", action='store_true', help="Write all equidistant options to a file that ends with ..._full.csv")
