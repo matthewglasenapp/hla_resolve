@@ -1080,7 +1080,7 @@ if __name__ == "__main__":
     parser.add_argument('--samples', required=False, default="../data/HLA_Class_I_haplotypes.fa", help='Input FASTA file with full sequences')
     parser.add_argument('--truth', required=False, default=None, help='Input csv file containg truth data, for testing purposes')
     parser.add_argument("--full-sequence", required=False, default=None, help="To enable the third intron/UTR classification stage, supply full sequence data here")
-    parser.add_argument("--pass2-metric", required=False, default="match_length", help="Metric used to assign fourth field, 'edit_distance', 'match_length' (default), 'identity' or 'mismatch_identity'")
+    parser.add_argument("--pass2-metric", required=False, default="edit_distance", help="Metric used to assign fourth field, 'edit_distance' (default), 'match_length', 'identity' or 'mismatch_identity'")
     parser.add_argument("--pass3-metric", required=False, default="mismatch_identity", help="Metric used to assign fourth field, 'edit_distance', 'match_length', 'identity' or 'mismatch_identity' (default)")
     parser.add_argument("--ignore-unconfirmed", action='store_true', help="Do not consider 'uncomfirmed' database entries")
     parser.add_argument("--ignore-incomplete", action='store_true', help="Do not consider database entries that are missing any features")
@@ -1111,7 +1111,7 @@ if __name__ == "__main__":
 #           ignore_unconfirmed: (bool) ignore XML database entries marked as 'unconfirmed'
 #           ignore_incomplete: (bool) ignore XML entries missing ANY features
 # Output:   (None) Writes to assignement.log and output.csv files for each stage
-def main(reference_xml_file, hla_fasta_dir, sample_ID, pass2_metric = "match_length",
+def main(reference_xml_file, hla_fasta_dir, sample_ID, pass2_metric = "edit_distance",
          pass3_metric = "mismatch_identity", ignore_unconfirmed = False, ignore_incomplete = False,
          generate_query_ref_comp = False):
     samples_file = os.path.join(hla_fasta_dir, str(sample_ID) + "_HLA_haplotypes_CDS.fasta")

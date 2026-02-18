@@ -292,11 +292,12 @@ def main():
     parser.add_argument('--xml', required=True, help='IMGT XML reference file')
     parser.add_argument('--samples', required=True, help='CDS FASTA (concatenated exons)')
     parser.add_argument('--truth', required=True, help='Truth CSV file')
+    parser.add_argument('--ignore-incomplete', action='store_true', help='Ignore incomplete alleles')
     args = parser.parse_args()
 
     # ── Load shared data (done once) ──
     print("INFO: Loading XML reference...")
-    g_group_dict, p_group_dict, sequence_data = build_g_group_dict(args.xml)
+    g_group_dict, p_group_dict, sequence_data = build_g_group_dict(args.xml, ignore_incomplete=args.ignore_incomplete)
     print(f"INFO: {len(sequence_data)} alleles loaded")
 
     print("INFO: Extracting G-group common sequences...")
