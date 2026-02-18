@@ -214,12 +214,10 @@ def filter_vcf_gene_test(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf,
 				end = rec.info.get("END", rec.pos + len(rec.ref) - 1)
 
 				# For insertions, the SV is a single point in reference coords.
-				# Expand the region by SVLEN so nearby bcftools fragments get caught.
+				# Add small buffer to catch bcftools fragments at slightly offset positions.
 				svtype = rec.info.get("SVTYPE", "")
 				if svtype == "INS":
-					svlen_raw = rec.info.get("SVLEN", 0)
-					svlen = abs(svlen_raw[0]) if isinstance(svlen_raw, tuple) else abs(svlen_raw)
-					end = max(end, start + svlen)
+					end = max(end, start + 5)
 
 				# Which haplotypes carry the SV? (indices where allele > 0)
 				affected_haps = set()
