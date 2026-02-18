@@ -284,7 +284,8 @@ def filter_vcf_gene_test(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf,
 		indel_size = abs(ref_len - alt_len)
 		is_snp = (ref_len == 1 and alt_len == 1)
 
-		if sample.phased and not is_snp:
+		is_homozygous = gt is not None and len(set(a for a in gt if a is not None)) == 1
+		if (sample.phased or is_homozygous) and not is_snp:
 			var_haplotypes = set()
 			for i, allele in enumerate(gt):
 				if allele is not None and allele > 0:
