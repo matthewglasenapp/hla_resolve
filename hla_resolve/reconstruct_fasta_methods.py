@@ -217,7 +217,8 @@ def filter_vcf_gene_test(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf,
 				# Expand the region by SVLEN so nearby bcftools fragments get caught.
 				svtype = rec.info.get("SVTYPE", "")
 				if svtype == "INS":
-					svlen = abs(rec.info.get("SVLEN", 0))
+					svlen_raw = rec.info.get("SVLEN", 0)
+					svlen = abs(svlen_raw[0]) if isinstance(svlen_raw, tuple) else abs(svlen_raw)
 					end = max(end, start + svlen)
 
 				# Which haplotypes carry the SV? (indices where allele > 0)
