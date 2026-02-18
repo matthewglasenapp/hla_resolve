@@ -230,12 +230,18 @@ def filter_vcf_gene_test(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf,
 		print(f"[SV-OVERLAP]   SV region: {sv_start}-{sv_end}, haplotypes: {sv_haps}")
 
 	# Helper function: check if variant overlaps a PASS SV on the same haplotype
-	def overlaps_sv_same_haplotype(pos, ref_len, var_haplotypes):
+	def overlaps_sv_same_haplotype(pos, ref_len, var_haplotypes, indel_size=0):
 		var_end = pos + ref_len - 1
 		for sv_start, sv_end, sv_haplotypes in sv_regions:
-			if pos <= sv_end and var_end >= sv_start:  # position overlap
-				if var_haplotypes & sv_haplotypes:      # haplotype overlap (set intersection)
-					return True
+			if not (var_haplotypes & sv_haplotypes):
+				continue
+			# Strict positional overlap
+			if pos <= sv_end and var_end >= sv_start:
+				return True
+			# Large indels (>=50bp) within 10bp of an SV are almost certainly
+			# the same event with different left-alignment by bcftools vs pbsv
+			if indel_size >= 50 and abs(pos - sv_start) <= 10:
+				return True
 		return False
 
 	vf = pysam.VariantFile(region_vcf)
@@ -291,7 +297,7 @@ def filter_vcf_gene_test(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf,
 				if allele is not None and allele > 0:
 					var_haplotypes.add(i)
 
-			if var_haplotypes and overlaps_sv_same_haplotype(rec.pos, len(rec.ref), var_haplotypes):
+			if var_haplotypes and overlaps_sv_same_haplotype(rec.pos, len(rec.ref), var_haplotypes, indel_size):
 				# This indel overlaps a PASS SV on the same haplotype - write to sv_overlap file
 				sv_overlap_count += 1
 				print(f"[SV-OVERLAP]   Suppressed indel ({indel_size}bp): {rec.chrom}:{rec.pos} {rec.ref[:20]}...>{rec.alts[0][:20]}... GT={gt} haps={var_haplotypes}")
