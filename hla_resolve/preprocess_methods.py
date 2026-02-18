@@ -620,7 +620,7 @@ def merge_hiphase_vcfs(input_snv, input_SV, input_TR, output_vcf, reference_fast
 	print(f"pbtrgt input file: {input_TR}")
 	
 	# Copied directly from Holt et al. 2024 Supplementary Material Program 5. 
-	concat_cmd = f"bcftools concat --allow-overlaps {input_snv} {input_SV} {input_TR} | grep -v 'chrX|chrY' | grep -v 'SVTYPE=BND|SVTYPE=INV|SVTYPE=DUP' | bcftools norm -d none --fasta-ref {reference_fasta} | bcftools sort | bgzip > {output_vcf}"
+	concat_cmd = f"bcftools concat --allow-overlaps {input_snv} {input_SV} {input_TR} | grep -vE 'chrX|chrY' | grep -vE 'SVTYPE=BND|SVTYPE=INV|SVTYPE=DUP' | bcftools norm -d none --fasta-ref {reference_fasta} | bcftools sort | bgzip > {output_vcf}"
 	
 	subprocess.run(concat_cmd, shell=True, check=True)
 
