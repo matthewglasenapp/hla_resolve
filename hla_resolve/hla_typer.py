@@ -249,7 +249,7 @@ def get_distance(sequence, sequence_data, get_length=False, gap_compressed=True,
     edit_distance = results["editDistance"]
     
     # If using gap compressed distance, adjust to remove extra distance
-    if gap_compressed or get_distance:
+    if gap_compressed:
         # Find all instances of insertion or deletion in cigar
         pattern = r"(\d+)(I|D)"
         for match in re.finditer(pattern, results["cigar"]):
@@ -423,7 +423,8 @@ def assign_classification_to_sample_full_seq(full_sequence, sequence, full_sampl
             continue
 
         # Get distance metrics between test and sample sequences
-        distance, match_len, mismatch_len = get_distance(sequence, sequence_data, get_length=True)
+        # gap_compressed=False gives raw edit distance (best performing metric)
+        distance, match_len, mismatch_len = get_distance(sequence, sequence_data, get_length=True, gap_compressed=False)
 
         # Normalize edit distance by match length if this is enabled
         if norm_distance:
