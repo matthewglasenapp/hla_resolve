@@ -15,6 +15,26 @@ def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail
 	subprocess.run(cmd, shell=True, check=True)
 	subprocess.run(f"bcftools index -f {region_vcf}", shell=True, check=True)
 
+	# ========== FIRST PASS: Collect TRGT tandem repeat regions ==========
+	tr_regions = []
+	vf_tr = pysam.VariantFile(region_vcf)
+	for rec in vf_tr:
+		if "TRID" in rec.info and rec.info["TRID"] not in (None, "", "."):
+			tr_start = rec.pos
+			tr_end = rec.info.get("END", rec.pos + len(rec.ref))
+			tr_regions.append((tr_start, tr_end))
+	vf_tr.close()
+
+	if tr_regions:
+		print(f"[TR-OVERLAP] {gene}: Collected {len(tr_regions)} TRGT regions for overlap suppression")
+
+	def overlaps_tr_region(pos, ref_len):
+		var_end = pos + ref_len
+		for tr_start, tr_end in tr_regions:
+			if pos >= tr_start and var_end <= tr_end:
+				return True
+		return False
+
 	vf = pysam.VariantFile(region_vcf)
 	sym_out = pysam.VariantFile(symbolic_vcf, "wz", header=vf.header)
 	pass_out = pysam.VariantFile(pass_vcf, "wz", header=vf.header)
@@ -29,15 +49,21 @@ def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail
 		if gt is None or None in gt:
 			continue
 
-		# symbolic
+		# symbolic — exclude truly symbolic alleles (BND, <DEL>, etc.)
+		# TRGT records with explicit REF/ALT sequences are NOT symbolic
 		if (
-			("TRID" in rec.info and rec.info["TRID"] not in (None, "", ".")) or
 			rec.alts is None or
 			any(str(a).startswith("<") for a in rec.alts) or
 			any("]" in str(a) or "[" in str(a) for a in rec.alts) or
 			any(set(str(a)) - set("ACGTN") for a in rec.alts)
 		):
 			sym_out.write(rec)
+			continue
+
+		# Suppress non-TRGT variants inside TRGT spans (avoid double-counting)
+		is_trgt = "TRID" in rec.info and rec.info["TRID"] not in (None, "", ".")
+		if not is_trgt and tr_regions and overlaps_tr_region(rec.pos, len(rec.ref)):
+			print(f"[TR-OVERLAP]   Suppressed: {rec.chrom}:{rec.pos} {rec.ref[:20]}->{rec.alts[0][:20] if rec.alts else '.'}")
 			continue
 
 		# pbsv SV (ID starts with "pbsv.") or Sniffles(Sniffles2) SVs from ONT
@@ -229,6 +255,24 @@ def filter_vcf_gene_test(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf,
 	for sv_start, sv_end, sv_haps in sv_regions:
 		print(f"[SV-OVERLAP]   SV region: {sv_start}-{sv_end}, haplotypes: {sv_haps}")
 
+	# ========== FIRST PASS (part 2): Collect TRGT tandem repeat regions ==========
+	# TRGT records have explicit REF/ALT allele sequences. Any bcftools-called
+	# variants that fall inside a TRGT span are redundant (the TRGT allele already
+	# captures the correct sequence for the entire repeat region).
+	tr_regions = []  # list of (start, end) — TRGT regions to protect
+	vf_tr_pass = pysam.VariantFile(region_vcf)
+	for rec in vf_tr_pass:
+		if "TRID" in rec.info and rec.info["TRID"] not in (None, "", "."):
+			# TRGT record: use END if available, otherwise POS + len(REF)
+			tr_start = rec.pos
+			tr_end = rec.info.get("END", rec.pos + len(rec.ref))
+			tr_regions.append((tr_start, tr_end))
+	vf_tr_pass.close()
+
+	print(f"[TR-OVERLAP] {gene}: Collected {len(tr_regions)} TRGT regions for overlap suppression")
+	for tr_start, tr_end in tr_regions:
+		print(f"[TR-OVERLAP]   TR region: {tr_start}-{tr_end}")
+
 	# Helper function: check if variant overlaps a PASS SV on the same haplotype
 	def overlaps_sv_same_haplotype(pos, ref_len, var_haplotypes, indel_size=0):
 		var_end = pos + ref_len - 1
@@ -241,6 +285,14 @@ def filter_vcf_gene_test(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf,
 			# Large indels (>=50bp) within 10bp of an SV are almost certainly
 			# the same event with different left-alignment by bcftools vs pbsv
 			if indel_size >= 50 and abs(pos - sv_start) <= 10:
+				return True
+		return False
+
+	# Helper function: check if a non-TRGT variant falls inside a TRGT region
+	def overlaps_tr_region(pos, ref_len):
+		var_end = pos + ref_len
+		for tr_start, tr_end in tr_regions:
+			if pos >= tr_start and var_end <= tr_end:
 				return True
 		return False
 
@@ -260,9 +312,9 @@ def filter_vcf_gene_test(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf,
 		if gt is None or None in gt:
 			continue
 
-		# symbolic
+		# symbolic — exclude truly symbolic alleles (BND, <DEL>, etc.)
+		# TRGT records with explicit REF/ALT sequences are NOT symbolic
 		if (
-			("TRID" in rec.info and rec.info["TRID"] not in (None, "", ".")) or
 			rec.alts is None or
 			any(str(a).startswith("<") for a in rec.alts) or
 			any("]" in str(a) or "[" in str(a) for a in rec.alts) or
@@ -279,6 +331,18 @@ def filter_vcf_gene_test(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf,
 				pass_out.write(rec)
 			else:
 				fail_out.write(rec)
+			continue
+
+		# ========== TR OVERLAP CHECK ==========
+		# Suppress non-TRGT variants that fall entirely inside a TRGT region.
+		# The TRGT record already encodes the correct allele for the whole repeat;
+		# bcftools-called SNVs/indels inside that span are redundant and would
+		# cause double-counting in vcf2fasta.
+		is_trgt = "TRID" in rec.info and rec.info["TRID"] not in (None, "", ".")
+		if not is_trgt and tr_regions and overlaps_tr_region(rec.pos, len(rec.ref)):
+			print(f"[TR-OVERLAP]   Suppressed: {rec.chrom}:{rec.pos} {rec.ref[:20]}->{rec.alts[0][:20] if rec.alts else '.'} (inside TRGT span)")
+			sv_overlap_out.write(rec)
+			sv_overlap_count += 1
 			continue
 
 		# ========== SV OVERLAP CHECK ==========

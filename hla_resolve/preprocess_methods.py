@@ -611,22 +611,41 @@ def phase_genotypes_hiphase(input_bam, input_snv, input_SV, input_TR, output_bam
 	print(f"HiPhase phase blocks written to: {output_blocks_file}")
 	print("\n\n")
 
-# Merge phased SNV (DeepVariant), tandem repeat (TRGT), and structural variant (pbsv) VCFs with bcftools concat 
+# Merge phased SNV (DeepVariant), tandem repeat (TRGT), and structural variant (pbsv) VCFs with bcftools concat
 def merge_hiphase_vcfs(input_snv, input_SV, input_TR, output_vcf, reference_fasta):
 	print("Merging phased DeepVariant, pbsv, and TRGT VCF files!")
 
 	print(f"DeepVariant input file: {input_snv}")
 	print(f"pbsv input file: {input_SV}")
 	print(f"pbtrgt input file: {input_TR}")
-	
-	# Copied directly from Holt et al. 2024 Supplementary Material Program 5. 
-	concat_cmd = f"bcftools concat --allow-overlaps {input_snv} {input_SV} {input_TR} | grep -vE 'chrX|chrY' | grep -vE 'SVTYPE=BND|SVTYPE=INV|SVTYPE=DUP' | bcftools norm -d none --fasta-ref {reference_fasta} | bcftools sort | bgzip > {output_vcf}"
-	
-	subprocess.run(concat_cmd, shell=True, check=True)
 
-	index_cmd = f"tabix {output_vcf}"
-	
-	subprocess.run(index_cmd, shell=True, check=True)
+	# Merge SNV + SV with bcftools norm (normalizes indels, removes dups).
+	# TR records are concatenated WITHOUT norm to preserve explicit allele sequences
+	# that TRGT encodes in REF/ALT. bcftools norm destroys these by left-aligning
+	# and trimming, making them unusable by vcf2fasta.
+	output_dir = os.path.dirname(output_vcf)
+	snv_sv_normed = os.path.join(output_dir, "snv_sv_normed.tmp.vcf.gz")
+
+	# Step 1: Merge and normalize SNV + SV only
+	norm_cmd = f"bcftools concat --allow-overlaps {input_snv} {input_SV} | grep -vE 'chrX|chrY' | grep -vE 'SVTYPE=BND|SVTYPE=INV|SVTYPE=DUP' | bcftools norm -d none --fasta-ref {reference_fasta} | bcftools sort | bgzip > {snv_sv_normed}"
+	subprocess.run(norm_cmd, shell=True, check=True)
+	subprocess.run(f"tabix {snv_sv_normed}", shell=True, check=True)
+
+	# Step 2: Filter TR VCF (remove chrX/chrY) without norm
+	tr_filtered = os.path.join(output_dir, "tr_filtered.tmp.vcf.gz")
+	tr_cmd = f"bcftools view {input_TR} | grep -vE 'chrX|chrY' | bcftools sort | bgzip > {tr_filtered}"
+	subprocess.run(tr_cmd, shell=True, check=True)
+	subprocess.run(f"tabix {tr_filtered}", shell=True, check=True)
+
+	# Step 3: Concat normed SNV/SV with un-normed TR, sort
+	concat_cmd = f"bcftools concat --allow-overlaps {snv_sv_normed} {tr_filtered} | bcftools sort | bgzip > {output_vcf}"
+	subprocess.run(concat_cmd, shell=True, check=True)
+	subprocess.run(f"tabix {output_vcf}", shell=True, check=True)
+
+	# Clean up temp files
+	for tmp in [snv_sv_normed, snv_sv_normed + ".tbi", tr_filtered, tr_filtered + ".tbi"]:
+		if os.path.exists(tmp):
+			os.remove(tmp)
 
 	print(f"Merged VCF written to: {output_vcf}")
 	print("\n\n")
