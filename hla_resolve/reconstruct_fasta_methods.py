@@ -66,6 +66,15 @@ def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail
 			print(f"[TR-OVERLAP]   Suppressed: {rec.chrom}:{rec.pos} {rec.ref[:20]}->{rec.alts[0][:20] if rec.alts else '.'}")
 			continue
 
+		# TRGT records with explicit alleles bypass quality filters (no DP/GQ)
+		if is_trgt:
+			sample_gt = sample.get("GT")
+			gt_str = "|".join(str(a) for a in sample_gt) if sample_gt else "."
+			alts_str = ",".join(str(a)[:30] for a in rec.alts) if rec.alts else "."
+			print(f"[TR-PASS]      {gene} {rec.chrom}:{rec.pos} REF={rec.ref[:30]} ALT={alts_str} GT={gt_str} TRID={rec.info.get('TRID','?')}")
+			pass_out.write(rec)
+			continue
+
 		# pbsv SV (ID starts with "pbsv.") or Sniffles(Sniffles2) SVs from ONT
 		rec_id = rec.id or ""
 		rec_id_l = rec_id.lower()
@@ -343,6 +352,15 @@ def filter_vcf_gene_test(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf,
 			print(f"[TR-OVERLAP]   Suppressed: {rec.chrom}:{rec.pos} {rec.ref[:20]}->{rec.alts[0][:20] if rec.alts else '.'} (inside TRGT span)")
 			sv_overlap_out.write(rec)
 			sv_overlap_count += 1
+			continue
+
+		# TRGT records with explicit alleles bypass quality filters (no DP/GQ)
+		if is_trgt:
+			sample_gt = sample.get("GT")
+			gt_str = "|".join(str(a) for a in sample_gt) if sample_gt else "."
+			alts_str = ",".join(str(a)[:30] for a in rec.alts) if rec.alts else "."
+			print(f"[TR-PASS]      {gene} {rec.chrom}:{rec.pos} REF={rec.ref[:30]} ALT={alts_str} GT={gt_str} TRID={rec.info.get('TRID','?')}")
+			pass_out.write(rec)
 			continue
 
 		# ========== SV OVERLAP CHECK ==========

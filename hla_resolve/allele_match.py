@@ -108,16 +108,16 @@ def pretty_alignment(seq1, seq2, cigar, width=100):
                 j += 1
         elif op == "I":
             for _ in range(length):
-                a1.append("-")
-                a2.append(seq2[j])
-                mid.append(" ")
-                j += 1
-        elif op == "D":
-            for _ in range(length):
                 a1.append(seq1[i])
                 a2.append("-")
                 mid.append(" ")
                 i += 1
+        elif op == "D":
+            for _ in range(length):
+                a1.append("-")
+                a2.append(seq2[j])
+                mid.append(" ")
+                j += 1
 
     lines = []
     for k in range(0, len(a1), width):
@@ -136,47 +136,63 @@ def compute_alignment(seq1, seq2, context=None):
     # Shorter sequence = query (fully aligned),
     # longer sequence = database (free begin/end gaps)
     if len(seq1) <= len(seq2):
-        ref, qry = seq1, seq2
+        shorter, longer = seq1, seq2
     else:
-        ref, qry = seq2, seq1
+        shorter, longer = seq2, seq1
 
-    # --- edlib: true minimum raw edit distance ---
-    edlib_result = edlib.align(ref, qry, mode="HW", task="path")
-    raw_dist = edlib_result["editDistance"]
+    # --- edlib: true minimum edit distance + gap-compressed ---
+    # HW mode: shorter is fully aligned within longer (database ends free)
+    edlib_result = edlib.align(shorter, longer, mode="HW", task="path")
+    edlib_raw = edlib_result["editDistance"]
+    edlib_gc = edlib_raw
+    for length, op in re.findall(r"(\d+)([ID])", edlib_result["cigar"]):
+        length = int(length)
+        if length > 1:
+            edlib_gc -= (length - 1)
 
-    # --- parasail: affine-gap alignment for gap-compressed distance ---
-    # sg_db_de = semi-global with database begin/end gaps free (equivalent to edlib HW)
-    parasail_result = parasail.sg_db_de_trace_striped_sat(
-        ref, qry, PARASAIL_GAP_OPEN, PARASAIL_GAP_EXTEND, PARASAIL_MATRIX
+    # --- parasail: affine-gap NW on edlib-extracted region ---
+    # edlib's HW mode reliably locates where the shorter sequence maps
+    # within the longer. We extract that region and run parasail NW
+    # (global alignment) on the extracted region for biologically
+    # realistic affine-gap distances. This avoids NW force-aligning
+    # flanking sequence when there are large length differences.
+    start, end = edlib_result["locations"][0]
+    db_region = longer[start:end + 1]
+
+    parasail_result = parasail.nw_trace_striped_sat(
+        shorter, db_region, PARASAIL_GAP_OPEN, PARASAIL_GAP_EXTEND, PARASAIL_MATRIX
     )
     cigar = parasail_result.cigar.decode.decode("utf-8")
 
-    # Gap-compressed edit distance from parasail CIGAR:
-    # each mismatch (X) counts as 1, each indel run (I/D) counts as 1
-    gc_dist = 0
+    # Parasail raw = total mismatches + total indel bases
+    # Parasail gap-compressed = mismatches + indel runs (each run counts as 1)
+    parasail_raw = 0
+    parasail_gc = 0
     for length, op in re.findall(r"(\d+)([=XID])", cigar):
         length = int(length)
         if op == "X":
-            gc_dist += length
+            parasail_raw += length
+            parasail_gc += length
         elif op in ("I", "D"):
-            gc_dist += 1
+            parasail_raw += length
+            parasail_gc += 1
 
     aln_len = sum(int(l) for l, op in re.findall(r"(\d+)([=XID])", cigar))
-    identity = 1 - (gc_dist / aln_len) if aln_len > 0 else 0
+    identity = 1 - (parasail_gc / aln_len) if aln_len > 0 else 0
 
-    if gc_dist > DISTANCE_ALERT_THRESHOLD:
+    if parasail_gc > DISTANCE_ALERT_THRESHOLD:
         print("\n" + "=" * 80)
         print("LARGE GAP-COMPRESSED DISTANCE")
         if context:
             print("Context:", context)
-        print("Raw edit distance (edlib):", raw_dist)
-        print("GC edit distance (parasail):", gc_dist)
+        print("Edlib raw / GC:", edlib_raw, "/", edlib_gc)
+        print("Parasail raw / GC:", parasail_raw, "/", parasail_gc)
         print("Alignment length:", aln_len)
         print("CIGAR:", cigar)
-        print(pretty_alignment(ref, qry, cigar, PRETTY_ALIGNMENT_WIDTH))
+        print(pretty_alignment(shorter, db_region, cigar, PRETTY_ALIGNMENT_WIDTH))
         print("=" * 80 + "\n")
 
-    return raw_dist, gc_dist, aln_len, identity
+    return edlib_raw, parasail_raw, edlib_gc, parasail_gc, aln_len, identity
 
 # ---------------------------
 # Core comparison logic
@@ -198,9 +214,9 @@ def compare_haplotypes(sample, gene, capture_alleles):
             capture_alleles[1], ref[0],
             context=f"{sample} {gene} hap2 vs ref"
         )
-        return a1 if a1[1] <= a2[1] else a2
+        return a1 if a1[3] <= a2[3] else a2
 
-    # Diploid reference
+    # Diploid reference — pair by parasail gap-compressed distance (index 3)
     one_one = compute_alignment(
         capture_alleles[0], ref[0],
         context=f"{sample} {gene} hap1 vs ref1"
@@ -209,7 +225,7 @@ def compare_haplotypes(sample, gene, capture_alleles):
         capture_alleles[1], ref[1],
         context=f"{sample} {gene} hap2 vs ref2"
     )
-    sum1 = one_one[1] + two_two[1]
+    sum1 = one_one[3] + two_two[3]
 
     one_two = compute_alignment(
         capture_alleles[0], ref[1],
@@ -219,7 +235,7 @@ def compare_haplotypes(sample, gene, capture_alleles):
         capture_alleles[1], ref[0],
         context=f"{sample} {gene} hap2 vs ref1"
     )
-    sum2 = one_two[1] + two_one[1]
+    sum2 = one_two[3] + two_one[3]
 
     return (
         (*one_one, *two_two)
@@ -239,8 +255,10 @@ def main():
         writer = csv.writer(f)
         writer.writerow([
             "platform", "gene", "sample",
-            "hap_1_raw_dist", "hap_2_raw_dist",
-            "hap_1_gc_dist",  "hap_2_gc_dist",
+            "hap_1_edlib_raw", "hap_2_edlib_raw",
+            "hap_1_parasail_raw", "hap_2_parasail_raw",
+            "hap_1_edlib_gc", "hap_2_edlib_gc",
+            "hap_1_parasail_gc", "hap_2_parasail_gc",
             "alignment_length_1", "alignment_length_2",
             "hap_1_identity", "hap_2_identity"
         ])
@@ -252,15 +270,17 @@ def main():
                     continue
 
                 if len(HPRC_dict[gene][sample]) == 1:
-                    raw1, gc1, l1, i1 = result
-                    raw2 = gc2 = l2 = i2 = "NA"
+                    er1, pr1, egc1, pgc1, l1, i1 = result
+                    er2 = pr2 = egc2 = pgc2 = l2 = i2 = "NA"
                 else:
-                    raw1, gc1, l1, i1, raw2, gc2, l2, i2 = result
+                    er1, pr1, egc1, pgc1, l1, i1, er2, pr2, egc2, pgc2, l2, i2 = result
 
                 writer.writerow([
                     PLATFORM, gene, sample,
-                    raw1, raw2,
-                    gc1, gc2,
+                    er1, er2,
+                    pr1, pr2,
+                    egc1, egc2,
+                    pgc1, pgc2,
                     l1, l2,
                     i1, i2
                 ])
