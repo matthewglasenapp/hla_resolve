@@ -24,6 +24,9 @@ from Bio import SeqIO
 import parasail
 import pandas as pd
 
+import edlib
+import parasail
+
 from hla_typer import (
     build_g_group_dict,
     produce_allele_seq_db,
@@ -132,6 +135,95 @@ def pass_3_parasail(sequence_data, pass2_prefixes, full_samples,
 
     if not quiet:
         print(f"INFO: Pass 3 (parasail) done in {time.time()-start:.0f}s", flush=True)
+    return results
+
+
+# ─────────────────────────────────────────────────────────
+# Hybrid edlib+parasail pass 3 (gap-compressed)
+# ─────────────────────────────────────────────────────────
+
+PARASAIL_MATRIX = parasail.matrix_create("ACGT", 1, -1)
+
+def compute_parasail_gc(query, ref, gap_open=5, gap_extend=1):
+    """Two-stage: edlib HW to locate region, parasail NW for affine-gap scoring."""
+    if len(query) <= len(ref):
+        shorter, longer = query, ref
+    else:
+        shorter, longer = ref, query
+
+    # Stage 1: edlib HW to find mapping location
+    edlib_result = edlib.align(shorter, longer, mode="HW", task="path")
+    start, end = edlib_result["locations"][0]
+    db_region = longer[start:end + 1]
+
+    # Stage 2: parasail NW on extracted region
+    parasail_result = parasail.nw_trace_striped_sat(
+        shorter, db_region, gap_open, gap_extend, PARASAIL_MATRIX
+    )
+    cigar = parasail_result.cigar.decode.decode("utf-8")
+
+    # Gap-compressed: mismatches count individually, each indel run = 1
+    parasail_gc = 0
+    for length, op in re.findall(r"(\d+)([=XID])", cigar):
+        length = int(length)
+        if op == "X":
+            parasail_gc += length
+        elif op in ("I", "D"):
+            parasail_gc += 1
+
+    aln_len = sum(int(l) for l, op in re.findall(r"(\d+)([=XID])", cigar))
+    return parasail_gc, aln_len
+
+
+def pass_3_edlib_parasail(sequence_data, pass2_prefixes, full_samples,
+                          gap_open=5, gap_extend=1, quiet=False):
+    """Pass 3 using edlib+parasail hybrid: edlib locates region, parasail NW scores it."""
+    if not quiet:
+        print(f"INFO: Pass 3 (edlib+parasail, go={gap_open}, ge={gap_extend})...", flush=True)
+    start = time.time()
+
+    results = {}
+
+    for sample_name, three_field in pass2_prefixes.items():
+        if sample_name not in full_samples:
+            continue
+
+        candidates = get_candidates(three_field, sequence_data)
+        if not candidates:
+            results[sample_name] = (three_field, 0, 0, 0, 0, [])
+            continue
+
+        candidate_db = produce_allele_seq_db(sequence_data, selected_alleles=candidates, exon_only=False)
+        query = str(full_samples[sample_name])
+
+        best_allele = None
+        best_gc = None
+        best_aln_len = 0
+        same_dist = []
+
+        for allele_name, ref_seq in candidate_db.items():
+            ref = str(ref_seq)
+            gc, aln_len = compute_parasail_gc(query, ref, gap_open, gap_extend)
+
+            if best_gc is None or gc < best_gc:
+                best_gc = gc
+                best_allele = allele_name
+                best_aln_len = aln_len
+                same_dist = [allele_name]
+            elif gc == best_gc:
+                # Tiebreaker: prefer longer alignment
+                if aln_len > best_aln_len:
+                    best_allele = allele_name
+                    best_aln_len = aln_len
+                    same_dist = [allele_name]
+                elif aln_len == best_aln_len:
+                    same_dist.append(allele_name)
+
+        identity = 1 - (best_gc / best_aln_len) if best_aln_len > 0 else 0
+        results[sample_name] = (best_allele, best_gc, best_aln_len, identity, 0, same_dist)
+
+    if not quiet:
+        print(f"INFO: Pass 3 (edlib+parasail) done in {time.time()-start:.0f}s", flush=True)
     return results
 
 
@@ -352,6 +444,12 @@ def main():
     edlib_results = pass_3_edlib(sequence_data, pass2_prefixes, full_samples, metric="mismatch_identity")
     c, t, gc, gt, w = score_concordance(edlib_results, truth)
     print_concordance("EDLIB (mismatch_identity)", c, t, gc, gt, w)
+
+    # ── Hybrid edlib+parasail ──
+    hybrid_results = pass_3_edlib_parasail(sequence_data, pass2_prefixes, full_samples,
+                                           gap_open=5, gap_extend=1)
+    c, t, gc, gt, w = score_concordance(hybrid_results, truth)
+    print_concordance("EDLIB+PARASAIL hybrid (go=5, ge=1, minimize parasail_gc)", c, t, gc, gt, w)
 
     # ── Parasail ──
     if args.sweep:
