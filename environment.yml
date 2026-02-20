@@ -8,6 +8,7 @@ dependencies:
   - bcftools=1.21.0
   - cutadapt=5.1
   - fastplong=0.2.2
+  - freebayes=1.3.10
   - hiphase=1.5.0
   - openjdk=8
   - pbmarkdup=1.2.0

@@ -60,6 +60,7 @@ def check_required_commands():
         "bam2fastq",
         "bcftools",
         "bgzip",
+        "freebayes",
         "cutadapt",
         "fastplong",
         # FASTQC only for dev

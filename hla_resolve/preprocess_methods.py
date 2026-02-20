@@ -458,6 +458,27 @@ def call_variants_bcftools(input_file, output_file, reference_fasta, platform, t
 	print(f"VCF written to {output_file}")
 	print("\n\n")
 
+# Call SNVs and small indels with FreeBayes
+def call_variants_freebayes(input_bam, output_vcf, reference_fasta):
+	print("Calling SNVs and small INDELs with FreeBayes!")
+	print(f"FreeBayes input file: {input_bam}")
+
+	freebayes_cmd = (
+		f"freebayes "
+		f"-f {reference_fasta} "
+		f"-r chr6:28000000-34000000 "
+		f"--genotype-qualities "
+		f"{input_bam} | "
+		f"bcftools view -i '(INFO/TYPE=\"snp\" && GQ>=20 && QUAL>=10) || (INFO/TYPE!=\"snp\" && GQ>=10)' | "
+		f"bgzip > {output_vcf}"
+	)
+
+	subprocess.run(freebayes_cmd, shell=True, check=True)
+	subprocess.run(f"tabix -p vcf {output_vcf}", shell=True, check=True)
+
+	print(f"VCF written to {output_vcf}")
+	print("\n\n")
+
 # Run pbsv to call structural variants (SV)
 def call_structural_variants_pbsv(input_bam, output_svsig, output_vcf, threads, tandem_repeat_bed, reference_fasta):
 	print("Calling structural variants with pbsv!")

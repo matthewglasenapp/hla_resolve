@@ -14,6 +14,7 @@ from .preprocess_methods import (
 	call_variants_bcftools,
 	call_variants_deepvariant,
 	call_variants_clair3,
+	call_variants_freebayes,
 	call_structural_variants_pbsv,
 	call_structural_variants_sawfish,
 	genotype_tandem_repeats,
@@ -177,7 +178,14 @@ def preprocess_pacbio_sample(config):
 				genotypes_dir=config['genotypes_dir'],
 				sample_ID=config['sample_ID']
 			)
-		
+
+		elif config['genotyper'] == "freebayes":
+			call_variants_freebayes(
+				input_bam=config['hg38_rmdup_chr6_bam'],
+				output_vcf=config['snv_vcf'],
+				reference_fasta=config['reference_genome']
+			)
+
 		call_structural_variants_pbsv(
 			input_bam=config['hg38_rmdup_chr6_bam'],
 			output_svsig=config['sv_svsig'],
