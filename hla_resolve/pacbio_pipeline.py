@@ -197,7 +197,7 @@ def preprocess_pacbio_sample(config):
 			)
 			call_variants_deepvariant(
 				input_bam=config['hg38_rmdup_chr6_bam'],
-				output_vcf=config['snv_gvcf'],
+				output_vcf=config['dv_full_vcf'],
 				output_gvcf=config['snv_gvcf'],
 				platform=config['platform'],
 				deepvariant_sif=config['deepvariant_sif'],
@@ -208,7 +208,7 @@ def preprocess_pacbio_sample(config):
 			)
 			merge_bcftools_snps_deepvariant_indels(
 				bcftools_vcf=config['bcftools_snp_vcf'],
-				dv_vcf=config['snv_gvcf'],
+				dv_vcf=config['dv_full_vcf'],
 				indel_vcf=config['dv_indel_vcf'],
 				merged_vcf=config['snv_vcf']
 			)

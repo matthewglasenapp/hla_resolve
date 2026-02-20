@@ -275,6 +275,7 @@ class Samples:
         self.snv_vcf = os.path.join(self.genotypes_dir, f"{self.sample_ID}.vcf.gz")
         self.snv_gvcf = os.path.join(self.genotypes_dir, f"{self.sample_ID}.g.vcf.gz")
         self.bcftools_snp_vcf = os.path.join(self.genotypes_dir, f"{self.sample_ID}.bcftools.snps.vcf.gz")
+        self.dv_full_vcf = os.path.join(self.genotypes_dir, f"{self.sample_ID}.dv.vcf.gz")
         self.dv_indel_vcf = os.path.join(self.genotypes_dir, f"{self.sample_ID}.dv.indels.vcf.gz")
         self.sv_vcf = os.path.join(self.sv_dir, f"{self.sample_ID}.SV.vcf.gz")
         self.sv_svsig = os.path.join(self.sv_dir, f"{self.sample_ID}.svsig.gz")
@@ -389,6 +390,7 @@ def build_workflow_config(sample):
 		'snv_vcf': sample.snv_vcf,
 		'snv_gvcf': sample.snv_gvcf,
 		'bcftools_snp_vcf': sample.bcftools_snp_vcf,
+		'dv_full_vcf': sample.dv_full_vcf,
 		'dv_indel_vcf': sample.dv_indel_vcf,
 		'sv_vcf': sample.sv_vcf,
 		'sv_svsig': sample.sv_svsig,
