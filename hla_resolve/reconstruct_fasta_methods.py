@@ -86,7 +86,7 @@ def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail
 			continue
 
 		# DeepVariant specific filtering; for hybrid, apply PASS-only filter to indels from DeepVariant
-		is_snp = len(rec.ref) == 1 and (len(rec.alts[0]) == 1 if rec.alts else False)
+		is_snp = len(rec.ref) == 1 and all(len(a) == 1 for a in rec.alts if a is not None)
 		if genotyper == "deepvariant" or (genotyper == "hybrid" and not is_snp):
 			if rec.filter.keys() == ["PASS"] or rec.filter.keys() == []:
 				pass_out.write(rec)
@@ -388,7 +388,7 @@ def filter_vcf_gene_test(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf,
 				continue
 
 		# DeepVariant specific filtering; for hybrid, apply PASS-only filter to indels from DeepVariant
-		is_snp = len(rec.ref) == 1 and (len(rec.alts[0]) == 1 if rec.alts else False)
+		is_snp = len(rec.ref) == 1 and all(len(a) == 1 for a in rec.alts if a is not None)
 		if genotyper == "deepvariant" or (genotyper == "hybrid" and not is_snp):
 			if rec.filter.keys() == ["PASS"] or rec.filter.keys() == []:
 				pass_out.write(rec)
