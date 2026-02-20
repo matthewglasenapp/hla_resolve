@@ -15,6 +15,7 @@ from .preprocess_methods import (
 	call_variants_deepvariant,
 	call_variants_clair3,
 	call_variants_freebayes,
+	merge_bcftools_snps_deepvariant_indels,
 	call_structural_variants_pbsv,
 	call_structural_variants_sawfish,
 	genotype_tandem_repeats,
@@ -184,6 +185,32 @@ def preprocess_pacbio_sample(config):
 				input_bam=config['hg38_rmdup_chr6_bam'],
 				output_vcf=config['snv_vcf'],
 				reference_fasta=config['reference_genome']
+			)
+
+		elif config['genotyper'] == "hybrid":
+			call_variants_bcftools(
+				input_file=config['hg38_rmdup_chr6_bam'],
+				output_file=config['bcftools_snp_vcf'],
+				reference_fasta=config['reference_genome'],
+				threads=config['threads'],
+				platform=config['platform']
+			)
+			call_variants_deepvariant(
+				input_bam=config['hg38_rmdup_chr6_bam'],
+				output_vcf=config['snv_gvcf'],
+				output_gvcf=config['snv_gvcf'],
+				platform=config['platform'],
+				deepvariant_sif=config['deepvariant_sif'],
+				reference_fasta=config['reference_genome'],
+				genotypes_dir=config['genotypes_dir'],
+				mapped_bam_dir=config['mapped_bam_dir'],
+				sample_ID=config['sample_ID']
+			)
+			merge_bcftools_snps_deepvariant_indels(
+				bcftools_vcf=config['bcftools_snp_vcf'],
+				dv_vcf=config['snv_gvcf'],
+				indel_vcf=config['dv_indel_vcf'],
+				merged_vcf=config['snv_vcf']
 			)
 
 		call_structural_variants_pbsv(

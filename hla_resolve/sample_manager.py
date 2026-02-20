@@ -274,6 +274,8 @@ class Samples:
         # VCF files
         self.snv_vcf = os.path.join(self.genotypes_dir, f"{self.sample_ID}.vcf.gz")
         self.snv_gvcf = os.path.join(self.genotypes_dir, f"{self.sample_ID}.g.vcf.gz")
+        self.bcftools_snp_vcf = os.path.join(self.genotypes_dir, f"{self.sample_ID}.bcftools.snps.vcf.gz")
+        self.dv_indel_vcf = os.path.join(self.genotypes_dir, f"{self.sample_ID}.dv.indels.vcf.gz")
         self.sv_vcf = os.path.join(self.sv_dir, f"{self.sample_ID}.SV.vcf.gz")
         self.sv_svsig = os.path.join(self.sv_dir, f"{self.sample_ID}.svsig.gz")
         self.tr_vcf = os.path.join(self.pbtrgt_dir, f"{self.sample_ID}.TR.vcf.gz") if hasattr(self, 'pbtrgt_dir') else None
@@ -386,6 +388,8 @@ def build_workflow_config(sample):
 		'hg38_rmdup_chr6_haplotag_bam': sample.hg38_rmdup_chr6_haplotag_bam,
 		'snv_vcf': sample.snv_vcf,
 		'snv_gvcf': sample.snv_gvcf,
+		'bcftools_snp_vcf': sample.bcftools_snp_vcf,
+		'dv_indel_vcf': sample.dv_indel_vcf,
 		'sv_vcf': sample.sv_vcf,
 		'sv_svsig': sample.sv_svsig,
 		'tr_vcf': sample.tr_vcf,

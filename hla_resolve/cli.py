@@ -43,7 +43,8 @@ def main():
     
     # For public release: hardcode aligner and genotyper
     args.aligner = "minimap2"
-    args.genotyper = "freebayes"
+    args.genotyper = "hybrid"
+    #args.genotyper = "freebayes"
     #args.genotyper = "bcftools"
     #args.genotyper = "deepvariant"
 

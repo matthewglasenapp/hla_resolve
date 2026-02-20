@@ -479,6 +479,26 @@ def call_variants_freebayes(input_bam, output_vcf, reference_fasta):
 	print(f"VCF written to {output_vcf}")
 	print("\n\n")
 
+# Extract SNPs from bcftools output and PASS indels from DeepVariant output, merge into a single VCF
+def merge_bcftools_snps_deepvariant_indels(bcftools_vcf, dv_vcf, indel_vcf, merged_vcf):
+	print("Merging bcftools SNPs and DeepVariant indels!")
+
+	snp_vcf = bcftools_vcf.replace('.vcf.gz', '.snps_only.vcf.gz')
+	snp_cmd = f"bcftools view -v snps {bcftools_vcf} -Oz -o {snp_vcf}"
+	subprocess.run(snp_cmd, shell=True, check=True)
+	subprocess.run(f"tabix -p vcf {snp_vcf}", shell=True, check=True)
+
+	indel_cmd = f"bcftools view -v indels -f PASS {dv_vcf} -Oz -o {indel_vcf}"
+	subprocess.run(indel_cmd, shell=True, check=True)
+	subprocess.run(f"tabix -p vcf {indel_vcf}", shell=True, check=True)
+
+	merge_cmd = f"bcftools concat -a {snp_vcf} {indel_vcf} | bcftools sort | bgzip > {merged_vcf}"
+	subprocess.run(merge_cmd, shell=True, check=True)
+	subprocess.run(f"tabix -p vcf {merged_vcf}", shell=True, check=True)
+
+	print(f"Merged VCF written to {merged_vcf}")
+	print("\n\n")
+
 # Run pbsv to call structural variants (SV)
 def call_structural_variants_pbsv(input_bam, output_svsig, output_vcf, threads, tandem_repeat_bed, reference_fasta):
 	print("Calling structural variants with pbsv!")
