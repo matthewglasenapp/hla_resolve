@@ -7,16 +7,64 @@ Uses allele_output_trgt.csv (production) + ihw_truth_full_edited.csv (truth)
 import sys, os, re
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+import edlib
+import parasail
 import pandas as pd
 from hla_typer import (
     build_g_group_dict, produce_allele_seq_db, get_distance, get_sampleid,
 )
 
+# ── Parasail config ──────────────────────────────────────────────────────
+_PARASAIL_MATRIX     = parasail.matrix_create("ACGT", 1, -1)
+_PARASAIL_GAP_OPEN   = 5
+_PARASAIL_GAP_EXTEND = 1
+
+def get_distance_hybrid(query, ref):
+    """
+    Hybrid edlib + parasail alignment.
+      1. edlib HW (shorter fully within longer) locates the best window.
+      2. parasail NW with affine gap runs on that extracted window,
+         producing a biologically realistic CIGAR.
+    Returns:
+        p_mi        – match_len / (match_len + mismatch_len)  [higher = better]
+        p_match_len – count of '=' bases                      [higher = better]
+        p_gc        – mismatches + indel run count             [lower  = better]
+        p_score     – parasail alignment score                 [higher = better]
+    """
+    query_s = str(query)
+    ref_s   = str(ref)
+
+    if len(query_s) <= len(ref_s):
+        shorter, longer = query_s, ref_s
+    else:
+        shorter, longer = ref_s, query_s
+
+    edlib_result = edlib.align(shorter, longer, mode="HW", task="path")
+    start, end   = edlib_result["locations"][0]
+    region       = longer[start:end + 1]
+
+    ps = parasail.nw_trace_striped_sat(
+        shorter, region,
+        _PARASAIL_GAP_OPEN, _PARASAIL_GAP_EXTEND, _PARASAIL_MATRIX
+    )
+    cigar = ps.cigar.decode.decode("utf-8")
+    score = ps.score
+
+    match_len = mismatch_len = p_gc = 0
+    for length, op in re.findall(r"(\d+)([=XID])", cigar):
+        length = int(length)
+        if   op == "=": match_len     += length
+        elif op == "X": mismatch_len  += length; p_gc += length
+        elif op in ("I", "D"): p_gc  += 1        # each indel run = 1
+
+    p_mi = match_len / (match_len + mismatch_len) if (match_len + mismatch_len) > 0 else 0
+    return p_mi, match_len, p_gc, score
+
 # ── Config ──────────────────────────────────────────────────────────────
 XML = "/Users/matt/Desktop/IPD_IMGT_XML/hla.xml"
 FULL_FASTA = "/Users/matt/Desktop/HLA_haplotypes_full.fa"
 TRUTH_CSV = "/Users/matt/Desktop/ihw_truth_full_edited.csv"
-OUTPUT_CSV = "/Users/matt/Desktop/allele_output_trgt.csv"
+OUTPUT_CSV = "/Users/matt/Desktop/allele_output_hybrid.csv"
 SKIP_SAMPLES = {"IHW09117"}
 GENES = ["HLA-A", "HLA-B", "HLA-C", "HLA-DPA1",
          "HLA-DPB1", "HLA-DQA1", "HLA-DQB1", "HLA-DRB1"]
@@ -216,7 +264,8 @@ from hla_typer import load_test_data
 print("\nLoading sequence data...", flush=True)
 _, _, sequence_data = build_g_group_dict(XML, ignore_incomplete=True)
 full_samples = {k: v for k, v in load_test_data(FULL_FASTA).items()
-                if get_sampleid(k) not in SKIP_SAMPLES}
+                if get_sampleid(k) not in SKIP_SAMPLES
+                and get_sampleid(k).startswith("IHW")}
 
 
 def get_resolution_for_allele(sid, gene, hap_idx, called_allele, sequence_data, full_samples):
@@ -249,52 +298,94 @@ def get_resolution_for_allele(sid, gene, hap_idx, called_allele, sequence_data, 
                                           exon_only=False)
     query = full_samples[sample_key]
 
-    # Score all candidates
+    # Score all candidates — edlib metrics + parasail hybrid metrics
+    # Tuple: (allele_name, e_mi, e_ml, e_raw, e_gc, p_mi, p_ml, p_gc, p_score)
     scores = []
     for allele_name, ref_seq in candidate_db.items():
         if gene_short not in allele_name:
             continue
         ref = str(ref_seq)
-        distance, match_len, mismatch_len = get_distance(
-            query, ref, get_length=True, gap_compressed=False)
-        mi = match_len / (match_len + mismatch_len) if (match_len + mismatch_len) > 0 else 0
-        scores.append((allele_name, mi, match_len))
+        _, _, _, e_raw, e_gc, e_mi, e_ml = get_distance(query, ref, get_detailed=True)
+        p_mi, p_ml, p_gc, p_score = get_distance_hybrid(query, ref)
+        scores.append((allele_name, e_mi, e_ml, e_raw, e_gc, p_mi, p_ml, p_gc, p_score))
 
     if not scores:
         return None
 
-    # Current production order: MI → ML → iteration
+    # ── edlib-based chains ──────────────────────────────────────────────
+
+    # Production: edlib MI → ML → iter
     best_mi = max(s[1] for s in scores)
     mi_tied = [s for s in scores if s[1] == best_mi]
     best_ml = max(s[2] for s in mi_tied)
     ml_tied = [s for s in mi_tied if s[2] == best_ml]
 
-    if len(mi_tied) == 1:
-        resolution = "MI"
-    elif len(ml_tied) == 1:
-        resolution = "match_length"
-    else:
-        resolution = "iteration_order"
+    resolution = "MI" if len(mi_tied) == 1 else ("match_length" if len(ml_tied) == 1 else "iteration_order")
+    prod_winner    = truncate(ml_tied[0][0], 4)
 
-    # Production winner: first in ml_tied (iteration order)
-    prod_winner = truncate(ml_tied[0][0], 4)
-
-    # Chain 1: MI → iteration order (no ML)
+    # Chain 1: edlib MI → iter
     mi_iter_winner = truncate(mi_tied[0][0], 4)
 
-    # Chain 2: ML → iteration order (no MI)
-    ml_best = max(s[2] for s in scores)
-    ml_tied_all = [s for s in scores if s[2] == ml_best]
+    # Chain 2: edlib ML → iter
+    ml_best        = max(s[2] for s in scores)
+    ml_tied_all    = [s for s in scores if s[2] == ml_best]
     ml_iter_winner = truncate(ml_tied_all[0][0], 4)
+
+    # Chain 3: edlib raw edit → iter (minimize)
+    best_raw       = min(s[3] for s in scores)
+    raw_iter_winner = truncate(next(s for s in scores if s[3] == best_raw)[0], 4)
+
+    # Chain 4: edlib gc edit → iter (minimize)
+    best_egc       = min(s[4] for s in scores)
+    gc_iter_winner  = truncate(next(s for s in scores if s[4] == best_egc)[0], 4)
+
+    # ── parasail-based chains ───────────────────────────────────────────
+
+    # Chain 5: parasail MI → iter
+    best_pmi       = max(s[5] for s in scores)
+    pmi_tied       = [s for s in scores if s[5] == best_pmi]
+    pmi_iter_winner = truncate(pmi_tied[0][0], 4)
+
+    # Chain 6: parasail MI → parasail gc → iter
+    best_pgc_in_pmi = min(s[7] for s in pmi_tied)
+    pmi_pgc_tied    = [s for s in pmi_tied if s[7] == best_pgc_in_pmi]
+    pmi_pgc_winner  = truncate(pmi_pgc_tied[0][0], 4)
+
+    # Chain 7: parasail MI → parasail ML → iter  (direct analog of production)
+    best_pml_in_pmi = max(s[6] for s in pmi_tied)
+    pmi_pml_tied    = [s for s in pmi_tied if s[6] == best_pml_in_pmi]
+    pmi_pml_winner  = truncate(pmi_pml_tied[0][0], 4)
+
+    # Chain 8: parasail score → iter (alignment score, higher = better)
+    best_pscore     = max(s[8] for s in scores)
+    pscore_winner   = truncate(next(s for s in scores if s[8] == best_pscore)[0], 4)
+
+    # Chain 9: edlib MI → parasail score → iter  (edlib primary, parasail tiebreaker)
+    best_ps_in_mi   = max(s[8] for s in mi_tied)
+    mi_pscore_tied  = [s for s in mi_tied if s[8] == best_ps_in_mi]
+    mi_pscore_winner = truncate(mi_pscore_tied[0][0], 4)
+
+    # Chain 10: edlib MI → edlib ML → parasail score → iter  (production + parasail final tiebreak)
+    best_ps_in_ml   = max(s[8] for s in ml_tied)
+    ml_pscore_tied  = [s for s in ml_tied if s[8] == best_ps_in_ml]
+    prod_pscore_winner = truncate(ml_pscore_tied[0][0], 4)
 
     return {
         "resolution": resolution,
         "num_candidates": len(candidates),
         "num_mi_tied": len(mi_tied),
         "num_ml_tied": len(ml_tied),
-        "prod_winner": prod_winner,
-        "mi_iter_winner": mi_iter_winner,
-        "ml_iter_winner": ml_iter_winner,
+        "prod_winner":       prod_winner,
+        "mi_iter_winner":    mi_iter_winner,
+        "ml_iter_winner":    ml_iter_winner,
+        "raw_iter_winner":   raw_iter_winner,
+        "gc_iter_winner":    gc_iter_winner,
+        "pmi_iter_winner":   pmi_iter_winner,
+        "pmi_pgc_winner":    pmi_pgc_winner,
+        "pmi_pml_winner":    pmi_pml_winner,
+        "pscore_winner":     pscore_winner,
+        "mi_pscore_winner":  mi_pscore_winner,
+        "prod_pscore_winner": prod_pscore_winner,
     }
 
 
@@ -347,15 +438,31 @@ for sid in sorted(set(truth.keys()) & set(output.keys())):
 
         # Build 4-field lists for production and alt chains
         prod_4f = [truncate(t, 4) for t in test_alleles]  # [pos0, pos1], may be None
-        mi_4f = [None, None]
-        ml_4f = [None, None]
+        mi_4f        = [None, None]
+        ml_4f        = [None, None]
+        raw_4f       = [None, None]
+        gc_4f        = [None, None]
+        pmi_4f       = [None, None]
+        pmi_pgc_4f   = [None, None]
+        pmi_pml_4f   = [None, None]
+        pscore_4f    = [None, None]
+        mi_pscore_4f = [None, None]
+        prod_pscore_4f = [None, None]
         res_by_hap = [None, None]
         for h in [0, 1]:
             ri = alt_winners.get((sid, gene, h + 1))
             res_by_hap[h] = ri
             if ri:
-                mi_4f[h] = ri["mi_iter_winner"]
-                ml_4f[h] = ri["ml_iter_winner"]
+                mi_4f[h]          = ri["mi_iter_winner"]
+                ml_4f[h]          = ri["ml_iter_winner"]
+                raw_4f[h]         = ri["raw_iter_winner"]
+                gc_4f[h]          = ri["gc_iter_winner"]
+                pmi_4f[h]         = ri["pmi_iter_winner"]
+                pmi_pgc_4f[h]     = ri["pmi_pgc_winner"]
+                pmi_pml_4f[h]     = ri["pmi_pml_winner"]
+                pscore_4f[h]      = ri["pscore_winner"]
+                mi_pscore_4f[h]   = ri["mi_pscore_winner"]
+                prod_pscore_4f[h] = ri["prod_pscore_winner"]
 
         # Skip if no production test alleles have 4 fields
         prod_4f_valid = [p for p in prod_4f if p]
@@ -384,6 +491,27 @@ for sid in sorted(set(truth.keys()) & set(output.keys())):
             ml_4f_valid = [m for m in ml_4f if m]
             ml_matched = any(t4 in ml_4f_valid for t4 in truth_4f_list)
 
+            # raw_edit→iter cross-match
+            raw_4f_valid = [m for m in raw_4f if m]
+            raw_matched = any(t4 in raw_4f_valid for t4 in truth_4f_list)
+
+            # gc_edit→iter cross-match
+            gc_4f_valid = [m for m in gc_4f if m]
+            gc_matched = any(t4 in gc_4f_valid for t4 in truth_4f_list)
+
+            # parasail MI → iter
+            pmi_matched = any(t4 in [m for m in pmi_4f if m] for t4 in truth_4f_list)
+            # parasail MI → parasail gc → iter
+            pmi_pgc_matched = any(t4 in [m for m in pmi_pgc_4f if m] for t4 in truth_4f_list)
+            # parasail MI → parasail ML → iter
+            pmi_pml_matched = any(t4 in [m for m in pmi_pml_4f if m] for t4 in truth_4f_list)
+            # parasail score → iter
+            pscore_matched = any(t4 in [m for m in pscore_4f if m] for t4 in truth_4f_list)
+            # edlib MI → parasail score → iter
+            mi_pscore_matched = any(t4 in [m for m in mi_pscore_4f if m] for t4 in truth_4f_list)
+            # production + parasail final tiebreak
+            prod_pscore_matched = any(t4 in [m for m in prod_pscore_4f if m] for t4 in truth_4f_list)
+
             # Determine resolution level using same-pos or cross-matched query
             actual_hap = hap_idx
             same_pos_allele = test_alleles[actual_hap]
@@ -400,6 +528,19 @@ for sid in sorted(set(truth.keys()) & set(output.keys())):
                 else:
                     res_info = None
 
+            _common = dict(
+                mi_iter_correct     = mi_matched,
+                ml_iter_correct     = ml_matched,
+                raw_iter_correct    = raw_matched,
+                gc_iter_correct     = gc_matched,
+                pmi_iter_correct    = pmi_matched,
+                pmi_pgc_correct     = pmi_pgc_matched,
+                pmi_pml_correct     = pmi_pml_matched,
+                pscore_correct      = pscore_matched,
+                mi_pscore_correct   = mi_pscore_matched,
+                prod_pscore_correct = prod_pscore_matched,
+            )
+
             if res_info is None:
                 skipped.append(f"{sid} {gene_short}_{actual_hap+1}")
                 level_results.append({
@@ -408,8 +549,7 @@ for sid in sorted(set(truth.keys()) & set(output.keys())):
                     "is_01": truth_4th == 1, "correct": prod_matched,
                     "resolution": "unknown",
                     "num_mi_tied": 0, "num_ml_tied": 0,
-                    "mi_iter_correct": mi_matched,
-                    "ml_iter_correct": ml_matched,
+                    **_common,
                 })
                 continue
 
@@ -420,8 +560,7 @@ for sid in sorted(set(truth.keys()) & set(output.keys())):
                 "resolution": res_info["resolution"],
                 "num_mi_tied": res_info["num_mi_tied"],
                 "num_ml_tied": res_info["num_ml_tied"],
-                "mi_iter_correct": mi_matched,
-                "ml_iter_correct": ml_matched,
+                **_common,
             })
 
 if skipped:
@@ -484,51 +623,76 @@ for r in sorted(level_results, key=lambda x: (x["gene"], x["sample"])):
           f"truth={r['truth_4f']} (truth_4th={tag}), "
           f"MI_tied={r['num_mi_tied']}, ML_tied={r['num_ml_tied']}")
 
-# ── Part C: Compare two-step chains (with proper cross-matching) ─────
+# ── Part C: Compare metric chains (with proper cross-matching) ─────────
 print(f"\n{'=' * 70}")
-print(f"  PART C: Two-step tiebreaker comparison")
-print(f"  Production (MI→ML→iter) vs MI→iter vs ML→iter")
-print(f"  (cross-matching applied to all chains)")
+print(f"  PART C: Primary metric comparison  (all chains, cross-matching applied)")
 print(f"{'=' * 70}")
 
 total_c = len(level_results)
 
-prod_c = sum(1 for r in level_results if r["correct"])
-mi_c = sum(1 for r in level_results if r["mi_iter_correct"])
-ml_c = sum(1 for r in level_results if r["ml_iter_correct"])
+# Collect counts for all chains
+chains = [
+    ("Production (eMI→eML→iter)",   "correct"),
+    ("eMI → iter",                  "mi_iter_correct"),
+    ("eML → iter",                  "ml_iter_correct"),
+    ("e_raw → iter",                "raw_iter_correct"),
+    ("e_gc → iter",                 "gc_iter_correct"),
+    ("pMI → iter",                  "pmi_iter_correct"),
+    ("pMI → pGC → iter",            "pmi_pgc_correct"),
+    ("pMI → pML → iter",            "pmi_pml_correct"),
+    ("p_score → iter",              "pscore_correct"),
+    ("eMI → p_score → iter",        "mi_pscore_correct"),
+    ("eMI→eML → p_score → iter",    "prod_pscore_correct"),
+]
+
+def count(key, rows=None):
+    rows = rows or level_results
+    return sum(1 for r in rows if r[key])
 
 print(f"\n  Overall ({total_c} haplotypes):")
-print(f"    Production (MI→ML→iter):  {prod_c}/{total_c} ({prod_c/total_c*100:.1f}%)")
-print(f"    MI → iter order:          {mi_c}/{total_c} ({mi_c/total_c*100:.1f}%)  diff={mi_c-prod_c:+d}")
-print(f"    ML → iter order:          {ml_c}/{total_c} ({ml_c/total_c*100:.1f}%)  diff={ml_c-prod_c:+d}")
+print(f"  {'Chain':<30} {'Correct':>10}  {'%':>6}  {'vs Prod':>8}")
+print(f"  {'-'*30} {'-'*10}  {'-'*6}  {'-'*8}")
+prod_n = count("correct")
+for label, key in chains:
+    n = count(key)
+    diff = n - prod_n
+    marker = " ◄" if n > prod_n else ("" if n == prod_n else "")
+    print(f"  {label:<30} {n:>5}/{total_c:<5}  {n/total_c*100:>5.1f}%  {diff:>+7d}{marker}")
 
-# Breakdown by truth type
+# By truth type
 print(f"\n  By truth 4th-field type:")
-print(f"  {'':25} {'Production':>15} {'MI→iter':>15} {'ML→iter':>15}")
-print(f"  {'-'*25} {'-'*15} {'-'*15} {'-'*15}")
-for label, filt in [("Truth = :01", lambda r: r["is_01"]), ("Truth ≠ :01", lambda r: not r["is_01"])]:
-    sub = [r for r in level_results if filt(r)]
-    n = len(sub)
-    if n == 0:
-        continue
-    pc = sum(1 for r in sub if r["correct"])
-    mic = sum(1 for r in sub if r["mi_iter_correct"])
-    mlc = sum(1 for r in sub if r["ml_iter_correct"])
-    print(f"  {label:<25} {pc:>6}/{n} ({pc/n*100:.1f}%) {mic:>6}/{n} ({mic/n*100:.1f}%) {mlc:>6}/{n} ({mlc/n*100:.1f}%)")
+w = 16
+header = f"  {'Chain':<30}"
+for lbl in ("Truth=:01", "Truth≠:01"):
+    header += f" {lbl:>{w}}"
+print(header)
+print(f"  {'-'*30}" + f" {'-'*w}" * 2)
+for label, key in chains:
+    row = f"  {label:<30}"
+    for filt_key, filt in [("is_01", True), ("is_01", False)]:
+        sub = [r for r in level_results if r["is_01"] == filt]
+        n   = len(sub)
+        c   = count(key, sub)
+        row += f" {c}/{n} ({c/n*100:.1f}%)".rjust(w)
+    print(row)
 
-# Per-gene comparison
+# Per-gene
 print(f"\n  Per-gene comparison:")
-print(f"  {'Gene':<12} {'Production':>18} {'MI→iter':>18} {'ML→iter':>18}")
-print(f"  {'-'*12} {'-'*18} {'-'*18} {'-'*18}")
+chain_keys = [k for _, k in chains]
+chain_labels_short = ["Prod","eMI","eML","eRaw","eGC","pMI","pMI+pGC","pMI+pML","pScr","eMI+pScr","Prod+pScr"]
+gene_header = f"  {'Gene':<12}" + "".join(f" {l:>11}" for l in chain_labels_short)
+print(gene_header)
+print(f"  {'-'*12}" + f" {'-'*11}" * len(chain_labels_short))
 for gene in GENES:
     gr = [r for r in level_results if r["gene"] == gene]
     if not gr:
         continue
     n = len(gr)
-    pc = sum(1 for r in gr if r["correct"])
-    mic = sum(1 for r in gr if r["mi_iter_correct"])
-    mlc = sum(1 for r in gr if r["ml_iter_correct"])
-    print(f"  {gene:<12} {pc:>7}/{n} ({pc/n*100:.1f}%) {mic:>7}/{n} ({mic/n*100:.1f}%) {mlc:>7}/{n} ({mlc/n*100:.1f}%)")
+    row = f"  {gene:<12}"
+    for key in chain_keys:
+        c = count(key, gr)
+        row += f" {c}/{n}({c/n*100:.0f}%)".rjust(11)
+    print(row)
 
 print(f"\n{'=' * 70}")
 print(f"  DONE")
