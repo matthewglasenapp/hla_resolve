@@ -7,7 +7,7 @@ from Bio import SeqIO
 from .preprocess_methods import convert_bam_to_fastq
 from .config import (
 	min_reads_sample, min_read_length, reference_genome_vg_gbz, reference_genome_vg_paths, vg, 
-	longphase, sawfish, clair3_ont_model_path, clair3_hifi_model_path,
+	longphase, sawfish, clair3_sif, clair3_ont_model, clair3_hifi_model,
 	depth_thresh, prop_20x_thresh, prop_30x_thresh,
 	mhc_start, mhc_stop, genes_bed, genes_of_interest, genes_of_interest_extended,
 	hla_genes_regions_file, vcf2fasta_script, reference_genome_minimap2, reference_genome_vg,
@@ -18,13 +18,15 @@ from .config import (
 class Samples:
     # Class variables for reference file paths (imported from config.py)
     deepvariant_sif = deepvariant_sif
+    clair3_sif = clair3_sif
     tandem_repeat_bed = tandem_repeat_bed
     chr6_bed = chr6_bed
     pbtrgt_repeat_file = pbtrgt_repeat_file
     
-    def __init__(self, input_file, sample_name, platform, output_dir, 
-                 aligner, genotyper, trim_adapters=False, adapter_file=None, 
-                 threads=1, read_group_string=None, clean_up=False, scheme=None):
+    def __init__(self, input_file, sample_name, platform, output_dir,
+                 aligner, genotyper, trim_adapters=False, adapter_file=None,
+                 threads=1, read_group_string=None, clean_up=False, scheme=None,
+                 clair3_model=None):
         
         # Original initialization code
         self.ORIGINAL_CWD = os.getcwd()
@@ -69,6 +71,7 @@ class Samples:
         self.aligner = aligner
         self.genotyper = genotyper
         self.clean_up = clean_up
+        self.clair3_model = clair3_model if clair3_model else (clair3_ont_model if self.platform == "ONT" else clair3_hifi_model)
 
         output_dir_abs = os.path.realpath(os.path.abspath(os.path.join(output_dir, self.sample_ID)))
 
@@ -424,6 +427,8 @@ def build_workflow_config(sample):
 		'dummy_reference': dummy_reference,
 		'drb_multiallele_reference': drb_multiallele_reference,
 		'deepvariant_sif': Samples.deepvariant_sif,
+		'clair3_sif': Samples.clair3_sif,
+		'clair3_model': sample.clair3_model,
 		'chr6_bed': Samples.chr6_bed,
 		'tandem_repeat_bed': Samples.tandem_repeat_bed,
 		'pbtrgt_repeat_file': Samples.pbtrgt_repeat_file,
@@ -433,8 +438,6 @@ def build_workflow_config(sample):
 		'longphase': longphase,
 		'sawfish': sawfish,
 		'picard': picard,
-		'clair3_ont_model_path': clair3_ont_model_path,
-		'clair3_hifi_model_path': clair3_hifi_model_path,
 		'depth_thresh': depth_thresh,
 		'prop_20x_thresh': prop_20x_thresh,
 		'prop_30x_thresh': prop_30x_thresh,

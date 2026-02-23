@@ -33,6 +33,7 @@ def main():
     parser.add_argument("--threads", type=int, required=False, help="Number of threads to use", default=6)
     parser.add_argument("--read_group_string", required=False, help="Override the parsed read group string", default=None)
     parser.add_argument("--clean-up", action="store_true", help="Remove intermediate files")
+    parser.add_argument("--clair3_model", type=str, required=False, default=None, help="Clair3 model name (bundled in SIF). Defaults to r1041_e82_400bps_sup_v500 for ONT and hifi_revio for PacBio.")
     
     # Show help and exit if no arguments were provided
     if len(sys.argv) == 1:
@@ -55,7 +56,7 @@ def main():
     
     start_time = time.time()
     
-    sample = Samples(input_file=args.input_file, sample_name=args.sample_name, platform=args.platform, output_dir=args.output_dir, aligner=args.aligner, genotyper=args.genotyper, trim_adapters=args.trim_adapters, adapter_file=args.adapter_file, threads=args.threads, read_group_string=args.read_group_string, clean_up=args.clean_up, scheme=args.scheme)
+    sample = Samples(input_file=args.input_file, sample_name=args.sample_name, platform=args.platform, output_dir=args.output_dir, aligner=args.aligner, genotyper=args.genotyper, trim_adapters=args.trim_adapters, adapter_file=args.adapter_file, threads=args.threads, read_group_string=args.read_group_string, clean_up=args.clean_up, scheme=args.scheme, clair3_model=args.clair3_model)
 
     # Build workflow configuration from sample object
     workflow_config = build_workflow_config(sample)

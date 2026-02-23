@@ -406,27 +406,49 @@ def call_variants_deepvariant(input_bam, output_vcf, output_gvcf, platform, deep
 	print(f"GVCF written to {output_gvcf}")
 	print("\n\n")
 
-def call_variants_clair3(input_bam, output_vcf, platform, reference_fasta, threads, chr6_bed, clair3_ont_model_path, clair3_hifi_model_path, genotypes_dir, sample_ID):
+def call_variants_clair3(input_bam, output_vcf, platform, clair3_sif, reference_fasta, threads, genotypes_dir, mapped_bam_dir, sample_ID, clair3_model):
 	if platform == "ONT":
 		platform_type = "ont"
-		clair3_model_path = clair3_ont_model_path
 	elif platform == "PACBIO":
 		platform_type = "hifi"
-		clair3_model_path = clair3_hifi_model_path
 
-	print("Calling SNVs and small INDELS with Clair3!")
+	print("Calling SNVs and small INDELs with Clair3!")
+	print(f"Clair3 input file: {input_bam}")
+	print(f"Clair3 model: {clair3_model}")
 
 	output_dir = os.path.join(genotypes_dir, sample_ID)
 	os.makedirs(output_dir, exist_ok=True)
 
-	clair3_cmd = f"run_clair3.sh --bam_fn={input_bam} --ref_fn={reference_fasta} --platform={platform_type} --model_path={clair3_model_path} --output={output_dir} --threads={threads} --sample_name={sample_ID} --bed_fn={chr6_bed}"
-	
-	subprocess.run(clair3_cmd, shell=True, check=True)
+	bind_paths = [
+		f"{output_dir}:/output",
+		f"{mapped_bam_dir}:/input",
+		f"{os.path.dirname(reference_fasta)}:/reference"
+	]
 
-	raw_genotypes_file = os.path.join(genotypes_dir, sample_ID, "merge_output.vcf.gz")
+	bind_flags = " ".join(f"--bind {path}" for path in bind_paths)
+
+	clair3_cmd = f"""
+		singularity exec {bind_flags} {clair3_sif} /opt/bin/run_clair3.sh \
+			--bam_fn=/input/{os.path.basename(input_bam)} \
+			--ref_fn=/reference/{os.path.basename(reference_fasta)} \
+			--threads={threads} \
+			--platform={platform_type} \
+			--model_path=/opt/models/{clair3_model} \
+			--output=/output \
+			--sample_name={sample_ID} \
+			--ctg_name=chr6
+		"""
+
+	clair3_log = os.path.join(genotypes_dir, sample_ID + ".clair3.log")
+	print(f"Writing stdout to {clair3_log}")
+
+	with open(clair3_log, "w") as log_file:
+		subprocess.run(clair3_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
+
+	raw_genotypes_file = os.path.join(output_dir, "merge_output.vcf.gz")
 	shutil.copy(raw_genotypes_file, output_vcf)
 	subprocess.run(f"tabix -p vcf {output_vcf}", shell=True, check=True)
-	
+
 	print(f"VCF written to {output_vcf}")
 	print("\n\n")
 

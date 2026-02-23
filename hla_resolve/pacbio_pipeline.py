@@ -172,13 +172,13 @@ def preprocess_pacbio_sample(config):
 				input_bam=config['hg38_rmdup_chr6_bam'],
 				output_vcf=config['snv_vcf'],
 				platform=config['platform'],
+				clair3_sif=config['clair3_sif'],
 				reference_fasta=config['reference_genome'],
 				threads=config['threads'],
-				chr6_bed=config['chr6_bed'],
-				clair3_ont_model_path=config['clair3_ont_model_path'],
-				clair3_hifi_model_path=config['clair3_hifi_model_path'],
 				genotypes_dir=config['genotypes_dir'],
-				sample_ID=config['sample_ID']
+				mapped_bam_dir=config['mapped_bam_dir'],
+				sample_ID=config['sample_ID'],
+				clair3_model=config['clair3_model']
 			)
 
 		elif config['genotyper'] == "freebayes":

@@ -125,6 +125,23 @@ def ensure_deepvariant_sif():
 
     return str(sif_file)
 
+def ensure_clair3_sif():
+    """Pull Clair3 Singularity image if not present"""
+    sif_dir = Path(_data_dir) / "clair3_sif"
+    sif_file = sif_dir / "clair3.sif"
+
+    if not sif_file.exists():
+        print("Clair3 SIF not found! Pulling from Docker Hub...")
+        sif_dir.mkdir(parents=True, exist_ok=True)
+        subprocess.run([
+            "singularity", "pull",
+            str(sif_file),
+            "docker://hkubal/clair3:latest"
+        ], check=True)
+        print("Clair3 SIF download complete!")
+
+    return str(sif_file)
+
 def ensure_hla_xml():
     """Download HLA XML database (IPD-IMGT/HLA Release 3.61.0) if not present"""
     xml_dir = Path(_data_dir) / "IPD_IMGT_XML"
@@ -162,12 +179,13 @@ def ensure_hla_xml():
     zip_file.unlink()
     print("HLA XML database download complete!")
 
-# Download reference genome, Picard, longphase, HLA XML database, and DeepVariant SIF on first import
+# Download reference genome, Picard, longphase, HLA XML database, DeepVariant SIF, and Clair3 SIF on first import
 ensure_reference_genome()
 picard = ensure_picard()
 longphase = ensure_longphase()
 ensure_hla_xml()
 deepvariant_sif = ensure_deepvariant_sif()
+clair3_sif = ensure_clair3_sif()
 
 # HLA genes of interest for HLA typing
 genes_of_interest = ("HLA-A", "HLA-B", "HLA-C", "HLA-DPA1", "HLA-DPB1", "HLA-DQA1", "HLA-DQB1", "HLA-DRB1")
@@ -195,11 +213,11 @@ vg = "/hb/scratch/ogarci12/hybridcapture_pangenome/vg"
 # vcf2fasta was taken from https://github.com/yeeus/vcf2fasta and edited for my own purpose
 vcf2fasta_script = os.path.join(_data_dir, "vcf2fasta/vcf2fasta.py")
 
-# Paths to CLAIR3 models for ONT and HiFi data
-# Consequence of installing CLAIR3 into a conda environment
-# CLAIR3 not currenlty used in the public release
-clair3_ont_model_path = "/hb/home/mglasena/.conda/envs/clair3/bin/models/r941_prom_sup_g5014"
-clair3_hifi_model_path = "/hb/home/mglasena/.conda/envs/clair3/bin/models/hifi_revio"
+# Clair3 model names — bundled inside the Clair3 SIF at /opt/models/
+# Users can override the ONT model via --clair3_model at the command line
+# Available models: https://github.com/HKU-BAL/Clair3#pre-trained-models
+clair3_ont_model = "r1041_e82_400bps_sup_v500"   # R10.4.1 SUP (default)
+clair3_hifi_model = "hifi_revio"
 
 # Paths to reference genome for reference genome alignment with minimap2
 
