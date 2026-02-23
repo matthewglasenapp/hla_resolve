@@ -42,7 +42,7 @@ Runtime depends heavily on input file size and available compute resources. Targ
 3. HLA typing for additional HLA Class II protein-coding genes  
    (HLA-DRB3, HLA-DRB4, HLA-DRB5)
 4. CYP21A2 star-allele calling
-5. Option to use DeepVariant or Clair3 for genotyping
+5. Clair3 support for ONT reads
 
 
 # Installation
