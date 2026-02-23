@@ -120,7 +120,8 @@ def preprocess_ont_sample(config):
 				reference_fasta=config['reference_genome'],
 				genotypes_dir=config['genotypes_dir'],
 				mapped_bam_dir=config['mapped_bam_dir'],
-				sample_ID=config['sample_ID']
+				sample_ID=config['sample_ID'],
+				threads=config['threads']
 			)
 		elif config['genotyper'] == "clair3":
 			call_variants_clair3(

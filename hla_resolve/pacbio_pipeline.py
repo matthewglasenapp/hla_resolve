@@ -163,9 +163,10 @@ def preprocess_pacbio_sample(config):
 				reference_fasta=config['reference_genome'],
 				genotypes_dir=config['genotypes_dir'],
 				mapped_bam_dir=config['mapped_bam_dir'],
-				sample_ID=config['sample_ID']
+				sample_ID=config['sample_ID'],
+				threads=config['threads']
 			)
-		
+
 		elif config['genotyper'] == "clair3":
 			call_variants_clair3(
 				input_bam=config['hg38_rmdup_chr6_bam'],
@@ -204,7 +205,8 @@ def preprocess_pacbio_sample(config):
 				reference_fasta=config['reference_genome'],
 				genotypes_dir=config['genotypes_dir'],
 				mapped_bam_dir=config['mapped_bam_dir'],
-				sample_ID=config['sample_ID']
+				sample_ID=config['sample_ID'],
+				threads=config['threads']
 			)
 			merge_bcftools_snps_deepvariant_indels(
 				bcftools_vcf=config['bcftools_snp_vcf'],

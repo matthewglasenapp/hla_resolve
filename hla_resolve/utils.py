@@ -74,8 +74,7 @@ def check_required_commands():
         #"pbsv",
         "pigz",
         "samtools",
-        # Only required for DeepVariant in dev mode
-        #"singularity",
+        "singularity",
         "sniffles",
         "tabix",
         "trgt",

@@ -367,7 +367,7 @@ def filter_reads(input_file, output_file, DRB34_reads_file, threads):
 	return read_count
 	
 # Call SNV with DeepVariant
-def call_variants_deepvariant(input_bam, output_vcf, output_gvcf, platform, deepvariant_sif, reference_fasta, genotypes_dir, mapped_bam_dir, sample_ID):
+def call_variants_deepvariant(input_bam, output_vcf, output_gvcf, platform, deepvariant_sif, reference_fasta, genotypes_dir, mapped_bam_dir, sample_ID, threads):
 	if platform == "PACBIO":
 		model_type = "PACBIO"
 	elif platform == "ONT":
@@ -392,7 +392,7 @@ def call_variants_deepvariant(input_bam, output_vcf, output_gvcf, platform, deep
 			--output_vcf=/data/{os.path.basename(output_vcf)} \
 			--output_gvcf=/data/{os.path.basename(output_gvcf)} \
 			--regions chr6 \
-			--num_shards=8
+			--num_shards={threads}
 		"""
 
 	# Log DeepVariant in own output file so it doesn't clog up STDOUT

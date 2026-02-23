@@ -108,6 +108,23 @@ def ensure_picard():
     
     return str(picard_jar)
 
+def ensure_deepvariant_sif():
+    """Pull DeepVariant Singularity image if not present"""
+    sif_dir = Path(_data_dir) / "deepvariant_sif"
+    sif_file = sif_dir / "deepvariant.sif"
+
+    if not sif_file.exists():
+        print("DeepVariant SIF not found! Pulling from Docker Hub...")
+        sif_dir.mkdir(parents=True, exist_ok=True)
+        subprocess.run([
+            "singularity", "pull",
+            str(sif_file),
+            "docker://google/deepvariant:1.6.1"
+        ], check=True)
+        print("DeepVariant SIF download complete!")
+
+    return str(sif_file)
+
 def ensure_hla_xml():
     """Download HLA XML database (IPD-IMGT/HLA Release 3.61.0) if not present"""
     xml_dir = Path(_data_dir) / "IPD_IMGT_XML"
@@ -145,11 +162,12 @@ def ensure_hla_xml():
     zip_file.unlink()
     print("HLA XML database download complete!")
 
-# Download reference genome, Picard, longphase, and HLA XML database on first import
+# Download reference genome, Picard, longphase, HLA XML database, and DeepVariant SIF on first import
 ensure_reference_genome()
 picard = ensure_picard()
 longphase = ensure_longphase()
 ensure_hla_xml()
+deepvariant_sif = ensure_deepvariant_sif()
 
 # HLA genes of interest for HLA typing
 genes_of_interest = ("HLA-A", "HLA-B", "HLA-C", "HLA-DPA1", "HLA-DPB1", "HLA-DQA1", "HLA-DQB1", "HLA-DRB1")
@@ -202,9 +220,7 @@ reference_genome_vg_gbz = "/hb/scratch/ogarci12/hybridcapture_pangenome/ref/hprc
 reference_genome_vg_paths = "/hb/scratch/ogarci12/hybridcapture_pangenome/ref/hprc-v1.0-mc-grch38-minaf.0.1.dict"
 #reference_genome_vg_paths = "/hb/scratch/mglasena/graph/grch38_primary.dict"
 
-# DeepVariant SIF file for variant calling with DeepVariant
-# DeepVariant not currenlty used in the public release
-deepvariant_sif = os.path.join(_data_dir, "deepvariant_sif/deepvariant.sif")
+# DeepVariant SIF file path — populated by ensure_deepvariant_sif() above
 
 # GRCh38 tandem repeat mask file for pbsv
 # Downloaded from https://github.com/PacificBiosciences/pbsv/blob/master/annotations/human_GRCh38_no_alt_analysis_set.trf.bed
