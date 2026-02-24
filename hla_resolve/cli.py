@@ -1,15 +1,6 @@
-import time
-import os
 import textwrap
 import argparse
 import sys
-from .sample_manager import Samples
-from .utils import check_required_commands, setup_logging
-from .sample_manager import build_workflow_config
-from .ont_pipeline import preprocess_ont_sample
-from .pacbio_pipeline import preprocess_pacbio_sample
-from .resolve_alleles_pipeline import resolve_alleles
-from .cleanup import cleanup_intermediate_files
 
 def main():
     parser = argparse.ArgumentParser(
@@ -34,13 +25,24 @@ def main():
     parser.add_argument("--read_group_string", required=False, help="Override the parsed read group string", default=None)
     parser.add_argument("--clean-up", action="store_true", help="Remove intermediate files")
     parser.add_argument("--clair3_model", type=str, required=False, default=None, help="Clair3 model name (bundled in SIF). Defaults to r1041_e82_400bps_sup_v500 for ONT and hifi_revio for PacBio.")
-    
+
     # Show help and exit if no arguments were provided
     if len(sys.argv) == 1:
         parser.print_help()
         parser.exit()
 
     args = parser.parse_args()
+
+    # Defer heavy imports until after argument parsing so that
+    # `hla_resolve` (no args) prints help instantly.
+    import time
+    import os
+    from .sample_manager import Samples, build_workflow_config
+    from .utils import check_required_commands, setup_logging
+    from .ont_pipeline import preprocess_ont_sample
+    from .pacbio_pipeline import preprocess_pacbio_sample
+    from .resolve_alleles_pipeline import resolve_alleles
+    from .cleanup import cleanup_intermediate_files
     
     # For public release: hardcode aligner and callers
     args.aligner = "minimap2"
