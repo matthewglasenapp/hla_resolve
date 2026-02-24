@@ -3,16 +3,14 @@ import subprocess
 from .preprocess_methods import (
 	trim_adapters,
 	align_to_reference_minimap,
-	bait_DRB_paralogs,
 	classify_DRB_reads,
-	align_to_reference_vg,
-	reassign_mapq,
 	mark_duplicates_picard,
 	filter_reads,
 	call_variants_bcftools,
 	call_variants_deepvariant,
 	call_variants_clair3,
 	call_variants_freebayes,
+	merge_hybrid_vcfs,
 	call_structural_variants_sniffles,
 	phase_genotypes_longphase,
 	merge_longphase_vcfs
@@ -101,47 +99,139 @@ def preprocess_ont_sample(config):
 
 	chr6_read_count = int(subprocess.check_output(f"samtools view -c {config['hg38_rmdup_chr6_bam']}", shell=True).strip())
 	if chr6_read_count >= min_reads_sample:
-		if config['genotyper'] == "bcftools":
-			call_variants_bcftools(
-				input_file=config['hg38_rmdup_chr6_bam'],
-				output_file=config['snv_vcf'],
-				reference_fasta=config['reference_genome'],
-				platform=config['platform'],
-				threads=config['threads']
-			)
+		snp_caller = config['snp_caller']
+		indel_caller = config['indel_caller']
 
-		elif config['genotyper'] == "deepvariant":
-			call_variants_deepvariant(
-				input_bam=config['hg38_rmdup_chr6_bam'],
-				output_vcf=config['snv_vcf'],
-				output_gvcf=config['snv_gvcf'],
-				platform=config['platform'],
-				deepvariant_sif=config['deepvariant_sif'],
-				reference_fasta=config['reference_genome'],
-				genotypes_dir=config['genotypes_dir'],
-				mapped_bam_dir=config['mapped_bam_dir'],
-				sample_ID=config['sample_ID'],
-				threads=config['threads']
-			)
-		elif config['genotyper'] == "clair3":
-			call_variants_clair3(
-				input_bam=config['hg38_rmdup_chr6_bam'],
-				output_vcf=config['snv_vcf'],
-				platform=config['platform'],
-				clair3_sif=config['clair3_sif'],
-				reference_fasta=config['reference_genome'],
-				threads=config['threads'],
-				genotypes_dir=config['genotypes_dir'],
-				mapped_bam_dir=config['mapped_bam_dir'],
-				sample_ID=config['sample_ID'],
-				clair3_model=config['clair3_model']
-			)
+		# Map each caller to its intermediate output file (used in hybrid mode)
+		caller_vcf_map = {
+			"bcftools":   config['bcftools_snp_vcf'],
+			"deepvariant": config['dv_full_vcf'],
+			"clair3":     config['clair3_full_vcf'],
+		}
 
-		elif config['genotyper'] == "freebayes":
-			call_variants_freebayes(
-				input_bam=config['hg38_rmdup_chr6_bam'],
-				output_vcf=config['snv_vcf'],
-				reference_fasta=config['reference_genome']
+		if snp_caller == indel_caller:
+			# Single caller for both SNPs and indels — write directly to snv_vcf
+			if snp_caller == "bcftools":
+				call_variants_bcftools(
+					input_file=config['hg38_rmdup_chr6_bam'],
+					output_file=config['snv_vcf'],
+					reference_fasta=config['reference_genome'],
+					platform=config['platform'],
+					threads=config['threads']
+				)
+			elif snp_caller == "deepvariant":
+				call_variants_deepvariant(
+					input_bam=config['hg38_rmdup_chr6_bam'],
+					output_vcf=config['snv_vcf'],
+					output_gvcf=config['snv_gvcf'],
+					platform=config['platform'],
+					deepvariant_sif=config['deepvariant_sif'],
+					reference_fasta=config['reference_genome'],
+					genotypes_dir=config['genotypes_dir'],
+					mapped_bam_dir=config['mapped_bam_dir'],
+					sample_ID=config['sample_ID'],
+					threads=config['threads']
+				)
+			elif snp_caller == "clair3":
+				call_variants_clair3(
+					input_bam=config['hg38_rmdup_chr6_bam'],
+					output_vcf=config['snv_vcf'],
+					platform=config['platform'],
+					clair3_sif=config['clair3_sif'],
+					reference_fasta=config['reference_genome'],
+					threads=config['threads'],
+					genotypes_dir=config['genotypes_dir'],
+					mapped_bam_dir=config['mapped_bam_dir'],
+					sample_ID=config['sample_ID'],
+					clair3_model=config['clair3_model']
+				)
+			elif snp_caller == "freebayes":
+				call_variants_freebayes(
+					input_bam=config['hg38_rmdup_chr6_bam'],
+					output_vcf=config['snv_vcf'],
+					reference_fasta=config['reference_genome']
+				)
+		else:
+			# Hybrid: different callers for SNPs and indels
+			snp_intermediate = caller_vcf_map[snp_caller]
+			indel_intermediate = caller_vcf_map[indel_caller]
+
+			if snp_caller == "bcftools":
+				call_variants_bcftools(
+					input_file=config['hg38_rmdup_chr6_bam'],
+					output_file=snp_intermediate,
+					reference_fasta=config['reference_genome'],
+					platform=config['platform'],
+					threads=config['threads']
+				)
+			elif snp_caller == "deepvariant":
+				call_variants_deepvariant(
+					input_bam=config['hg38_rmdup_chr6_bam'],
+					output_vcf=snp_intermediate,
+					output_gvcf=config['snv_gvcf'],
+					platform=config['platform'],
+					deepvariant_sif=config['deepvariant_sif'],
+					reference_fasta=config['reference_genome'],
+					genotypes_dir=config['genotypes_dir'],
+					mapped_bam_dir=config['mapped_bam_dir'],
+					sample_ID=config['sample_ID'],
+					threads=config['threads']
+				)
+			elif snp_caller == "clair3":
+				call_variants_clair3(
+					input_bam=config['hg38_rmdup_chr6_bam'],
+					output_vcf=snp_intermediate,
+					platform=config['platform'],
+					clair3_sif=config['clair3_sif'],
+					reference_fasta=config['reference_genome'],
+					threads=config['threads'],
+					genotypes_dir=config['genotypes_dir'],
+					mapped_bam_dir=config['mapped_bam_dir'],
+					sample_ID=config['sample_ID'],
+					clair3_model=config['clair3_model']
+				)
+
+			if indel_caller == "bcftools":
+				call_variants_bcftools(
+					input_file=config['hg38_rmdup_chr6_bam'],
+					output_file=indel_intermediate,
+					reference_fasta=config['reference_genome'],
+					platform=config['platform'],
+					threads=config['threads']
+				)
+			elif indel_caller == "deepvariant":
+				call_variants_deepvariant(
+					input_bam=config['hg38_rmdup_chr6_bam'],
+					output_vcf=indel_intermediate,
+					output_gvcf=config['snv_gvcf'],
+					platform=config['platform'],
+					deepvariant_sif=config['deepvariant_sif'],
+					reference_fasta=config['reference_genome'],
+					genotypes_dir=config['genotypes_dir'],
+					mapped_bam_dir=config['mapped_bam_dir'],
+					sample_ID=config['sample_ID'],
+					threads=config['threads']
+				)
+			elif indel_caller == "clair3":
+				call_variants_clair3(
+					input_bam=config['hg38_rmdup_chr6_bam'],
+					output_vcf=indel_intermediate,
+					platform=config['platform'],
+					clair3_sif=config['clair3_sif'],
+					reference_fasta=config['reference_genome'],
+					threads=config['threads'],
+					genotypes_dir=config['genotypes_dir'],
+					mapped_bam_dir=config['mapped_bam_dir'],
+					sample_ID=config['sample_ID'],
+					clair3_model=config['clair3_model']
+				)
+
+			merge_hybrid_vcfs(
+				snp_vcf=snp_intermediate,
+				indel_vcf=indel_intermediate,
+				indel_only_vcf=config['hybrid_indel_vcf'],
+				merged_vcf=config['snv_vcf'],
+				filter_indel_pass=indel_caller in ("deepvariant", "clair3")
 			)
 
 		call_structural_variants_sniffles(

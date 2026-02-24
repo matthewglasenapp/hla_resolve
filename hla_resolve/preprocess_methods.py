@@ -501,20 +501,23 @@ def call_variants_freebayes(input_bam, output_vcf, reference_fasta):
 	print(f"VCF written to {output_vcf}")
 	print("\n\n")
 
-# Extract SNPs from bcftools output and PASS indels from DeepVariant output, merge into a single VCF
-def merge_bcftools_snps_deepvariant_indels(bcftools_vcf, dv_vcf, indel_vcf, merged_vcf):
-	print("Merging bcftools SNPs and DeepVariant indels!")
+# Extract SNPs from snp_caller output and indels from indel_caller output, merge into a single VCF
+def merge_hybrid_vcfs(snp_vcf, indel_vcf, indel_only_vcf, merged_vcf, filter_indel_pass=True):
+	print("Merging hybrid SNP and indel VCFs!")
 
-	snp_vcf = bcftools_vcf.replace('.vcf.gz', '.snps_only.vcf.gz')
-	snp_cmd = f"bcftools view -v snps {bcftools_vcf} -Oz -o {snp_vcf}"
+	snp_only_vcf = snp_vcf.replace('.vcf.gz', '.snps_only.vcf.gz')
+	snp_cmd = f"bcftools view -v snps {snp_vcf} -Oz -o {snp_only_vcf}"
 	subprocess.run(snp_cmd, shell=True, check=True)
-	subprocess.run(f"tabix -p vcf {snp_vcf}", shell=True, check=True)
+	subprocess.run(f"tabix -p vcf {snp_only_vcf}", shell=True, check=True)
 
-	indel_cmd = f"bcftools view -v indels -f PASS {dv_vcf} -Oz -o {indel_vcf}"
+	if filter_indel_pass:
+		indel_cmd = f"bcftools view -v indels -f PASS {indel_vcf} -Oz -o {indel_only_vcf}"
+	else:
+		indel_cmd = f"bcftools view -v indels {indel_vcf} -Oz -o {indel_only_vcf}"
 	subprocess.run(indel_cmd, shell=True, check=True)
-	subprocess.run(f"tabix -p vcf {indel_vcf}", shell=True, check=True)
+	subprocess.run(f"tabix -p vcf {indel_only_vcf}", shell=True, check=True)
 
-	merge_cmd = f"bcftools concat -a {snp_vcf} {indel_vcf} | bcftools sort | bgzip > {merged_vcf}"
+	merge_cmd = f"bcftools concat -a {snp_only_vcf} {indel_only_vcf} | bcftools sort | bgzip > {merged_vcf}"
 	subprocess.run(merge_cmd, shell=True, check=True)
 	subprocess.run(f"tabix -p vcf {merged_vcf}", shell=True, check=True)
 

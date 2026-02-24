@@ -42,13 +42,15 @@ def main():
 
     args = parser.parse_args()
     
-    # For public release: hardcode aligner and genotyper
+    # For public release: hardcode aligner and callers
     args.aligner = "minimap2"
-    #args.genotyper = "hybrid"
-    args.genotyper = "clair3"
-    #args.genotyper = "freebayes"
-    #args.genotyper = "bcftools"
-    #args.genotyper = "deepvariant"
+    args.snp_caller = "bcftools"
+    args.indel_caller = "deepvariant"
+    # Other combinations:
+    # args.snp_caller = "bcftools";   args.indel_caller = "clair3"      # hybrid ONT
+    # args.snp_caller = "bcftools";   args.indel_caller = "bcftools"    # pure bcftools
+    # args.snp_caller = "deepvariant"; args.indel_caller = "deepvariant" # pure deepvariant
+    # args.snp_caller = "clair3";      args.indel_caller = "clair3"      # pure clair3
 
     setup_logging(output_dir=args.output_dir, sample_name=args.sample_name)
 
@@ -57,7 +59,7 @@ def main():
     
     start_time = time.time()
     
-    sample = Samples(input_file=args.input_file, sample_name=args.sample_name, platform=args.platform, output_dir=args.output_dir, aligner=args.aligner, genotyper=args.genotyper, trim_adapters=args.trim_adapters, adapter_file=args.adapter_file, threads=args.threads, read_group_string=args.read_group_string, clean_up=args.clean_up, scheme=args.scheme, clair3_model=args.clair3_model)
+    sample = Samples(input_file=args.input_file, sample_name=args.sample_name, platform=args.platform, output_dir=args.output_dir, aligner=args.aligner, snp_caller=args.snp_caller, indel_caller=args.indel_caller, trim_adapters=args.trim_adapters, adapter_file=args.adapter_file, threads=args.threads, read_group_string=args.read_group_string, clean_up=args.clean_up, scheme=args.scheme, clair3_model=args.clair3_model)
 
     # Build workflow configuration from sample object
     workflow_config = build_workflow_config(sample)

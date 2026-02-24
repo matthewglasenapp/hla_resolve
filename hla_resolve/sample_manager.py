@@ -24,7 +24,7 @@ class Samples:
     pbtrgt_repeat_file = pbtrgt_repeat_file
     
     def __init__(self, input_file, sample_name, platform, output_dir,
-                 aligner, genotyper, trim_adapters=False, adapter_file=None,
+                 aligner, snp_caller, indel_caller, trim_adapters=False, adapter_file=None,
                  threads=1, read_group_string=None, clean_up=False, scheme=None,
                  clair3_model=None):
         
@@ -69,7 +69,8 @@ class Samples:
         self.platform = platform.upper()
         self.threads = threads
         self.aligner = aligner
-        self.genotyper = genotyper
+        self.snp_caller = snp_caller
+        self.indel_caller = indel_caller
         self.clean_up = clean_up
         self.clair3_model = clair3_model if clair3_model else (clair3_ont_model if self.platform == "ONT" else clair3_hifi_model)
 
@@ -279,6 +280,8 @@ class Samples:
         self.bcftools_snp_vcf = os.path.join(self.genotypes_dir, f"{self.sample_ID}.bcftools.snps.vcf.gz")
         self.dv_full_vcf = os.path.join(self.genotypes_dir, f"{self.sample_ID}.dv.vcf.gz")
         self.dv_indel_vcf = os.path.join(self.genotypes_dir, f"{self.sample_ID}.dv.indels.vcf.gz")
+        self.clair3_full_vcf = os.path.join(self.genotypes_dir, f"{self.sample_ID}.clair3.vcf.gz")
+        self.hybrid_indel_vcf = os.path.join(self.genotypes_dir, f"{self.sample_ID}.hybrid.indels.vcf.gz")
         self.sv_vcf = os.path.join(self.sv_dir, f"{self.sample_ID}.SV.vcf.gz")
         self.sv_svsig = os.path.join(self.sv_dir, f"{self.sample_ID}.svsig.gz")
         self.tr_vcf = os.path.join(self.pbtrgt_dir, f"{self.sample_ID}.TR.vcf.gz") if hasattr(self, 'pbtrgt_dir') else None
@@ -344,7 +347,8 @@ def build_workflow_config(sample):
 		'threads': sample.threads,
 		'platform': sample.platform,
 		'aligner': sample.aligner,
-		'genotyper': sample.genotyper,
+		'snp_caller': sample.snp_caller,
+		'indel_caller': sample.indel_caller,
 		'scheme': sample.scheme,
 		
 		# Adapter settings
@@ -394,6 +398,8 @@ def build_workflow_config(sample):
 		'bcftools_snp_vcf': sample.bcftools_snp_vcf,
 		'dv_full_vcf': sample.dv_full_vcf,
 		'dv_indel_vcf': sample.dv_indel_vcf,
+		'clair3_full_vcf': sample.clair3_full_vcf,
+		'hybrid_indel_vcf': sample.hybrid_indel_vcf,
 		'sv_vcf': sample.sv_vcf,
 		'sv_svsig': sample.sv_svsig,
 		'tr_vcf': sample.tr_vcf,
