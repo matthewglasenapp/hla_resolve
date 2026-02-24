@@ -137,6 +137,12 @@ def resolve_alleles(config):
 		gene_pass_unphased_vcf = os.path.join(config['single_gene_vcf_dir'], f"{config['sample_ID']}_{gene}_PASS_UNPHASED.vcf.gz")
 		gene_filtered_vcf = os.path.join(config['single_gene_vcf_dir'], f"{config['sample_ID']}_{gene}_PASS_phased.vcf.gz")
 
+		# Derive genotyper label from split caller config
+		if config['snp_caller'] == config['indel_caller']:
+			genotyper = config['snp_caller']
+		else:
+			genotyper = "hybrid"
+
 		filter_vcf_gene_test(
 			input_vcf=input_vcf,
 			gene=gene,
@@ -148,7 +154,7 @@ def resolve_alleles(config):
 			pass_unphased=gene_pass_unphased_vcf,
 			filtered_vcf=gene_filtered_vcf,
 			platform=config['platform'],
-			genotyper=config['genotyper'],
+			genotyper=genotyper,
 			hla_genes_regions_file=config['hla_genes_regions_file']
 		)
 		
