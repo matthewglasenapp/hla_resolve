@@ -103,7 +103,6 @@ class Samples:
         self.hla_typing_dir = os.path.join(self.output_dir, "hla_typing_results")
         self.mosdepth_dir = os.path.join(self.output_dir, "mosdepth")
         self.phased_vcf_dir = os.path.join(self.output_dir, "phased_vcf")
-        self.gff_dir = os.path.join(self.output_dir, "gff")
 
         platform_dirs = []
 
@@ -118,7 +117,7 @@ class Samples:
             self.genotypes_dir, self.sv_dir, 
             self.filtered_vcf_dir, self.single_gene_vcf_dir, self.vcf2fasta_out_dir, 
             self.hla_fasta_dir, self.hla_typing_dir,
-            self.mosdepth_dir, self.phased_vcf_dir, self.gff_dir
+            self.mosdepth_dir, self.phased_vcf_dir
         ] + platform_dirs
 
         for directory in self.combined_dirs:
