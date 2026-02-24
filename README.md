@@ -2,7 +2,7 @@
 
 <p align="center">
   <img src="images/hla_resolve.png" alt="HLA-RESOLVE Logo" width="340"/><br/>
-  <b>HLA Typing from Long Reads</b>
+  <b>HLA Typing from PacBio Reads</b>
 </p>
 
 **Authors:** [Matthew Glasenapp](https://github.com/matthewglasenapp), [Alex Symons](https://github.com/FlyingFish800), [Omar Cornejo](https://github.com/oeco28)
