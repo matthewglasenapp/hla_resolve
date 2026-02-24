@@ -85,9 +85,9 @@ def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail
 				fail_out.write(rec)
 			continue
 
-		# DeepVariant specific filtering; for hybrid, apply PASS-only filter to indels from DeepVariant
+		# DeepVariant/Clair3 specific filtering; for hybrid, apply PASS-only filter to indels from DeepVariant
 		is_snp = len(rec.ref) == 1 and all(len(a) == 1 for a in rec.alts if a is not None)
-		if genotyper == "deepvariant" or (genotyper == "hybrid" and not is_snp):
+		if genotyper in ("deepvariant", "clair3") or (genotyper == "hybrid" and not is_snp):
 			if rec.filter.keys() == ["PASS"] or rec.filter.keys() == []:
 				pass_out.write(rec)
 			else:
@@ -387,9 +387,9 @@ def filter_vcf_gene_test(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf,
 				sv_overlap_out.write(rec)
 				continue
 
-		# DeepVariant specific filtering; for hybrid, apply PASS-only filter to indels from DeepVariant
+		# DeepVariant/Clair3 specific filtering; for hybrid, apply PASS-only filter to indels from DeepVariant
 		is_snp = len(rec.ref) == 1 and all(len(a) == 1 for a in rec.alts if a is not None)
-		if genotyper == "deepvariant" or (genotyper == "hybrid" and not is_snp):
+		if genotyper in ("deepvariant", "clair3") or (genotyper == "hybrid" and not is_snp):
 			if rec.filter.keys() == ["PASS"] or rec.filter.keys() == []:
 				pass_out.write(rec)
 			else:
