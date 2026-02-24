@@ -1,0 +1,10 @@
+# Enforce LF line endings for all text files (important for Linux HPC compatibility)
+* text=auto eol=lf
+
+# Treat binary files as binary (no line ending conversion)
+*.sif binary
+*.jar binary
+*.gz binary
+*.bam binary
+*.fna binary
+*.fa binary

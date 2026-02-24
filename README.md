@@ -20,7 +20,7 @@ A raw, single-sample (demultiplexed) long-read sequencing file in FASTQ or unmap
 
 **Primary Results**
 
-HLA star-allele calls bfor the following genes:
+HLA star-allele calls for the following genes:
 
 ```
 HLA-A, HLA-B, HLA-C, HLA-DPA1, HLA-DPB1, HLA-DQA1, HLA-DQB1, HLA-DRB1
@@ -51,7 +51,18 @@ conda activate hla_resolve
 pip install -e hla_resolve
 hla_resolve --help
 ```
-The first trime ``hla_resolve`` is executed, it will download the required reference genome from NCBI, picard.jar from the Broad Institute, and hla.xml from the IPD-IMGT/HLA database. 
+The first time ``hla_resolve`` is executed, it will automatically download the following required files:
+
+| File | Source |
+|------|--------|
+| GRCh38 reference genome | NCBI |
+| picard.jar | Broad Institute |
+| LongPhase binary | GitHub |
+| hla.xml (IPD-IMGT/HLA database) | ANHIG/IMGTHLA |
+| Clair3 Singularity image | Docker Hub |
+| DeepVariant Singularity image | Docker Hub |
+
+**Note:** These downloads are large. Ensure sufficient disk space is available in the install directory before the first run.
 
 Note: HLA-Resolve depends on several PacBio command-line utilities that are distributed only as precompiled Linux binaries through the Bioconda channel (pbmarkdup, pbtk, hiphase, trgt). Because these packages are not built or supported for macOS (osx-64 / osx-arm64), HLA-Resolve cannot be fully installed or executed natively on a MacBook or other macOS device.
 
