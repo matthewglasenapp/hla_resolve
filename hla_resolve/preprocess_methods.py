@@ -384,6 +384,8 @@ def call_variants_deepvariant(input_bam, output_vcf, output_gvcf, platform, deep
 
 	bind_flags = " ".join(f"--bind {path}" for path in bind_paths)
 
+	deepvariant_shards = min(threads, 8)
+
 	deepvariant_cmd = f"""
 		singularity exec {bind_flags} {deepvariant_sif} /opt/deepvariant/bin/run_deepvariant \
 			--model_type={model_type} \
@@ -392,7 +394,7 @@ def call_variants_deepvariant(input_bam, output_vcf, output_gvcf, platform, deep
 			--output_vcf=/data/{os.path.basename(output_vcf)} \
 			--output_gvcf=/data/{os.path.basename(output_gvcf)} \
 			--regions chr6 \
-			--num_shards={threads}
+			--num_shards={deepvariant_shards}
 		"""
 
 	# Log DeepVariant in own output file so it doesn't clog up STDOUT
