@@ -473,7 +473,7 @@ def call_variants_bcftools(input_file, output_file, reference_fasta, platform, t
 		f"-f {reference_fasta} -d 1000000 -r chr6:28000000-34000000 "
 		f"-a FORMAT/DP,AD,ADF,ADR,SP {input_file} | "
 		f"bcftools call -mv -f GQ --threads {call_threads} -Ou | "
-		f"bcftools view -i 'DP>=2 && ((TYPE=\"snp\" && GQ>=20 && QUAL>=10) || (TYPE=\"indel\" && GQ>=20 && QUAL>=10))' "
+		f"bcftools view -i 'FORMAT/DP>=2 && ((TYPE=\"snp\" && GQ>=20 && QUAL>=10) || (TYPE=\"indel\" && GQ>=20 && QUAL>=10))' "
 		f"-Oz -o {output_file}")
 
 	subprocess.run(bcftools_command, shell=True, check=True)
@@ -493,7 +493,7 @@ def call_variants_freebayes(input_bam, output_vcf, reference_fasta):
 		f"-r chr6:28000000-34000000 "
 		f"--genotype-qualities "
 		f"{input_bam} | "
-		f"bcftools view -i 'DP>=2 && ((INFO/TYPE=\"snp\" && GQ>=20 && QUAL>=10) || (INFO/TYPE!=\"snp\" && GQ>=20 && QUAL>=10))' | "
+		f"bcftools view -i 'FORMAT/DP>=2 && ((INFO/TYPE=\"snp\" && GQ>=20 && QUAL>=10) || (INFO/TYPE!=\"snp\" && GQ>=20 && QUAL>=10))' | "
 		f"bgzip > {output_vcf}"
 	)
 
