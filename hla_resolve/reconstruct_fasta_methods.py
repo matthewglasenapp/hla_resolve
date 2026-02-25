@@ -5,199 +5,7 @@ from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio import SeqIO
 
-def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail_vcf, pass_unphased, filtered_vcf, platform, genotyper, hla_genes_regions_file):
-	# Extract region
-	base = os.path.basename(filtered_vcf)
-	prefix = base.replace("_PASS_phased.vcf.gz", "")
-	region_vcf = os.path.join(os.path.dirname(filtered_vcf), f"{prefix}.vcf.gz")
-
-	cmd = f"bcftools view -r {filter_region} {input_vcf} -Oz -o {region_vcf}"
-	subprocess.run(cmd, shell=True, check=True)
-	subprocess.run(f"bcftools index -f {region_vcf}", shell=True, check=True)
-
-	# ========== FIRST PASS: Collect TRGT tandem repeat regions ==========
-	tr_regions = []
-	vf_tr = pysam.VariantFile(region_vcf)
-	for rec in vf_tr:
-		if "TRID" in rec.info and rec.info["TRID"] not in (None, "", "."):
-			tr_start = rec.pos
-			tr_end = rec.info.get("END", rec.pos + len(rec.ref))
-			tr_regions.append((tr_start, tr_end))
-	vf_tr.close()
-
-	if tr_regions:
-		print(f"[TR-OVERLAP] {gene}: Collected {len(tr_regions)} TRGT regions for overlap suppression")
-
-	def overlaps_tr_region(pos, ref_len):
-		var_end = pos + ref_len
-		for tr_start, tr_end in tr_regions:
-			if pos >= tr_start and var_end <= tr_end:
-				return True
-		return False
-
-	vf = pysam.VariantFile(region_vcf)
-	sym_out = pysam.VariantFile(symbolic_vcf, "wz", header=vf.header)
-	pass_out = pysam.VariantFile(pass_vcf, "wz", header=vf.header)
-	fail_out = pysam.VariantFile(fail_vcf, "wz", header=vf.header)
-
-	# ========== PASS/FAIL CLASSIFICATION ==========
-	for rec in vf:
-		sample = list(rec.samples.values())[0]
-		gt = sample.get("GT")
-
-		# HARD EXCLUDE — must not exist downstream
-		if gt is None or None in gt:
-			continue
-
-		# symbolic — exclude truly symbolic alleles (BND, <DEL>, etc.)
-		# TRGT records with explicit REF/ALT sequences are NOT symbolic
-		if (
-			rec.alts is None or
-			any(str(a).startswith("<") for a in rec.alts) or
-			any("]" in str(a) or "[" in str(a) for a in rec.alts) or
-			any(set(str(a)) - set("ACGTN") for a in rec.alts)
-		):
-			sym_out.write(rec)
-			continue
-
-		# Suppress non-TRGT variants inside TRGT spans (avoid double-counting)
-		is_trgt = "TRID" in rec.info and rec.info["TRID"] not in (None, "", ".")
-		if not is_trgt and tr_regions and overlaps_tr_region(rec.pos, len(rec.ref)):
-			print(f"[TR-OVERLAP]   Suppressed: {rec.chrom}:{rec.pos} {rec.ref[:20]}->{rec.alts[0][:20] if rec.alts else '.'}")
-			continue
-
-		# TRGT records with explicit alleles bypass quality filters (no DP/GQ)
-		if is_trgt:
-			sample_gt = sample.get("GT")
-			gt_str = "|".join(str(a) for a in sample_gt) if sample_gt else "."
-			alts_str = ",".join(str(a)[:30] for a in rec.alts) if rec.alts else "."
-			print(f"[TR-PASS]      {gene} {rec.chrom}:{rec.pos} REF={rec.ref[:30]} ALT={alts_str} GT={gt_str} TRID={rec.info.get('TRID','?')}")
-			pass_out.write(rec)
-			continue
-
-		# pbsv SV (ID starts with "pbsv.") or Sniffles(Sniffles2) SVs from ONT
-		rec_id = rec.id or ""
-		rec_id_l = rec_id.lower()
-		if rec_id_l.startswith("pbsv.") or rec_id_l.startswith("sniffles"):
-			if rec.filter.keys() == ["PASS"] or rec.filter.keys() == []:
-				pass_out.write(rec)
-			else:
-				fail_out.write(rec)
-			continue
-
-		# DeepVariant/Clair3 specific filtering; for hybrid, apply PASS-only filter to indels from DeepVariant
-		is_snp = len(rec.ref) == 1 and all(len(a) == 1 for a in rec.alts if a is not None)
-		if genotyper in ("deepvariant", "clair3") or (genotyper == "hybrid" and not is_snp):
-			if rec.filter.keys() == ["PASS"] or rec.filter.keys() == []:
-				pass_out.write(rec)
-			else:
-				fail_out.write(rec)
-			continue
-
-		# small variants
-		sample = list(rec.samples.values())[0]
-		dp = sample.get("DP")
-		gq = sample.get("GQ")
-		qual = rec.qual or 0
-		ref = rec.ref
-		alt = rec.alts[0]
-
-		# DP filter
-		if dp is None or dp < 2:
-			fail_out.write(rec)
-			continue
-
-		# SNP
-		if len(ref) == 1 and len(alt) == 1:
-			if gq not in (None, ".") and gq < 20:
-				fail_out.write(rec); continue
-			if qual < 10:
-				fail_out.write(rec); continue
-			pass_out.write(rec); continue
-
-		# INDEL
-		if gq not in (None, ".") and gq < 10:
-			fail_out.write(rec); continue
-		pass_out.write(rec)
-
-	sym_out.close()
-	pass_out.close()
-	fail_out.close()
-
-	subprocess.run(f"bcftools index -f {symbolic_vcf}", shell=True, check=True)
-	subprocess.run(f"bcftools index -f {pass_vcf}", shell=True, check=True)
-	subprocess.run(f"bcftools index -f {fail_vcf}", shell=True, check=True)
-
-	# ========== WHITELIST LOGIC ==========
-	het_sites = []
-	unphased_hets = []
-
-	pass_vf = pysam.VariantFile(pass_vcf)
-	for rec in pass_vf:
-		sample = list(rec.samples.values())[0]
-		gt = sample.get("GT")
-		if gt is None or None in gt:
-			continue
-		if len(set(gt)) == 2:  # heterozygous
-			het_sites.append(rec)
-			if not sample.phased:
-				unphased_hets.append(rec)
-
-	print(f"[DEBUG] {gene}: het={len(het_sites)}, unphased={len(unphased_hets)}")
-	allow_single_unphased = (len(het_sites) == 1 and len(unphased_hets) == 1)
-
-	het_clauses = [
-		'GT="0/1"', 'GT="1/0"', 'GT="1/2"',
-		'GT="2/1"', 'GT="2/3"', 'GT="3/2"'
-	]
-
-	if allow_single_unphased:
-		# one heterozygous site, unphased → treat as fully phased
-		chosen = unphased_hets[0]
-		chrom = chosen.chrom
-		pos   = chosen.pos
-
-		# NEGATED form for "keep all non-hets"
-		negated = " && ".join([f'{c.replace("=", "!=")}' for c in het_clauses])
-
-		# whitelist the one unphased site so it remains in phased VCF
-		whitelist = f'(CHROM="{chrom}" && POS={pos})'
-
-		keep_expr = f'({negated}) || {whitelist}'
-
-		# IMPORTANT: prevent *anything* from being written to pass_unphased
-		unphased_expr = 'GT="9/9"'     # matches nothing
-
-	else:
-		# Normal case: send all heterozygous unphased variants to pass_unphased
-		unphased_expr = " || ".join(het_clauses)
-
-		# phased variants = everything NOT matching the het genotypes
-		keep_expr = " && ".join([f'{c.replace("=", "!=")}' for c in het_clauses])
-
-	# extract unphased PASS
-	cmd = f"bcftools view -i '{unphased_expr}' {pass_vcf} -Oz -o {pass_unphased}"
-	subprocess.run(cmd, shell=True, check=True)
-	subprocess.run(f"bcftools index -f {pass_unphased}", shell=True, check=True)
-
-	# extract phased PASS (final filtered VCF)
-	cmd = f"bcftools view -i '{keep_expr}' {pass_vcf} -Oz -o {filtered_vcf}"
-	subprocess.run(cmd, shell=True, check=True)
-	subprocess.run(f"bcftools index -f {filtered_vcf}", shell=True, check=True)
-
-	# ========== PRINT UNPHASED RECORDS NEATLY ==========
-	unph = pysam.VariantFile(pass_unphased)
-	records = [rec for rec in unph]
-
-	if records:
-		print(f"\nUnphased PASS variants in {gene}:\n")
-		for rec in records:
-			print(str(rec).strip())
-		print()
-
-
-def filter_vcf_gene_test(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail_vcf, sv_overlap_vcf, pass_unphased, filtered_vcf, platform, genotyper, hla_genes_regions_file):
-	"""Version with SV overlap suppression logic - kept for testing"""
+def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail_vcf, sv_overlap_vcf, pass_unphased, filtered_vcf, platform, genotyper, hla_genes_regions_file, force_include_unphased=False):
 	# Extract region
 	base = os.path.basename(filtered_vcf)
 	prefix = base.replace("_PASS_phased.vcf.gz", "")
@@ -457,7 +265,13 @@ def filter_vcf_gene_test(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf,
 		'GT="2/1"', 'GT="2/3"', 'GT="3/2"'
 	]
 
-	if allow_single_unphased:
+	if force_include_unphased:
+		# CDS rescue: include ALL variants (phased + unphased) in filtered VCF
+		print(f"[CDS-RESCUE] {gene}: force_include_unphased=True, keeping all variants")
+		unphased_expr = 'GT="9/9"'     # matches nothing → nothing sent to pass_unphased
+		keep_expr = 'GT!="9/9"'        # matches everything → all variants kept
+
+	elif allow_single_unphased:
 		# one heterozygous site, unphased → treat as fully phased
 		chosen = unphased_hets[0]
 		chrom = chosen.chrom
@@ -511,7 +325,7 @@ def run_vcf2fasta(vcf2fasta, input_vcf, input_gff, reference_genome, output_dir,
 	
 	subprocess.run(vcf2fasta_cmd, shell = True, check = True)
 
-def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA_bases, stop_codons, unphased_genes=None, gene_dict=None, CDS_dict=None, gff_dir=None):
+def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA_bases, stop_codons, unphased_genes=None, gene_dict=None, CDS_dict=None, gff_dir=None, cds_rescued_genes=None, ARS_dict=None, CLASS_I_GENES=None):
 	# Use subprocess.run with capture_output to avoid race conditions with temporary files
 	find_cmd = f"find {vcf2fasta_output_dir} -type f"
 	result = subprocess.run(find_cmd, shell=True, check=True, capture_output=True, text=True)
@@ -569,7 +383,129 @@ def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA
 			print(f"ERROR: Failed to parse FASTA alleles from {file}: {e}")
 			continue
 
-		if unphased_genes and gene in unphased_genes:
+		if cds_rescued_genes and gene in cds_rescued_genes:
+			rescue_info = cds_rescued_genes[gene]
+			tier = rescue_info["tier"]
+			all_hets = rescue_info["all_het_positions"]
+			ars_start = rescue_info["ars_start"]
+			ars_stop = rescue_info["ars_stop"]
+			gene_start_coord, gene_stop_coord = gene_dict[gene]
+
+			if tier == "cds_full":
+				# Branch 3b-i: CDS hets <= 1
+				if feat == "CDS":
+					# No clamping — write full concatenated exon output
+					logging_strings.append(f"{sample_ID} {gene} CDS rescue tier=cds_full: writing full CDS output")
+
+				elif feat == "gene":
+					cds_het_positions = rescue_info["cds_het_positions"]
+					gene_lower = gene.lower().replace("-", "_")
+					gene_coords_file = os.path.join(gff_dir, f"{gene_lower}_gene_coords.txt")
+					gene_coords = [int(item) for item in open(gene_coords_file).read().splitlines()]
+
+					interval = None
+					if len(cds_het_positions) == 1:
+						# Anchor on CDS het, extend to flanking hets
+						cds_het = cds_het_positions[0]
+						prev_hets = [h for h in all_hets if h < cds_het]
+						next_hets = [h for h in all_hets if h > cds_het]
+						left = max(prev_hets) + 1 if prev_hets else gene_start_coord
+						right = min(next_hets) - 1 if next_hets else gene_stop_coord
+						# Check if interval fully contains ARS
+						if left <= ars_start and right >= ars_stop:
+							interval = (left, right)
+							logging_strings.append(f"{sample_ID} {gene} CDS rescue: CDS het at {cds_het}, interval chr6:{left}-{right} contains ARS")
+						else:
+							logging_strings.append(f"{sample_ID} {gene} CDS rescue: CDS het at {cds_het}, interval chr6:{left}-{right} does NOT contain ARS — skipping gene record")
+					else:
+						# CDS hets = 0: find largest ARS-overlapping 1-het interval
+						best_interval = None
+						best_size = 0
+						for i in range(len(all_hets)):
+							left = (all_hets[i-1] + 1) if i > 0 else gene_start_coord
+							right = (all_hets[i+1] - 1) if i < len(all_hets) - 1 else gene_stop_coord
+							# Check ARS overlap
+							if left <= ars_stop and right >= ars_start:
+								size = right - left
+								if size > best_size:
+									best_size = size
+									best_interval = (left, right)
+						if best_interval:
+							interval = best_interval
+							logging_strings.append(f"{sample_ID} {gene} CDS rescue: 0 CDS hets, best 1-het interval chr6:{interval[0]}-{interval[1]}")
+						else:
+							logging_strings.append(f"{sample_ID} {gene} CDS rescue: 0 CDS hets, no ARS-overlapping interval found — skipping gene record")
+
+					if interval:
+						clamped_start = max(interval[0], gene_start_coord)
+						clamped_stop = min(interval[1], gene_stop_coord)
+						idx1 = gene_coords.index(clamped_start)
+						idx2 = gene_coords.index(clamped_stop)
+						fasta_start, fasta_stop = sorted((idx1, idx2))
+						allele_1 = allele_1[fasta_start:fasta_stop+1]
+						allele_2 = allele_2[fasta_start:fasta_stop+1]
+					else:
+						allele_1, allele_2 = "", ""
+
+			elif tier == "ars_only":
+				# Branch 3b-ii-A: CDS hets > 1, ARS CDS hets <= 1
+				if feat == "CDS":
+					# Extract only ARS CDS positions from CDS sequence
+					gene_lower = gene.lower().replace("-", "_")
+					cds_coords_file = os.path.join(gff_dir, f"{gene_lower}_cds_sorted_coords.txt")
+					cds_coords = [int(item) for item in open(cds_coords_file).read().splitlines()]
+
+					ars_cds_ranges = rescue_info["ars_cds_ranges"]
+					ars_cds_positions = [pos for pos in cds_coords
+										if any(s <= pos <= e for s, e in ars_cds_ranges)]
+
+					if ars_cds_positions:
+						idx1 = cds_coords.index(ars_cds_positions[0])
+						idx2 = cds_coords.index(ars_cds_positions[-1])
+						cds_fasta_start, cds_fasta_stop = sorted((idx1, idx2))
+						allele_1 = allele_1[cds_fasta_start:cds_fasta_stop+1]
+						allele_2 = allele_2[cds_fasta_start:cds_fasta_stop+1]
+						logging_strings.append(f"{sample_ID} {gene} CDS rescue tier=ars_only: extracting ARS CDS ({len(ars_cds_positions)} positions)")
+					else:
+						allele_1, allele_2 = "", ""
+						logging_strings.append(f"{sample_ID} {gene} CDS rescue tier=ars_only: no ARS CDS positions found")
+
+				elif feat == "gene":
+					gene_lower = gene.lower().replace("-", "_")
+					gene_coords_file = os.path.join(gff_dir, f"{gene_lower}_gene_coords.txt")
+					gene_coords = [int(item) for item in open(gene_coords_file).read().splitlines()]
+
+					skip_gene = False
+					# Class I intron 2 check
+					if CLASS_I_GENES and gene in CLASS_I_GENES:
+						ars_cds_ranges = rescue_info["ars_cds_ranges"]
+						if len(ars_cds_ranges) == 2:
+							intron2_start = ars_cds_ranges[0][1] + 1
+							intron2_stop = ars_cds_ranges[1][0] - 1
+							intron2_hets = [h for h in all_hets if intron2_start <= h <= intron2_stop]
+							if intron2_hets:
+								skip_gene = True
+								logging_strings.append(f"{sample_ID} {gene} CDS rescue tier=ars_only: het in intron 2 ({intron2_start}-{intron2_stop}) — skipping gene record")
+
+					if skip_gene:
+						allele_1, allele_2 = "", ""
+					else:
+						# Extend ARS outward to nearest het in each direction
+						prev_hets = [h for h in all_hets if h < ars_start]
+						next_hets = [h for h in all_hets if h > ars_stop]
+						left = max(prev_hets) + 1 if prev_hets else gene_start_coord
+						right = min(next_hets) - 1 if next_hets else gene_stop_coord
+
+						clamped_start = max(left, gene_start_coord)
+						clamped_stop = min(right, gene_stop_coord)
+						idx1 = gene_coords.index(clamped_start)
+						idx2 = gene_coords.index(clamped_stop)
+						fasta_start, fasta_stop = sorted((idx1, idx2))
+						allele_1 = allele_1[fasta_start:fasta_stop+1]
+						allele_2 = allele_2[fasta_start:fasta_stop+1]
+						logging_strings.append(f"{sample_ID} {gene} CDS rescue tier=ars_only: gene interval chr6:{clamped_start}-{clamped_stop}")
+
+		elif unphased_genes and gene in unphased_genes:
 			best_haploblock_start = unphased_genes[gene][0]
 			best_haploblock_end   = unphased_genes[gene][1]
 

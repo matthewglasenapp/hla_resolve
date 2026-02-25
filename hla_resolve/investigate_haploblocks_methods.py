@@ -53,13 +53,14 @@ def parse_haploblocks(input_vcf, input_haploblock_file, platform,sample_ID, mhc_
 	return heterozygous_sites, haploblock_list
 
 # Check whether each captured MHC gene is completely spanned by a haploblock
-def evaluate_gene_haploblocks(output_file, incomplete_file, sample_ID, genes_bed, genes_of_interest, het_sites, haploblocks, ARS_dict=None):
+def evaluate_gene_haploblocks(output_file, incomplete_file, sample_ID, genes_bed, genes_of_interest, het_sites, haploblocks, ARS_dict=None, CDS_dict=None):
 	# List of fully phased genes
 	haploblocks.sort()
 	gene_list = []
 	unphased_genes = dict()
 	do_not_type_genes = []
-	
+	cds_rescued_genes = dict()
+
 	# List of genes with partially overlapping haploblock
 	incomplete_data = []
 	
@@ -191,9 +192,46 @@ def evaluate_gene_haploblocks(output_file, incomplete_file, sample_ID, genes_bed
 					print(f"{sample_ID} {gene} largest ARS-spanning haploblock: chr6:{largest_ars_spanning_block[0]}-{largest_ars_spanning_block[1]}")
 				else:
 					print(f"{sample_ID} {gene} no haploblocks span the ARS")
-					print(f"{sample_ID} {gene} typing will not be performed" + "\n")
-					do_not_type_genes.append(gene)
-					# Fall back to largest overlap
+
+					# ========== CDS-AWARE RESCUE (branch 3b) ==========
+					# Count ALL QC-pass het sites falling in CDS exons
+					cds_hets = [h for h in gene_het_sites
+								if any(s <= h <= e for s, e in CDS_dict.get(gene, []))] if CDS_dict else []
+
+					# Count ALL QC-pass het sites falling in ARS CDS exons
+					ars_cds_ranges = [(s, e) for s, e in CDS_dict.get(gene, [])
+									if s >= ARS_start and e <= ARS_stop] if CDS_dict else []
+					ars_cds_hets = [h for h in gene_het_sites
+								if any(s <= h <= e for s, e in ars_cds_ranges)]
+
+					print(f"{sample_ID} {gene} CDS hets: {len(cds_hets)}, ARS CDS hets: {len(ars_cds_hets)}")
+
+					if CDS_dict and len(ars_cds_hets) <= 1:
+						if len(cds_hets) <= 1:
+							# Branch 3b-i: CDS rescue "cds_full"
+							tier = "cds_full"
+							print(f"{sample_ID} {gene} CDS-aware rescue tier: {tier} (total CDS hets={len(cds_hets)})")
+						else:
+							# Branch 3b-ii-A: CDS rescue "ars_only"
+							tier = "ars_only"
+							print(f"{sample_ID} {gene} CDS-aware rescue tier: {tier} (total CDS hets={len(cds_hets)}, ARS CDS hets={len(ars_cds_hets)})")
+
+						cds_rescued_genes[gene] = {
+							"tier": tier,
+							"n_cds_hets": len(cds_hets),
+							"n_ars_cds_hets": len(ars_cds_hets),
+							"all_het_positions": sorted(gene_het_sites),
+							"cds_het_positions": sorted(cds_hets),
+							"ars_start": ARS_start,
+							"ars_stop": ARS_stop,
+							"ars_cds_ranges": ars_cds_ranges,
+						}
+					else:
+						# Branch 3b-ii-B: ARS CDS hets > 1 — no typing
+						print(f"{sample_ID} {gene} typing will not be performed (ARS CDS hets > 1)" + "\n")
+						do_not_type_genes.append(gene)
+
+					# Fall back to largest overlap for incomplete_data reporting
 					max_overlap = 0
 					for start, stop in overlapping_extended_haploblocks:
 						overlap_start = max(start, gene_start)
@@ -229,4 +267,4 @@ def evaluate_gene_haploblocks(output_file, incomplete_file, sample_ID, genes_bed
 			csv_writer.writerows(incomplete_data)
 
 	#print(f"Unphased genes: {unphased_genes}")
-	return gene_list, unphased_genes, do_not_type_genes
+	return gene_list, unphased_genes, do_not_type_genes, cds_rescued_genes

@@ -9,7 +9,7 @@ from .investigate_haploblocks_methods import (
 	evaluate_gene_haploblocks
 )
 from .reconstruct_fasta_methods import (
-	filter_vcf_gene_test,
+	filter_vcf_gene,
 	run_vcf2fasta,
 	parse_fastas
 )
@@ -91,15 +91,16 @@ def resolve_alleles(config):
 		mhc_stop=config['mhc_stop']
 	)
 
-	phased_genes, unphased_genes, do_not_type_genes = evaluate_gene_haploblocks(
+	phased_genes, unphased_genes, do_not_type_genes, cds_rescued_genes = evaluate_gene_haploblocks(
 		output_file=config['phased_genes_tsv'],
 		incomplete_file=config['incomplete_genes_csv'],
 		sample_ID=config['sample_ID'],
-		genes_bed=config['genes_bed'],  
+		genes_bed=config['genes_bed'],
 		genes_of_interest=config['genes_of_interest'],
-		het_sites=heterozygous_sites, 
+		het_sites=heterozygous_sites,
 		haploblocks=haploblock_list,
-		ARS_dict=config.get('ARS_dict', None))
+		ARS_dict=config.get('ARS_dict', None),
+		CDS_dict=config.get('CDS_dict', None))
 	
 	# Print which genes were successfully phased
 	print("Fully Phased Genes:")
@@ -112,6 +113,13 @@ def resolve_alleles(config):
 	for gene in config['genes_of_interest']:
 		if gene in unphased_genes:
 			print(f"  {gene}")
+	print("\n")
+
+	print("CDS-Rescued Genes:")
+	for gene in config['genes_of_interest']:
+		if gene in cds_rescued_genes:
+			tier = cds_rescued_genes[gene]["tier"]
+			print(f"  {gene} (tier: {tier})")
 	print("\n")
 	
 	if config['platform'] == "PACBIO":
@@ -143,7 +151,7 @@ def resolve_alleles(config):
 		else:
 			genotyper = "hybrid"
 
-		filter_vcf_gene_test(
+		filter_vcf_gene(
 			input_vcf=input_vcf,
 			gene=gene,
 			filter_region=filter_region,
@@ -155,7 +163,8 @@ def resolve_alleles(config):
 			filtered_vcf=gene_filtered_vcf,
 			platform=config['platform'],
 			genotyper=genotyper,
-			hla_genes_regions_file=config['hla_genes_regions_file']
+			hla_genes_regions_file=config['hla_genes_regions_file'],
+			force_include_unphased=(gene in cds_rescued_genes)
 		)
 		
 		gene_filtered_vcfs[gene] = gene_filtered_vcf
@@ -198,7 +207,10 @@ def resolve_alleles(config):
 		unphased_genes=unphased_genes,
 		gene_dict=config['gene_dict'],
 		CDS_dict=config['CDS_dict'],
-		gff_dir=config['gff_dir']
+		gff_dir=config['gff_dir'],
+		cds_rescued_genes=cds_rescued_genes,
+		ARS_dict=config.get('ARS_dict', None),
+		CLASS_I_GENES=config.get('CLASS_I_GENES', None)
 	)
 	
 	# Step 3: HLA typing

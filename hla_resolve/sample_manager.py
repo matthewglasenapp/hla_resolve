@@ -11,7 +11,7 @@ from .config import (
 	depth_thresh, prop_20x_thresh, prop_30x_thresh,
 	mhc_start, mhc_stop, genes_bed, genes_of_interest, genes_of_interest_extended,
 	hla_genes_regions_file, vcf2fasta_script, reference_genome_minimap2, reference_genome_vg,
-	DNA_bases, stop_codons, IMGT_XML, gff_dir, ARS_dict, gene_dict, CDS_dict, dummy_reference, drb_multiallele_reference,
+	DNA_bases, stop_codons, IMGT_XML, gff_dir, ARS_dict, gene_dict, CDS_dict, CLASS_I_GENES, dummy_reference, drb_multiallele_reference,
 	deepvariant_sif, tandem_repeat_bed, chr6_bed, pbtrgt_repeat_file, picard
 )
 
@@ -459,6 +459,7 @@ def build_workflow_config(sample):
 		'ARS_dict': ARS_dict,
 		'gene_dict': gene_dict,
 		'CDS_dict': CDS_dict,
+		'CLASS_I_GENES': CLASS_I_GENES,
 	}
 	
 	# Platform-specific directories

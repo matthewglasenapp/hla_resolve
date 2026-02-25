@@ -190,6 +190,9 @@ clair3_sif = ensure_clair3_sif()
 # HLA genes of interest for HLA typing
 genes_of_interest = ("HLA-A", "HLA-B", "HLA-C", "HLA-DPA1", "HLA-DPB1", "HLA-DQA1", "HLA-DQB1", "HLA-DRB1")
 
+# Class I HLA genes (ARS = CDS exon 2 + exon 3, with intron 2 between them)
+CLASS_I_GENES = {"HLA-A", "HLA-B", "HLA-C"}
+
 # Small dummy reference used to identify raw sequencing reads originating from DRB3 and DRB4 genes
 # This reference is used in the bait_DRB_paralogs() function of preprocess_methods.py
 # This reference consists of a contig for each of DRB1, DRB3 and DRB4
