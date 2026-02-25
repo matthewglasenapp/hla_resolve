@@ -16,7 +16,7 @@ This document describes the decision tree used to classify genes by phasing stat
 2. **Gene fully spanned by single extended haploblock**
    - Classify as `fully_phased`
    - Remove unphased genotypes, run vcf2fasta
-   - Match to the HLA database with full output vcf2fasta output
+   - Match to the HLA database with the full vcf2fasta output
 
 3. **Gene NOT fully spanned** — enter rescue mode
 
@@ -34,7 +34,7 @@ This document describes the decision tree used to classify genes by phasing stat
          - Whitelist all unphased heterozygous genotypes in `filter_vcf_gene`
          - Run vcf2fasta
          - CDS: write full concatenated exon output (vcf2fasta --feat CDS) to `_CDS.fasta`
-         - Gene (vcf2fasta --feat gene:
+         - Gene (vcf2fasta --feat gene):
            - If there is 1 CDS heterozygous genotype, anchor on the CDS heterozygous genotype position. In the sorted list of all heterozygous genotype positions in the gene, find the heterozygous genotype immediately before and immediately after the CDS heterozygous genotype. The interval is (prev_het + 1) to (next_het - 1), using gene boundaries as fallback if no prev/next het exists. If this interval fully contains ARS, write to `_gene.fasta`. If not, do not write a record to `_gene.fasta` (no 4th field assignment will be made).
            - If there are zero CDS heterozygous genotypes, all heterozygous genotypes are intronic. Find the largest ARS-overlapping interval containing <=1 heterozygous genotype:
              1. Sort all het positions in the gene: h1, h2, ..., hn
