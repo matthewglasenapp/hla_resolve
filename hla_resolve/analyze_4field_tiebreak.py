@@ -64,7 +64,7 @@ def get_distance_hybrid(query, ref):
 XML = "/Users/matt/Desktop/IPD_IMGT_XML/hla.xml"
 FULL_FASTA = "/Users/matt/Desktop/HLA_haplotypes_full.fa"
 TRUTH_CSV = "/Users/matt/Desktop/ihw_truth_full_edited.csv"
-OUTPUT_CSV = "/Users/matt/Desktop/allele_output_hybrid.csv"
+OUTPUT_CSV = "/Users/matt/Desktop/allele_output_latest.csv"
 SKIP_SAMPLES = {"IHW09117"}
 GENES = ["HLA-A", "HLA-B", "HLA-C", "HLA-DPA1",
          "HLA-DPB1", "HLA-DQA1", "HLA-DQB1", "HLA-DRB1"]
