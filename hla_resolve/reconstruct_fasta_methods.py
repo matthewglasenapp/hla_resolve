@@ -204,30 +204,7 @@ def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail
 				fail_out.write(rec)
 			continue
 
-		# small variants
-		sample = list(rec.samples.values())[0]
-		dp = sample.get("DP")
-		gq = sample.get("GQ")
-		qual = rec.qual or 0
-		ref = rec.ref
-		alt = rec.alts[0]
-
-		# DP filter
-		if dp is None or dp < 2:
-			fail_out.write(rec)
-			continue
-
-		# SNP
-		if len(ref) == 1 and len(alt) == 1:
-			if gq not in (None, ".") and gq < 20:
-				fail_out.write(rec); continue
-			if qual < 10:
-				fail_out.write(rec); continue
-			pass_out.write(rec); continue
-
-		# INDEL
-		if gq not in (None, ".") and gq < 10:
-			fail_out.write(rec); continue
+		# small variants (QUAL/GQ/DP already filtered upstream by caller)
 		pass_out.write(rec)
 
 	sym_out.close()

@@ -23,12 +23,15 @@ def parse_haploblocks(input_vcf, input_haploblock_file, platform,sample_ID, mhc_
 		if sample_name not in record.samples:
 			raise ValueError(f"Sample '{sample_name}' not found in {input_vcf}")
 
+		# Skip non-PASS records from DV/Clair3 (e.g. RefCall).
+		# bcftools/freebayes records have FILTER=. (empty keys) and pass through;
+		# their quality filtering is already applied upstream by the caller command.
+		if record.filter.keys() != ["PASS"] and record.filter.keys() != []:
+			continue
+
 		gt = record.samples[sample_name]["GT"]
 		if gt is not None and len(gt) == 2 and gt[0] is not None and gt[1] is not None and gt[0] != gt[1]:
-			qual = record.qual or 0
-			gq   = record.samples[sample_name].get("GQ", 0)
-			if qual >= 10 and gq >= 20:
-				heterozygous_sites.append(record.pos)
+			heterozygous_sites.append(record.pos)
 
 	#print(f"Sample {sample_name} has {len(heterozygous_sites)} heterozygous extended MHC genotypes")
 
