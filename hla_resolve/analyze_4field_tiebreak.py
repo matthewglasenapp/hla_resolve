@@ -111,6 +111,37 @@ def split_options(val):
     return [o.strip() for o in re.split(r"[/|]", val) if "*" in o]
 
 
+def strict_cross_match(truth_4f_list, test_4f_indexed, test_4f_valid,
+                       all_truth_first_4f, used_test_indices):
+    """Cross-match one truth haplotype against test alleles with used-test tracking.
+
+    Matches alex_test_against_truth.py logic: each test allele index can only be
+    consumed once, UNLESS both truth haplotypes and both test alleles share the
+    same 4-field value (homozygous exception).
+
+    Args:
+        truth_4f_list: truncated 4-field options for this truth haplotype
+        test_4f_indexed: list of 4-field values per test position (may contain None)
+        test_4f_valid: list of non-None 4-field test values
+        all_truth_first_4f: first-option 4-field value per truth haplotype (for homo check)
+        used_test_indices: set of already-consumed test indices (modified in-place)
+    Returns:
+        True if matched.
+    """
+    for i, test_val in enumerate(test_4f_indexed):
+        if test_val is None:
+            continue
+        # Homozygous exception: both truth haps AND both test alleles have this value
+        if (all_truth_first_4f.count(test_val) >= 2
+                and test_4f_valid.count(test_val) >= 2
+                and test_val in truth_4f_list):
+            return True
+        elif i not in used_test_indices and test_val in truth_4f_list:
+            used_test_indices.add(i)
+            return True
+    return False
+
+
 # ── Part A: concordance by truth 4th-field value (CSV only) ────────────
 print("=" * 70)
 print("  PART A: 4-field concordance by truth 4th-field value")
@@ -172,8 +203,20 @@ for sid in sorted(set(truth.keys()) & set(output.keys())):
             else:
                 test_alleles.append(None)
 
-        # Cross-matching: try both assignments
-        # For each truth haplotype, check if any option matches either test allele
+        # Pre-compute test 4-field values with indices for strict tracking
+        test_4f_indexed = [truncate(ta, 4) if ta else None for ta in test_alleles]
+        test_4f_valid = [t for t in test_4f_indexed if t]
+
+        # Pre-compute all truth first-option 4f values for homozygous check
+        all_truth_first_4f = []
+        for ta_opts in truth_alleles:
+            if ta_opts:
+                all_truth_first_4f.append(truncate(ta_opts[0], 4))
+            else:
+                all_truth_first_4f.append(None)
+
+        # Cross-matching with proper used-test tracking
+        used_test_indices = set()
         for hap_idx, truth_opts in enumerate(truth_alleles):
             if not truth_opts:
                 continue
@@ -183,9 +226,7 @@ for sid in sorted(set(truth.keys()) & set(output.keys())):
             if not truth_4f_list:
                 continue
 
-            # Get test 4-field truncations
-            test_4f = [truncate(t, 4) for t in test_alleles if t and truncate(t, 4)]
-            if not test_4f:
+            if not test_4f_valid:
                 continue
 
             # Determine truth 4th field value (use first option)
@@ -195,8 +236,10 @@ for sid in sorted(set(truth.keys()) & set(output.keys())):
 
             is_01 = (truth_4th == 1)
 
-            # Cross-match: does any truth option match any test allele?
-            matched = any(t4 in test_4f for t4 in truth_4f_list)
+            # Cross-match with used-test index tracking
+            matched = strict_cross_match(truth_4f_list, test_4f_indexed,
+                                         test_4f_valid, all_truth_first_4f,
+                                         used_test_indices)
 
             hap_label = f"{sid} {gene_short}_{hap_idx+1}"
             called = test_alleles[hap_idx] if test_alleles[hap_idx] else "N/A"
@@ -469,6 +512,30 @@ for sid in sorted(set(truth.keys()) & set(output.keys())):
         if not prod_4f_valid:
             continue
 
+        # Build per-chain test-allele lists and pre-compute for strict matching
+        chain_test_4f = {
+            "correct":              prod_4f,
+            "mi_iter_correct":      mi_4f,
+            "ml_iter_correct":      ml_4f,
+            "raw_iter_correct":     raw_4f,
+            "gc_iter_correct":      gc_4f,
+            "pmi_iter_correct":     pmi_4f,
+            "pmi_pgc_correct":      pmi_pgc_4f,
+            "pmi_pml_correct":      pmi_pml_4f,
+            "pscore_correct":       pscore_4f,
+            "mi_pscore_correct":    mi_pscore_4f,
+            "prod_pscore_correct":  prod_pscore_4f,
+        }
+        chain_used = {k: set() for k in chain_test_4f}
+
+        # Pre-compute truth first-option 4f for homozygous check
+        all_truth_first_4f = []
+        for ta_opts in truth_alleles:
+            if ta_opts:
+                all_truth_first_4f.append(truncate(ta_opts[0], 4))
+            else:
+                all_truth_first_4f.append(None)
+
         # For each scoreable truth haplotype, do cross-matching
         for hap_idx, truth_opts in enumerate(truth_alleles):
             if not truth_opts:
@@ -480,37 +547,15 @@ for sid in sorted(set(truth.keys()) & set(output.keys())):
             if truth_4th is None:
                 continue
 
-            # Production cross-match: truth matches any production test allele?
-            prod_matched = any(t4 in prod_4f_valid for t4 in truth_4f_list)
+            # Strict cross-match each chain with proper used-test tracking
+            chain_matched = {}
+            for chain_key, chain_4f in chain_test_4f.items():
+                chain_4f_valid = [p for p in chain_4f if p]
+                chain_matched[chain_key] = strict_cross_match(
+                    truth_4f_list, chain_4f, chain_4f_valid,
+                    all_truth_first_4f, chain_used[chain_key])
 
-            # MI→iter cross-match: truth matches any MI→iter allele?
-            mi_4f_valid = [m for m in mi_4f if m]
-            mi_matched = any(t4 in mi_4f_valid for t4 in truth_4f_list)
-
-            # ML→iter cross-match: truth matches any ML→iter allele?
-            ml_4f_valid = [m for m in ml_4f if m]
-            ml_matched = any(t4 in ml_4f_valid for t4 in truth_4f_list)
-
-            # raw_edit→iter cross-match
-            raw_4f_valid = [m for m in raw_4f if m]
-            raw_matched = any(t4 in raw_4f_valid for t4 in truth_4f_list)
-
-            # gc_edit→iter cross-match
-            gc_4f_valid = [m for m in gc_4f if m]
-            gc_matched = any(t4 in gc_4f_valid for t4 in truth_4f_list)
-
-            # parasail MI → iter
-            pmi_matched = any(t4 in [m for m in pmi_4f if m] for t4 in truth_4f_list)
-            # parasail MI → parasail gc → iter
-            pmi_pgc_matched = any(t4 in [m for m in pmi_pgc_4f if m] for t4 in truth_4f_list)
-            # parasail MI → parasail ML → iter
-            pmi_pml_matched = any(t4 in [m for m in pmi_pml_4f if m] for t4 in truth_4f_list)
-            # parasail score → iter
-            pscore_matched = any(t4 in [m for m in pscore_4f if m] for t4 in truth_4f_list)
-            # edlib MI → parasail score → iter
-            mi_pscore_matched = any(t4 in [m for m in mi_pscore_4f if m] for t4 in truth_4f_list)
-            # production + parasail final tiebreak
-            prod_pscore_matched = any(t4 in [m for m in prod_pscore_4f if m] for t4 in truth_4f_list)
+            prod_matched = chain_matched["correct"]
 
             # Determine resolution level using same-pos or cross-matched query
             actual_hap = hap_idx
@@ -528,18 +573,7 @@ for sid in sorted(set(truth.keys()) & set(output.keys())):
                 else:
                     res_info = None
 
-            _common = dict(
-                mi_iter_correct     = mi_matched,
-                ml_iter_correct     = ml_matched,
-                raw_iter_correct    = raw_matched,
-                gc_iter_correct     = gc_matched,
-                pmi_iter_correct    = pmi_matched,
-                pmi_pgc_correct     = pmi_pgc_matched,
-                pmi_pml_correct     = pmi_pml_matched,
-                pscore_correct      = pscore_matched,
-                mi_pscore_correct   = mi_pscore_matched,
-                prod_pscore_correct = prod_pscore_matched,
-            )
+            _common = {k: chain_matched[k] for k in chain_matched if k != "correct"}
 
             if res_info is None:
                 skipped.append(f"{sid} {gene_short}_{actual_hap+1}")
