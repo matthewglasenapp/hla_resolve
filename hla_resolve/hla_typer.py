@@ -1151,9 +1151,11 @@ if __name__ == "__main__":
 #           ignore_incomplete: (bool) ignore XML entries missing ANY features
 # Output:   (None) Writes to assignement.log and output.csv files for each stage
 def main(reference_xml_file, hla_fasta_dir, sample_ID, pass2_metric = "edit_distance",
-         pass3_metric = "mismatch_identity", ignore_unconfirmed = False, ignore_incomplete = True):
+         pass3_metric = "mismatch_identity", ignore_unconfirmed = False, ignore_incomplete = True,
+         generate_query_ref_comp = False):
     samples_file = os.path.join(hla_fasta_dir, str(sample_ID) + "_HLA_haplotypes_CDS.fasta")
     full_sample_file = os.path.join(hla_fasta_dir, str(sample_ID) + "_HLA_haplotypes_gene.fasta")
 
-    run_classification(reference_xml_file, samples_file, full_sample_file, pass2_metric=pass2_metric, 
-                       pass3_metric=pass3_metric, ignore_unconfirmed=ignore_unconfirmed, ignore_incomplete=ignore_incomplete)
+    run_classification(reference_xml_file, samples_file, full_sample_file, pass2_metric=pass2_metric,
+                       pass3_metric=pass3_metric, ignore_unconfirmed=ignore_unconfirmed, ignore_incomplete=ignore_incomplete,
+                       generate_query_ref_comp=generate_query_ref_comp)
