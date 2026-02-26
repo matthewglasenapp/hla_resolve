@@ -70,7 +70,7 @@ def check_required_commands():
         "pbmarkdup",
         # pbmm2 deprecated for minimap2
         #"pbmm2",
-        # pbsv depreceated for sawfish
+        # pbsv deprecated for sawfish
         #"pbsv",
         "pigz",
         "samtools",

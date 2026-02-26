@@ -3,7 +3,6 @@ import subprocess
 import pysam
 import gzip
 import shutil
-from Bio import SeqIO
 
 # Convert BAM file of unmapped HiFi (ccs) reads to FASTQ format for marking duplicates and trimming adapters
 def convert_bam_to_fastq(input_file, output_file, platform, threads):
@@ -69,6 +68,7 @@ def trim_adapters(adapters, input_file, output_file, sample_ID, threads, adapter
 		print(f"Skipping adapter trimming and transfering raw fastq file {input_file} to {output_file}")
 		shutil.copy(input_file, output_file)
 
+# Not called - for development
 # Adapter/barcode trimming for ONT data
 def run_porechop_abi(input_file, output_file, threads):
 	print("Removing adapters and barcodes with porechop_abi!")
@@ -79,9 +79,11 @@ def run_porechop_abi(input_file, output_file, threads):
 
 	subprocess.run(porechop_cmd, shell=True, check=True)
 
-# Quality trimming step for ONT data 
-def trim_reads(input_file, output_dir, sample_ID,threads):
-	print("Trimiming reads with ProwlerTrimmer!")
+# Not called - for development
+# Quality trimming step for ONT data
+def trim_reads(input_file, output_dir, sample_ID, threads):
+	from .config import prowler_trimmer
+	print("Trimming reads with ProwlerTrimmer!")
 
 	input_dir = os.path.dirname(input_file)
 
@@ -95,6 +97,7 @@ def trim_reads(input_file, output_dir, sample_ID,threads):
 	pigz_cmd = f"pigz -f -p {threads} {renamed_trimmed_fastq}"
 	subprocess.run(pigz_cmd, shell=True, check=True)
 
+# Not called - for development
 # Run fastqc on fastq file
 def run_fastqc(input_file):
 	print(f"Running fastqc on {input_file}")
@@ -105,6 +108,7 @@ def run_fastqc(input_file):
 	
 	print("\n\n")
 
+# Not called - for development
 # Trim Adapter Sequences and polyA tails
 # Customize this command based on the fastqc output
 def legacy_trim_adapters(input_file, output_file, five_prime_adapter, three_prime_adapter, threads):
@@ -167,6 +171,7 @@ def align_to_reference_minimap(input_file, output_file, read_group_string, refer
 	print(f"Mapped bam written to: {output_file}")
 	print("\n\n")
 
+# Not called - for development
 def bait_DRB_paralogs(input_file, output_file, DRB34_reads_file, read_group_string, reference_fasta, platform, threads):
 	print("Screening for reads originating from HLA-DRB3 and HLA-DRB4!")
 
@@ -243,6 +248,7 @@ def classify_DRB_reads(input_file, output_file, DRB34_reads_file, read_group_str
 	print(f"DRB3 and DRB4 read IDs written to: {DRB34_reads_file}")
 	print("\n\n")
 
+# Not called - for development
 def align_to_reference_vg(vg, input_file, output_file, reheader_bam, sample_ID, read_group_string, reference_gbz, ref_paths, platform, threads):
 	print("Aligning reads to pangenome reference genome with vg giraffe!")
 	
@@ -305,6 +311,7 @@ def align_to_reference_vg(vg, input_file, output_file, reheader_bam, sample_ID, 
 	clean_up = f"rm {output_file} {temp_sam_1} {temp_sam_2}"
 	#subprocess.run(clean_up, shell=True, check=True)
 
+# Not called - for development
 def reassign_mapq(bam_hg38, bam_pg, reassigned_pg):
 	mapq_dict = dict()
 
@@ -329,7 +336,7 @@ def reassign_mapq(bam_hg38, bam_pg, reassigned_pg):
 	if missing_reads:
 		print(f"{len(missing_reads)} reads in {bam_pg} were missing from {bam_hg38}")
 
-# Mark duplicates forONT data or WGS PacBio data
+# Mark duplicates for ONT data or WGS PacBio data
 # pbmarkdup used for targeted PacBio data but does not scale well for WGS data
 def mark_duplicates_picard(input_file, output_file, metrics_file, temp_dir, picard):
 	os.makedirs(temp_dir, exist_ok=True)
@@ -341,7 +348,7 @@ def mark_duplicates_picard(input_file, output_file, metrics_file, temp_dir, pica
 	index_bam = f"samtools index {output_file}"
 	subprocess.run(index_bam, shell=True, check=True)
 
-# Filer reads that did not map to chromosome 6
+# Filter reads that did not map to chromosome 6
 def filter_reads(input_file, output_file, DRB34_reads_file, threads):
 	print("Excluding BAM records that don't map to chromosome 6!")
 
@@ -555,6 +562,7 @@ def call_structural_variants_pbsv(input_bam, output_svsig, output_vcf, threads, 
 	print(f"pbsv SV VCF written to: {output_vcf}")
 	print("\n\n")
 
+# Not called - for development
 # Run sawfish to call structural variants (SV)
 def call_structural_variants_sawfish(input_bam, small_variant_calls, output_vcf, sv_dir, sawfish, reference_fasta):
 	print("Calling structural variants with sawfish!")
@@ -614,25 +622,26 @@ def genotype_tandem_repeats(input_bam, output_vcf, pbtrgt_dir, threads, referenc
 		output_prefix = output_prefix[:-4]  # Remove .vcf
 	
 	os.chdir(pbtrgt_dir)
-	
-	trgt_cmd = f"trgt genotype --threads {threads} --genome {reference_fasta} --reads {input_bam} --repeats {pbtrgt_repeat_file} --output-prefix {output_prefix} --preset targeted"
-	
-	subprocess.run(trgt_cmd, shell=True, check=True)
-	
-	sort_cmd = f"bcftools sort -O z -o {output_prefix + '.sorted.vcf.gz'} {output_prefix + '.vcf.gz'}"
 
-	subprocess.run(sort_cmd, shell=True, check=True)
+	try:
+		trgt_cmd = f"trgt genotype --threads {threads} --genome {reference_fasta} --reads {input_bam} --repeats {pbtrgt_repeat_file} --output-prefix {output_prefix} --preset targeted"
 
-	os.rename(output_prefix + ".sorted.vcf.gz", output_prefix + ".vcf.gz")
+		subprocess.run(trgt_cmd, shell=True, check=True)
 
-	index_cmd = f"tabix -p vcf {output_prefix + '.vcf.gz'}"
-	
-	subprocess.run(index_cmd, shell=True, check=True)
+		sort_cmd = f"bcftools sort -O z -o {output_prefix + '.sorted.vcf.gz'} {output_prefix + '.vcf.gz'}"
 
-	print(f"TR VCF written to {output_vcf}")
-	print("\n\n")
+		subprocess.run(sort_cmd, shell=True, check=True)
 
-	os.chdir(original_cwd)
+		os.rename(output_prefix + ".sorted.vcf.gz", output_prefix + ".vcf.gz")
+
+		index_cmd = f"tabix -p vcf {output_prefix + '.vcf.gz'}"
+
+		subprocess.run(index_cmd, shell=True, check=True)
+
+		print(f"TR VCF written to {output_vcf}")
+		print("\n\n")
+	finally:
+		os.chdir(original_cwd)
 
 # Phase genotypes with HiPhase
 def phase_genotypes_hiphase(input_bam, input_snv, input_SV, input_TR, output_bam, output_snv, output_SV, output_TR, output_summary_file, output_blocks_file, output_stats_file, threads, reference_fasta, phased_vcf_dir, sample_ID):
@@ -718,6 +727,7 @@ def merge_hiphase_vcfs(input_snv, input_SV, input_TR, output_vcf, reference_fast
 	print(f"Merged VCF written to: {output_vcf}")
 	print("\n\n")
 
+# Not called - for development
 # Phase genotypes with WhatsHap
 def phase_genotypes_whatshap(input_bam, input_snv, haplotagged_bam, phased_vcf, output_blocks_file, output_gtf_file, reference_fasta, whatshap_phased_vcf_dir, sample_ID):
 	print("Phasing Genotypes with WhatsHap!")

@@ -2,14 +2,10 @@ import os
 import subprocess
 from .preprocess_methods import (
 	trim_adapters,
-	run_fastqc,
 	mark_duplicates_pbmarkdup,
 	align_to_reference_minimap,
-	align_to_reference_vg,
-	reassign_mapq,
 	mark_duplicates_picard,
 	filter_reads,
-	bait_DRB_paralogs,
 	classify_DRB_reads,
 	call_variants_bcftools,
 	call_variants_deepvariant,
@@ -17,7 +13,6 @@ from .preprocess_methods import (
 	call_variants_freebayes,
 	merge_hybrid_vcfs,
 	call_structural_variants_pbsv,
-	call_structural_variants_sawfish,
 	genotype_tandem_repeats,
 	phase_genotypes_hiphase,
 	merge_hiphase_vcfs

@@ -83,7 +83,7 @@ def main():
     end_time = time.time()
     elapsed_time = end_time - start_time
     minutes, seconds = divmod(elapsed_time,60)
-    print(f"Processed sampled in {int(minutes)}:{seconds:.2f}!")
+    print(f"Processed sample in {int(minutes)}:{seconds:.2f}!")
 
 if __name__ == "__main__":
     main()

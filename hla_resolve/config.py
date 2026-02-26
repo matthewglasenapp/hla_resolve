@@ -1,8 +1,6 @@
 # Configuration constants and paths for HLA-Resolve
 import os
 import subprocess
-import requests
-import datetime
 from pathlib import Path
 from zipfile import ZipFile
 
@@ -205,10 +203,8 @@ dummy_reference = os.path.join(_data_dir, "reference/DRB_1_3_4.fa")
 # Used in classify_DRB_reads() function of preprocess_methods.py
 drb_multiallele_reference = os.path.join(_data_dir, "reference/DRB_reference.fa")
 
-# Paths to several software tools installed from source
+# Ignore - Hardcoded paths for development
 sawfish = "/hb/home/mglasena/software/sawfish-v2.0.3-x86_64-unknown-linux-gnu/bin/sawfish"
-
-# ProwlerTrimmer and vg were used in development mode. Install not necessary for public release.
 prowler_trimmer = "/hb/home/mglasena/software/ProwlerTrimmer/TrimmerLarge.py"
 vg = "/hb/scratch/ogarci12/hybridcapture_pangenome/vg"
 
@@ -230,16 +226,10 @@ reference_genome_minimap2 = os.path.join(_data_dir, "reference/augmented_hg38.fa
 #reference_genome_minimap2 = os.path.join(_data_dir, "reference/augmented_hg38_drb_alt.fa")
 #reference_genome_minimap2 = os.path.join(_data_dir, "reference/augmented_hg38_with_long_drb1.fa")
 
-# Paths to reference genome files for genome alignment to HPRC pangenome graph with vg giraffe
-# This approach is experimental and is not implemented in the current release
-# These files are only used when aligner == "vg"
-# Headers renamed using the following command: 
-# sed 's/^>GRCh38\.chr/>chr/' /hb/scratch/ogarci12/hybridcapture_pangenome/ref/hprc-v1.0-mc-grch38-minaf.0.1.fa > /hb/groups/cornejo_lab/matt/hla_capture/input_data/reference/hprc-v1.0-chr-renamed.fa
+# Ignore - Hardcoded paths for development (vg pangenome references, not used in current release)
 reference_genome_vg = "/hb/groups/cornejo_lab/matt/hla_capture/input_data/reference/hprc-v1.0-chr-renamed.fa"
 reference_genome_vg_gbz = "/hb/scratch/ogarci12/hybridcapture_pangenome/ref/hprc-v1.0-mc-grch38-minaf.0.1.gbz"
-#reference_genome_vg_gbz = "/hb/scratch/mglasena/graph/hprc-v2.0-mc-grch38.gbz"
 reference_genome_vg_paths = "/hb/scratch/ogarci12/hybridcapture_pangenome/ref/hprc-v1.0-mc-grch38-minaf.0.1.dict"
-#reference_genome_vg_paths = "/hb/scratch/mglasena/graph/grch38_primary.dict"
 
 # DeepVariant SIF file path — populated by ensure_deepvariant_sif() above
 
@@ -275,7 +265,7 @@ genes_bed = os.path.join(_data_dir, "reference/parse_haploblocks_bed.bed")
 #genes_bed = os.path.join(_data_dir, "reference/parse_haploblocks_bed.shifted.bed")
 genes_of_interest_extended = ("HLA-A", "HLA-B", "HLA-C", "HLA-DRB1", "HLA-DQA1", "HLA-DQA2", "HLA-DQB1", "HLA-DQB2", "HLA-DPA1", "HLA-DPB1")
 
-# Paramters
+# Parameters
 
 # Minimum reads per sample
 # DeepVariant stalls when a sample has very few BAM records (e.g., HG01891 had only 35 mapped reads to chr6)

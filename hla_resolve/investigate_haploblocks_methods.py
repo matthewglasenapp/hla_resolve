@@ -1,9 +1,6 @@
-from operator import ge
 import os
 import csv
-import json
 import pysam
-import pandas as pd
 
 # Get list of haploblock intervals for MHC
 def parse_haploblocks(input_vcf, input_haploblock_file, platform,sample_ID, mhc_start, mhc_stop):

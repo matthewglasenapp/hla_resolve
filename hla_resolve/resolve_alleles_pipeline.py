@@ -217,15 +217,16 @@ def resolve_alleles(config):
 	print("Typing HLA Alleles!")
 	original_dir = os.getcwd()
 	os.chdir(config['hla_typing_dir'])
-	
-	classify_hla_alleles(
-		reference_xml_file=config['IMGT_XML'],
-		hla_fasta_dir=config['hla_fasta_dir'],
-		sample_ID=config['sample_ID'],
-		generate_query_ref_comp=True
-	)
-	
-	os.chdir(original_dir)
+
+	try:
+		classify_hla_alleles(
+			reference_xml_file=config['IMGT_XML'],
+			hla_fasta_dir=config['hla_fasta_dir'],
+			sample_ID=config['sample_ID'],
+			generate_query_ref_comp=True
+		)
+	finally:
+		os.chdir(original_dir)
 	
 	# Step 4: Print results
 	print("Step 4: Printing HLA typing results...")
