@@ -148,9 +148,9 @@ def ensure_hla_xml():
     # Specific release URL for IPD-IMGT/HLA Release 3.61.0
     #db_url = "https://raw.githubusercontent.com/ANHIG/IMGTHLA/93c70bcfe271a737bc75b7ca7f5f9844bf65136d/xml/hla.xml.zip"
     # Specific release URL for IPD-IMGT/HLA Release 3.60.0
-    db_url = "https://raw.githubusercontent.com/ANHIG/IMGTHLA/652dbe954426f117a9f3619826fc4e3687713d90/xml/hla.xml.zip" 
+    #db_url = "https://raw.githubusercontent.com/ANHIG/IMGTHLA/652dbe954426f117a9f3619826fc4e3687713d90/xml/hla.xml.zip" 
     # Specific release URL for IPD-IMGT/HLA Release 3.63.0
-    #db_url = "https://raw.githubusercontent.com/ANHIG/IMGTHLA/Latest/xml/hla.xml.zip"
+    db_url = "https://raw.githubusercontent.com/ANHIG/IMGTHLA/Latest/xml/hla.xml.zip"
     # Create directory if it doesn't exist
     xml_dir.mkdir(parents=True, exist_ok=True)
     
