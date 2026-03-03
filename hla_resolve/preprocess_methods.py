@@ -1,4 +1,5 @@
 import os
+import sys
 import subprocess
 import pysam
 import gzip
@@ -129,12 +130,16 @@ def legacy_trim_adapters(input_file, output_file, five_prime_adapter, three_prim
 # Mark PCR duplicates with pbmarkdup
 def mark_duplicates_pbmarkdup(input_file, output_file, threads):
 	print("Removing PCR duplicates using pbmarkdup!")
-		
+
 	print(f"pbmarkdup input file: {input_file}")
 
 	pbmarkdup_cmd = f"pbmarkdup -j {threads} --rmdup {input_file} {output_file}"
-	
-	subprocess.run(pbmarkdup_cmd, shell=True, check=True)
+
+	result = subprocess.run(pbmarkdup_cmd, shell=True, check=True, capture_output=True, text=True)
+	if result.stdout:
+		print(result.stdout, end="")
+	if result.stderr:
+		print(result.stderr, end="", file=sys.stderr)
 
 	gzip_cmd = f"pigz -f -p {threads} {output_file}"
 	subprocess.run(gzip_cmd, shell=True, check=True)
@@ -568,12 +573,22 @@ def rescue_refcall_indels(input_vcf, output_vcf):
 							record.filter.add('PASS')
 							# Set genotype: hom-alt takes precedence over het
 							if passing_hom:
-								sample['GT'] = (passing_hom[0], passing_hom[0])
+								new_gt = (passing_hom[0], passing_hom[0])
+								zygosity = "hom-alt"
 							elif len(passing_het) >= 2:
-								sample['GT'] = (passing_het[0], passing_het[1])
+								new_gt = (passing_het[0], passing_het[1])
+								zygosity = "compound-het"
 							else:
-								sample['GT'] = (0, passing_het[0])
+								new_gt = (0, passing_het[0])
+								zygosity = "het"
+							sample['GT'] = new_gt
 							rescued += 1
+
+							gt_str = "/".join(str(a) for a in new_gt)
+							alts_str = ",".join(record.alts)
+							ad_str = ",".join(str(a) for a in ad)
+							vaf_str = ",".join(f"{v:.3f}" for v in vaf)
+							print(f"  RESCUED: {record.chrom}:{record.pos} {record.ref}>{alts_str} GT={gt_str} ({zygosity}) GQ={gq} DP={dp} AD={ad_str} VAF={vaf_str}")
 
 		vcf_out.write(record)
 
