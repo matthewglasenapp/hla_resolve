@@ -222,9 +222,10 @@ clair3_hifi_model = "hifi_revio"
 
 # Reference fasta with added HLA-OLI/HLA-Y contig for baiting out reads originating from HLA-Y
 #reference_genome_minimap2 = "/hb/scratch/mglasena/alex_install/hla_resolve/hla_resolve/data/reference/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna"
-reference_genome_minimap2 = os.path.join(_data_dir, "reference/augmented_hg38.fa")
+#reference_genome_minimap2 = os.path.join(_data_dir, "reference/augmented_hg38.fa")
 #reference_genome_minimap2 = os.path.join(_data_dir, "reference/augmented_hg38_drb_alt.fa")
-#reference_genome_minimap2 = os.path.join(_data_dir, "reference/augmented_hg38_with_long_drb1.fa")
+# DRB1 experiment: augmented reference with chimeric DRB1 allele (+4959 bp insertion)
+reference_genome_minimap2 = "/hb/scratch/mglasena/drb1_experiment/augmented_hg38_with_long_drb1.fa"
 
 # Ignore - Hardcoded paths for development (vg pangenome references, not used in current release)
 reference_genome_vg = "/hb/groups/cornejo_lab/matt/hla_capture/input_data/reference/hprc-v1.0-chr-renamed.fa"
@@ -235,7 +236,9 @@ reference_genome_vg_paths = "/hb/scratch/ogarci12/hybridcapture_pangenome/ref/hp
 
 # GRCh38 tandem repeat mask file for pbsv
 # Downloaded from https://github.com/PacificBiosciences/pbsv/blob/master/annotations/human_GRCh38_no_alt_analysis_set.trf.bed
-tandem_repeat_bed = os.path.join(_data_dir, "repeats_bed/human_GRCh38_no_alt_analysis_set.trf.bed")
+#tandem_repeat_bed = os.path.join(_data_dir, "repeats_bed/human_GRCh38_no_alt_analysis_set.trf.bed")
+# DRB1 experiment: shifted repeat BED (+4959 for chr6 entries downstream of DRB1)
+tandem_repeat_bed = "/hb/scratch/mglasena/drb1_experiment/human_GRCh38_no_alt_analysis_set.trf.shifted.bed"
 
 # BED file of coordinates for chr6
 # Used to constrain variant calling with Clair3 and Sniffles to chr6
@@ -244,25 +247,31 @@ chr6_bed = os.path.join(_data_dir, "reference/chr6.bed")
 
 # GRCh38 tandem repeat definition file for pbtrgt
 # Downloaded from https://zenodo.org/records/8329210
-pbtrgt_repeat_file = os.path.join(_data_dir, "repeats_bed/chr6_polymorphic_repeats.hg38.bed")
+#pbtrgt_repeat_file = os.path.join(_data_dir, "repeats_bed/chr6_polymorphic_repeats.hg38.bed")
+# DRB1 experiment: shifted repeat BED (+4959 for chr6 entries downstream of DRB1)
+pbtrgt_repeat_file = "/hb/scratch/mglasena/drb1_experiment/chr6_polymorphic_repeats.hg38.shifted.bed"
 
 # GFF files of the HLA genes of interest for FASTA reconstruction with vcf2fasta
 # Used in reconstruct_fasta_methods.py
-gff_dir = os.path.join(_data_dir, "hla_gff")
+#gff_dir = os.path.join(_data_dir, "hla_gff")
 #gff_dir = os.path.join(_data_dir, "hla_gff/coord_shift")
+# DRB1 experiment: shifted GFF files (Class II +4959, DRB1 chimeric coords)
+gff_dir = "/hb/scratch/mglasena/drb1_experiment/coord_shift"
 
 # BED file of coordinates for the 8 HLA genes of interest
 # The coordinates were taken from the GRCh38 GFF3 file
 # Used for both mosdepth coverage analysis and VCF filtering
 # HLA-B and HLA-DQA1 coordinates were slightly modified from the raw GFF3 file to exclude exons that are not part of the MANE Select transcript
 # The second, commented-out bed file contains shifted coordinates following an experimental modification to HLA-DRB1 that changed the reference genome length
-hla_genes_regions_file = os.path.join(_data_dir, "mosdepth/hla_genes.bed")
-#hla_genes_regions_file = os.path.join(_data_dir, "mosdepth/hla_genes.shifted.bed")
+#hla_genes_regions_file = os.path.join(_data_dir, "mosdepth/hla_genes.bed")
+# DRB1 experiment: shifted mosdepth BED (DRB1 extended, Class II +4959)
+hla_genes_regions_file = "/hb/scratch/mglasena/drb1_experiment/hla_genes.shifted.bed"
 
 # BED file for parsing haploblocks in the extended MHC region
 # Used in evaluate_gene_haploblocks() function of investigate_haploblocks_methods.py
-genes_bed = os.path.join(_data_dir, "reference/parse_haploblocks_bed.bed")
-#genes_bed = os.path.join(_data_dir, "reference/parse_haploblocks_bed.shifted.bed")
+#genes_bed = os.path.join(_data_dir, "reference/parse_haploblocks_bed.bed")
+# DRB1 experiment: shifted haploblocks BED (DRB1 extended, downstream genes +4959)
+genes_bed = "/hb/scratch/mglasena/drb1_experiment/parse_haploblocks_bed.shifted.bed"
 genes_of_interest_extended = ("HLA-A", "HLA-B", "HLA-C", "HLA-DRB1", "HLA-DQA1", "HLA-DQA2", "HLA-DQB1", "HLA-DQB2", "HLA-DPA1", "HLA-DPB1")
 
 # Parameters
@@ -289,7 +298,7 @@ prop_20x_thresh = 0.0
 prop_30x_thresh = 0.0
 # Extended MHC coordinates
 mhc_start = 29555628
-mhc_stop = 33409896
+mhc_stop = 33414855  # DRB1 experiment: +4959
 
 # DNA bases and stop codons
 # Used in parse_fastas() function of reconstruct_fasta_methods.py for vcf2fasta sanity checking
@@ -305,40 +314,43 @@ IMGT_XML = os.path.join(_data_dir, "IPD_IMGT_XML/hla.xml")
 # Used in evaluate_gene_haploblocks() function of investigate_haploblocks_methods.py 
 # For HLA-C/B/C, the ARS is CDS 2 and 3
 # For HLA-DPA1/DPB1/DQA1/DQB1/DRB1, the ARS is CDS 2
+# DRB1 experiment: Class I unchanged, DRB1 from chimeric allele exon 2, Class II +4959
 ARS_dict = {
 	"HLA-A": "chr6:29942757-29943543",
 	"HLA-B": "chr6:31356167-31356957",
 	"HLA-C": "chr6:31271073-31271868",
-	"HLA-DPA1": "chr6:33069641-33069886",
-	"HLA-DPB1": "chr6:33080672-33080935",
-	"HLA-DQA1": "chr6:32641310-32641558",
-	"HLA-DQB1": "chr6:32664798-32665067",
-	"HLA-DRB1": "chr6:32584109-32584378"
+	"HLA-DPA1": "chr6:33074600-33074845",
+	"HLA-DPB1": "chr6:33085631-33085894",
+	"HLA-DQA1": "chr6:32646269-32646517",
+	"HLA-DQB1": "chr6:32669757-32670026",
+	"HLA-DRB1": "chr6:32584049-32584318"
 }
 
 # Gene coordinates (1-based coordinates, GFF format)
 # Used in parse_fastas() function of reconstruct_fasta_methods.py to clamp haploblock coordinates to gene coordinates
 # HLA-B and HLA-DQA1 coordinates were slightly modified from the raw GFF3 file to exclude exons that are not part of the MANE Select transcript
+# DRB1 experiment: Class I unchanged, DRB1 new boundaries (start same, end extended), Class II +4959
 gene_dict = {
 	"HLA-A":    (29941260, 29949572),
 	"HLA-B":    (31353872, 31367067),
 	"HLA-C":    (31267749, 31273130),
-	"HLA-DPA1": (33064569, 33080775),
-	"HLA-DPB1": (33075990, 33089696),
-	"HLA-DQA1": (32628179, 32647062),
-	"HLA-DQB1": (32659467, 32668383),
-	"HLA-DRB1": (32577902, 32589848)
+	"HLA-DPA1": (33069528, 33085734),
+	"HLA-DPB1": (33080949, 33094655),
+	"HLA-DQA1": (32633138, 32652021),
+	"HLA-DQB1": (32664426, 32673342),
+	"HLA-DRB1": (32577902, 32594807)
 }
 
 # CDS coordinates for each HLA gene of interest for HLA typing (1-based coordinates, GFF format)
 # Used in parse_fastas() function of reconstruct_fasta_methods.py to determine whether each CDS is fully contained in the haploblock
+# DRB1 experiment: Class I unchanged, DRB1 from chimeric allele CDS, Class II +4959
 CDS_dict = {
 	'HLA-A': [[29942554, 29942626], [29942757, 29943026], [29943268, 29943543], [29944122, 29944397], [29944500, 29944616], [29945059, 29945091], [29945234, 29945281], [29945451, 29945455]],
 	'HLA-B': [[31354483, 31354526], [31354633, 31354665], [31355107, 31355223], [31355317, 31355592], [31356167, 31356442], [31356688, 31356957], [31357086, 31357158]],
 	'HLA-C': [[31269169, 31269173], [31269338, 31269385], [31269493, 31269525], [31269966, 31270085], [31270210, 31270485], [31271073, 31271348], [31271599, 31271868], [31271999, 31272071]],
-	'HLA-DPA1': [[33068650, 33068804], [33069019, 33069300], [33069641, 33069886], [33073471, 33073570]], 
-	'HLA-DPB1': [[33076042, 33076141], [33080672, 33080935], [33084950, 33085231], [33085779, 33085889], [33086219, 33086238]], 
-	'HLA-DQA1': [[32637459, 32637540], [32641310, 32641558], [32641972, 32642253], [32642610, 32642764]], 
-	'HLA-DQB1': [[32660236, 32660249], [32660859, 32660882], [32661347, 32661457], [32661967, 32662248], [32664798, 32665067], [32666499, 32666607]], 
-	'HLA-DRB1': [[32579091, 32579104], [32580247, 32580270], [32580746, 32580856], [32581557, 32581838], [32584109, 32584378], [32589643, 32589742]]
+	'HLA-DPA1': [[33073609, 33073763], [33073978, 33074259], [33074600, 33074845], [33078430, 33078529]],
+	'HLA-DPB1': [[33081001, 33081100], [33085631, 33085894], [33089909, 33090190], [33090738, 33090848], [33091178, 33091197]],
+	'HLA-DQA1': [[32642418, 32642499], [32646269, 32646517], [32646931, 32647212], [32647569, 32647723]],
+	'HLA-DQB1': [[32665195, 32665208], [32665818, 32665841], [32666306, 32666416], [32666926, 32667207], [32669757, 32670026], [32671458, 32671566]],
+	'HLA-DRB1': [[32579091, 32579104], [32580247, 32580270], [32580746, 32580856], [32581553, 32581834], [32584049, 32584318], [32594602, 32594701]]
 }

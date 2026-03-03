@@ -1,0 +1,64 @@
+#!/usr/bin/env python3
+"""
+Generate _coords.txt files for the shifted GFF directory (DRB1 experiment).
+Adapted from make_coords.py to point at the coord_shift/ directory.
+
+Usage: python3 make_coords_shifted.py /hb/scratch/mglasena/drb1_experiment/coord_shift
+"""
+import os
+import sys
+
+if len(sys.argv) != 2:
+    print(f"Usage: {sys.argv[0]} <gff_dir>")
+    print(f"Example: {sys.argv[0]} /hb/scratch/mglasena/drb1_experiment/coord_shift")
+    sys.exit(1)
+
+indir = sys.argv[1]
+
+if not os.path.isdir(indir):
+    print(f"Error: directory not found: {indir}")
+    sys.exit(1)
+
+def parse_gff3(filename, feature_type):
+    coords = []
+    strand = None
+    with open(filename) as f:
+        for line in f:
+            if line.startswith("#"):
+                continue
+            parts = line.strip().split("\t")
+            if len(parts) < 9:
+                continue
+            ftype, start, end = parts[2], int(parts[3]), int(parts[4])
+            if ftype == feature_type:
+                coords.append((start, end))
+                strand = parts[6]  # "+" or "-"
+    return coords, strand
+
+for fname in os.listdir(indir):
+    if not (fname.endswith("_cds_sorted.gff3") or fname.endswith("_gene.gff3")):
+        continue
+
+    fpath = os.path.join(indir, fname)
+    feature_type = "CDS" if "_cds_sorted.gff3" in fname else "gene"
+    coords, strand = parse_gff3(fpath, feature_type)
+
+    # Sort intervals according to transcript orientation
+    if strand == "+":
+        coords.sort(key=lambda x: x[0])
+    elif strand == "-":
+        coords.sort(key=lambda x: x[0], reverse=True)
+
+    outname = fname.replace(".gff3", "_coords.txt")
+    outpath = os.path.join(indir, outname)
+
+    with open(outpath, "w") as out:
+        for start, end in coords:
+            if strand == "+":
+                rng = range(start, end + 1)
+            else:  # reverse strand
+                rng = range(end, start - 1, -1)
+            for pos in rng:
+                out.write(f"{pos}\n")
+
+    print(f"Wrote {feature_type}-expanded coords: {outpath} (strand {strand})")
