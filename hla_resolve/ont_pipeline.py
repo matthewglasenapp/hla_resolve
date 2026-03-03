@@ -11,6 +11,7 @@ from .preprocess_methods import (
 	call_variants_clair3,
 	call_variants_freebayes,
 	merge_hybrid_vcfs,
+	rescue_refcall_indels,
 	call_structural_variants_sniffles,
 	phase_genotypes_longphase,
 	merge_longphase_vcfs
@@ -224,6 +225,12 @@ def preprocess_ont_sample(config):
 					mapped_bam_dir=config['mapped_bam_dir'],
 					sample_ID=config['sample_ID'],
 					clair3_model=config['clair3_model']
+				)
+
+			if config['rescue_refcall_indels'] and indel_caller == "deepvariant":
+				rescue_refcall_indels(
+					input_vcf=indel_intermediate,
+					output_vcf=indel_intermediate
 				)
 
 			merge_hybrid_vcfs(

@@ -3,6 +3,7 @@ import subprocess
 import pysam
 import gzip
 import shutil
+import tempfile
 
 # Convert BAM file of unmapped HiFi (ccs) reads to FASTQ format for marking duplicates and trimming adapters
 def convert_bam_to_fastq(input_file, output_file, platform, threads):
@@ -508,6 +509,82 @@ def call_variants_freebayes(input_bam, output_vcf, reference_fasta):
 	subprocess.run(f"tabix -p vcf {output_vcf}", shell=True, check=True)
 
 	print(f"VCF written to {output_vcf}")
+	print("\n\n")
+
+# Rescue high-confidence indels from DeepVariant RefCall filter in hybrid mode
+# DeepVariant can conservatively filter real indels as RefCall (especially in HLA)
+# This function overturns RefCall -> PASS for indels meeting quality thresholds
+def rescue_refcall_indels(input_vcf, output_vcf):
+	print("Rescuing high-confidence RefCall indels from DeepVariant output!")
+	print(f"Input VCF: {input_vcf}")
+
+	vcf_in = pysam.VariantFile(input_vcf)
+
+	tmp_fd, tmp_path = tempfile.mkstemp(suffix=".vcf.gz", dir=os.path.dirname(output_vcf))
+	os.close(tmp_fd)
+	vcf_out = pysam.VariantFile(tmp_path, 'wz', header=vcf_in.header)
+
+	rescued = 0
+	total_refcall_indels = 0
+
+	for record in vcf_in:
+		if record.alts and "RefCall" in record.filter:
+			# Check if any alt allele is an indel (ref/alt length differ)
+			has_indel_alt = any(len(alt) != len(record.ref) for alt in record.alts)
+
+			if has_indel_alt:
+				total_refcall_indels += 1
+				sample = record.samples[0]
+
+				gq = sample.get('GQ')
+				dp = sample.get('DP')
+				ad = sample.get('AD')
+				vaf = sample.get('VAF')
+
+				if all(v is not None for v in (gq, dp, ad, vaf)):
+					if gq >= 20 and dp >= 30:
+						# Normalize VAF to tuple (pysam may return scalar for biallelic)
+						if isinstance(vaf, (int, float)):
+							vaf = (vaf,)
+
+						# Evaluate each alt allele independently
+						# Classify as het (0.3-0.7) or hom-alt (>0.7)
+						passing_het = []
+						passing_hom = []
+						for i, alt in enumerate(record.alts):
+							# Only evaluate indel alts (skip SNP alts in multiallelic records)
+							if len(alt) == len(record.ref):
+								continue
+							alt_ad = ad[i + 1]  # AD[0] is ref depth
+							alt_vaf = vaf[i]
+							if alt_ad is not None and alt_vaf is not None and alt_ad >= 10:
+								if 0.3 <= alt_vaf <= 0.7:
+									passing_het.append(i + 1)  # 1-indexed for VCF GT
+								elif alt_vaf > 0.7:
+									passing_hom.append(i + 1)
+
+						if passing_hom or passing_het:
+							record.filter.clear()
+							record.filter.add('PASS')
+							# Set genotype: hom-alt takes precedence over het
+							if passing_hom:
+								sample['GT'] = (passing_hom[0], passing_hom[0])
+							elif len(passing_het) >= 2:
+								sample['GT'] = (passing_het[0], passing_het[1])
+							else:
+								sample['GT'] = (0, passing_het[0])
+							rescued += 1
+
+		vcf_out.write(record)
+
+	vcf_in.close()
+	vcf_out.close()
+
+	os.replace(tmp_path, output_vcf)
+	subprocess.run(f"tabix -p vcf {output_vcf}", shell=True, check=True)
+
+	print(f"Rescued {rescued}/{total_refcall_indels} RefCall indels")
+	print(f"Output VCF: {output_vcf}")
 	print("\n\n")
 
 # Extract SNPs from snp_caller output and indels from indel_caller output, merge into a single VCF
