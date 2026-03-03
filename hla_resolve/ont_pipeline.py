@@ -230,8 +230,9 @@ def preprocess_ont_sample(config):
 			if config['rescue_refcall_indels'] and indel_caller == "deepvariant":
 				rescue_refcall_indels(
 					input_vcf=indel_intermediate,
-					output_vcf=indel_intermediate
+					output_vcf=config['dv_rescued_vcf']
 				)
+				indel_intermediate = config['dv_rescued_vcf']
 
 			merge_hybrid_vcfs(
 				snp_vcf=snp_intermediate,
