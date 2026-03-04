@@ -11,7 +11,7 @@ from .preprocess_methods import (
 	call_variants_clair3,
 	call_variants_freebayes,
 	merge_hybrid_vcfs,
-	rescue_refcall_indels,
+	rescue_refcalls,
 	call_structural_variants_sniffles,
 	phase_genotypes_longphase,
 	merge_longphase_vcfs
@@ -111,7 +111,7 @@ def preprocess_ont_sample(config):
 		}
 
 		if snp_caller == indel_caller:
-			# Single caller for both SNPs and indels — write directly to snv_vcf
+			# Single caller for both SNPs and indels
 			if snp_caller == "bcftools":
 				call_variants_bcftools(
 					input_file=config['hg38_rmdup_chr6_bam'],
@@ -121,9 +121,10 @@ def preprocess_ont_sample(config):
 					threads=config['threads']
 				)
 			elif snp_caller == "deepvariant":
+				dv_output = config['dv_full_vcf'] if config['rescue_refcalls'] else config['snv_vcf']
 				call_variants_deepvariant(
 					input_bam=config['hg38_rmdup_chr6_bam'],
-					output_vcf=config['snv_vcf'],
+					output_vcf=dv_output,
 					output_gvcf=config['snv_gvcf'],
 					platform=config['platform'],
 					deepvariant_sif=config['deepvariant_sif'],
@@ -133,6 +134,11 @@ def preprocess_ont_sample(config):
 					sample_ID=config['sample_ID'],
 					threads=config['threads']
 				)
+				if config['rescue_refcalls']:
+					rescue_refcalls(
+						input_vcf=config['dv_full_vcf'],
+						output_vcf=config['snv_vcf']
+					)
 			elif snp_caller == "clair3":
 				call_variants_clair3(
 					input_bam=config['hg38_rmdup_chr6_bam'],
@@ -227,10 +233,11 @@ def preprocess_ont_sample(config):
 					clair3_model=config['clair3_model']
 				)
 
-			if config['rescue_refcall_indels'] and indel_caller == "deepvariant":
-				rescue_refcall_indels(
+			if config['rescue_refcalls'] and indel_caller == "deepvariant":
+				rescue_refcalls(
 					input_vcf=indel_intermediate,
-					output_vcf=config['dv_rescued_vcf']
+					output_vcf=config['dv_rescued_vcf'],
+					indels_only=True
 				)
 				indel_intermediate = config['dv_rescued_vcf']
 

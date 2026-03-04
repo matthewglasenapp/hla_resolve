@@ -26,7 +26,7 @@ class Samples:
     def __init__(self, input_file, sample_name, platform, output_dir,
                  aligner, snp_caller, indel_caller, trim_adapters=False, adapter_file=None,
                  threads=1, read_group_string=None, clean_up=False, scheme=None,
-                 clair3_model=None, rescue_refcall_indels=False):
+                 clair3_model=None, rescue_refcalls=False):
         
         # Original initialization code
         self.ORIGINAL_CWD = os.getcwd()
@@ -71,7 +71,7 @@ class Samples:
         self.aligner = aligner
         self.snp_caller = snp_caller
         self.indel_caller = indel_caller
-        self.rescue_refcall_indels = rescue_refcall_indels
+        self.rescue_refcalls = rescue_refcalls
         self.clean_up = clean_up
         self.clair3_model = clair3_model if clair3_model else (clair3_ont_model if self.platform == "ONT" else clair3_hifi_model)
 
@@ -343,7 +343,7 @@ def build_workflow_config(sample):
 		'aligner': sample.aligner,
 		'snp_caller': sample.snp_caller,
 		'indel_caller': sample.indel_caller,
-		'rescue_refcall_indels': sample.rescue_refcall_indels,
+		'rescue_refcalls': sample.rescue_refcalls,
 		'scheme': sample.scheme,
 		
 		# Adapter settings

@@ -516,11 +516,14 @@ def call_variants_freebayes(input_bam, output_vcf, reference_fasta):
 	print(f"VCF written to {output_vcf}")
 	print("\n\n")
 
-# Rescue high-confidence indels from DeepVariant RefCall filter in hybrid mode
-# DeepVariant can conservatively filter real indels as RefCall (especially in HLA)
-# This function overturns RefCall -> PASS for indels meeting quality thresholds
-def rescue_refcall_indels(input_vcf, output_vcf):
-	print("Rescuing high-confidence RefCall indels from DeepVariant output!")
+# Rescue high-confidence variants from DeepVariant RefCall filter
+# DeepVariant can conservatively filter real variants as RefCall (especially in HLA)
+# This function overturns RefCall -> PASS for variants meeting quality thresholds
+# When indels_only=True (hybrid mode), only indels are rescued; SNP alts are skipped
+# When indels_only=False (pure deepvariant mode), both SNPs and indels are rescued
+def rescue_refcalls(input_vcf, output_vcf, indels_only=False):
+	mode_label = "indels" if indels_only else "SNPs and indels"
+	print(f"Rescuing high-confidence RefCall {mode_label} from DeepVariant output!")
 	print(f"Input VCF: {input_vcf}")
 
 	vcf_in = pysam.VariantFile(input_vcf)
@@ -530,65 +533,70 @@ def rescue_refcall_indels(input_vcf, output_vcf):
 	vcf_out = pysam.VariantFile(tmp_path, 'wz', header=vcf_in.header)
 
 	rescued = 0
-	total_refcall_indels = 0
+	total_refcalls = 0
 
 	for record in vcf_in:
 		if record.alts and "RefCall" in record.filter:
-			# Check if any alt allele is an indel (ref/alt length differ)
-			has_indel_alt = any(len(alt) != len(record.ref) for alt in record.alts)
+			# In indels_only mode, skip records that have no indel alt alleles
+			if indels_only:
+				has_indel_alt = any(len(alt) != len(record.ref) for alt in record.alts)
+				if not has_indel_alt:
+					vcf_out.write(record)
+					continue
 
-			if has_indel_alt:
-				total_refcall_indels += 1
-				sample = record.samples[0]
+			total_refcalls += 1
+			sample = record.samples[0]
 
-				gq = sample.get('GQ')
-				dp = sample.get('DP')
-				ad = sample.get('AD')
-				vaf = sample.get('VAF')
+			gq = sample.get('GQ')
+			dp = sample.get('DP')
+			ad = sample.get('AD')
+			vaf = sample.get('VAF')
 
-				if all(v is not None for v in (gq, dp, ad, vaf)):
-					if gq >= 20 and dp >= 30:
-						# Normalize VAF to tuple (pysam may return scalar for biallelic)
-						if isinstance(vaf, (int, float)):
-							vaf = (vaf,)
+			if all(v is not None for v in (gq, dp, ad, vaf)):
+				if gq >= 20 and dp >= 30:
+					# Normalize VAF to tuple (pysam may return scalar for biallelic)
+					if isinstance(vaf, (int, float)):
+						vaf = (vaf,)
 
-						# Evaluate each alt allele independently
-						# Classify as het (0.3-0.7) or hom-alt (>0.7)
-						passing_het = []
-						passing_hom = []
-						for i, alt in enumerate(record.alts):
-							# Only evaluate indel alts (skip SNP alts in multiallelic records)
-							if len(alt) == len(record.ref):
-								continue
-							alt_ad = ad[i + 1]  # AD[0] is ref depth
-							alt_vaf = vaf[i]
-							if alt_ad is not None and alt_vaf is not None and alt_ad >= 10:
-								if 0.3 <= alt_vaf <= 0.7:
-									passing_het.append(i + 1)  # 1-indexed for VCF GT
-								elif alt_vaf > 0.7:
-									passing_hom.append(i + 1)
+					# Evaluate each alt allele independently
+					# Classify as het (0.3-0.7) or hom-alt (>0.7)
+					passing_het = []
+					passing_hom = []
+					for i, alt in enumerate(record.alts):
+						# In indels_only mode, skip SNP alts in multiallelic records
+						if indels_only and len(alt) == len(record.ref):
+							continue
+						alt_ad = ad[i + 1]  # AD[0] is ref depth
+						alt_vaf = vaf[i]
+						if alt_ad is not None and alt_vaf is not None and alt_ad >= 10:
+							if 0.3 <= alt_vaf <= 0.7:
+								passing_het.append(i + 1)  # 1-indexed for VCF GT
+							elif alt_vaf > 0.7:
+								passing_hom.append(i + 1)
 
-						if passing_hom or passing_het:
-							record.filter.clear()
-							record.filter.add('PASS')
-							# Set genotype: hom-alt takes precedence over het
-							if passing_hom:
-								new_gt = (passing_hom[0], passing_hom[0])
-								zygosity = "hom-alt"
-							elif len(passing_het) >= 2:
-								new_gt = (passing_het[0], passing_het[1])
-								zygosity = "compound-het"
-							else:
-								new_gt = (0, passing_het[0])
-								zygosity = "het"
-							sample['GT'] = new_gt
-							rescued += 1
+					if passing_hom or passing_het:
+						record.filter.clear()
+						record.filter.add('PASS')
+						# Set genotype: hom-alt takes precedence over het
+						if passing_hom:
+							new_gt = (passing_hom[0], passing_hom[0])
+							zygosity = "hom-alt"
+						elif len(passing_het) >= 2:
+							new_gt = (passing_het[0], passing_het[1])
+							zygosity = "compound-het"
+						else:
+							new_gt = (0, passing_het[0])
+							zygosity = "het"
+						sample['GT'] = new_gt
+						rescued += 1
 
-							gt_str = "/".join(str(a) for a in new_gt)
-							alts_str = ",".join(record.alts)
-							ad_str = ",".join(str(a) for a in ad)
-							vaf_str = ",".join(f"{v:.3f}" for v in vaf)
-							print(f"  RESCUED: {record.chrom}:{record.pos} {record.ref}>{alts_str} GT={gt_str} ({zygosity}) GQ={gq} DP={dp} AD={ad_str} VAF={vaf_str}")
+						gt_str = "/".join(str(a) for a in new_gt)
+						alts_str = ",".join(record.alts)
+						ad_str = ",".join(str(a) for a in ad)
+						vaf_str = ",".join(f"{v:.3f}" for v in vaf)
+						is_snp = len(record.ref) == 1 and all(len(a) == 1 for a in record.alts)
+						var_type = "SNP" if is_snp else "INDEL"
+						print(f"  RESCUED {var_type}: {record.chrom}:{record.pos} {record.ref}>{alts_str} GT={gt_str} ({zygosity}) GQ={gq} DP={dp} AD={ad_str} VAF={vaf_str}")
 
 		vcf_out.write(record)
 
@@ -598,7 +606,7 @@ def rescue_refcall_indels(input_vcf, output_vcf):
 	os.replace(tmp_path, output_vcf)
 	subprocess.run(f"tabix -p vcf {output_vcf}", shell=True, check=True)
 
-	print(f"Rescued {rescued}/{total_refcall_indels} RefCall indels")
+	print(f"Rescued {rescued}/{total_refcalls} RefCall {mode_label}")
 	print(f"Output VCF: {output_vcf}")
 	print("\n\n")
 

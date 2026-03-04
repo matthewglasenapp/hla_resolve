@@ -48,8 +48,8 @@ def main():
     args.aligner = "minimap2"
     args.snp_caller = "deepvariant"
     args.indel_caller = "deepvariant"
-    args.rescue_refcall_indels = False
-    # args.snp_caller = "bcftools"; args.indel_caller = "deepvariant"; args.rescue_refcall_indels = True  # hybrid mode
+    args.rescue_refcalls = True
+    # args.snp_caller = "bcftools"; args.indel_caller = "deepvariant"; args.rescue_refcalls = True  # hybrid mode
     # Other combinations:
     # args.snp_caller = "bcftools";   args.indel_caller = "clair3"      # hybrid ONT
     # args.snp_caller = "bcftools";   args.indel_caller = "bcftools"    # pure bcftools
@@ -63,7 +63,7 @@ def main():
     
     start_time = time.time()
     
-    sample = Samples(input_file=args.input_file, sample_name=args.sample_name, platform=args.platform, output_dir=args.output_dir, aligner=args.aligner, snp_caller=args.snp_caller, indel_caller=args.indel_caller, trim_adapters=args.trim_adapters, adapter_file=args.adapter_file, threads=args.threads, read_group_string=args.read_group_string, clean_up=args.clean_up, scheme=args.scheme, clair3_model=args.clair3_model, rescue_refcall_indels=args.rescue_refcall_indels)
+    sample = Samples(input_file=args.input_file, sample_name=args.sample_name, platform=args.platform, output_dir=args.output_dir, aligner=args.aligner, snp_caller=args.snp_caller, indel_caller=args.indel_caller, trim_adapters=args.trim_adapters, adapter_file=args.adapter_file, threads=args.threads, read_group_string=args.read_group_string, clean_up=args.clean_up, scheme=args.scheme, clair3_model=args.clair3_model, rescue_refcalls=args.rescue_refcalls)
 
     # Build workflow configuration from sample object
     workflow_config = build_workflow_config(sample)
