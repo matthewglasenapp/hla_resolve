@@ -85,7 +85,7 @@ def get_percentages(truth_df, class_df, genes, genes_numbered, tool, platform, g
     # Problematic samples
     for problematic_sample in set(problematic_samples) & set(truth_df["sample"]):
         if not quiet: print(f"INFO: Skipping problematic sample {problematic_sample}")
-        common_samples.remove(problematic_sample)
+        common_samples.discard(problematic_sample)
 
     # Only consider entries in both truth set and classified data
     common_truth = truth_df[truth_df["sample"].isin(common_samples)]
