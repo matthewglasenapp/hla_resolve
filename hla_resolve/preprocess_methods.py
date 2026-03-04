@@ -407,7 +407,8 @@ def call_variants_deepvariant(input_bam, output_vcf, output_gvcf, platform, deep
 			--output_vcf=/data/{os.path.basename(output_vcf)} \
 			--output_gvcf=/data/{os.path.basename(output_gvcf)} \
 			--regions chr6 \
-			--num_shards={deepvariant_shards}
+			--num_shards={deepvariant_shards} \
+			--disable_small_model=true
 		"""
 
 	# Log DeepVariant in own output file so it doesn't clog up STDOUT

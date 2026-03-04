@@ -117,7 +117,8 @@ def ensure_deepvariant_sif():
         subprocess.run([
             "singularity", "pull",
             str(sif_file),
-            "docker://google/deepvariant:1.6.1"
+            "docker://google/deepvariant:1.8.0"
+            # "docker://google/deepvariant:1.6.1"
         ], check=True)
         print("DeepVariant SIF download complete!")
 
