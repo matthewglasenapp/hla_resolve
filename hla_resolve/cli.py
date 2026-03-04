@@ -48,7 +48,7 @@ def main():
     args.aligner = "minimap2"
     args.snp_caller = "bcftools"
     args.indel_caller = "clair3" if args.platform == "ont" else "deepvariant"
-    args.rescue_refcalls = False
+    args.rescue_refcalls = True
     # Other combinations:
     # args.snp_caller = "bcftools";   args.indel_caller = "clair3"      # hybrid ONT
     # args.snp_caller = "bcftools";   args.indel_caller = "bcftools"    # pure bcftools
