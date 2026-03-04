@@ -47,7 +47,7 @@ def main():
     # For public release: hardcode aligner and callers
     args.aligner = "minimap2"
     args.snp_caller = "bcftools"
-    args.indel_caller = "deepvariant"
+    args.indel_caller = "clair3" if args.platform == "ont" else "deepvariant"
     args.rescue_refcalls = False
     # Other combinations:
     # args.snp_caller = "bcftools";   args.indel_caller = "clair3"      # hybrid ONT
