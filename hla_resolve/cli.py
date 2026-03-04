@@ -46,9 +46,10 @@ def main():
     
     # For public release: hardcode aligner and callers
     args.aligner = "minimap2"
-    args.snp_caller = "bcftools"
+    args.snp_caller = "deepvariant"
     args.indel_caller = "deepvariant"
-    args.rescue_refcall_indels = True  # Overturn high-confidence DeepVariant RefCall indels in hybrid mode
+    args.rescue_refcall_indels = False
+    # args.snp_caller = "bcftools"; args.indel_caller = "deepvariant"; args.rescue_refcall_indels = True  # hybrid mode
     # Other combinations:
     # args.snp_caller = "bcftools";   args.indel_caller = "clair3"      # hybrid ONT
     # args.snp_caller = "bcftools";   args.indel_caller = "bcftools"    # pure bcftools
