@@ -208,6 +208,9 @@ class Samples:
         html_path = os.path.join(self.fastq_raw_dir, self.sample_ID + ".fastplong.html")
         json_path = os.path.join(self.fastq_raw_dir, self.sample_ID + ".fastplong.json")
 
+        # -A: disable adapter trimming, -Q: disable quality filtering, -L: disable length filtering
+        # -m 0: no mean quality threshold, -n 100000: discard reads with >100000 N bases (i.e. keep all)
+        # QC-only mode: generate reports without any read filtering or trimming
         fastplong_cmd = f"fastplong -i {fq_path} -h {html_path} -j {json_path} -w {self.threads} -A -Q -L -m 0 -n 100000"
 
         result = subprocess.run(fastplong_cmd, shell=True, check=False, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
