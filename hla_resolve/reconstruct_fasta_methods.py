@@ -234,7 +234,7 @@ def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail
 			if not sample.phased:
 				unphased_hets.append(rec)
 
-	print(f"[DEBUG] {gene}: het={len(het_sites)}, unphased={len(unphased_hets)}")
+	print(f"{gene}: het={len(het_sites)}, unphased={len(unphased_hets)}")
 	allow_single_unphased = (len(het_sites) == 1 and len(unphased_hets) == 1)
 
 	het_clauses = [

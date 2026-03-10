@@ -12,10 +12,15 @@ def convert_bam_to_fastq(input_file, output_file, platform, threads):
 		print("Converting HiFi ccs reads to fastq format using pbtk bam2fastq!")
 		print(f"bam2fastq input file: {input_file}")
 
+		pbi_file = input_file + ".pbi"
+		if not os.path.exists(pbi_file):
+			print(f"PBI index not found for {input_file}. Indexing with pbindex...")
+			subprocess.run(f"pbindex {input_file}", shell=True, check=True)
+
 		output_prefix = output_file.split(".fastq.gz")[0]
-				
+
 		bam2fastq_cmd = f"bam2fastq -j {threads} {input_file} -o {output_prefix}"
-		
+
 		subprocess.run(bam2fastq_cmd, shell=True, check=True)
 				
 		print(f"Raw fastq reads written to: {output_file}")
