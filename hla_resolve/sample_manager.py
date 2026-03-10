@@ -6,11 +6,11 @@ import pysam
 from Bio import SeqIO
 from .preprocess_methods import convert_bam_to_fastq
 from .config import (
-	min_reads_sample, min_read_length, reference_genome_vg_gbz, reference_genome_vg_paths, vg, 
-	longphase, sawfish, clair3_sif, clair3_ont_model, clair3_hifi_model,
+	min_reads_sample, min_read_length,
+	longphase, clair3_sif, clair3_ont_model, clair3_hifi_model,
 	depth_thresh, prop_20x_thresh, prop_30x_thresh,
 	mhc_start, mhc_stop, genes_bed, genes_of_interest, genes_of_interest_extended,
-	hla_genes_regions_file, vcf2fasta_script, reference_genome_minimap2, reference_genome_vg,
+	hla_genes_regions_file, vcf2fasta_script, reference_genome_minimap2,
 	DNA_bases, stop_codons, IMGT_XML, gff_dir, ARS_dict, gene_dict, CDS_dict, CLASS_I_GENES, dummy_reference, drb_multiallele_reference,
 	deepvariant_sif, tandem_repeat_bed, chr6_bed, pbtrgt_repeat_file, picard
 )
@@ -157,14 +157,15 @@ class Samples:
                 if not rg_list:
                     raise ValueError(f"No @RG entry found in BAM header for {input_path}")
                 if len(rg_list) > 1:
-                    raise ValueError(f"BAM file {input_path} contains multiple @RG entries. Only one read group is supported per file/sample.")
+                    print(f"WARNING: Multiple read groups present! Consider splitting input file {input_path} by read group!")
+                    for rg in rg_list:
+                        print(f"  @RG ID:{rg.get('ID', 'N/A')} SM:{rg.get('SM', 'N/A')} LB:{rg.get('LB', 'N/A')} PU:{rg.get('PU', 'N/A')}")
 
-                rg = rg_list[0]
-                rg_id = rg.get("ID") or f"{self.sample_ID}_RG"
+                rg_id = f"{self.sample_ID}_RG"
                 rg_pl = self.platform
                 rg_sm = self.sample_ID
-                rg_lb = rg.get("LB", self.sample_ID)
-                rg_pu = rg.get("PU", f"{self.sample_ID}_PU")
+                rg_lb = self.sample_ID
+                rg_pu = f"{self.sample_ID}_PU"
 
         elif input_path.endswith((".fastq", ".fq", ".fastq.gz", ".fq.gz")):
             if input_path.endswith(".gz"):
@@ -257,17 +258,10 @@ class Samples:
         self.hg38_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.hg38.bam")
         self.hg38_bam_drb = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.hg38.bam.drb")
         self.hg38_chr6_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.hg38.chr6.bam")
-        self.pangenome_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.pangenome.bam")
-        self.pg_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.pg.bam")
-        self.pg_reheader_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.pg.reheader.bam")
-        self.pg_mapq_reassign_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.pg.mapq_reassign.bam")
-        self.pg_mapq_reassign_mrkdup_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.pg.mapq_reassign.mrkdup.bam")
-        self.hg38_mrkdup_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.hg38.mrkdup.bam")
         self.hg38_rmdup_chr6_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.hg38.rmdup.chr6.bam")
         self.hg38_rmdup_chr6_haplotag_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.hg38.rmdup.chr6.haplotag.bam")
         
         # Metrics files
-        self.pg_mapq_reassign_mrkdup_metrics = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.pg.mapq_reassign.mrkdup.metrics.txt")
         self.hg38_mrkdup_metrics = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.hg38.mrkdup.metrics.txt")
         
         # VCF files
@@ -330,13 +324,7 @@ def build_workflow_config(sample):
 	Build a configuration dictionary for workflows from a sample object.
 	This avoids passing the entire sample object to workflow functions.
 	"""
-	# Set reference genome based on aligner
-	if sample.aligner == "minimap2":
-		reference_genome = reference_genome_minimap2
-	elif sample.aligner == "vg":
-		reference_genome = reference_genome_vg
-	else:
-		raise ValueError(f"Unknown aligner: {sample.aligner}")
+	reference_genome = reference_genome_minimap2
 	
 	config = {
 		# Core sample information
@@ -382,12 +370,6 @@ def build_workflow_config(sample):
 		'hg38_bam_drb': sample.hg38_bam_drb,
 		'hg38_chr6_bam': sample.hg38_chr6_bam,
 		'DRB34_reads_file': sample.DRB34_reads_file,
-		'pangenome_bam': sample.pangenome_bam,
-		'pg_bam': sample.pg_bam,
-		'pg_reheader_bam': sample.pg_reheader_bam,
-		'pg_mapq_reassign_bam': sample.pg_mapq_reassign_bam,
-		'pg_mapq_reassign_mrkdup_bam': sample.pg_mapq_reassign_mrkdup_bam,
-		'hg38_mrkdup_bam': sample.hg38_mrkdup_bam,
 		'hg38_mrkdup_metrics': sample.hg38_mrkdup_metrics,
 		'hg38_rmdup_chr6_bam': sample.hg38_rmdup_chr6_bam,
 		'hg38_rmdup_chr6_haplotag_bam': sample.hg38_rmdup_chr6_haplotag_bam,
@@ -436,11 +418,7 @@ def build_workflow_config(sample):
 		'chr6_bed': Samples.chr6_bed,
 		'tandem_repeat_bed': Samples.tandem_repeat_bed,
 		'pbtrgt_repeat_file': Samples.pbtrgt_repeat_file,
-		'reference_gbz': reference_genome_vg_gbz,
-		'ref_paths': reference_genome_vg_paths,
-		'vg': vg,
 		'longphase': longphase,
-		'sawfish': sawfish,
 		'picard': picard,
 		'depth_thresh': depth_thresh,
 		'prop_20x_thresh': prop_20x_thresh,

@@ -44,7 +44,7 @@ def trim_adapters(adapters, input_file, output_file, sample_ID, threads, adapter
 
 			# Use cutadapt with specific adapter sequences from the adapter file
 			cutadapt_cmd = f"cutadapt -j {threads} --quiet -n 2 --minimum-length 100 -g {five_prime_adapter} -a {three_prime_adapter} -o {output_file} {input_file}"
-			
+
 			subprocess.run(cutadapt_cmd, shell=True, check=True)
 
 			print(f"Trimmed reads written to: {output_file}")
@@ -59,7 +59,7 @@ def trim_adapters(adapters, input_file, output_file, sample_ID, threads, adapter
 			json_path = os.path.join(output_dir, sample_ID + ".fastplong.json")
 
 			fastplong_cmd = f"fastplong -i {input_file} -h {html_path} -j {json_path} -w {threads} -n 100000 -o {output_file}"
-			
+
 			subprocess.run(fastplong_cmd, shell=True, check=False)
 
 			print(f"Trimmed reads written to: {output_file}")
@@ -69,63 +69,6 @@ def trim_adapters(adapters, input_file, output_file, sample_ID, threads, adapter
 		print("Users specified no adapters present")
 		print(f"Skipping adapter trimming and transfering raw fastq file {input_file} to {output_file}")
 		shutil.copy(input_file, output_file)
-
-# Not called - for development
-# Adapter/barcode trimming for ONT data
-def run_porechop_abi(input_file, output_file, threads):
-	print("Removing adapters and barcodes with porechop_abi!")
-		
-	print(f"porechop_abi input file: {input_file}")
-	
-	porechop_cmd = f"porechop_abi --ab_initio -v 1 -i {input_file} -t {threads} -o {output_file} --format fastq"
-
-	subprocess.run(porechop_cmd, shell=True, check=True)
-
-# Not called - for development
-# Quality trimming step for ONT data
-def trim_reads(input_file, output_dir, sample_ID, threads):
-	from .config import prowler_trimmer
-	print("Trimming reads with ProwlerTrimmer!")
-
-	input_dir = os.path.dirname(input_file)
-
-	prowler_trimmer_cmd = f'python3 {prowler_trimmer} -i {input_dir} -f {input_file} -o {output_dir} -m "D" -q 20'
-
-	subprocess.run(prowler_trimmer_cmd, shell=True, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-
-	trimmed_fastq = os.path.join(output_dir, sample_ID + ".porechopTrimLT-U0-D20W100L100R0.fastq")
-	renamed_trimmed_fastq = os.path.join(output_dir, sample_ID + ".porechop.prowler.fastq")
-	os.rename(trimmed_fastq, renamed_trimmed_fastq)
-	pigz_cmd = f"pigz -f -p {threads} {renamed_trimmed_fastq}"
-	subprocess.run(pigz_cmd, shell=True, check=True)
-
-# Not called - for development
-# Run fastqc on fastq file
-def run_fastqc(input_file):
-	print(f"Running fastqc on {input_file}")
-	
-	fastqc_cmd = f"fastqc --memory 5000 {input_file}"
-	
-	subprocess.run(fastqc_cmd, shell=True, check=True)
-	
-	print("\n\n")
-
-# Not called - for development
-# Trim Adapter Sequences and polyA tails
-# Customize this command based on the fastqc output
-def legacy_trim_adapters(input_file, output_file, five_prime_adapter, three_prime_adapter, threads):
-	print("Trimming adapter sequences with cutadapt!")
-	print(f"cutadapt input file: {input_file}")
-	
-	# The following argument is used to trim polyA tails: -a 'A{{10}}N{{90}}. The double brackets are for python string interpolation
-	# me and me_rc are the transposase mosaic end binding sequences defined at the top of the script
-	#cutadapt_cmd = "cutadapt -j {threads} --quiet -n {num_cuts_allowed} -g {five_prime_adapter} -a {three_prime_adapter} -a 'A{{10}}N{{90}}' -o {output_fastq} {input_fastq}".format(threads = sample.threads, num_cuts_allowed = 3, five_prime_adapter = me, three_prime_adapter = me_rc, output_fastq = output_file, input_fastq = input_file)
-	cutadapt_cmd = f"cutadapt -j {threads} --quiet -n 2 -g {five_prime_adapter} -a {three_prime_adapter} -o {output_file} {input_file}"
-
-	subprocess.run(cutadapt_cmd, shell=True, check=True)
-	
-	print(f"Deduplicated trimmed reads written to: {output_file}")
-	print("\n\n")
 
 # Mark PCR duplicates with pbmarkdup
 def mark_duplicates_pbmarkdup(input_file, output_file, threads):
@@ -147,22 +90,16 @@ def mark_duplicates_pbmarkdup(input_file, output_file, threads):
 	print(f"De-duplicated reads written to: {output_file}.gz!")
 	print("\n\n")
 
-# Align to GRCh38 reference genome with pbmm2
+# Align to GRCh38 reference genome with minimap2
 def align_to_reference_minimap(input_file, output_file, read_group_string, reference_fasta, platform, threads):
 	print("Aligning reads to GRCh38 reference genome with minimap2!")
-	
+
 	if platform == "PACBIO":
 		platform_string = "map-hifi"
 	elif platform == "ONT":
 		platform_string = "map-ont"
 
 	print(f"minimap2 input file: {input_file}")
-
-	# Deprecate pbmm2. Moving forward with minimap2 for ease of comparison with ONT data.
-	# print("Aligning reads to GRCh38 reference genome with pbmm2!")
-	# print("pbmm2 input file: {}".format(input_fastq))
-	# pbmm2_cmd = "pbmm2 align -j {threads} {reference_genome} {input_file} {output_file} --sort --log-level INFO --unmapped --bam-index BAI --rg '{rg_string}'".format(threads = sample.threads, reference_genome = Samples.reference_fasta, input_file = input_fastq, output_file = output_bam, rg_string = sample.read_group_string)
-	# subprocess.run(pbmm2_cmd, shell=True, check=True)
 
 	minimap_threads = int(threads * 2 / 3)
 	samtools_threads = threads - minimap_threads
@@ -175,31 +112,6 @@ def align_to_reference_minimap(input_file, output_file, read_group_string, refer
 	subprocess.run(index_bam, shell=True, check=True)
 
 	print(f"Mapped bam written to: {output_file}")
-	print("\n\n")
-
-# Not called - for development
-def bait_DRB_paralogs(input_file, output_file, DRB34_reads_file, read_group_string, reference_fasta, platform, threads):
-	print("Screening for reads originating from HLA-DRB3 and HLA-DRB4!")
-
-	if platform == "PACBIO":
-		platform_string = "map-hifi"
-	elif platform == "ONT":
-		platform_string = "map-ont"
-	
-	minimap_threads = int(threads * 2 / 3)
-	samtools_threads = threads - minimap_threads
-	minimap_rg_string = "'{}'".format(read_group_string.replace("\t", "\\t"))
-
-	minimap2_cmd = f"minimap2 -Y -t {minimap_threads} -ax {platform_string} {reference_fasta} {input_file} -R {minimap_rg_string} | samtools sort -@ {samtools_threads} -o {output_file}"
-	index_bam = f"samtools index {output_file}"
-	
-	subprocess.run(minimap2_cmd, shell=True, check=True)
-	subprocess.run(index_bam, shell=True, check=True)
-	
-	get_drb34_cmd = f"samtools view -F 2304 {output_file} | awk '$3 ~ /DRB3|DRB4/' | cut -f1 | sort -u > {DRB34_reads_file}"
-	subprocess.run(get_drb34_cmd, shell=True, check=True)
-	
-	print(f"DRB3 and DRB4 read IDs written to: {DRB34_reads_file}")
 	print("\n\n")
 
 def classify_DRB_reads(input_file, output_file, DRB34_reads_file, read_group_string, reference_fasta, platform, threads):
@@ -254,94 +166,6 @@ def classify_DRB_reads(input_file, output_file, DRB34_reads_file, read_group_str
 	print(f"DRB3 and DRB4 read IDs written to: {DRB34_reads_file}")
 	print("\n\n")
 
-# Not called - for development
-def align_to_reference_vg(vg, input_file, output_file, reheader_bam, sample_ID, read_group_string, reference_gbz, ref_paths, platform, threads):
-	print("Aligning reads to pangenome reference genome with vg giraffe!")
-	
-	if platform == "PACBIO":
-		parameter_preset = "hifi"
-
-	elif platform == "ONT":
-		parameter_preset = "r10"
-			
-	print(f"vg giraffe input file: {input_file}")
-	
-	vg_threads = int(threads * 2 / 3)
-	samtools_threads = threads - vg_threads
-
-	rg_fields = dict(field.split(":", 1) for field in read_group_string.split("\\t")[1:])
-	read_group_id = rg_fields["ID"]
-
-	#hp_name = "/hb/scratch/mglasena/graph/hprc-v2.0-mc-grch38.hapl"
-	#kmer_name = "/hb/scratch/mglasena/graph/HG002_kmc.kff"
-
-	vg_command = f"{vg} giraffe -b {parameter_preset} -Z {reference_gbz} -f {input_file} -p -P -o BAM --threads {vg_threads} --ref-paths {ref_paths} -R {read_group_id} -N {sample_ID} | samtools sort -@ {samtools_threads} -o {output_file}"
-	
-	#vg command with haplotype sampling
-	#vg_command = f"{vg} giraffe -b {parameter_preset} -Z {reference_gbz} --haplotype-name {hp_name} --kff-name {kmer_name} --set-reference GRCh38 -f {input_file} -p -P -o BAM --threads {vg_threads} --ref-paths {ref_paths} -R {read_group_id} -N {sample_ID} | samtools sort -@ {samtools_threads} -o {output_file}"
-	index_bam = f"samtools index {output_file}"
-
-	subprocess.run(vg_command, shell=True, check=True)
-	subprocess.run(index_bam, shell=True, check=True)
-
-	# Reheader
-	output_dir = os.path.dirname(output_file)
-	import uuid
-	unique_id = uuid.uuid4().hex[:8]
-	temp_sam_1 = os.path.join(output_dir, sample_ID + f"_temp1_{unique_id}.sam")
-	temp_sam_2 = os.path.join(output_dir, sample_ID + f"_temp2_{unique_id}.sam")
-	convert_to_sam = f"samtools view -h {output_file} > {temp_sam_1}"
-	rename_records = f"sed \"s/\\<GRCh38\\.chr/chr/g\" {temp_sam_1} > {temp_sam_2}"
-	convert_to_bam = f"samtools view -b -o {reheader_bam} {temp_sam_2}"
-	index_new_bam = f"samtools index {reheader_bam}"
-	subprocess.run(convert_to_sam, shell=True, check=True)
-	subprocess.run(rename_records, shell=True, check=True)
-	subprocess.run(convert_to_bam, shell=True, check=True)
-	subprocess.run(index_new_bam, shell=True, check=True)
-	
-	# Add read group 
-	# final_bam = output_bam.replace(".pangenome.bam", ".pg.bam")
-	
-	# rg_fields = dict(field.split(":", 1) for field in sample.read_group_string.split("\t")[1:])
-	# rg_id = rg_fields["ID"]
-
-	# if rg_fields.get("SM") and rg_fields["SM"] != sample.sample_ID:
-	# 	print(f"[WARNING] Overriding SM: {rg_fields['SM']} → {sample.sample_ID}")
-	
-	# add_rg_cmd = "samtools addreplacerg -r ID:{rg_id} -r SM:{SM} -o {final_bam} {converted_bam}".format(rg_id = rg_id, SM = sample.sample_ID, final_bam = final_bam, converted_bam = converted_bam)
-	
-	# subprocess.run(add_rg_cmd, shell=True, check=True)
-	# index_final_bam = "samtools index {input_bam}".format(input_bam = final_bam)
-	# subprocess.run(index_final_bam, shell=True, check=True)
-
-	clean_up = f"rm {output_file} {temp_sam_1} {temp_sam_2}"
-	#subprocess.run(clean_up, shell=True, check=True)
-
-# Not called - for development
-def reassign_mapq(bam_hg38, bam_pg, reassigned_pg):
-	mapq_dict = dict()
-
-	with pysam.AlignmentFile(bam_hg38, "rb") as f:
-		for read in f:
-			mapq_dict[read.query_name] = read.mapping_quality
-
-	missing_reads = []
-
-	with pysam.AlignmentFile(bam_pg) as inbam, pysam.AlignmentFile(reassigned_pg, "wb", template=inbam) as outbam:
-		for read in inbam:
-			new_mapq = mapq_dict.get(read.query_name)
-			if new_mapq is not None:
-				read.mapping_quality = new_mapq
-			else:
-				missing_reads.append(read.query_name)
-			outbam.write(read)
-
-	index_bam = f"samtools index {reassigned_pg}"
-	subprocess.run(index_bam, shell=True, check=True)
-
-	if missing_reads:
-		print(f"{len(missing_reads)} reads in {bam_pg} were missing from {bam_hg38}")
-
 # Mark duplicates for ONT data or WGS PacBio data
 # pbmarkdup used for targeted PacBio data but does not scale well for WGS data
 def mark_duplicates_picard(input_file, output_file, metrics_file, temp_dir, picard):
@@ -360,9 +184,6 @@ def filter_reads(input_file, output_file, DRB34_reads_file, threads):
 
 	print(f"Samtools input file: {input_file}")
 
-	# Extract chromosome 6 and exclude secondary and supplementary alignments
-	# samtools_cmd = "samtools view -@ {threads} -F 2304 -b {input_file} chr6 > '{output_file}'".format(threads = sample.threads, input_file = input_bam, output_file = output_bam)
-	# Use -h flag to preserve full header, then filter to chr6
 	samtools_cmd = f"samtools view -h -F 2304 -@ {threads} {input_file} chr6:28000000-34000000 | grep -v -F -f {DRB34_reads_file} -- | samtools view -b -o {output_file}"
 
 	index_cmd = f"samtools index {output_file}"
@@ -662,45 +483,9 @@ def call_structural_variants_pbsv(input_bam, output_svsig, output_vcf, threads, 
 	print(f"pbsv SV VCF written to: {output_vcf}")
 	print("\n\n")
 
-# Not called - for development
-# Run sawfish to call structural variants (SV)
-def call_structural_variants_sawfish(input_bam, small_variant_calls, output_vcf, sv_dir, sawfish, reference_fasta):
-	print("Calling structural variants with sawfish!")
-
-	# Hardcode threads because discover needs 8GB RAM per thread
-	# 4 threads is plenty for target capture, sawfish is wicked fast
-	threads = 4
-
-	discover_dir = os.path.join(sv_dir, "discover")
-
-	print(f"Sawfish input file: {input_bam}")
-
-	sawfish_discover_cmd = f"{sawfish} discover --threads {threads} --ref {reference_fasta} --bam {input_bam} --disable-cnv --maf {small_variant_calls} --output-dir {discover_dir} --min-indel-size 51 --min-sv-mapq 0"
-	
-	# subprocess.run(sawfish_discover_cmd, shell=True, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-	subprocess.run(sawfish_discover_cmd, shell=True, check=True)
-	
-	sawfish_call_cmd = f"{sawfish} joint-call --threads {threads} --sample {discover_dir} --output-dir {sv_dir} --min-sv-mapq 0"
-	
-	# subprocess.run(sawfish_call_cmd, shell=True, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-	subprocess.run(sawfish_call_cmd, shell=True, check=True)
-
-	sawfish_output_file = os.path.join(sv_dir, "genotyped.sv.vcf.gz")
-	if os.path.exists(sawfish_output_file):
-		shutil.move(sawfish_output_file, output_vcf)
-		index_cmd = f"tabix -p vcf {output_vcf}"
-		subprocess.run(index_cmd, shell=True, check=True)
-		print(f"Sawfish SV VCF written to: {output_vcf}")
-	else:
-		print("Sawfish failed!")
-	
-	print("\n\n")
-
 def call_structural_variants_sniffles(input_bam, output_vcf, threads, reference_fasta, chr6_bed, tandem_repeat_bed):
 	print("Calling structural variants with Sniffles!")
-	
-	#sniffles_cmd = f"sniffles --output-rnames --allow-overwrite -t {threads} --reference {reference_fasta} --regions {chr6_bed} -i {input_bam} -v {output_vcf} --tandem-repeats {tandem_repeat_bed}"
-	# Run single-threaded
+
 	sniffles_cmd = f"sniffles --output-rnames --allow-overwrite -t 1 --reference {reference_fasta} --regions {chr6_bed} -i {input_bam} -v {output_vcf} --tandem-repeats {tandem_repeat_bed}"
 
 	subprocess.run(sniffles_cmd, shell=True, check=True)
@@ -827,42 +612,6 @@ def merge_hiphase_vcfs(input_snv, input_SV, input_TR, output_vcf, reference_fast
 	print(f"Merged VCF written to: {output_vcf}")
 	print("\n\n")
 
-# Not called - for development
-# Phase genotypes with WhatsHap
-def phase_genotypes_whatshap(input_bam, input_snv, haplotagged_bam, phased_vcf, output_blocks_file, output_gtf_file, reference_fasta, whatshap_phased_vcf_dir, sample_ID):
-	print("Phasing Genotypes with WhatsHap!")
-
-	print(f"Input BAM: {input_bam}")
-	print(f"Input VCF: {input_snv}")
-
-	whatshap_phase_cmd = f"whatshap phase --ignore-read-groups --output {phased_vcf} --reference {reference_fasta} {input_snv} {input_bam}"
-
-	index_cmd = f"bcftools index {phased_vcf}"
-	tabix_cmd = f"tabix {phased_vcf}"
-
-	whatshap_haplotag_cmd = f"whatshap haplotag --ignore-read-groups --output {haplotagged_bam} --reference {reference_fasta} {input_snv} {input_bam}"
-
-	whatshap_stats_cmd = f"whatshap stats --block-list={output_blocks_file} --gtf={output_gtf_file} {phased_vcf}"
-
-	# Log WhatsHap in own output file so it doesn't clog up STDOUT
-	whatshap_log = os.path.join(whatshap_phased_vcf_dir, sample_ID + ".whatshap.log")
-
-	with open(whatshap_log, "w") as log_file:
-		log_file.write("\n==== Running WhatsHap Phase ====\n")
-		subprocess.run(whatshap_phase_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
-		subprocess.run(index_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
-		subprocess.run(tabix_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
-		log_file.write("\n==== Running WhatsHap Haplotag ====\n")
-		subprocess.run(whatshap_haplotag_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
-		log_file.write("\n==== Running WhatsHap Stats ====\n")
-		subprocess.run(whatshap_stats_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
-
-	print(f"WhatsHap phased VCF written to: {phased_vcf}")
-	print(f"WhatsHap haplotagged BAM written to: {haplotagged_bam}")
-	print(f"WhatsHap phase block gtf written to: {output_gtf_file}")
-	print(f"WhatsHap phase blocks written to: {output_blocks_file}")
-	print("\n\n")
-
 def phase_genotypes_longphase(input_bam, input_SNV_vcf, input_SV_vcf, output_blocks_file, output_gtf_file, phased_vcf, phased_SV_vcf, haplotagged_bam, longphase, reference_fasta, threads, phased_vcf_dir, sample_ID):
 	print("Phasing Genotypes with LongPhase!")
 
@@ -872,8 +621,6 @@ def phase_genotypes_longphase(input_bam, input_SNV_vcf, input_SV_vcf, output_blo
 
 	phased_vcf_prefix = phased_vcf.split(".vcf.gz")[0]
 	longphase_phase_cmd = f"{longphase} phase -s {input_SNV_vcf} --sv-file {input_SV_vcf} -b {input_bam} -r {reference_fasta} -t {threads} -o {phased_vcf_prefix} --ont --indels"
-	# Try different parameter set 
-	#longphase_phase_cmd = f"{longphase} phase -s {input_SNV_vcf} --sv-file {input_SV_vcf} -b {input_bam} -r {reference_fasta} -t {threads} -o {phased_vcf_prefix} ---mismatchRate=10"
 
 	# Compress and index SNV VCF
 	compress_cmd = f"bgzip -f {phased_vcf_prefix}.vcf"

@@ -21,11 +21,6 @@ from .preprocess_methods import (
 from .config import min_reads_sample
 
 def preprocess_pacbio_sample(config):
-	# run_fastqc(
-	# 	input_file=config['raw_fastq']
-	# )
-	# )
-	
 	trim_adapters(
 		adapters=config['adapters'],
 		input_file=config['raw_fastq'],
@@ -37,10 +32,6 @@ def preprocess_pacbio_sample(config):
 		three_prime_adapter=config['three_prime_adapter']
 	)
 
-	# run_fastqc(
-	# 	input_file=config['trimmed_fastq']
-	# )
-	
 	if config['scheme'] == "targeted":
 		mark_duplicates_pbmarkdup(
 			input_file=config['trimmed_fastq'],
@@ -110,34 +101,6 @@ def preprocess_pacbio_sample(config):
 		)
 
 		chr6_read_count = int(subprocess.check_output(f"samtools view -c {config['hg38_rmdup_chr6_bam']}", shell=True).strip())
-
-	# vg mapping discontinued
-	# if config['aligner'] == "vg":
-	# 	align_to_reference_vg(
-	# 		vg=config['vg'],
-	# 		input_file=config['trimmed_pbmarkdup_fastq_gz'],
-	# 		output_file=config['pangenome_bam'],
-	# 		reheader_bam=config['pg_reheader_bam'],
-	# 		sample_ID=config['sample_ID'],
-	# 		read_group_string=config['read_group_string'],
-	# 		reference_gbz=config['reference_gbz'],
-	# 		ref_paths=config['ref_paths'],
-	# 		platform=config['platform'],
-	# 		threads=config['threads']
-	# 	)
-		
-	# 	reassign_mapq(
-	# 		bam_hg38=config['hg38_bam'],
-	# 		bam_pg=config['pg_reheader_bam'],
-	# 		reassigned_pg=config['pg_mapq_reassign_bam']
-	# 	)
-	
-	# 	chr6_read_count = filter_reads(
-	# 		input_file=config['pg_mapq_reassign_bam'],
-	# 		output_file=config['hg38_rmdup_chr6_bam'],
-	# 		DRB34_reads_file=config['DRB34_reads_file'],
-	# 		threads=config['threads']
-	# 	)
 
 	if chr6_read_count >= min_reads_sample:
 		snp_caller = config['snp_caller']
@@ -298,15 +261,6 @@ def preprocess_pacbio_sample(config):
 			reference_fasta=config['reference_genome']
 		)
 
-		# call_structural_variants_sawfish(
-		# 	input_bam=config['hg38_rmdup_chr6_bam'],
-		# 	small_variant_calls=config['snv_vcf'],
-		# 	output_vcf=config['sv_vcf'],
-		# 	sv_dir=config['sv_dir'],
-		# 	sawfish=config['sawfish'],
-		# 	reference_fasta=config['reference_genome']
-		# )
-		
 		genotype_tandem_repeats(
 			input_bam=config['hg38_rmdup_chr6_bam'],
 			output_vcf=config['tr_vcf'],

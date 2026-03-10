@@ -144,12 +144,5 @@ dmypy.json
 ehthumbs.db
 Thumbs.db
 
-# Excluded scripts
-hla_resolve/allele_match.py
-hla_resolve/analyze_4field_tiebreak.py
-hla_resolve/check_zero_distance.py
-hla_resolve/debug_alignment.py
-hla_resolve/debug_getSequences.py
-hla_resolve/detect_ties.py
-hla_resolve/get_indels.py
-hla_resolve/test_pass3_tiebreak_report.py
+# Deprecated development code
+hla_resolve/deprecated_functions.py

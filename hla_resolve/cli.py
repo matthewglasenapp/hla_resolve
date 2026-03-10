@@ -16,9 +16,6 @@ def main():
     parser.add_argument("--platform", choices=["pacbio", "ont"], required=True, help="Specify sequencing platform (pacbio, ont)")
     parser.add_argument("--scheme", choices=["WGS", "WES", "targeted"], required=True, help="Sequencing scheme")
     parser.add_argument("--output_dir", required=True, help="Output Directory", default=None)
-    # For public release, aligner and genotyper are fixed. Uncomment for development:
-    # parser.add_argument("--aligner", choices=["minimap2", "vg"], required=True, help="Tool for reference genome alignment", default=None)
-    # parser.add_argument("--genotyper", choices=["bcftools", "clair3", "deepvariant"], required=False, help="Tool for genotyping", default="bcftools")
     parser.add_argument("--trim_adapters", action="store_true", help="Enable adapter trimming before processing")
     parser.add_argument("--adapter_file", type=str, required=False, default=None, help="Path to a file with custom adapter sequences (FASTA/FASTQ). If not provided, default adapters will be used.")
     parser.add_argument("--threads", type=int, required=False, help="Number of threads to use", default=6)
@@ -44,16 +41,10 @@ def main():
     from .resolve_alleles_pipeline import resolve_alleles
     from .cleanup import cleanup_intermediate_files
     
-    # For public release: hardcode aligner and callers
     args.aligner = "minimap2"
     args.snp_caller = "bcftools"
     args.indel_caller = "clair3" if args.platform == "ont" else "deepvariant"
     args.rescue_refcalls = True
-    # Other combinations:
-    # args.snp_caller = "bcftools";   args.indel_caller = "clair3"      # hybrid ONT
-    # args.snp_caller = "bcftools";   args.indel_caller = "bcftools"    # pure bcftools
-    # args.snp_caller = "deepvariant"; args.indel_caller = "deepvariant" # pure deepvariant
-    # args.snp_caller = "clair3";      args.indel_caller = "clair3"      # pure clair3
 
     setup_logging(output_dir=args.output_dir, sample_name=args.sample_name)
 

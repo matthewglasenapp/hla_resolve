@@ -118,7 +118,6 @@ def ensure_deepvariant_sif():
             "singularity", "pull",
             str(sif_file),
             "docker://google/deepvariant:1.6.1"
-            # "docker://google/deepvariant:1.8.0"
         ], check=True)
         print("DeepVariant SIF download complete!")
 
@@ -146,18 +145,17 @@ def ensure_hla_xml():
     xml_dir = Path(_data_dir) / "IPD_IMGT_XML"
     xml_file = xml_dir / "hla.xml"
     zip_file = xml_dir / "hla.xml.zip"
-    # Specific release URL for IPD-IMGT/HLA Release 3.61.0
+    # IPD-IMGT/HLA Release 3.60.0
+    #db_url = "https://raw.githubusercontent.com/ANHIG/IMGTHLA/652dbe954426f117a9f3619826fc4e3687713d90/xml/hla.xml.zip"
+    # IPD-IMGT/HLA Release 3.61.0
     #db_url = "https://raw.githubusercontent.com/ANHIG/IMGTHLA/93c70bcfe271a737bc75b7ca7f5f9844bf65136d/xml/hla.xml.zip"
-    # Specific release URL for IPD-IMGT/HLA Release 3.60.0
-    #db_url = "https://raw.githubusercontent.com/ANHIG/IMGTHLA/652dbe954426f117a9f3619826fc4e3687713d90/xml/hla.xml.zip" 
-    # Specific release URL for IPD-IMGT/HLA Release 3.63.0
+    # Latest
     db_url = "https://raw.githubusercontent.com/ANHIG/IMGTHLA/Latest/xml/hla.xml.zip"
     # Create directory if it doesn't exist
     xml_dir.mkdir(parents=True, exist_ok=True)
     
     # If file exists, no need to download (using specific release)
     if xml_file.exists():
-        #print("INFO: HLA XML database already present")
         return
     else:
         print("INFO: Downloading HLA XML database")
@@ -193,7 +191,6 @@ genes_of_interest = ("HLA-A", "HLA-B", "HLA-C", "HLA-DPA1", "HLA-DPB1", "HLA-DQA
 CLASS_I_GENES = {"HLA-A", "HLA-B", "HLA-C"}
 
 # Small dummy reference used to identify raw sequencing reads originating from DRB3 and DRB4 genes
-# This reference is used in the bait_DRB_paralogs() function of preprocess_methods.py
 # This reference consists of a contig for each of DRB1, DRB3 and DRB4
 # The contigs represent exon2 +/- 2kb, with the 270 bases of exon 2 hardmasked with "N"
 dummy_reference = os.path.join(_data_dir, "reference/DRB_1_3_4.fa")
@@ -203,11 +200,6 @@ dummy_reference = os.path.join(_data_dir, "reference/DRB_1_3_4.fa")
 # 13 DRB1 alleles (groups 01-16), 3 DRB3 alleles, 1 DRB4 allele
 # Used in classify_DRB_reads() function of preprocess_methods.py
 drb_multiallele_reference = os.path.join(_data_dir, "reference/DRB_reference.fa")
-
-# Ignore - Hardcoded paths for development
-sawfish = "/hb/home/mglasena/software/sawfish-v2.0.3-x86_64-unknown-linux-gnu/bin/sawfish"
-prowler_trimmer = "/hb/home/mglasena/software/ProwlerTrimmer/TrimmerLarge.py"
-vg = "/hb/scratch/ogarci12/hybridcapture_pangenome/vg"
 
 # Path to vcf2fasta script
 # vcf2fasta was taken from https://github.com/yeeus/vcf2fasta and edited for my own purpose
@@ -219,18 +211,8 @@ vcf2fasta_script = os.path.join(_data_dir, "vcf2fasta/vcf2fasta.py")
 clair3_ont_model = "r1041_e82_400bps_sup_v500"   # R10.4.1 SUP (default)
 clair3_hifi_model = "hifi_revio"
 
-# Paths to reference genome for reference genome alignment with minimap2
-
 # Reference fasta with added HLA-OLI/HLA-Y contig for baiting out reads originating from HLA-Y
-#reference_genome_minimap2 = "/hb/scratch/mglasena/alex_install/hla_resolve/hla_resolve/data/reference/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna"
 reference_genome_minimap2 = os.path.join(_data_dir, "reference/augmented_hg38.fa")
-#reference_genome_minimap2 = os.path.join(_data_dir, "reference/augmented_hg38_drb_alt.fa")
-#reference_genome_minimap2 = os.path.join(_data_dir, "reference/augmented_hg38_with_long_drb1.fa")
-
-# Ignore - Hardcoded paths for development (vg pangenome references, not used in current release)
-reference_genome_vg = "/hb/groups/cornejo_lab/matt/hla_capture/input_data/reference/hprc-v1.0-chr-renamed.fa"
-reference_genome_vg_gbz = "/hb/scratch/ogarci12/hybridcapture_pangenome/ref/hprc-v1.0-mc-grch38-minaf.0.1.gbz"
-reference_genome_vg_paths = "/hb/scratch/ogarci12/hybridcapture_pangenome/ref/hprc-v1.0-mc-grch38-minaf.0.1.dict"
 
 # DeepVariant SIF file path — populated by ensure_deepvariant_sif() above
 
@@ -250,20 +232,16 @@ pbtrgt_repeat_file = os.path.join(_data_dir, "repeats_bed/chr6_polymorphic_repea
 # GFF files of the HLA genes of interest for FASTA reconstruction with vcf2fasta
 # Used in reconstruct_fasta_methods.py
 gff_dir = os.path.join(_data_dir, "hla_gff")
-#gff_dir = os.path.join(_data_dir, "hla_gff/coord_shift")
 
 # BED file of coordinates for the 8 HLA genes of interest
 # The coordinates were taken from the GRCh38 GFF3 file
 # Used for both mosdepth coverage analysis and VCF filtering
 # HLA-B and HLA-DQA1 coordinates were slightly modified from the raw GFF3 file to exclude exons that are not part of the MANE Select transcript
-# The second, commented-out bed file contains shifted coordinates following an experimental modification to HLA-DRB1 that changed the reference genome length
 hla_genes_regions_file = os.path.join(_data_dir, "mosdepth/hla_genes.bed")
-#hla_genes_regions_file = os.path.join(_data_dir, "mosdepth/hla_genes.shifted.bed")
 
 # BED file for parsing haploblocks in the extended MHC region
 # Used in evaluate_gene_haploblocks() function of investigate_haploblocks_methods.py
 genes_bed = os.path.join(_data_dir, "reference/parse_haploblocks_bed.bed")
-#genes_bed = os.path.join(_data_dir, "reference/parse_haploblocks_bed.shifted.bed")
 genes_of_interest_extended = ("HLA-A", "HLA-B", "HLA-C", "HLA-DRB1", "HLA-DQA1", "HLA-DQA2", "HLA-DQB1", "HLA-DQB2", "HLA-DPA1", "HLA-DPB1")
 
 # Parameters

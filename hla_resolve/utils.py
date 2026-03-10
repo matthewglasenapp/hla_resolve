@@ -68,10 +68,7 @@ def check_required_commands():
         "java",
         "hiphase",
         "pbmarkdup",
-        # pbmm2 deprecated for minimap2
-        #"pbmm2",
-        # pbsv deprecated for sawfish
-        #"pbsv",
+        "pbsv",
         "pigz",
         "samtools",
         "singularity",

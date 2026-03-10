@@ -116,11 +116,6 @@ def build_g_group_dict_from_web():
 #          sequence_data: {allele: {feature: sequence}}
 @print_time_taken
 def build_g_group_dict(xml_file, ignore_unconfirmed=False, ignore_incomplete=False):
-    # If None, pull from web
-    # if xml_file == None:
-    #     build_g_group_dict_from_web()
-    #     xml_file = "./tmp/hla.xml"
-
     # Parse metadata XML file
     print("INFO: Parsing metadata XML file")
     tree = ET.parse(xml_file)

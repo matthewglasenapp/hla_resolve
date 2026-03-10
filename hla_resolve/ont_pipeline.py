@@ -48,40 +48,6 @@ def preprocess_ont_sample(config):
 		platform=config['platform'],
 		threads=config['threads']
 	)
-	
-	# vg mapping discontinued
-	# if config['aligner'] == "vg":
-	# 	align_to_reference_vg(
-	# 		vg=config['vg'],
-	# 		input_file=config['trimmed_fastq'],
-	# 		output_file=config['pangenome_bam'],  
-	# 		sample_ID=config['sample_ID'],
-	# 		read_group_string=config['read_group_string'],
-	# 		reference_gbz=config['reference_gbz'],
-	# 		ref_paths=config['ref_paths'],
-	# 		platform=config['platform'],
-	# 		threads=config['threads']
-	# 		)
-	
-	# 	reassign_mapq(
-	# 		bam_hg38=config['hg38_bam'],
-	# 		bam_pg=config['pg_bam'],
-	# 		reassigned_pg=config['pg_mapq_reassign_bam']
-	# 	)
-		
-	# 	mark_duplicates_picard(
-	# 		input_file=config['pg_mapq_reassign_bam'],
-	# 		output_file=config['pg_mapq_reassign_mrkdup_bam'],
-	# 		metrics_file=config['pg_mapq_reassign_mrkdup_metrics'],
-	# 		temp_dir=os.path.join(config['mapped_bam_dir'], "mark_duplicates"),
-	# 		picard=config['picard']
-	# 	)
-
-	# 	chr6_read_count = filter_reads(
-	# 		input_file=config['pg_mapq_reassign_mrkdup_bam'],
-	# 		output_file=config['hg38_rmdup_chr6_bam'],
-	# 		threads=config['threads']
-	# 	)
 
 	filter_reads(
 		input_file=config['hg38_bam'],
