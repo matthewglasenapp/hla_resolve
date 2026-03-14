@@ -42,9 +42,14 @@ def main():
     from .cleanup import cleanup_intermediate_files
     
     args.aligner = "minimap2"
-    args.snp_caller = "bcftools"
-    args.indel_caller = "clair3" if args.platform == "ont" else "deepvariant"
-    args.rescue_refcalls = True
+    if args.platform == "ont":
+        args.snp_caller = "clair3"
+        args.indel_caller = "clair3"
+        args.rescue_refcalls = False
+    else:
+        args.snp_caller = "bcftools"
+        args.indel_caller = "deepvariant"
+        args.rescue_refcalls = True
 
     setup_logging(output_dir=args.output_dir, sample_name=args.sample_name)
 
