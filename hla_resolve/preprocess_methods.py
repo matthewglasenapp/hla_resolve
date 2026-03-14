@@ -682,7 +682,7 @@ def merge_longphase_vcfs(phased_vcf, phased_SV_vcf, merged_vcf, reference_fasta,
 
 	merge_cmd = (
 		f"bcftools concat --allow-overlaps -a {phased_vcf} {reheadered_SV_vcf} | "
-		f"bcftools norm -m -any -f {reference_fasta} | "
+		f"bcftools norm -d none -f {reference_fasta} | "
 		f"bcftools sort -Oz -o {merged_vcf} -"
 	)
 	index_merged_cmd = f"bcftools index {merged_vcf}"
