@@ -5,7 +5,7 @@ import edlib
 import time
 import math
 import re
-
+import subprocess
 import argparse
 import os
 
@@ -23,12 +23,12 @@ non_matching_exons = {"HLA-C*07:02:01:17N": "C*07:02:01G",
                       "HLA-DMB*01:05": "DMB*01:01:01G"}
 
 # Get Gene from sample name
-def get_gene(sample_name, astrisk = True):
+def get_gene(sample_name, asterisk = True):
     # Get HLA-<gene>_<idx> portion, then get portion between '_' and '-'
     hla_gene_index = sample_name[sample_name.find("HLA"):]
     hla_gene = hla_gene_index.split("_")[0]
     hla_gene = hla_gene[hla_gene.index("-")+1:]
-    if astrisk: hla_gene = hla_gene + "*"
+    if asterisk: hla_gene = hla_gene + "*"
     return hla_gene
 
 # Get sample ID from sample name
@@ -94,14 +94,14 @@ def build_g_group_dict_from_web():
             return
         else:
             print("INFO: Cached xml pulled from web is not up-to-date. Redownloading...")
-            os.system("rm tmp/hla.xml.zip")
+            os.remove("tmp/hla.xml.zip")
     else:
         print("INFO: No cached xml database. Pulling from web...")
 
     # Get the zip file
-    command = "wget -P ./tmp " + db_url 
-    os.system("mkdir -p tmp")
-    os.system(command)
+    command = "wget -P ./tmp " + db_url
+    os.makedirs("tmp", exist_ok=True)
+    subprocess.run(command, shell=True, check=True)
     
     # Extract using zipfile library, unzip command not available
     zip = ZipFile('tmp/hla.xml.zip')
@@ -109,13 +109,18 @@ def build_g_group_dict_from_web():
     zip.close()
 
 # Builds dictionary databases of allele's g group associations and code
-# Input: xml_file: path to XML file with referebnce database info
+# Input: xml_file: path to XML file with reference database info
 #        ignore_unconfirmed: (bool) ignore XML database entries marked as 'unconfirmed'
 #        ignore_incomplete: (bool) ignore XML entries missing ANY features
 # Outputs: g_groups: {allele: g_group}
 #          sequence_data: {allele: {feature: sequence}}
 @print_time_taken
 def build_g_group_dict(xml_file, ignore_unconfirmed=False, ignore_incomplete=False):
+    # If None, pull from web
+    # if xml_file == None:
+    #     build_g_group_dict_from_web()
+    #     xml_file = "./tmp/hla.xml"
+
     # Parse metadata XML file
     print("INFO: Parsing metadata XML file")
     tree = ET.parse(xml_file)
@@ -311,27 +316,11 @@ def get_g_group_exons(allele_to_g_groups, sequence_data):
 
         # Iterate over other alleles to compare
         for allele in alleles[1:]:
-            # Skip known issue alleles
-            # TODO: This is nto required. Talk to Matt about removal
-            # if allele in non_matching_exons.keys():
-            #     print("INFO: Skipping known problematic allele", allele)
-                
-            #     # Add second entry of this allele for matching algorithm
-            #     differing_ars_sequence = sequence_data[allele]["peptide_binding_domain"]
-
-            #     # We need a unique entry in the dictionary for this differing sequence.
-            #     # Use <g_group>;<allele>
-            #     g_group_entry_name = f"{g_group};{allele}"
-
-            #     common_sequence[g_group_entry_name] = differing_ars_sequence
-
-            #     continue
-
             if len(sequence_data[allele]["peptide_binding_domain"]) != len(peptide_domain_sequence):
                 print("WARN: Number of peptide binding domain related exons not consistent across g group")
 
             # Check each entry in the peptide binding domain sequence
-            # Will contiain Exon 2 and 3 for type I, Exon 2 for type II
+            # Will contain Exon 2 and 3 for type I, Exon 2 for type II
             for entry in sequence_data[allele]["peptide_binding_domain"]:
 
                 # If entries not in common, return
@@ -358,7 +347,7 @@ def load_test_data(sample_file):
     return samples
 
 # Do first pass of classification (to g group level)
-# This function operates on concatinated exon sequence
+# This function operates on concatenated exon sequence
 # Input: common_sequences: {class: (exon, sequence)} Common G group ARS
 #        sequence: (str) Sample exon sequence
 #        sample_name: (str) Name of sample
@@ -484,7 +473,7 @@ def assign_classification_to_sample_full_seq(full_sequence, sequence, full_sampl
 
     return (*best, same_dist)
 
-# Do first pass of classifiaction (to g group level)
+# Do first pass of classification (to g group level)
 # Input: common_sequence: {g_group: sequence} Common ARS of each G group
 #        samples: {sample_name: ARS sequence} ARS of all samples to be classified
 #        g_groups_dict: {allele: g_group}
@@ -499,7 +488,6 @@ def pass_1_classification(common_sequenes, samples, g_groups_dict, truth_data = 
     perfect = 0
     current = 0
 
-    # pass_1_logfile = None
     pass_1_logfile = open("g_group_assignment.log", "w")
 
     for sample_name, sample_sequence in samples.items():
@@ -546,7 +534,7 @@ def produce_allele_seq_db(sequence_data, selected_alleles = None, exon_only = Tr
             if feature == "peptide_binding_domain":
                 continue
 
-            # Skip non-exons if we are classifying concatinated exon data
+            # Skip non-exons if we are classifying concatenated exon data
             if exon_only and feature != "Exon":
                 continue
 
@@ -593,7 +581,7 @@ def match_partial(x, db):
 #           truth_data: {sample_id: {<gene>_<index>: allele}}
 #           index: (int) | None
 # Outputs:  allele (str)
-def get_allele(sample_name, truth_data, index=None):
+def get_truth_allele(sample_name, truth_data, index):
     # Get just unique string corresponding to sample
     sample_id = sample_name.split("_")[0]
 
@@ -601,12 +589,7 @@ def get_allele(sample_name, truth_data, index=None):
     # Get gene/index with form <gene>_<index>. Ex: A_1
     hla_gene = get_gene(sample_name)
 
-    # If index is None, grab from sample name. Otherwise use provided
-    if index == None:
-        # TODO: Is this reliable way to grab index?
-        gene_with_index = f"{hla_gene[0]}_{sample_name[-1]}"
-    else:
-        gene_with_index = f"{hla_gene[0]}_{index}"
+    gene_with_index = f"{hla_gene[0]}_{index}"
 
     # Get correct alleles for this sample
     correct_allele = truth_data[sample_id][gene_with_index]
@@ -639,7 +622,7 @@ def dist_to_truth_g_group(sample_name, truth_data, sequence_db, sequence, logfil
     # Repeat for both alleles. Pick best to report (of id index set, do that)
     for allele_index in (1,2):
         # Reformat to standard format
-        correct_allele, sample_id, gene_with_index = get_allele(sample_name, truth_data, index=allele_index)
+        correct_allele, sample_id, gene_with_index = get_truth_allele(sample_name, truth_data, index=allele_index)
 
         # Acceptable alleles are keys in the allele to g group dictionary
         correct_allele = match_partial(correct_allele, allele_to_g_group)
@@ -675,7 +658,7 @@ def dist_to_truth_allele(sample_name, truth_data, sequence_db, sequence, logfile
     # Repeat for both alleles. Pick best to report (of id index set, do that)
     for allele_index in (1,2):
         # Get just unique string corresponding to sample
-        correct_allele, sample_id, gene_with_index = get_allele(sample_name, truth_data, index=allele_index)
+        correct_allele, sample_id, gene_with_index = get_truth_allele(sample_name, truth_data, index=allele_index)
 
         # Some alleles are not full. Ex: HLA-C*03:04:01. This is one of the HLA-C*03:04:01:* genes
         # Check if allele found. If so, continue as normal.
@@ -688,6 +671,18 @@ def dist_to_truth_allele(sample_name, truth_data, sequence_db, sequence, logfile
 
         logfile.writelines(f"Sample {sample_name} with truth table entry {truth_data[sample_id][gene_with_index]}")
         logfile.writelines(f" (calculated distance to {gene_with_index}: {correct_allele}) had distance {correct_allele_dist} and match length {leng}\n")
+
+# Truncates an allele name to 3 fields
+# Inputs: allele: str
+# Output: allele_3_fields: str
+def trunc_to_3_fields(allele):
+    fields = allele.split(':')
+    if len(fields) >= 4:
+        allele_3_fields = ':'.join(fields[:3])
+    else:
+        allele_3_fields = allele
+
+    return allele_3_fields
 
 # Do second pass classification to assign allele from g group to sample
 # This pass is the exon matching stage
@@ -709,7 +704,6 @@ def pass_2_classification(sequence_data, allele_to_g_groups, results_dict, sampl
     # Precompute database of all sequences
     all_allele_sequence_db = produce_allele_seq_db(sequence_data, exon_only=exon_only)
 
-    # pass_2_logfile = None
     pass_2_logfile = open("3_field_allele_assignment.log", "w")
     perfect = 0
     current = 0
@@ -720,19 +714,7 @@ def pass_2_classification(sequence_data, allele_to_g_groups, results_dict, sampl
         if current % 20 == 0:
             print(f"INFO: Processing {current}/{len(results_dict)} ({(current/len(results_dict))*100:.2f}%)")
 
-        # TODO: Handle here g groups of form <g_group>;<allele>
         g_group = classification[0]
-
-        # Perfect differing allele found, and it was only match. No need to search everywhere
-        # If it is not perfect, search_all will be set
-        # Full search required because we don't know what next closest allele would be
-        if g_group != None and ';' in g_group and \
-            classification[1] == 0 and classification[2] == 1:
-            
-            print("INFO: Differing allele found in first pass")
-            results[sample_name] = g_group.split(";")[1]
-            perfect += 1
-            continue
 
         # Handle: G group known (g_group is g group (string))
         #         Orphaned allele (g_group is "None" (string). Still a key in g_group_to_allele)
@@ -765,7 +747,7 @@ def pass_2_classification(sequence_data, allele_to_g_groups, results_dict, sampl
 
         # If class is None, print warning. Will error in pass 3
         if result[0] == None:
-            print(f"WARN: Ecountered allele that couldn't be classified in pass 2:", sample_name)
+            print(f"WARN: Encountered allele that couldn't be classified in pass 2:", sample_name)
 
         # If perfect match, add to score
         if result[1] == 0:
@@ -786,7 +768,7 @@ def pass_2_classification(sequence_data, allele_to_g_groups, results_dict, sampl
 
     return results
 
-# Do a third pass, to deteremine 4th field based on introns/UTRs
+# Do a third pass, to determine 4th field based on introns/UTRs
 # Strip fourth field (if found) and classify based on subset where 
 # fourth field is only difference.
 # Input: sequence_data: {allele: {feature: sequence}}
@@ -806,7 +788,6 @@ def pass_3_classification(sequence_data, results_dict, samples, truth_data=None,
     # Precompute database of all sequences
     all_allele_sequence_db = produce_allele_seq_db(sequence_data, exon_only=False)
 
-    # pass_3_logfile = None
     pass_3_logfile = open("allele_assignment.log", "w")
     perfect = 0
     current = 0
@@ -819,32 +800,38 @@ def pass_3_classification(sequence_data, results_dict, samples, truth_data=None,
         if current % 20 == 0:
             print(f"INFO: Processing {current}/{len(results_dict)} ({(current/len(results_dict))*100:.2f}%)")
 
-        # Strip last field from the allele, to get substring that matches the exon reigon
+        # Strip last field from the allele, to get substring that matches the exon region
         classified_allele = classification[0]
 
         # Log if classification was None, and skip
         if classified_allele == None:
-            print(f"ERR: Ecountered allele that couldn't be classified:", sample_name)
+            print(f"ERR: Encountered allele that couldn't be classified:", sample_name)
             if pass_3_logfile != None:
-                pass_3_logfile.writelines(f"{sample_name} was assigned None in pass 2")
+                pass_3_logfile.writelines(f"{sample_name} was assigned None in pass 2\n")
+            continue
+
+        sample_3_fields = trunc_to_3_fields(classified_allele)
+
+        if not sample_name in samples.keys():
+            print("WARN:", sample_name, "was not found in the full sequence file. Using 3-field assignment from pass 2:", sample_3_fields)
+            if pass_3_logfile != None:
+                pass_3_logfile.writelines(f"{sample_name} was not found in provided full sequence file. Using 3 fields from pass 2\n")
+                pass_3_logfile.writelines(f"{sample_name}: {classified_allele} -> {sample_3_fields}\n")
+
+            results[sample_name] = (sample_3_fields,0,1)
             continue
 
         fields = classified_allele.split(":")
 
         # For four field alleles, trim of last field so we can replace it with wildcard
         if len(fields) > 3:
-            fields = fields[:-1]
+            exon_match = sample_3_fields
         else:
             # If there is no fourth field, no need for wildcard search
             if pass_3_logfile != None:
                 pass_3_logfile.writelines(f"{sample_name} does not have fourth field. Short circuit to {classified_allele}\n")
             results[sample_name] = (classified_allele,0,1)
             continue
-
-        # NOTE: Idea: Maybe when we have equidistant matches, pick the longest match?
-
-        # Construct sequence specifying all coding reigons we want to match
-        exon_match = ":".join(fields)
         
         # Build list of all alleles that match the exon substring
         all_exon_matches = []
@@ -918,13 +905,13 @@ def pass_3_classification(sequence_data, results_dict, samples, truth_data=None,
 #        equidistant_file_path: Path to file which should contain all equidistant options
 # Output: None
 @print_time_taken
-def output_results(results, file_path, equidistant_file_path=None):
+def output_results(results, file_path, equidistant_file_path=None, trunc=False):
     # Helper functions to get allele
     def get_allele (x):
         if "incomplete" in x:
-            return "HLA-"+get_gene(x, astrisk=False)+"_"+x.split("_")[-2]+"_incomplete"
+            return "HLA-"+get_gene(x, asterisk=False)+"_"+x.split("_")[-2]+"_incomplete"
         else:
-            return "HLA-"+get_gene(x, astrisk=False)+"_"+x.split("_")[-1]
+            return "HLA-"+get_gene(x, asterisk=False)+"_"+x.split("_")[-1]
 
     # Get list of all samples and alleles
     entry_names = results.keys()
@@ -945,10 +932,15 @@ def output_results(results, file_path, equidistant_file_path=None):
         # Insert classification into correct slot in array
         name_index = unique_samples.index(sample_name)
         allele_index = unique_alleles.index(sample_allele)
-        data[name_index][allele_index+1] = classification[0]
+
+        classified_allele = classification[0]
+        if trunc: classified_allele = trunc_to_3_fields(classified_allele)
+        data[name_index][allele_index+1] = classified_allele
 
         if equidistant_file_path:
-            data_equidist[name_index][allele_index+1] = ";".join(classification[-1])
+            equidist_alleles = classification[-1]
+            if trunc: equidist_alleles = list(map(trunc_to_3_fields, equidist_alleles))
+            data_equidist[name_index][allele_index+1] = ";".join(equidist_alleles)
 
     # Swap alleles 1 and 2 when 2 > 1
     for entry in range(len(data)):
@@ -1012,7 +1004,7 @@ def load_truth_data(path, source = "IHW"):
 
 # Write out json file containing sequence data as JSON and G group info
 # Input:    reference_xml_file: (str) XML file with allele reference sequences
-#           samples_file: (str) fasta file full of input sample concatinated exons
+#           samples_file: (str) fasta file full of input sample concatenated exons
 # Output:   (None) Writes to database_data.json
 @print_time_taken
 def write_json(sequence_data, g_group_dict):
@@ -1054,14 +1046,14 @@ def write_json(sequence_data, g_group_dict):
 # Runs all classification passes and writes results
 # Called by main() in the pipeline
 # Input:    reference_xml_file: (str) XML file with allele reference sequences
-#           samples_file: (str) fasta file full of input sample concatinated exons
+#           samples_file: (str) fasta file full of input sample concatenated exons
 #           full_sample_file: (str | None) fasta file with full sample sequences for fourth field
 #           truth_file: (str | None) csv file with true allele calls, for tracing
 #           pass2_metric: (str) assignment metric to use during classification pass 2
 #           pass3_metric: (str) assignment metric to use during classification pass 3
 #           ignore_unconfirmed: (bool) ignore XML database entries marked as 'unconfirmed'
 #           ignore_incomplete: (bool) ignore XML entries missing ANY features
-# Output:   (None) Writes to assignement.log and output.csv files for each stage
+# Output:   (None) Writes to assignment.log and output.csv files for each stage
 def run_classification(reference_xml_file, samples_file, full_sample_file=None, truth_file=None, 
                        pass2_metric="edit_distance", pass3_metric="mismatch_identity", ignore_unconfirmed=False,
                        ignore_incomplete=True, write_full=False, generate_query_ref_comp=False, log_assignment_condition=False):
@@ -1082,9 +1074,8 @@ def run_classification(reference_xml_file, samples_file, full_sample_file=None, 
     if full_sample_file != None:
         full_samples = load_test_data(full_sample_file)
         if NUM_SAMPLES != len(full_samples):
-            print(f"ERR: Different samples in exon only and full sequence sample files.")
-            print(f"{NUM_SAMPLES} (in exon only) vs {len(full_sample_file)} (in full sequence)")
-            exit(1)
+            print(f"WARN: Different samples in exon only and full sequence sample files.")
+            print(f"{NUM_SAMPLES} samples (in exon only) vs {len(full_sample_file)} samples (in full sequence)")
 
     print("INFO: Classifying samples to G group")
     g_group_classifications = pass_1_classification(g_group_common_sequences, samples, g_group_dict, truth_data=truth_data)
@@ -1096,7 +1087,7 @@ def run_classification(reference_xml_file, samples_file, full_sample_file=None, 
     allele_classifications = pass_2_classification(sequence_data, g_group_dict, g_group_classifications, samples, truth_data=truth_data, metric=pass2_metric)
 
     print("INFO: Writing allele results")
-    output_results(allele_classifications, "3_field_allele_output.csv", "3_field_allele_output_full.csv" if write_full else None)
+    output_results(allele_classifications, "3_field_allele_output.csv", "3_field_allele_output_full.csv" if write_full else None, trunc=True)
     
     if full_sample_file == None:
         exit(0)
@@ -1111,7 +1102,7 @@ def run_classification(reference_xml_file, samples_file, full_sample_file=None, 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Three-Step HLA Allele Identification System')
     parser.add_argument('--hla-xml', required=False, default=None, help='Input hla.xml reference file')
-    parser.add_argument('--samples', required=False, default="../data/HLA_Class_I_haplotypes.fa", help='Input FASTA file with full sequences')
+    parser.add_argument('--samples', required=False, default=None, help='Input FASTA file with full sequences')
     parser.add_argument('--truth', required=False, default=None, help='Input csv file containg truth data, for testing purposes')
     parser.add_argument("--full-sequence", required=False, default=None, help="To enable the third intron/UTR classification stage, supply full sequence data here")
     parser.add_argument("--pass2-metric", required=False, default="edit_distance", help="Metric used to assign fourth field, 'edit_distance' (default), 'match_length', 'identity' or 'mismatch_identity'")
@@ -1144,13 +1135,13 @@ if __name__ == "__main__":
 #           pass3_metric: (str) assignment metric to use during classification pass 3
 #           ignore_unconfirmed: (bool) ignore XML database entries marked as 'unconfirmed'
 #           ignore_incomplete: (bool) ignore XML entries missing ANY features
-# Output:   (None) Writes to assignement.log and output.csv files for each stage
+# Output:   (None) Writes to assignment.log and output.csv files for each stage
 def main(reference_xml_file, hla_fasta_dir, sample_ID, pass2_metric = "edit_distance",
-         pass3_metric = "mismatch_identity", ignore_unconfirmed = False, ignore_incomplete = True,
-         generate_query_ref_comp = False):
+         pass3_metric = "mismatch_identity", ignore_unconfirmed = False,
+         ignore_incomplete = True, generate_query_ref_comp=False):
     samples_file = os.path.join(hla_fasta_dir, str(sample_ID) + "_HLA_haplotypes_CDS.fasta")
     full_sample_file = os.path.join(hla_fasta_dir, str(sample_ID) + "_HLA_haplotypes_gene.fasta")
 
-    run_classification(reference_xml_file, samples_file, full_sample_file, pass2_metric=pass2_metric,
-                       pass3_metric=pass3_metric, ignore_unconfirmed=ignore_unconfirmed, ignore_incomplete=ignore_incomplete,
-                       generate_query_ref_comp=generate_query_ref_comp)
+    run_classification(reference_xml_file, samples_file, full_sample_file, pass2_metric=pass2_metric, 
+                       pass3_metric=pass3_metric, ignore_unconfirmed=ignore_unconfirmed,
+                       ignore_incomplete=ignore_incomplete, generate_query_ref_comp=generate_query_ref_comp)
