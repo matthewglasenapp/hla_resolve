@@ -100,6 +100,29 @@ def mark_duplicates_pbmarkdup(input_file, output_file, threads):
 	print(f"De-duplicated reads written to: {output_file}.gz!")
 	print("\n\n")
 
+# Align to GRCh38 reference genome with pbmm2 (PacBio WGS/WES)
+def align_to_reference_pbmm2(input_file, output_file, read_group_string, reference_fasta, threads):
+	print("Aligning reads to GRCh38 reference genome with pbmm2!")
+	print(f"pbmm2 input file: {input_file}")
+
+	# Build .mmi index if it doesn't already exist
+	mmi_file = reference_fasta + ".mmi"
+	if not os.path.exists(mmi_file):
+		print("Building pbmm2 index...")
+		index_cmd = f"pbmm2 index {reference_fasta} {mmi_file}"
+		subprocess.run(index_cmd, shell=True, check=True)
+
+	pbmm2_cmd = f"pbmm2 align -j {threads} {mmi_file} {input_file} {output_file} --sort --log-level INFO --bam-index BAI"
+
+	# --rg is only valid for FASTA/FASTQ inputs; BAM files carry their own read groups
+	if not input_file.endswith(".bam"):
+		pbmm2_cmd += f" --rg '{read_group_string}'"
+
+	subprocess.run(pbmm2_cmd, shell=True, check=True)
+
+	print(f"Mapped bam written to: {output_file}")
+	print("\n\n")
+
 # Align to GRCh38 reference genome with minimap2
 def align_to_reference_minimap(input_file, output_file, read_group_string, reference_fasta, platform, threads):
 	print("Aligning reads to GRCh38 reference genome with minimap2!")
