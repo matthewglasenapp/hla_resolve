@@ -13,6 +13,7 @@ from .preprocess_methods import (
 	mark_duplicates_picard,
 	filter_reads,
 	classify_DRB_reads,
+	classify_DRB_reads_pbmm2,
 	call_variants_bcftools,
 	call_variants_deepvariant,
 	call_variants_clair3,
@@ -80,13 +81,12 @@ def preprocess_pacbio_sample(config):
 			threads=config['threads'],
 		)
 
-		classify_DRB_reads(
-			input_file=config['raw_fastq'],
+		classify_DRB_reads_pbmm2(
+			input_file=config['input_file'],
 			output_file=config['hg38_bam_drb'],
 			DRB34_reads_file=config['DRB34_reads_file'],
 			read_group_string=config['read_group_string'],
 			reference_fasta=config['drb_multiallele_reference'],
-			platform=config['platform'],
 			threads=config['threads']
 		)
 

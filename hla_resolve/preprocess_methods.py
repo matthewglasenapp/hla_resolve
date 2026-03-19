@@ -147,36 +147,11 @@ def align_to_reference_minimap(input_file, output_file, read_group_string, refer
 	print(f"Mapped bam written to: {output_file}")
 	print("\n\n")
 
-def classify_DRB_reads(input_file, output_file, DRB34_reads_file, read_group_string, reference_fasta, platform, threads):
+def _parse_drb34_reads(output_file, DRB34_reads_file):
 	"""
-	Identify reads originating from DRB3/DRB4 using competitive mapping
-	against a multi-allele reference containing representative genomic
-	sequences from DRB1, DRB3, and DRB4.
-
-	For each read, minimap2 picks the best-matching allele as the primary
-	alignment. If the best match is a DRB3 or DRB4 allele, that read ID
-	is written to DRB34_reads_file for downstream removal by filter_reads().
+	Parse aligned BAM to identify DRB3/DRB4 reads based on primary alignment.
+	Shared by both minimap2 and pbmm2 classify_DRB_reads functions.
 	"""
-	print("Classifying DRB reads using multi-allele competitive mapping!")
-
-	if platform == "PACBIO":
-		platform_string = "map-hifi"
-	elif platform == "ONT":
-		platform_string = "map-ont"
-
-	minimap_threads = int(threads * 2 / 3)
-	samtools_threads = threads - minimap_threads
-	minimap_rg_string = "'{}'".format(read_group_string.replace("\t", "\\t"))
-
-	# Map reads against the multi-allele DRB reference (DRB1, DRB3, DRB4 alleles)
-	minimap2_cmd = f"minimap2 -Y -t {minimap_threads} -ax {platform_string} {reference_fasta} {input_file} -R {minimap_rg_string} | samtools sort -@ {samtools_threads} -o {output_file}"
-	index_bam = f"samtools index {output_file}"
-
-	subprocess.run(minimap2_cmd, shell=True, check=True)
-	subprocess.run(index_bam, shell=True, check=True)
-
-	# For each read, check which allele the primary alignment landed on.
-	# If the best-matching allele is DRB3 or DRB4, flag that read for removal.
 	drb34_read_ids = set()
 
 	with pysam.AlignmentFile(output_file, "rb") as bam:
@@ -194,6 +169,63 @@ def classify_DRB_reads(input_file, output_file, DRB34_reads_file, read_group_str
 	with open(DRB34_reads_file, "w") as f:
 		for read_id in sorted(drb34_read_ids):
 			f.write(read_id + "\n")
+
+	print(f"Classified {len(drb34_read_ids)} reads as DRB3/DRB4")
+	print(f"DRB3 and DRB4 read IDs written to: {DRB34_reads_file}")
+	print("\n\n")
+
+def classify_DRB_reads(input_file, output_file, DRB34_reads_file, read_group_string, reference_fasta, platform, threads):
+	"""
+	Identify reads originating from DRB3/DRB4 using competitive mapping
+	against a multi-allele reference containing representative genomic
+	sequences from DRB1, DRB3, and DRB4.
+
+	For each read, minimap2 picks the best-matching allele as the primary
+	alignment. If the best match is a DRB3 or DRB4 allele, that read ID
+	is written to DRB34_reads_file for downstream removal by filter_reads().
+	"""
+	print("Classifying DRB reads using multi-allele competitive mapping (minimap2)!")
+
+	if platform == "PACBIO":
+		platform_string = "map-hifi"
+	elif platform == "ONT":
+		platform_string = "map-ont"
+
+	minimap_threads = int(threads * 2 / 3)
+	samtools_threads = threads - minimap_threads
+	minimap_rg_string = "'{}'".format(read_group_string.replace("\t", "\\t"))
+
+	# Map reads against the multi-allele DRB reference (DRB1, DRB3, DRB4 alleles)
+	minimap2_cmd = f"minimap2 -Y -t {minimap_threads} -ax {platform_string} {reference_fasta} {input_file} -R {minimap_rg_string} | samtools sort -@ {samtools_threads} -o {output_file}"
+	index_bam = f"samtools index {output_file}"
+
+	subprocess.run(minimap2_cmd, shell=True, check=True)
+	subprocess.run(index_bam, shell=True, check=True)
+
+	_parse_drb34_reads(output_file, DRB34_reads_file)
+
+def classify_DRB_reads_pbmm2(input_file, output_file, DRB34_reads_file, read_group_string, reference_fasta, threads):
+	"""
+	Same as classify_DRB_reads but uses pbmm2 for alignment.
+	Used for PacBio WGS/WES where the input file is a BAM.
+	"""
+	print("Classifying DRB reads using multi-allele competitive mapping (pbmm2)!")
+
+	# Build .mmi index for the DRB reference if it doesn't already exist
+	mmi_file = reference_fasta + ".mmi"
+	if not os.path.exists(mmi_file):
+		print("Building pbmm2 index for DRB reference...")
+		index_cmd = f"pbmm2 index {reference_fasta} {mmi_file}"
+		subprocess.run(index_cmd, shell=True, check=True)
+
+	pbmm2_cmd = f"pbmm2 align -j {threads} {mmi_file} {input_file} {output_file} --sort --log-level INFO --bam-index BAI"
+
+	if not input_file.endswith(".bam"):
+		pbmm2_cmd += f" --rg '{read_group_string}'"
+
+	subprocess.run(pbmm2_cmd, shell=True, check=True)
+
+	_parse_drb34_reads(output_file, DRB34_reads_file)
 
 	print(f"Classified {len(drb34_read_ids)} reads as DRB3/DRB4")
 	print(f"DRB3 and DRB4 read IDs written to: {DRB34_reads_file}")
