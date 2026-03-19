@@ -16,7 +16,7 @@ Notices
 
 You must ensure that anyone who gets a copy of any part of the software from you also gets a copy of these terms, as well as the following copyright notice:
 
-This software is Copyright ©2025. The Regents of the University of California (“Regents”). All Rights Reserved.
+This software is Copyright ©2026. The Regents of the University of California (“Regents”). All Rights Reserved.
 
 Changes and New Works License
 
