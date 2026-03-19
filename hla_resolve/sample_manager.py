@@ -104,7 +104,6 @@ class Samples:
         self.genotypes_dir = os.path.join(self.output_dir, "genotype_calls")
         self.sv_dir = os.path.join(self.output_dir, "structural_variant_vcf")
         self.filtered_vcf_dir = os.path.join(self.output_dir, "filtered_vcf")
-        self.single_gene_vcf_dir = os.path.join(self.filtered_vcf_dir, "single_gene_vcf")
         self.vcf2fasta_out_dir = os.path.join(self.output_dir, "vcf2fasta_out")
         self.hla_fasta_dir = os.path.join(self.output_dir, "hla_fasta_haplotypes")
         self.hla_typing_dir = os.path.join(self.output_dir, "hla_typing_results")
@@ -122,7 +121,7 @@ class Samples:
             self.fastq_raw_dir, self.fastq_trimmed_dir, 
             self.mapped_bam_dir, self.parsed_haploblock_dir, 
             self.genotypes_dir, self.sv_dir, 
-            self.filtered_vcf_dir, self.single_gene_vcf_dir, self.vcf2fasta_out_dir, 
+            self.filtered_vcf_dir, self.vcf2fasta_out_dir,
             self.hla_fasta_dir, self.hla_typing_dir,
             self.mosdepth_dir, self.phased_vcf_dir
         ] + platform_dirs
@@ -362,7 +361,6 @@ def build_workflow_config(sample):
 		'mosdepth_dir': sample.mosdepth_dir,
 		'parsed_haploblock_dir': sample.parsed_haploblock_dir,
 		'filtered_vcf_dir': sample.filtered_vcf_dir,
-		'single_gene_vcf_dir': sample.single_gene_vcf_dir,
 		'vcf2fasta_out_dir': sample.vcf2fasta_out_dir,
 		'hla_fasta_dir': sample.hla_fasta_dir,
 		'hla_typing_dir': sample.hla_typing_dir,

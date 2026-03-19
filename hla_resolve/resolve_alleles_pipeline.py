@@ -142,13 +142,13 @@ def resolve_alleles(config):
 		chromosome, start, stop = gff_record[0], gff_record[3], gff_record[4]
 		filter_region = f"{chromosome}:{start}-{stop}"
 
-		# Create gene-specific output file paths in single_gene_vcf subdirectory
-		gene_symbolic_vcf = os.path.join(config['single_gene_vcf_dir'], f"{config['sample_ID']}_{gene}.symbolic.vcf.gz")
-		gene_pass_vcf = os.path.join(config['single_gene_vcf_dir'], f"{config['sample_ID']}_{gene}_PASS.vcf.gz")
-		gene_fail_vcf = os.path.join(config['single_gene_vcf_dir'], f"{config['sample_ID']}_{gene}_FAIL.vcf.gz")
-		gene_sv_overlap_vcf = os.path.join(config['single_gene_vcf_dir'], f"{config['sample_ID']}_{gene}_SV_OVERLAP.vcf.gz")
-		gene_pass_unphased_vcf = os.path.join(config['single_gene_vcf_dir'], f"{config['sample_ID']}_{gene}_PASS_UNPHASED.vcf.gz")
-		gene_filtered_vcf = os.path.join(config['single_gene_vcf_dir'], f"{config['sample_ID']}_{gene}_PASS_phased.vcf.gz")
+		# Create gene-specific output file paths in filtered_vcf directory
+		gene_symbolic_vcf = os.path.join(config['filtered_vcf_dir'], f"{config['sample_ID']}_{gene}.symbolic.vcf.gz")
+		gene_pass_vcf = os.path.join(config['filtered_vcf_dir'], f"{config['sample_ID']}_{gene}_PASS.vcf.gz")
+		gene_fail_vcf = os.path.join(config['filtered_vcf_dir'], f"{config['sample_ID']}_{gene}_FAIL.vcf.gz")
+		gene_sv_overlap_vcf = os.path.join(config['filtered_vcf_dir'], f"{config['sample_ID']}_{gene}_SV_OVERLAP.vcf.gz")
+		gene_pass_unphased_vcf = os.path.join(config['filtered_vcf_dir'], f"{config['sample_ID']}_{gene}_PASS_UNPHASED.vcf.gz")
+		gene_filtered_vcf = os.path.join(config['filtered_vcf_dir'], f"{config['sample_ID']}_{gene}_PASS_phased.vcf.gz")
 
 		# Derive genotyper label from split caller config
 		if config['snp_caller'] == config['indel_caller']:
