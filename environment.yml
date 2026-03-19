@@ -12,6 +12,7 @@ dependencies:
   - hiphase=1.5.0
   - openjdk=8
   - pbmarkdup=1.2.0
+  - pbmm2=1.16.0
   - pbtk=3.5.0
   - samtools=1.21.0
   - pandas=2.3.3
