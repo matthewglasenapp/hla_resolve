@@ -112,13 +112,20 @@ def align_to_reference_pbmm2(input_file, output_file, read_group_string, referen
 		index_cmd = f"pbmm2 index {reference_fasta} {mmi_file}"
 		subprocess.run(index_cmd, shell=True, check=True)
 
-	pbmm2_cmd = f"pbmm2 align -j {threads} {mmi_file} {input_file} {output_file} --sort --log-level INFO --bam-index BAI"
+	pbmm2_threads = int(threads * 2 / 3)
+	samtools_threads = threads - pbmm2_threads
+
+	pbmm2_cmd = f"pbmm2 align -j {pbmm2_threads} {mmi_file} {input_file} --log-level INFO"
 
 	# --rg is only valid for FASTA/FASTQ inputs; BAM files carry their own read groups
 	if not input_file.endswith(".bam"):
 		pbmm2_cmd += f" --rg '{read_group_string}'"
 
-	subprocess.run(pbmm2_cmd, shell=True, check=True)
+	full_cmd = f"{pbmm2_cmd} | samtools sort -@ {samtools_threads} -o {output_file}"
+	subprocess.run(full_cmd, shell=True, check=True)
+
+	index_cmd = f"samtools index {output_file}"
+	subprocess.run(index_cmd, shell=True, check=True)
 
 	print(f"Mapped bam written to: {output_file}")
 	print("\n\n")
