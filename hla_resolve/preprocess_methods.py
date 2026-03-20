@@ -86,7 +86,7 @@ def mark_duplicates_pbmarkdup(input_file, output_file, threads):
 
 	print(f"pbmarkdup input file: {input_file}")
 
-	pbmarkdup_cmd = f"pbmarkdup -j {threads} --rmdup {input_file} {output_file}"
+	pbmarkdup_cmd = f"pbmarkdup -j {threads} --rmdup --clobber {input_file} {output_file}"
 
 	result = subprocess.run(pbmarkdup_cmd, shell=True, check=True, capture_output=True, text=True)
 	if result.stdout:
