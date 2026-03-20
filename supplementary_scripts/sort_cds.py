@@ -40,10 +40,7 @@ def sort_cds(gff_file):
 					gene_line.append(fields)
 
 
-	if strand == "-":
-		sorted_cds = sorted(cds_lines, key=lambda line: line[0], reverse=True)
-	else:
-		sorted_cds = sorted(cds_lines, key=lambda line: line[0])
+	sorted_cds = sorted(cds_lines, key=lambda line: line[0])
 
 	outfile_cds = gff_file.replace(".gff3", "_cds_sorted.gff3")
 	outfile_gene = gff_file.replace(".gff3", "_gene.gff3")
