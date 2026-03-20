@@ -15,7 +15,7 @@ from .config import (
 	longphase, clair3_sif, clair3_ont_model, clair3_hifi_model,
 	depth_thresh, prop_20x_thresh, prop_30x_thresh,
 	mhc_start, mhc_stop, genes_bed, genes_of_interest, genes_of_interest_extended,
-	hla_genes_regions_file, vcf2fasta_script, reference_genome_minimap2,
+	hla_genes_regions_file, reference_genome_minimap2,
 	DNA_bases, stop_codons, IMGT_XML, gff_dir, ARS_dict, gene_dict, CDS_dict, CLASS_I_GENES, dummy_reference, drb_multiallele_reference,
 	deepvariant_sif, tandem_repeat_bed, chr6_bed, pbtrgt_repeat_file, picard
 )
@@ -435,7 +435,6 @@ def build_workflow_config(sample):
 		'genes_of_interest': genes_of_interest,
 		'genes_of_interest_extended': genes_of_interest_extended,
 		'hla_genes_regions_file': hla_genes_regions_file,
-		'vcf2fasta_script': vcf2fasta_script,
 		'DNA_bases': DNA_bases,
 		'stop_codons': stop_codons,
 		'IMGT_XML': IMGT_XML,

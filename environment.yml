@@ -31,3 +31,4 @@ dependencies:
   - pip:
       - edlib==1.3.9.post1
       - art==6.5
+      - vcf2fasta @ git+https://github.com/matthewglasenapp/vcf2fasta.git

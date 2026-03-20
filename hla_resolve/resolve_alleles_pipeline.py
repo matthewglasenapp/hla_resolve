@@ -185,21 +185,19 @@ def resolve_alleles(config):
 				
 			gff_gene_name = convert_gene_name_for_gff(gene)
 			run_vcf2fasta(
-				vcf2fasta=config['vcf2fasta_script'],
 				input_vcf=gene_filtered_vcf,
 				output_dir=os.path.join(config['vcf2fasta_out_dir'], gene),
 				input_gff=os.path.join(config['gff_dir'], gff_gene_name + "_gene.gff3"),
 				reference_genome=config['reference_genome'],
-				gene=gene, 
+				gene=gene,
 				feature="gene")
-			
+
 			run_vcf2fasta(
-				vcf2fasta=config['vcf2fasta_script'],
 				input_vcf=gene_filtered_vcf,
 				output_dir=os.path.join(config['vcf2fasta_out_dir'], gene),
 				input_gff=os.path.join(config['gff_dir'], gff_gene_name + "_cds_sorted.gff3"),
 				reference_genome=config['reference_genome'],
-				gene=gene, 
+				gene=gene,
 				feature="CDS")
 	
 	parse_fastas(

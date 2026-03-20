@@ -206,9 +206,6 @@ dummy_reference = os.path.join(_data_dir, "reference/DRB_1_3_4.fa")
 # Used in classify_DRB_reads() function of preprocess_methods.py
 drb_multiallele_reference = os.path.join(_data_dir, "reference/DRB_reference.fa")
 
-# Path to vcf2fasta script
-# vcf2fasta was taken from https://github.com/yeeus/vcf2fasta and edited for my own purpose
-vcf2fasta_script = os.path.join(_data_dir, "vcf2fasta/vcf2fasta.py")
 
 # Clair3 model names — bundled inside the Clair3 SIF at /opt/models/
 # Users can override the ONT model via --clair3_model at the command line
