@@ -262,7 +262,7 @@ class Samples:
         
         # BAM files
         self.hg38_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.hg38.bam")
-        self.hg38_bam_drb = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.hg38.bam.drb")
+        self.hg38_bam_drb = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.hg38.drb.bam")
         self.hg38_chr6_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.hg38.chr6.bam")
         self.hg38_rmdup_chr6_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.hg38.rmdup.chr6.bam")
         self.hg38_rmdup_chr6_haplotag_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.hg38.rmdup.chr6.haplotag.bam")

@@ -9,6 +9,12 @@ import re
 
 gff_dir = os.path.join(os.path.dirname(__file__), "..", "hla_resolve", "data", "hla_gff")
 
+# HLA-C gene model requires 1kb padding on each end because most IPD-IMGT/HLA
+# reference sequences include substantially more UTR than the GRCh38 annotation.
+GENE_PADDING = {
+	"HLA-C": 1000,
+}
+
 def get_raw_gff_files():
 	"""Return only raw .gff3 files (exclude *_cds_sorted.gff3 and *_gene.gff3)."""
 	gff_files = []
@@ -52,10 +58,20 @@ def sort_cds(gff_file):
 			fields = line[1]
 			out.write("\t".join(fields) + "\n")
 
+	# Apply padding to gene coordinates if configured
+	gene_fields = gene_line[0]
+	attrs = gene_fields[8] if len(gene_fields) > 8 else ""
+	name_match = re.search(r"Name=([^;]+)", attrs)
+	gene_name = name_match.group(1) if name_match else None
+	if gene_name in GENE_PADDING:
+		pad = GENE_PADDING[gene_name]
+		gene_fields[3] = str(int(gene_fields[3]) - pad)
+		gene_fields[4] = str(int(gene_fields[4]) + pad)
+
 	with open(outfile_gene, "w") as out2:
 		for line in meta_lines:
 			out2.write(line)
-		out2.write("\t".join(gene_line[0]) + "\n")
+		out2.write("\t".join(gene_fields) + "\n")
 
 	print(f"Wrote: {outfile_gene}")
 	print(f"Wrote: {outfile_cds}")

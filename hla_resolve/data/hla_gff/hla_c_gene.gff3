@@ -5,4 +5,4 @@
 #!genome-date 2013-12
 #!genome-build-accession GCA_000001405.29
 #!genebuild-last-updated 2023-03
-chr6	ensembl_havana	gene	31268749	31272130	.	-	.	ID=gene:ENSG00000204525;Name=HLA-C;biotype=protein_coding;description=major histocompatibility complex%2C class I%2C C [Source:HGNC Symbol%3BAcc:HGNC:4933];gene_id=ENSG00000204525;logic_name=ensembl_havana_gene_homo_sapiens;version=18
+chr6	ensembl_havana	gene	31267749	31273130	.	-	.	ID=gene:ENSG00000204525;Name=HLA-C;biotype=protein_coding;description=major histocompatibility complex%2C class I%2C C [Source:HGNC Symbol%3BAcc:HGNC:4933];gene_id=ENSG00000204525;logic_name=ensembl_havana_gene_homo_sapiens;version=18
