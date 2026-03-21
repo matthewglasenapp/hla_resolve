@@ -187,7 +187,8 @@ picard = ensure_picard()
 longphase = ensure_longphase()
 ensure_hla_xml()
 deepvariant_sif = ensure_deepvariant_sif()
-clair3_sif = ensure_clair3_sif()
+# clair3_sif = ensure_clair3_sif()  # TODO: re-enable when running ONT
+clair3_sif = None
 
 # HLA genes of interest for HLA typing
 genes_of_interest = ("HLA-A", "HLA-B", "HLA-C", "HLA-DPA1", "HLA-DPB1", "HLA-DQA1", "HLA-DQB1", "HLA-DRB1")
