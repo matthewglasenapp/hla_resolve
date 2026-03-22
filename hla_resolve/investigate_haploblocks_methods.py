@@ -9,21 +9,23 @@ import pysam
 
 # Get list of haploblock intervals for MHC
 def parse_haploblocks(input_vcf, input_haploblock_file, platform,sample_ID, mhc_start, mhc_stop):
-	sample_name = sample_ID
 	heterozygous_sites = []
 	haploblock_list = []
-	
+
 	vcf = pysam.VariantFile(input_vcf)
+
+	# Get the sample name from the VCF header rather than relying on sample_ID,
+	# since WGS/WES BAMs may have a different SM tag than the user-provided sample_ID
+	vcf_samples = list(vcf.header.samples)
+	if len(vcf_samples) != 1:
+		raise ValueError(f"Expected exactly 1 sample in {input_vcf}, found {len(vcf_samples)}: {vcf_samples}")
+	sample_name = vcf_samples[0]
 
 	for record in vcf:
 		if record.chrom != "chr6":
 			continue
 		if record.pos < mhc_start or record.pos > mhc_stop:
 			continue
-
-		# Safety check in case sample_name is missing in the VCF
-		if sample_name not in record.samples:
-			raise ValueError(f"Sample '{sample_name}' not found in {input_vcf}")
 
 		# Skip non-PASS records from DV/Clair3 (e.g. RefCall).
 		# bcftools/freebayes records have FILTER=. (empty keys) and pass through;
