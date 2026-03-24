@@ -7,14 +7,10 @@
 
 **Authors:** [Matthew Glasenapp](https://github.com/matthewglasenapp), [Alex Symons](https://github.com/FlyingFish800), [Omar Cornejo](https://github.com/oeco28)
 
-#### Documentation
-For detailed usage instructions, configuration options, and explanations of intermediate files, see the
-[HLA-Resolve User Guide](https://github.com/matthewglasenapp/hla_resolve/blob/main/docs/user_guide.md).
-
-**⚠️ Note:** HLA-Resolve has been fully validated for PacBio HiFi reads. ONT support is still in development, but available for beta testing.
+**⚠️ Note:** HLA-Resolve is intended for high-coverage PacBio HiFi reads. ONT support is still in development.
 
 #### Input
-A raw, single-sample (demultiplexed) long-read sequencing file in FASTQ or unmapped BAM format (compressed or uncompressed). Supported platforms include PacBio and ONT. The tool is compatible with WGS, WES, and targeted sequencing schemes.
+A raw, single-sample (demultiplexed) PacBio sequencing file in FASTQ or unmapped BAM format (compressed or uncompressed). The tool is compatible with WGS, WES, and targeted sequencing schemes.
 
 #### Output(s)
 
@@ -32,7 +28,7 @@ HLA-A, HLA-B, HLA-C, HLA-DPA1, HLA-DPB1, HLA-DQA1, HLA-DQB1, HLA-DRB1
 - Reconstructed haplotype nucleotide sequences for each HLA gene in FASTA format
 
 #### Runtime and Required Resources
-Runtime depends heavily on input file size and available compute resources. Targeted MHC capture data typically completes in **<30 minutes** using **6 CPUs and 20 GB RAM**. Runtime increases for high-coverage WGS or WES datasets, as all reads are first mapped to the human reference genome prior to restricting downstream analysis to the MHC region on chromosome 6.
+Runtime depends heavily on input file size and available compute resources. Targeted MHC capture data typically completes in **<30 minutes** using **6 CPUs and 20 GB RAM**. Runtime increases for high-coverage WGS or WES datasets, as all reads must be mapped to the human reference genome prior to restricting downstream analysis to the MHC region on chromosome 6.
 
 #### Planned Features (In Development)
 
@@ -129,10 +125,14 @@ Intermediate files will be written to the following dirctories. The user can spe
 | `genotype_calls/`         | Contains the raw small variant genotype calls (`.vcf.gz`) from the user-specified genotyping tool |
 | `structural_variant_vcf/` | Contains the SV genotype calls from either Sniffles (ONT) or pbsv (PacBio) |
 | `pbtrgt_vcf/`             | Contains the tandem repeat genotypes from TRGT (PacBio-only)               |
-| `phased_vcf/`             | Contains phased genotype calls from joint phasing of small variants, structural variants, and tandem repeat genotypes (PacBio only) |
+| `phased_vcf/`             | Contains phased genotype calls from joint phasing of small variants, structural variants, and tandem repeat genotypes |
 | `mosdepth/`               | Contains coverage depth output files from mosdepth for the HLA genes        |
 | `haploblocks/`            | Contains a list of fully-phased MHC genes                                  |
 | `filtered_vcf/`           | Contains the final, filtered VCF of variants to be applied during fasta haplotype reconstruction |
 | `vcf2fasta_out/`          | Contains the raw sequence output from vcf2fasta                            |
 | `hla_fasta_haplotypes/`   | Contains fasta files of full gene and CDS sequences for each HLA gene       |
 | `hla_typing_results/`     | Contains the final results of HLA typing                                   |
+
+#### Technical Reference
+For detailed documentation on the algorithms, decision logic, and tools used internally by HLA-Resolve, see the
+[Technical Reference](https://github.com/matthewglasenapp/hla_resolve/blob/main/docs/technical_reference.md).
