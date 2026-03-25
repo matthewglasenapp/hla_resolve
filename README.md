@@ -98,12 +98,12 @@ Example: hla_resolve --input_file reads.bam --sample_name HG002 --platform pacbi
 
 # Demo
 
-Input data: PacBio Revio HiFi targeted sequencing reads from IHW09200, a Southeast Asian sample from Thailand that was part of the 4th Asia-Oceania Histocompatibility Workshop (4AOHW) cell line panel.
+Input data: PacBio Revio HiFi targeted sequencing reads from HG002 (Ashkenazi Son), a sample from the GIAB and HPRC benchmarks.
 
 ```
 hla_resolve \
---input_file hla_resolve/demo/IHW09200.hifi_reads.fastq.gz \
---sample_name IHW09200 \
+--input_file hla_resolve/demo/HG002.hifi_reads.fastq.gz \
+--sample_name HG002 \
 --platform pacbio \
 --scheme targeted \
 --output_dir test \
