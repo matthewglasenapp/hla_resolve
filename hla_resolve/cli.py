@@ -6,6 +6,7 @@
 import textwrap
 import argparse
 import sys
+from importlib.metadata import version
 
 def main():
     parser = argparse.ArgumentParser(
@@ -16,6 +17,7 @@ def main():
           hla_resolve --input_file reads.bam --sample_name HG002 --platform pacbio --scheme targeted --output_dir out --threads 10
     """),
 )
+    parser.add_argument("--version", action="version", version=f"%(prog)s {version('hla_resolve')}")
     parser.add_argument("--input_file", required=True, help="Path to the raw sequencing reads file")
     parser.add_argument("--sample_name", required=True, help="Override the parsed sample name", default=None)
     parser.add_argument("--platform", choices=["pacbio", "ont"], required=True, help="Specify sequencing platform (pacbio, ont)")
