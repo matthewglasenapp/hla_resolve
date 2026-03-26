@@ -148,3 +148,9 @@ Thumbs.db
 hla_resolve/deprecated_functions.py
 supplementary_scripts/shift_gff.py
 supplementary_scripts/shift_bed_after_drb1.py
+
+# Deprecated data files
+hla_genes.shifted.bed
+parse_haploblocks_bed.shifted.bed
+DRB_1_3_4.fa
+DRB_1_3_4.fa.fai
