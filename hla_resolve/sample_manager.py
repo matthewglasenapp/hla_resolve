@@ -13,7 +13,7 @@ from .preprocess_methods import convert_bam_to_fastq
 from .config import (
 	min_reads_sample, min_read_length,
 	longphase, clair3_sif, clair3_ont_model, clair3_hifi_model,
-	depth_thresh, prop_20x_thresh, prop_30x_thresh,
+	depth_thresh, prop_20x_thresh, prop_30x_thresh, ars_depth_thresh, ars_prop_10x_thresh,
 	mhc_start, mhc_stop, genes_bed, genes_of_interest, genes_of_interest_extended,
 	hla_genes_regions_file, reference_genome_minimap2,
 	DNA_bases, stop_codons, IMGT_XML, gff_dir, ARS_dict, gene_dict, CDS_dict, CLASS_I_GENES, dummy_reference, drb_multiallele_reference,
@@ -429,6 +429,8 @@ def build_workflow_config(sample):
 		'depth_thresh': depth_thresh,
 		'prop_20x_thresh': prop_20x_thresh,
 		'prop_30x_thresh': prop_30x_thresh,
+		'ars_depth_thresh': ars_depth_thresh,
+		'ars_prop_10x_thresh': ars_prop_10x_thresh,
 		'mhc_start': mhc_start,
 		'mhc_stop': mhc_stop,
 		'genes_bed': genes_bed,

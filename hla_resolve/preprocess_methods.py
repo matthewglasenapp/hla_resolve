@@ -771,41 +771,63 @@ def run_mosdepth(input_file, output_dir, sample_ID, regions_file, threads):
 	prefix = os.path.join(output_dir, sample_ID)
 	
 	# --flag 3328 excludes duplicates and secondary/supplementary alignments
-	mosdepth = f"mosdepth --flag 3328 --by {regions_file} --thresholds 20,30 -t {threads} {prefix} {input_file}"
+	mosdepth = f"mosdepth --flag 3328 --by {regions_file} --thresholds 10,20,30 -t {threads} {prefix} {input_file}"
 	
 	subprocess.run(mosdepth, shell=True, check=True)
 	
 	print("\n\n")
 
-def parse_mosdepth(regions_file, thresholds_file, depth_thresh, prop_20x_thresh, prop_30x_thresh):
-	coverage_dict = dict()
-	sufficient_coverage_genes = []
-	
-	print("Gene, Mean Depth, % Bases 20X, % Bases 30X")
+def parse_mosdepth(regions_file, thresholds_file, depth_thresh, prop_20x_thresh, prop_30x_thresh,
+					ars_depth_thresh, ars_prop_10x_thresh):
+	gene_pass = {}
+	ars_pass = {}
 
 	with gzip.open(regions_file, "rt") as f1, gzip.open(thresholds_file,"rt") as f2:
 		regions = f1.read().splitlines()
 		thresholds = f2.read().splitlines()[1:]
 
-		for regions_line, thresholds_line in zip(regions,thresholds):
+		# Thresholds columns (with --thresholds 10,20,30): chrom, start, end, name, 10X, 20X, 30X
+		print("Region, Mean Depth, % Bases 10X, % Bases 20X, % Bases 30X")
+
+		for regions_line, thresholds_line in zip(regions, thresholds):
 			regions_fields = regions_line.split("\t")
-			gene = regions_fields[3].split("_")[0]
+			name = regions_fields[3]
 			start = regions_fields[1]
 			stop = regions_fields[2]
 			length = int(stop) - int(start)
 			coverage_depth = float(regions_fields[4])
 			threshold_fields = thresholds_line.split("\t")
-			num_20x = int(threshold_fields[4])
-			num_30x = int(threshold_fields[5])
+			num_10x = int(threshold_fields[4])
+			num_20x = int(threshold_fields[5])
+			num_30x = int(threshold_fields[6])
+			prop_10x = num_10x / length
 			prop_20x = num_20x / length
 			prop_30x = num_30x / length
 
-			print(gene, f"{coverage_depth:.1f}", f"{prop_20x*100:.1f}%", f"{prop_30x*100:.1f}%")
+			is_ars = name.endswith("_ARS")
+			gene = name.replace("_ARS", "").split("_")[0]
 
-			if coverage_depth >= depth_thresh and prop_20x >= prop_20x_thresh and prop_30x >= prop_30x_thresh:
-				sufficient_coverage_genes.append(gene)
+			if is_ars:
+				print(f"{gene} ARS", f"{coverage_depth:.1f}", f"{prop_10x*100:.1f}%", f"{prop_20x*100:.1f}%", f"{prop_30x*100:.1f}%")
+				if coverage_depth >= ars_depth_thresh and prop_10x >= ars_prop_10x_thresh:
+					ars_pass[gene] = True
+				else:
+					ars_pass[gene] = False
+					print(f"  {gene} ARS has insufficient coverage")
 			else:
-				print(f"Gene {gene} has insufficient coverage for haplotyping and star allele calling")
-	
+				print(gene, f"{coverage_depth:.1f}", f"{prop_10x*100:.1f}%", f"{prop_20x*100:.1f}%", f"{prop_30x*100:.1f}%")
+				if coverage_depth >= depth_thresh and prop_20x >= prop_20x_thresh and prop_30x >= prop_30x_thresh:
+					gene_pass[gene] = True
+				else:
+					gene_pass[gene] = False
+					print(f"  {gene} has insufficient gene-wide coverage")
+
+	sufficient_coverage_genes = []
+	for gene in gene_pass:
+		if gene_pass.get(gene, False) and ars_pass.get(gene, False):
+			sufficient_coverage_genes.append(gene)
+		else:
+			print(f"Gene {gene} has insufficient coverage for haplotyping and star allele calling")
+
 	print("\n\n")
 	return sufficient_coverage_genes

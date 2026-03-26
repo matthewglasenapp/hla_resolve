@@ -263,12 +263,18 @@ min_read_length = 300
 
 # Coverage depth thresholds to proceed with HLA typing
 # Used in parse_mosdepth() function of preprocess_methods.py
+# Gene-wide thresholds
 # Mean gene-wide depth
 depth_thresh = 10
 # Proportion of bases with mean depth >= 20x
 prop_20x_thresh = 0.0
 # Proportion of bases with mean depth >= 30x
 prop_30x_thresh = 0.0
+# ARS (antigen recognition site) thresholds
+# Mean ARS depth
+ars_depth_thresh = 10
+# Proportion of ARS bases with depth >= 10x
+ars_prop_10x_thresh = 0.9
 # Extended MHC coordinates
 mhc_start = 29555628
 mhc_stop = 33409896
