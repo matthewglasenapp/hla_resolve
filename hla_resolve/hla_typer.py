@@ -383,21 +383,20 @@ def assign_classification_to_sample(common_sequenes, sequence, sample_name, logf
             best = (class_name, distance)
             same_dist = [class_name]
 
-    best = (*best, len(same_dist))
-
     # Return found g group if edit distance zero
     if best[1] == 0:
         if logfile != None:
             logfile.write(f"For {sample_name}, assigned {best[0]} dist {best[1]}\n")
             if len(same_dist) > 1:
                 logfile.write(f"Equidistant for {sample_name}: {', '.join(same_dist)}\n")
-        return best
-    
+        return (*best, same_dist)
+
     # No exact g group found, do unrestricted search during pass 2
     if logfile != None:
         logfile.write(f"For {sample_name}, found no perfect match. (Best: {best[0]} with distance {best[1]})\n")
 
-    return (None, -1, 0)
+    return (None, -1, [])
+
 
 # Do full sequence based classification. Used in pass 2 and 3
 # Input: full_sequence: {class: sequence} Full sequences of samples to check
