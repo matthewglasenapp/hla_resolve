@@ -809,25 +809,24 @@ def parse_mosdepth(regions_file, thresholds_file, depth_thresh, prop_20x_thresh,
 
 			if is_ars:
 				print(f"{gene} ARS", f"{coverage_depth:.1f}", f"{prop_10x*100:.1f}%", f"{prop_20x*100:.1f}%", f"{prop_30x*100:.1f}%")
-				if coverage_depth >= ars_depth_thresh and prop_10x >= ars_prop_10x_thresh:
-					ars_pass[gene] = True
-				else:
-					ars_pass[gene] = False
-					print(f"  {gene} ARS has insufficient coverage")
+				ars_pass[gene] = coverage_depth >= ars_depth_thresh and prop_10x >= ars_prop_10x_thresh
 			else:
 				print(gene, f"{coverage_depth:.1f}", f"{prop_10x*100:.1f}%", f"{prop_20x*100:.1f}%", f"{prop_30x*100:.1f}%")
-				if coverage_depth >= depth_thresh and prop_20x >= prop_20x_thresh and prop_30x >= prop_30x_thresh:
-					gene_pass[gene] = True
-				else:
-					gene_pass[gene] = False
-					print(f"  {gene} has insufficient gene-wide coverage")
+				gene_pass[gene] = coverage_depth >= depth_thresh and prop_20x >= prop_20x_thresh and prop_30x >= prop_30x_thresh
 
 	sufficient_coverage_genes = []
 	for gene in gene_pass:
-		if gene_pass.get(gene, False) and ars_pass.get(gene, False):
+		gene_ok = gene_pass.get(gene, False)
+		ars_ok = ars_pass.get(gene, False)
+		if gene_ok and ars_ok:
 			sufficient_coverage_genes.append(gene)
 		else:
-			print(f"Gene {gene} has insufficient coverage for haplotyping and star allele calling")
+			reasons = []
+			if not gene_ok:
+				reasons.append("gene-wide")
+			if not ars_ok:
+				reasons.append("ARS")
+			print(f"Gene {gene} has insufficient {' and '.join(reasons)} coverage for haplotyping and star allele calling")
 
 	print("\n\n")
 	return sufficient_coverage_genes
