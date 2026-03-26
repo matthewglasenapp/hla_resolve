@@ -823,10 +823,18 @@ def pass_3_classification(sequence_data, results_dict, samples, truth_data=None,
                 pass_3_logfile.writelines(f"{sample_name} was not found in provided full sequence file. Using 3 fields from pass 2\n")
                 pass_3_logfile.writelines(f"{sample_name}: {classified_allele} -> {sample_3_fields}\n")
 
-            results[sample_name] = (sample_3_fields,0,1)
+            results[sample_name] = (sample_3_fields, 0, 1, 1.0, 1.0, False, classification[-1])
             continue
 
         fields = classified_allele.split(":")
+
+        # Check if pass 2 ties span different 3-field prefixes
+        pass2_equidistant = classification[-1]
+        pass2_3field_prefixes = set(trunc_to_3_fields(a) for a in pass2_equidistant)
+        cross_3field_tie = len(pass2_3field_prefixes) > 1
+
+        if cross_3field_tie and pass_3_logfile != None:
+            pass_3_logfile.writelines(f"{sample_name} has pass 2 ties across 3-field groups: {', '.join(sorted(pass2_3field_prefixes))}\n")
 
         # For four field alleles, trim of last field so we can replace it with wildcard
         if len(fields) > 3:
@@ -835,9 +843,9 @@ def pass_3_classification(sequence_data, results_dict, samples, truth_data=None,
             # If there is no fourth field, no need for wildcard search
             if pass_3_logfile != None:
                 pass_3_logfile.writelines(f"{sample_name} does not have fourth field. Short circuit to {classified_allele}\n")
-            results[sample_name] = (classified_allele,0,1)
+            results[sample_name] = (classified_allele, 0, 1, 1.0, 1.0, False, classification[-1])
             continue
-        
+
         # Build list of all alleles that match the exon substring
         all_exon_matches = []
         for allele in sequence_data.keys():
@@ -856,6 +864,13 @@ def pass_3_classification(sequence_data, results_dict, samples, truth_data=None,
                                                           logfile=pass_3_logfile, eval_metric=metric, tie_metric=tie_metric)
         if result[1] == 0:
             perfect += 1
+
+        # If pass 2 ties span different 3-field groups, override equidistant list
+        # with the broader pass 2 ties truncated to 3 fields (pass 3 only refined within one group)
+        if cross_3field_tie:
+            truncated_equidistant = sorted(set(trunc_to_3_fields(a) for a in pass2_equidistant))
+            result = (*result[:-1], truncated_equidistant)
+
         results[sample_name] = result
 
         if log_assignment_condition:
@@ -1147,6 +1162,6 @@ def main(reference_xml_file, hla_fasta_dir, sample_ID, pass2_metric = "edit_dist
     samples_file = os.path.join(hla_fasta_dir, str(sample_ID) + "_HLA_haplotypes_CDS.fasta")
     full_sample_file = os.path.join(hla_fasta_dir, str(sample_ID) + "_HLA_haplotypes_gene.fasta")
 
-    run_classification(reference_xml_file, samples_file, full_sample_file, pass2_metric=pass2_metric, 
+    run_classification(reference_xml_file, samples_file, full_sample_file, pass2_metric=pass2_metric,
                        pass3_metric=pass3_metric, ignore_unconfirmed=ignore_unconfirmed,
-                       ignore_incomplete=ignore_incomplete, generate_query_ref_comp=generate_query_ref_comp)
+                       ignore_incomplete=ignore_incomplete, write_full=True, generate_query_ref_comp=generate_query_ref_comp)
