@@ -272,9 +272,9 @@ prop_20x_thresh = 0.0
 prop_30x_thresh = 0.0
 # ARS (antigen recognition site) thresholds
 # Mean ARS depth
-ars_depth_thresh = 10
+ars_depth_thresh = 0
 # Proportion of ARS bases with depth >= 10x
-ars_prop_10x_thresh = 0.9
+ars_prop_10x_thresh = 0.0
 # Extended MHC coordinates
 mhc_start = 29555628
 mhc_stop = 33409896
