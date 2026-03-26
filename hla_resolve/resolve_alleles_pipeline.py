@@ -170,7 +170,6 @@ def resolve_alleles(config):
 			filtered_vcf=gene_filtered_vcf,
 			platform=config['platform'],
 			genotyper=genotyper,
-			hla_genes_regions_file=config['hla_genes_regions_file'],
 			force_include_unphased=(gene in cds_rescued_genes)
 		)
 		
