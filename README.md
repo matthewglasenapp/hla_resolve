@@ -54,7 +54,7 @@ The first time ``hla_resolve`` is executed, it will automatically download the f
 | GRCh38 reference genome | NCBI |
 | picard.jar | Broad Institute |
 | LongPhase binary | GitHub |
-| hla.xml (IPD-IMGT/HLA database) | ANHIG/IMGTHLA |
+| hla.xml (IPD-IMGT/HLA database) | IMGTHLA |
 | Clair3 Singularity image | Docker Hub |
 | DeepVariant Singularity image | Docker Hub |
 
