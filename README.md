@@ -37,24 +37,24 @@ HLA-A, HLA-B, HLA-C, HLA-DPA1, HLA-DPB1, HLA-DQA1, HLA-DQB1, HLA-DRB1
 - Reconstructed haplotype nucleotide sequences for each HLA gene in FASTA format
 
 #### Runtime and Required Resources
-Runtime depends heavily on input file size and available compute resources. Targeted MHC capture data typically completes in **<30 minutes** using **6 CPUs and 20 GB RAM**. Runtime increases for high-coverage WGS or WES datasets, as all reads must be mapped to the human reference genome prior to restricting downstream analysis to the MHC region on chromosome 6.
+Runtime depends heavily on input file size and available compute resources. Targeted HLA capture data typically completes in **<30 minutes** using **6 CPUs and 20 GB RAM**. Runtime increases for high-coverage WGS or WES datasets, as all reads must be mapped to the human reference genome prior to restricting downstream analysis to the HLA region on chromosome 6.
 
 ## Installation
-```
+```bash
 git clone https://github.com/matthewglasenapp/hla_resolve
-conda env create -f hla_resolve/environment.yml
+cd hla_resolve
+conda env create -f environment.yml
 conda activate hla_resolve
-pip install -e hla_resolve
-hla_resolve --help
+pip install -e .
 ```
 The first time ``hla_resolve`` is executed, it will automatically download the following required files:
 
 | File | Source |
 |------|--------|
 | GRCh38 reference genome | NCBI |
-| picard.jar | Broad Institute |
+| Picard | Broad Institute |
 | LongPhase binary | GitHub |
-| hla.xml (IPD-IMGT/HLA database) | IMGTHLA |
+| hla.xml ([IPD-IMGT/HLA database](https://github.com/ANHIG/IMGTHLA)) | IMGTHLA |
 | Clair3 Singularity image | Docker Hub |
 | DeepVariant Singularity image | Docker Hub |
 
@@ -64,14 +64,14 @@ The first time ``hla_resolve`` is executed, it will automatically download the f
 ## Quick Start
 
 ```
-usage: hla_resolve [-h] --input_file INPUT_FILE --sample_name SAMPLE_NAME --platform {pacbio,ont} --scheme
-              {WGS,WES,targeted} --output_dir OUTPUT_DIR [--trim_adapters] [--adapter_file ADAPTER_FILE]
-              [--threads THREADS] [--read_group_string READ_GROUP_STRING] [--clean-up]
+usage: hla_resolve [-h] [--version] --input_file INPUT_FILE --sample_name SAMPLE_NAME --platform {pacbio,ont} --scheme {WGS,WES,targeted} --output_dir OUTPUT_DIR
+                   [--trim_adapters] [--adapter_file ADAPTER_FILE] [--threads THREADS] [--read_group_string READ_GROUP_STRING] [--clean-up] [--clair3_model CLAIR3_MODEL]
 
 Run HLA-Resolve
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
+  --version             show program's version number and exit
   --input_file INPUT_FILE
                         Path to the raw sequencing reads file (default: None)
   --sample_name SAMPLE_NAME
@@ -90,6 +90,9 @@ optional arguments:
   --read_group_string READ_GROUP_STRING
                         Override the parsed read group string (default: None)
   --clean-up            Remove intermediate files (default: False)
+  --clair3_model CLAIR3_MODEL
+                        Clair3 model name (bundled in SIF). Defaults to r1041_e82_400bps_sup_v500 for ONT
+                        and hifi_revio for PacBio. (default: None)
 
 Example: hla_resolve --input_file reads.bam --sample_name HG002 --platform pacbio --scheme targeted --output_dir out --threads 10
 
@@ -97,18 +100,18 @@ Example: hla_resolve --input_file reads.bam --sample_name HG002 --platform pacbi
 
 ## Demo
 
-Input data: PacBio Revio HiFi targeted sequencing reads from HG002 (Ashkenazi Son), a sample from the GIAB and HPRC benchmarks.
+Input data: PacBio Revio HiFi targeted sequencing reads from HG002 (Ashkenazi Son), a sample from the GIAB and HPRC benchmarks. Run from the repository root:
 
-```
+```bash
 hla_resolve \
---input_file hla_resolve/demo/HG002.hifi_reads.fastq.gz \
---sample_name HG002 \
---platform pacbio \
---scheme targeted \
---output_dir test \
---trim_adapters \
---adapter_file hla_resolve/demo/adapters.fasta \
---threads 6
+  --input_file demo/HG002.hifi_reads.fastq.gz \
+  --sample_name HG002 \
+  --platform pacbio \
+  --scheme targeted \
+  --output_dir test \
+  --trim_adapters \
+  --adapter_file demo/adapters.fasta \
+  --threads 6
 ```
 
 The command will print the final star allele calls to STDOUT, along with important logging information, including coverage depth metrics, heterozygous genotypes that could not be phased, and the paths of intermediate files (e.g., BAM, VCF).
@@ -126,7 +129,7 @@ Intermediate files will be written to the following dirctories. The user can spe
 | `pbtrgt_vcf/`             | Contains the tandem repeat genotypes from TRGT (PacBio-only)               |
 | `phased_vcf/`             | Contains phased genotype calls from joint phasing of small variants, structural variants, and tandem repeat genotypes |
 | `mosdepth/`               | Contains coverage depth output files from mosdepth for the HLA genes        |
-| `haploblocks/`            | Contains a list of fully-phased MHC genes                                  |
+| `haploblocks/`            | Contains a list of fully-phased HLA genes                                  |
 | `filtered_vcf/`           | Contains the final, filtered VCF of variants to be applied during fasta haplotype reconstruction |
 | `vcf2fasta_out/`          | Contains the raw sequence output from vcf2fasta                            |
 | `hla_fasta_haplotypes/`   | Contains fasta files of full gene and CDS sequences for each HLA gene       |
@@ -158,7 +161,7 @@ SNVs are called with [bcftools](https://doi.org/10.1093/bioinformatics/btr509) a
 Structural variants are called from the aligned reads using [pbsv](https://github.com/PacificBiosciences/pbsv).
 
 #### 8. Tandem Repeat Genotyping
-Tandem repeats within the MHC region are genotyped using [TRGT](https://doi.org/10.1038/s41587-023-02057-3).
+Tandem repeats within the HLA region are genotyped using [TRGT](https://doi.org/10.1038/s41587-023-02057-3).
 
 #### 9. Joint Phasing
 Small variants, structural variants, and tandem repeat genotypes are jointly phased with [HiPhase](https://doi.org/10.1093/bioinformatics/btae042), producing haplotagged BAMs, phased VCFs, and haplotype block coordinates.
@@ -173,7 +176,7 @@ Phased haplotype blocks are evaluated to determine whether each HLA gene is full
 Phased genotypes are filtered by gene to remove redundant calls from overlapping variant callers (e.g., DeepVariant indels overlapping pbsv structural variants, or non-TRGT variants within TRGT tandem repeat regions). Symbolic and complex structural variant types (BND, INV, DUP) are excluded.
 
 #### 13. Haplotype Reconstruction
-Phased, filtered genotypes are applied to GRCh38 gene models using [vcf2fasta](https://github.com/sanchez-ramirez/vcf2fasta) to reconstruct full-gene and coding-sequence haplotype FASTA files for each HLA gene.
+Phased, filtered genotypes are applied to GRCh38 gene models using [vcf2fasta](https://github.com/santiagosnchez/vcf2fasta) to reconstruct full-gene and coding-sequence haplotype FASTA files for each HLA gene.
 
 #### 14. IPD-IMGT/HLA Database Matching
 Reconstructed haplotypes are compared against alleles in the [IPD-IMGT/HLA database](https://doi.org/10.1093/nar/gkac1011) with a three-pass hierarchical classification algorithm using [edlib](https://doi.org/10.1093/bioinformatics/btw753):
