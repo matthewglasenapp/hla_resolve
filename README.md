@@ -9,7 +9,7 @@ HLA-Resolve is a command-line tool for high-resolution (four-field) HLA typing f
 
 **Authors:** [Matthew Glasenapp](https://github.com/matthewglasenapp), [Alex Symons](https://github.com/FlyingFish800), [Omar Cornejo](https://github.com/oeco28)
 
-**⚠️ Note:** HLA-Resolve is intended for high-coverage PacBio HiFi reads. ONT support is still in development. The HLA-Resolve manuscript is under peer review.
+**⚠️ Note:** HLA-Resolve is intended for high-coverage PacBio HiFi reads. ONT support is still in development. The HLA-Resolve [manuscript](https://doi.org/10.64898/2026.03.27.26349549) is under peer review.
 
 ## Requirements
 
@@ -205,7 +205,7 @@ For detailed documentation on the algorithms, decision logic, and tools used int
 
 If you use HLA-Resolve, please cite:
 
-> Glasenapp, M.R., Yee, M.-C., Symons, A.E., Garcia, O.A. & Cornejo, O.E. HLA-Resolve: High-Resolution HLA Haplotyping Using Long-Read Hybrid Capture. *medRxiv* (2026). DOI: [pending]
+> Glasenapp, M.R., Yee, M.-C., Symons, A.E., Cornejo, O.E. & Garcia, O.A. HLA-Resolve: High-Resolution HLA Haplotyping Using Long-Read Hybrid Capture. *medRxiv* (2026). https://doi.org/10.64898/2026.03.27.26349549
 
 ## License
 
