@@ -40,7 +40,7 @@ HLA-A, HLA-B, HLA-C, HLA-DPA1, HLA-DPB1, HLA-DQA1, HLA-DQB1, HLA-DRB1
 Runtime depends heavily on input file size and available compute resources. Targeted HLA capture data typically completes in **<30 minutes** using **6 CPUs and 20 GB RAM**. Runtime increases for high-coverage WGS or WES datasets, as all reads must be mapped to the human reference genome prior to restricting downstream analysis to the HLA region on chromosome 6.
 
 ## Installation
-```bash
+```text
 git clone https://github.com/matthewglasenapp/hla_resolve
 cd hla_resolve
 conda env create -f environment.yml
@@ -102,7 +102,7 @@ Example: hla_resolve --input_file reads.bam --sample_name HG002 --platform pacbi
 
 Input data: PacBio Revio HiFi targeted sequencing reads from HG002 (Ashkenazi Son), a sample from the GIAB and HPRC benchmarks. Run from the repository root:
 
-```bash
+```text
 hla_resolve \
   --input_file demo/HG002.hifi_reads.fastq.gz \
   --sample_name HG002 \
