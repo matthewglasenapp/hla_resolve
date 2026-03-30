@@ -146,6 +146,7 @@ Thumbs.db
 
 # Deprecated development code
 hla_resolve/deprecated_functions.py
+hla_resolve/test_against_truth.py
 supplementary_scripts/shift_gff.py
 supplementary_scripts/shift_bed_after_drb1.py
 
