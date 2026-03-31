@@ -595,20 +595,11 @@ def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA
 										if any(s <= pos <= e for s, e in ars_cds_ranges)]
 
 					if ars_cds_positions:
-						cds_clamp_start = min(ars_cds_positions)
-						cds_clamp_stop = max(ars_cds_positions)
-						is_minus = cds_coords[0] > cds_coords[-1] if len(cds_coords) > 1 else False
-						cds_exon_ranges = CDS_dict[gene] if CDS_dict and gene in CDS_dict else []
-						vcf_path = gene_filtered_vcfs.get(gene) if gene_filtered_vcfs else None
-						if vcf_path and cds_exon_ranges:
-							allele_1 = clamp_cds_fasta_sequence(allele_1, 0, cds_clamp_start, cds_clamp_stop, cds_coords, cds_exon_ranges, is_minus, vcf_path)
-							allele_2 = clamp_cds_fasta_sequence(allele_2, 1, cds_clamp_start, cds_clamp_stop, cds_coords, cds_exon_ranges, is_minus, vcf_path)
-						else:
-							idx1 = cds_coords.index(ars_cds_positions[0])
-							idx2 = cds_coords.index(ars_cds_positions[-1])
-							cds_fasta_start, cds_fasta_stop = sorted((idx1, idx2))
-							allele_1 = allele_1[cds_fasta_start:cds_fasta_stop+1]
-							allele_2 = allele_2[cds_fasta_start:cds_fasta_stop+1]
+						idx1 = cds_coords.index(ars_cds_positions[0])
+						idx2 = cds_coords.index(ars_cds_positions[-1])
+						cds_fasta_start, cds_fasta_stop = sorted((idx1, idx2))
+						allele_1 = allele_1[cds_fasta_start:cds_fasta_stop+1]
+						allele_2 = allele_2[cds_fasta_start:cds_fasta_stop+1]
 						logging_strings.append(f"{sample_ID} {gene} CDS rescue tier=ars_only: extracting ARS CDS ({len(ars_cds_positions)} positions)")
 					else:
 						allele_1, allele_2 = "", ""
@@ -692,20 +683,11 @@ def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA
 				cds_overlap = [pos for pos in cds_coords if best_haploblock_start <= pos <= best_haploblock_end]
 
 				if cds_overlap:
-					cds_clamp_start = min(cds_overlap)
-					cds_clamp_stop = max(cds_overlap)
-					is_minus = cds_coords[0] > cds_coords[-1] if len(cds_coords) > 1 else False
-					cds_exon_ranges = CDS_dict[gene] if CDS_dict and gene in CDS_dict else []
-					vcf_path = gene_filtered_vcfs.get(gene) if gene_filtered_vcfs else None
-					if vcf_path and cds_exon_ranges:
-						allele_1 = clamp_cds_fasta_sequence(allele_1, 0, cds_clamp_start, cds_clamp_stop, cds_coords, cds_exon_ranges, is_minus, vcf_path)
-						allele_2 = clamp_cds_fasta_sequence(allele_2, 1, cds_clamp_start, cds_clamp_stop, cds_coords, cds_exon_ranges, is_minus, vcf_path)
-					else:
-						idx1 = cds_coords.index(cds_overlap[0])
-						idx2 = cds_coords.index(cds_overlap[-1])
-						cds_fasta_start, cds_fasta_stop = sorted((idx1, idx2))
-						allele_1 = allele_1[cds_fasta_start:cds_fasta_stop+1]
-						allele_2 = allele_2[cds_fasta_start:cds_fasta_stop+1]
+					idx1 = cds_coords.index(cds_overlap[0])
+					idx2 = cds_coords.index(cds_overlap[-1])
+					cds_fasta_start, cds_fasta_stop = sorted((idx1, idx2))
+					allele_1 = allele_1[cds_fasta_start:cds_fasta_stop+1]
+					allele_2 = allele_2[cds_fasta_start:cds_fasta_stop+1]
 				else:
 					# no overlap between haploblock and CDS, wipe to empty
 					allele_1, allele_2 = "", ""
