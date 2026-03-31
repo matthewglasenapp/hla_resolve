@@ -214,7 +214,8 @@ def resolve_alleles(config):
 		gff_dir=config['gff_dir'],
 		cds_rescued_genes=cds_rescued_genes,
 		ARS_dict=config.get('ARS_dict', None),
-		CLASS_I_GENES=config.get('CLASS_I_GENES', None)
+		CLASS_I_GENES=config.get('CLASS_I_GENES', None),
+		gene_filtered_vcfs=gene_filtered_vcfs
 	)
 	
 	# Step 3: HLA typing

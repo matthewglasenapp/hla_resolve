@@ -288,14 +288,83 @@ def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail
 	subprocess.run(f"bcftools index -f {filtered_vcf}", shell=True, check=True)
 
 	# ========== PRINT UNPHASED RECORDS NEATLY ==========
-	unph = pysam.VariantFile(pass_unphased)
-	records = [rec for rec in unph]
-
-	if records:
+	if force_include_unphased and unphased_hets:
 		print(f"\nUnphased PASS variants in {gene}:\n")
-		for rec in records:
+		for rec in unphased_hets:
 			print(str(rec).strip())
 		print()
+	else:
+		unph = pysam.VariantFile(pass_unphased)
+		records = [rec for rec in unph]
+
+		if records:
+			print(f"\nUnphased PASS variants in {gene}:\n")
+			for rec in records:
+				print(str(rec).strip())
+			print()
+
+def compute_indel_offset(vcf_path, haplotype, target_pos):
+	"""
+	Compute cumulative indel offset for a haplotype from all variants
+	with pos < target_pos. Returns the net bp shift (positive = net insertion,
+	negative = net deletion) in forward-strand coordinate space.
+	"""
+	offset = 0
+	vcf = pysam.VariantFile(vcf_path)
+	for rec in vcf:
+		if rec.pos >= target_pos:
+			break
+		sample = list(rec.samples.values())[0]
+		gt = sample.get('GT')
+		if gt is None or None in gt:
+			continue
+		allele_idx = gt[haplotype]
+		if allele_idx == 0:
+			continue
+		ref = rec.ref
+		alt = rec.alleles[allele_idx]
+		offset += len(alt) - len(ref)
+	vcf.close()
+	return offset
+
+
+def clamp_fasta_sequence(allele_seq, haplotype, clamped_start, clamped_stop, gene_start, is_minus_strand, vcf_path):
+	"""
+	Clamp a vcf2fasta haplotype sequence to a genomic interval, accounting for
+	indel-induced coordinate shifts and strand orientation.
+
+	vcf2fasta applies variants to the forward-strand reference, then reverse
+	complements for minus-strand genes. Reference-based indices don't account
+	for insertions/deletions that shift the sequence, so we compute per-haplotype
+	offsets from the VCF to find the correct FASTA indices.
+
+	Args:
+		allele_seq: Full haplotype sequence from vcf2fasta
+		haplotype: 0 or 1 (which haplotype to compute offsets for)
+		clamped_start: Low genomic coordinate of desired interval
+		clamped_stop: High genomic coordinate of desired interval
+		gene_start: Lowest genomic coordinate of the gene (GFF start)
+		is_minus_strand: Whether the gene is on the minus strand
+		vcf_path: Path to the filtered VCF used by vcf2fasta
+	"""
+	total_len = len(allele_seq)
+
+	offset_at_start = compute_indel_offset(vcf_path, haplotype, clamped_start)
+	offset_at_stop = compute_indel_offset(vcf_path, haplotype, clamped_stop + 1)
+
+	# Forward-strand intermediate indices (before reverse complement)
+	fwd_low = (clamped_start - gene_start) + offset_at_start
+	fwd_high = (clamped_stop - gene_start) + offset_at_stop
+
+	if is_minus_strand:
+		fasta_start = total_len - 1 - fwd_high
+		fasta_stop = total_len - 1 - fwd_low
+	else:
+		fasta_start = fwd_low
+		fasta_stop = fwd_high
+
+	return allele_seq[fasta_start:fasta_stop + 1]
+
 
 def run_vcf2fasta(input_vcf, input_gff, reference_genome, output_dir, gene, feature):
 	if feature == "CDS":
@@ -305,7 +374,7 @@ def run_vcf2fasta(input_vcf, input_gff, reference_genome, output_dir, gene, feat
 
 	subprocess.run(vcf2fasta_cmd, shell = True, check = True)
 
-def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA_bases, stop_codons, unphased_genes=None, gene_dict=None, CDS_dict=None, gff_dir=None, cds_rescued_genes=None, ARS_dict=None, CLASS_I_GENES=None):
+def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA_bases, stop_codons, unphased_genes=None, gene_dict=None, CDS_dict=None, gff_dir=None, cds_rescued_genes=None, ARS_dict=None, CLASS_I_GENES=None, gene_filtered_vcfs=None):
 	# Use subprocess.run with capture_output to avoid race conditions with temporary files
 	find_cmd = f"find {vcf2fasta_output_dir} -type f"
 	result = subprocess.run(find_cmd, shell=True, check=True, capture_output=True, text=True)
@@ -419,11 +488,18 @@ def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA
 					if interval:
 						clamped_start = max(interval[0], gene_start_coord)
 						clamped_stop = min(interval[1], gene_stop_coord)
-						idx1 = gene_coords.index(clamped_start)
-						idx2 = gene_coords.index(clamped_stop)
-						fasta_start, fasta_stop = sorted((idx1, idx2))
-						allele_1 = allele_1[fasta_start:fasta_stop+1]
-						allele_2 = allele_2[fasta_start:fasta_stop+1]
+						is_minus = gene_coords[0] > gene_coords[-1]
+						gff_gene_start = min(gene_start_coord, gene_stop_coord)
+						vcf_path = gene_filtered_vcfs.get(gene) if gene_filtered_vcfs else None
+						if vcf_path:
+							allele_1 = clamp_fasta_sequence(allele_1, 0, clamped_start, clamped_stop, gff_gene_start, is_minus, vcf_path)
+							allele_2 = clamp_fasta_sequence(allele_2, 1, clamped_start, clamped_stop, gff_gene_start, is_minus, vcf_path)
+						else:
+							idx1 = gene_coords.index(clamped_start)
+							idx2 = gene_coords.index(clamped_stop)
+							fasta_start, fasta_stop = sorted((idx1, idx2))
+							allele_1 = allele_1[fasta_start:fasta_stop+1]
+							allele_2 = allele_2[fasta_start:fasta_stop+1]
 					else:
 						allele_1, allele_2 = "", ""
 
@@ -440,6 +516,8 @@ def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA
 										if any(s <= pos <= e for s, e in ars_cds_ranges)]
 
 					if ars_cds_positions:
+						# TODO: CDS clamping needs CDS-aware offset calculation
+						# (only count indels within exons, not intronic variants)
 						idx1 = cds_coords.index(ars_cds_positions[0])
 						idx2 = cds_coords.index(ars_cds_positions[-1])
 						cds_fasta_start, cds_fasta_stop = sorted((idx1, idx2))
@@ -478,11 +556,18 @@ def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA
 
 						clamped_start = max(left, gene_start_coord)
 						clamped_stop = min(right, gene_stop_coord)
-						idx1 = gene_coords.index(clamped_start)
-						idx2 = gene_coords.index(clamped_stop)
-						fasta_start, fasta_stop = sorted((idx1, idx2))
-						allele_1 = allele_1[fasta_start:fasta_stop+1]
-						allele_2 = allele_2[fasta_start:fasta_stop+1]
+						is_minus = gene_coords[0] > gene_coords[-1]
+						gff_gene_start = min(gene_start_coord, gene_stop_coord)
+						vcf_path = gene_filtered_vcfs.get(gene) if gene_filtered_vcfs else None
+						if vcf_path:
+							allele_1 = clamp_fasta_sequence(allele_1, 0, clamped_start, clamped_stop, gff_gene_start, is_minus, vcf_path)
+							allele_2 = clamp_fasta_sequence(allele_2, 1, clamped_start, clamped_stop, gff_gene_start, is_minus, vcf_path)
+						else:
+							idx1 = gene_coords.index(clamped_start)
+							idx2 = gene_coords.index(clamped_stop)
+							fasta_start, fasta_stop = sorted((idx1, idx2))
+							allele_1 = allele_1[fasta_start:fasta_stop+1]
+							allele_2 = allele_2[fasta_start:fasta_stop+1]
 						logging_strings.append(f"{sample_ID} {gene} CDS rescue tier=ars_only: gene interval chr6:{clamped_start}-{clamped_stop}")
 
 		elif unphased_genes and gene in unphased_genes:
@@ -498,13 +583,18 @@ def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA
 				clamped_start = max(best_haploblock_start, gene_dict[gene][0])
 				clamped_stop  = min(best_haploblock_end,   gene_dict[gene][1])
 
-				# Map haploblock genomic coords into gene FASTA indices
-				idx1 = gene_coords.index(clamped_start)
-				idx2 = gene_coords.index(clamped_stop)
-				fasta_start, fasta_stop = sorted((idx1, idx2))
-
-				allele_1 = allele_1[fasta_start:fasta_stop+1]
-				allele_2 = allele_2[fasta_start:fasta_stop+1]
+				is_minus = gene_coords[0] > gene_coords[-1]
+				gff_gene_start = min(gene_dict[gene][0], gene_dict[gene][1])
+				vcf_path = gene_filtered_vcfs.get(gene) if gene_filtered_vcfs else None
+				if vcf_path:
+					allele_1 = clamp_fasta_sequence(allele_1, 0, clamped_start, clamped_stop, gff_gene_start, is_minus, vcf_path)
+					allele_2 = clamp_fasta_sequence(allele_2, 1, clamped_start, clamped_stop, gff_gene_start, is_minus, vcf_path)
+				else:
+					idx1 = gene_coords.index(clamped_start)
+					idx2 = gene_coords.index(clamped_stop)
+					fasta_start, fasta_stop = sorted((idx1, idx2))
+					allele_1 = allele_1[fasta_start:fasta_stop+1]
+					allele_2 = allele_2[fasta_start:fasta_stop+1]
 
 			elif feat == "CDS":
 				# Load CDS coords (flattened genomic positions from all CDS exons)
@@ -516,10 +606,11 @@ def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA
 				cds_overlap = [pos for pos in cds_coords if best_haploblock_start <= pos <= best_haploblock_end]
 
 				if cds_overlap:
+					# TODO: CDS clamping needs CDS-aware offset calculation
+					# (only count indels within exons, not intronic variants)
 					idx1 = cds_coords.index(cds_overlap[0])
 					idx2 = cds_coords.index(cds_overlap[-1])
 					cds_fasta_start, cds_fasta_stop = sorted((idx1, idx2))
-
 					allele_1 = allele_1[cds_fasta_start:cds_fasta_stop+1]
 					allele_2 = allele_2[cds_fasta_start:cds_fasta_stop+1]
 				else:
