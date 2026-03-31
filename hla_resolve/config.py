@@ -146,16 +146,16 @@ def ensure_clair3_sif():
     return str(sif_file)
 
 def ensure_hla_xml():
-    """Download HLA XML database (IPD-IMGT/HLA Release 3.61.0) if not present"""
+    """Download HLA XML database (IPD-IMGT/HLA Release 3.60.0) if not present"""
     xml_dir = Path(_data_dir) / "IPD_IMGT_XML"
     xml_file = xml_dir / "hla.xml"
     zip_file = xml_dir / "hla.xml.zip"
     # IPD-IMGT/HLA Release 3.60.0
-    #db_url = "https://raw.githubusercontent.com/ANHIG/IMGTHLA/652dbe954426f117a9f3619826fc4e3687713d90/xml/hla.xml.zip"
+    db_url = "https://raw.githubusercontent.com/ANHIG/IMGTHLA/652dbe954426f117a9f3619826fc4e3687713d90/xml/hla.xml.zip"
     # IPD-IMGT/HLA Release 3.61.0
     #db_url = "https://raw.githubusercontent.com/ANHIG/IMGTHLA/93c70bcfe271a737bc75b7ca7f5f9844bf65136d/xml/hla.xml.zip"
     # Latest
-    db_url = "https://raw.githubusercontent.com/ANHIG/IMGTHLA/Latest/xml/hla.xml.zip"
+    #db_url = "https://raw.githubusercontent.com/ANHIG/IMGTHLA/Latest/xml/hla.xml.zip"
     # Create directory if it doesn't exist
     xml_dir.mkdir(parents=True, exist_ok=True)
     

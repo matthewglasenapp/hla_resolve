@@ -42,7 +42,7 @@ def setup_logging(output_dir, sample_name=None):
     if getattr(sys, "_hla_resolve_log_path", None) == log_path:
         return log_path
 
-    log_file = open(log_path, "a", buffering=1)
+    log_file = open(log_path, "w", buffering=1)
 
     if not hasattr(sys, "_hla_resolve_stdout"):
         sys._hla_resolve_stdout = sys.stdout
