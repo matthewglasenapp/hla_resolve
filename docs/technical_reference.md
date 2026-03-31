@@ -163,6 +163,8 @@ This section describes the decision tree used to classify genes by phasing statu
      - Subset the vcf2fasta output to the haploblock coordinates.
      - Match to the HLA database with the subsetted sequence.
 
+     Note: Because vcf2fasta applies indels that change the sequence length relative to the reference, subsetting the output by genomic coordinates requires computing per-haplotype indel offsets from the filtered VCF. For minus-strand genes, the vcf2fasta output is reverse-complemented, so the coordinate transformation must account for strand orientation. This applies to all gene-level FASTA subsetting (sections 3a and 3b).
+
    - **b. ARS NOT spanned** — CDS-aware rescue
 
      Count all QC-pass heterozygous genotypes in the CDS and ARS CDS regions. These come from the existing `gene_het_sites`, which is already filtered by `parse_haploblocks()`.
