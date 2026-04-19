@@ -11,6 +11,18 @@ HLA-Resolve is a command-line tool for high-resolution (four-field) HLA typing f
 
 **⚠️ Note:** HLA-Resolve is intended for high-coverage PacBio HiFi reads. ONT support is still in development. The HLA-Resolve [manuscript](https://doi.org/10.64898/2026.03.27.26349549) is under peer review.
 
+## Table of Contents
+
+- [Requirements](#requirements)
+- [Overview](#overview)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Demo](#demo)
+- [Workflow and Dependencies](#workflow-and-dependencies)
+- [Planned Features (In Development)](#planned-features-in-development)
+- [Citation](#citation)
+- [License](#license)
+
 ## Requirements
 
 - **Linux (x86_64)** — Several dependencies (pbmarkdup, hiphase, trgt, pbsv, pbmm2) are distributed as precompiled Linux binaries via Bioconda and are not available for macOS.
