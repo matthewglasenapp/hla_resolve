@@ -78,7 +78,8 @@ def resolve_alleles(config):
 		prop_20x_thresh=config['prop_20x_thresh'],
 		prop_30x_thresh=config['prop_30x_thresh'],
 		ars_depth_thresh=config['ars_depth_thresh'],
-		ars_prop_10x_thresh=config['ars_prop_10x_thresh']
+		ars_prop_20x_thresh=config['ars_prop_20x_thresh'],
+		ars_prop_30x_thresh=config['ars_prop_30x_thresh']
 	)
 	
 	print("Reconstructing FASTA sequences")

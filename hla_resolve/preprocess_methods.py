@@ -778,7 +778,7 @@ def run_mosdepth(input_file, output_dir, sample_ID, regions_file, threads):
 	print("\n\n")
 
 def parse_mosdepth(regions_file, thresholds_file, depth_thresh, prop_20x_thresh, prop_30x_thresh,
-					ars_depth_thresh, ars_prop_10x_thresh):
+					ars_depth_thresh, ars_prop_20x_thresh, ars_prop_30x_thresh):
 	gene_pass = {}
 	ars_pass = {}
 
@@ -809,7 +809,7 @@ def parse_mosdepth(regions_file, thresholds_file, depth_thresh, prop_20x_thresh,
 
 			if is_ars:
 				print(f"{gene} ARS", f"{coverage_depth:.1f}", f"{prop_10x*100:.1f}%", f"{prop_20x*100:.1f}%", f"{prop_30x*100:.1f}%")
-				ars_pass[gene] = coverage_depth >= ars_depth_thresh and prop_10x >= ars_prop_10x_thresh
+				ars_pass[gene] = coverage_depth >= ars_depth_thresh and prop_20x >= ars_prop_20x_thresh and prop_30x >= ars_prop_30x_thresh
 			else:
 				print(gene, f"{coverage_depth:.1f}", f"{prop_10x*100:.1f}%", f"{prop_20x*100:.1f}%", f"{prop_30x*100:.1f}%")
 				gene_pass[gene] = coverage_depth >= depth_thresh and prop_20x >= prop_20x_thresh and prop_30x >= prop_30x_thresh
