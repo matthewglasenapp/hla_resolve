@@ -263,13 +263,13 @@ min_read_length = 300
 
 # Coverage depth thresholds to proceed with HLA typing
 # Used in parse_mosdepth() function of preprocess_methods.py
-# Gene-wide thresholds
-# Mean gene-wide depth
-depth_thresh = 10
-# Proportion of bases with mean depth >= 20x
-prop_20x_thresh = 0.0
-# Proportion of bases with mean depth >= 30x
-prop_30x_thresh = 0.0
+# CDS thresholds (pooled across all coding exons of a gene)
+# Mean depth over concatenated CDS
+cds_depth_thresh = 0
+# Proportion of CDS bases with depth >= 20x
+cds_prop_20x_thresh = 0.0
+# Proportion of CDS bases with depth >= 30x
+cds_prop_30x_thresh = 0.0
 # ARS (antigen recognition site) thresholds
 # Mean ARS depth
 ars_depth_thresh = 10

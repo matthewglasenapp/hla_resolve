@@ -74,9 +74,9 @@ def resolve_alleles(config):
 	sufficient_coverage_genes = parse_mosdepth(
 		regions_file=config['mosdepth_regions'],
 		thresholds_file=config['mosdepth_thresholds'],
-		depth_thresh=config['depth_thresh'],
-		prop_20x_thresh=config['prop_20x_thresh'],
-		prop_30x_thresh=config['prop_30x_thresh'],
+		cds_depth_thresh=config['cds_depth_thresh'],
+		cds_prop_20x_thresh=config['cds_prop_20x_thresh'],
+		cds_prop_30x_thresh=config['cds_prop_30x_thresh'],
 		ars_depth_thresh=config['ars_depth_thresh'],
 		ars_prop_20x_thresh=config['ars_prop_20x_thresh'],
 		ars_prop_30x_thresh=config['ars_prop_30x_thresh']

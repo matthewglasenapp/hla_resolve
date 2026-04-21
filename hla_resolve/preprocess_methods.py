@@ -777,55 +777,110 @@ def run_mosdepth(input_file, output_dir, sample_ID, regions_file, threads):
 	
 	print("\n\n")
 
-def parse_mosdepth(regions_file, thresholds_file, depth_thresh, prop_20x_thresh, prop_30x_thresh,
+def parse_mosdepth(regions_file, thresholds_file, cds_depth_thresh, cds_prop_20x_thresh, cds_prop_30x_thresh,
 					ars_depth_thresh, ars_prop_20x_thresh, ars_prop_30x_thresh):
-	gene_pass = {}
-	ars_pass = {}
+	"""Aggregate mosdepth per-interval stats into per-gene CDS + ARS gates.
 
-	with gzip.open(regions_file, "rt") as f1, gzip.open(thresholds_file,"rt") as f2:
+	BED rows are expected to be named either `<gene>_CDS_<n>` (one row per
+	coding exon) or `<gene>_ARS` (one row per gene). CDS rows are pooled by
+	gene using length-weighted sums, so `prop_30x` is the proportion of bases
+	meeting the threshold across concatenated exons — not an average of
+	per-exon proportions.
+	"""
+	# Per-gene accumulators for CDS rows
+	cds_totals = {}       # gene -> {total_len, depth_sum, n_10x, n_20x, n_30x}
+	ars_stats = {}        # gene -> {depth, prop_10x, prop_20x, prop_30x}
+
+	with gzip.open(regions_file, "rt") as f1, gzip.open(thresholds_file, "rt") as f2:
 		regions = f1.read().splitlines()
 		thresholds = f2.read().splitlines()[1:]
 
-		# Thresholds columns (with --thresholds 10,20,30): chrom, start, end, name, 10X, 20X, 30X
-		print("Region, Mean Depth, % Bases 10X, % Bases 20X, % Bases 30X")
-
+		# regions.bed.gz cols: chrom, start, end, name, mean_depth
+		# thresholds.bed.gz cols (with --thresholds 10,20,30): chrom, start, end, name, 10X, 20X, 30X
 		for regions_line, thresholds_line in zip(regions, thresholds):
-			regions_fields = regions_line.split("\t")
-			name = regions_fields[3]
-			start = regions_fields[1]
-			stop = regions_fields[2]
-			length = int(stop) - int(start)
-			coverage_depth = float(regions_fields[4])
-			threshold_fields = thresholds_line.split("\t")
-			num_10x = int(threshold_fields[4])
-			num_20x = int(threshold_fields[5])
-			num_30x = int(threshold_fields[6])
-			prop_10x = num_10x / length
-			prop_20x = num_20x / length
-			prop_30x = num_30x / length
+			rf = regions_line.split("\t")
+			tf = thresholds_line.split("\t")
+			name = rf[3]
+			length = int(rf[2]) - int(rf[1])
+			mean_depth = float(rf[4])
+			n_10x, n_20x, n_30x = int(tf[4]), int(tf[5]), int(tf[6])
 
-			is_ars = name.endswith("_ARS")
-			gene = name.replace("_ARS", "").split("_")[0]
+			if name.endswith("_ARS"):
+				gene = name[:-len("_ARS")]
+				ars_stats[gene] = {
+					"depth": mean_depth,
+					"prop_10x": n_10x / length,
+					"prop_20x": n_20x / length,
+					"prop_30x": n_30x / length,
+				}
+			elif "_CDS_" in name:
+				gene = name.split("_CDS_")[0]
+				b = cds_totals.setdefault(gene, {
+					"total_len": 0, "depth_sum": 0.0,
+					"n_10x": 0, "n_20x": 0, "n_30x": 0,
+				})
+				b["total_len"] += length
+				b["depth_sum"] += mean_depth * length
+				b["n_10x"] += n_10x
+				b["n_20x"] += n_20x
+				b["n_30x"] += n_30x
+			# else: unknown row name, silently skip
 
-			if is_ars:
-				print(f"{gene} ARS", f"{coverage_depth:.1f}", f"{prop_10x*100:.1f}%", f"{prop_20x*100:.1f}%", f"{prop_30x*100:.1f}%")
-				ars_pass[gene] = coverage_depth >= ars_depth_thresh and prop_20x >= ars_prop_20x_thresh and prop_30x >= ars_prop_30x_thresh
-			else:
-				print(gene, f"{coverage_depth:.1f}", f"{prop_10x*100:.1f}%", f"{prop_20x*100:.1f}%", f"{prop_30x*100:.1f}%")
-				gene_pass[gene] = coverage_depth >= depth_thresh and prop_20x >= prop_20x_thresh and prop_30x >= prop_30x_thresh
+	# Per-gene aggregated CDS stats
+	cds_stats = {}
+	for gene, b in cds_totals.items():
+		L = b["total_len"]
+		cds_stats[gene] = {
+			"depth": b["depth_sum"] / L if L else 0.0,
+			"prop_10x": b["n_10x"] / L if L else 0.0,
+			"prop_20x": b["n_20x"] / L if L else 0.0,
+			"prop_30x": b["n_30x"] / L if L else 0.0,
+		}
+
+	# Human-readable per-gene report (CDS aggregated, ARS as-is)
+	print("Region, Mean Depth, % Bases 10X, % Bases 20X, % Bases 30X")
+	for gene in sorted(set(list(cds_stats.keys()) + list(ars_stats.keys()))):
+		c = cds_stats.get(gene)
+		if c is not None:
+			print(f"{gene} CDS", f"{c['depth']:.1f}",
+				  f"{c['prop_10x']*100:.1f}%", f"{c['prop_20x']*100:.1f}%", f"{c['prop_30x']*100:.1f}%")
+		a = ars_stats.get(gene)
+		if a is not None:
+			print(f"{gene} ARS", f"{a['depth']:.1f}",
+				  f"{a['prop_10x']*100:.1f}%", f"{a['prop_20x']*100:.1f}%", f"{a['prop_30x']*100:.1f}%")
+
+	# Apply gates
+	cds_pass = {
+		gene: (c["depth"] >= cds_depth_thresh
+			   and c["prop_20x"] >= cds_prop_20x_thresh
+			   and c["prop_30x"] >= cds_prop_30x_thresh)
+		for gene, c in cds_stats.items()
+	}
+	ars_pass = {
+		gene: (a["depth"] >= ars_depth_thresh
+			   and a["prop_20x"] >= ars_prop_20x_thresh
+			   and a["prop_30x"] >= ars_prop_30x_thresh)
+		for gene, a in ars_stats.items()
+	}
 
 	sufficient_coverage_genes = []
-	for gene in gene_pass:
-		gene_ok = gene_pass.get(gene, False)
+	for gene in cds_pass:
+		cds_ok = cds_pass.get(gene, False)
 		ars_ok = ars_pass.get(gene, False)
-		if gene_ok and ars_ok:
+		if cds_ok and ars_ok:
 			sufficient_coverage_genes.append(gene)
 		else:
 			reasons = []
-			if not gene_ok:
-				reasons.append("gene-wide")
+			if not cds_ok:
+				c = cds_stats[gene]
+				reasons.append(
+					f"CDS [depth={c['depth']:.1f} prop_20x={c['prop_20x']:.2f} prop_30x={c['prop_30x']:.2f}]"
+				)
 			if not ars_ok:
-				reasons.append("ARS")
+				a = ars_stats.get(gene, {"depth": 0.0, "prop_20x": 0.0, "prop_30x": 0.0})
+				reasons.append(
+					f"ARS [depth={a['depth']:.1f} prop_20x={a['prop_20x']:.2f} prop_30x={a['prop_30x']:.2f}]"
+				)
 			print(f"Gene {gene} has insufficient {' and '.join(reasons)} coverage for haplotyping and star allele calling")
 
 	print("\n\n")
