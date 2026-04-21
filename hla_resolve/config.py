@@ -272,7 +272,7 @@ prop_20x_thresh = 0.0
 prop_30x_thresh = 0.0
 # ARS (antigen recognition site) thresholds
 # Mean ARS depth
-ars_depth_thresh = 0
+ars_depth_thresh = 10
 # Proportion of ARS bases with depth >= 20x
 ars_prop_20x_thresh = 0
 # Proportion of ARS bases with depth >= 30x
