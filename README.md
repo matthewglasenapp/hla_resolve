@@ -1,7 +1,11 @@
 <br/>
 
 <p align="center">
-  <img src="images/hla_resolve.png" alt="HLA-RESOLVE Logo" width="340"/><br/>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="images/hla_resolve.png">
+    <img src="images/hla_resolve_light.png" alt="HLA-RESOLVE Logo" width="340"/>
+  </picture>
+  <br/>
   <b>HLA Typing from PacBio Reads</b>
 </p>
 
