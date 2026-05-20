@@ -29,67 +29,73 @@ def preprocess_ont_sample(config):
 	q20_fastq = os.path.join(config['fastq_trimmed_dir'], f"{config['sample_ID']}.q20.fastq")
 	prowler_fastq = os.path.join(config['fastq_trimmed_dir'], f"{config['sample_ID']}.prowler.fastq.gz")
 
-	filter_low_quality_reads(
-		input_file=config['raw_fastq'],
-		output_file=q20_fastq,
-		min_quality=20,
-		threads=config['threads']
-	)
+	# Skip preprocessing if the final BAM (input to variant calling) already exists.
+	# Lets a failed sample be resumed at variant calling without redoing the slow
+	# trim + align + dedup steps. Delete hg38_rmdup_chr6_bam to force a clean rerun.
+	if os.path.exists(config['hg38_rmdup_chr6_bam']):
+		print(f"Found existing {config['hg38_rmdup_chr6_bam']} — skipping preprocessing.")
+	else:
+		filter_low_quality_reads(
+			input_file=config['raw_fastq'],
+			output_file=q20_fastq,
+			min_quality=20,
+			threads=config['threads']
+		)
 
-	trim_reads(
-		input_file=q20_fastq,
-		output_dir=config['fastq_trimmed_dir'],
-		sample_ID=config['sample_ID'],
-		threads=config['threads'],
-		prowler_trimmer=config['prowler_trimmer']
-	)
+		trim_reads(
+			input_file=q20_fastq,
+			output_dir=config['fastq_trimmed_dir'],
+			sample_ID=config['sample_ID'],
+			threads=config['threads'],
+			prowler_trimmer=config['prowler_trimmer']
+		)
 
-	trim_adapters(
-		adapters=config['adapters'],
-		input_file=prowler_fastq,
-		output_file=config['trimmed_fastq'],
-		sample_ID=config['sample_ID'],
-		threads=config['threads'],
-		adapter_file=config['adapter_file'],
-		five_prime_adapter=config['five_prime_adapter'],
-		three_prime_adapter=config['three_prime_adapter']
-	)
-	
-	align_to_reference_minimap(
-		input_file=config['trimmed_fastq'],
-		output_file=config['hg38_bam'],
-		read_group_string=config['read_group_string'],
-		reference_fasta=config['reference_genome'],
-		platform=config['platform'],
-		threads=config['threads']
-	)
+		trim_adapters(
+			adapters=config['adapters'],
+			input_file=prowler_fastq,
+			output_file=config['trimmed_fastq'],
+			sample_ID=config['sample_ID'],
+			threads=config['threads'],
+			adapter_file=config['adapter_file'],
+			five_prime_adapter=config['five_prime_adapter'],
+			three_prime_adapter=config['three_prime_adapter']
+		)
 
-	classify_DRB_reads(
-		input_file=config['trimmed_fastq'],
-		output_file=config['hg38_bam_drb'],
-		DRB34_reads_file=config['DRB34_reads_file'],
-		read_group_string=config['read_group_string'],
-		reference_fasta=config['drb_multiallele_reference'],
-		platform=config['platform'],
-		threads=config['threads']
-	)
+		align_to_reference_minimap(
+			input_file=config['trimmed_fastq'],
+			output_file=config['hg38_bam'],
+			read_group_string=config['read_group_string'],
+			reference_fasta=config['reference_genome'],
+			platform=config['platform'],
+			threads=config['threads']
+		)
 
-	filter_reads(
-		input_file=config['hg38_bam'],
-		output_file=config['hg38_chr6_bam'],
-		DRB34_reads_file=config['DRB34_reads_file'],
-		threads=config['threads']
-	)
+		classify_DRB_reads(
+			input_file=config['trimmed_fastq'],
+			output_file=config['hg38_bam_drb'],
+			DRB34_reads_file=config['DRB34_reads_file'],
+			read_group_string=config['read_group_string'],
+			reference_fasta=config['drb_multiallele_reference'],
+			platform=config['platform'],
+			threads=config['threads']
+		)
 
-	subprocess.run(f"samtools view -b -e 'length(seq)>=1200' {config['hg38_chr6_bam']} -o {config['hg38_chr6_bam']}.tmp && mv {config['hg38_chr6_bam']}.tmp {config['hg38_chr6_bam']} && samtools index {config['hg38_chr6_bam']}", shell=True, check=True)
+		filter_reads(
+			input_file=config['hg38_bam'],
+			output_file=config['hg38_chr6_bam'],
+			DRB34_reads_file=config['DRB34_reads_file'],
+			threads=config['threads']
+		)
 
-	mark_duplicates_picard(
-		input_file=config['hg38_chr6_bam'],
-		output_file=config['hg38_rmdup_chr6_bam'],
-		metrics_file=config['hg38_mrkdup_metrics'],
-		temp_dir=os.path.join(config['mapped_bam_dir'], "mark_duplicates"),
-		picard=config['picard']
-	)
+		subprocess.run(f"samtools view -b -e 'length(seq)>=1200' {config['hg38_chr6_bam']} -o {config['hg38_chr6_bam']}.tmp && mv {config['hg38_chr6_bam']}.tmp {config['hg38_chr6_bam']} && samtools index {config['hg38_chr6_bam']}", shell=True, check=True)
+
+		mark_duplicates_picard(
+			input_file=config['hg38_chr6_bam'],
+			output_file=config['hg38_rmdup_chr6_bam'],
+			metrics_file=config['hg38_mrkdup_metrics'],
+			temp_dir=os.path.join(config['mapped_bam_dir'], "mark_duplicates"),
+			picard=config['picard']
+		)
 
 	chr6_read_count = int(subprocess.check_output(f"samtools view -c {config['hg38_rmdup_chr6_bam']}", shell=True).strip())
 	if chr6_read_count >= min_reads_sample:

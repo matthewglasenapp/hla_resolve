@@ -357,6 +357,12 @@ def call_variants_clair3(input_bam, output_vcf, platform, clair3_sif, reference_
 	print(f"Clair3 model: {clair3_model}")
 
 	output_dir = os.path.join(genotypes_dir, sample_ID)
+	# Wipe any stale intermediates from a prior Clair3 run — run_clair3.sh does an
+	# internal bcftools concat over its own intermediates, so stale files cause
+	# duplicated header lines (e.g. two ##clair3_version) that break downstream
+	# longphase parsing with "pos 0 missing GT value".
+	if os.path.exists(output_dir):
+		shutil.rmtree(output_dir)
 	os.makedirs(output_dir, exist_ok=True)
 
 	bind_paths = [
