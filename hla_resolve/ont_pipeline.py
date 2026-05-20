@@ -26,7 +26,7 @@ from .preprocess_methods import (
 from .config import min_reads_sample
 
 def preprocess_ont_sample(config):
-	q20_fastq = os.path.join(config['fastq_trimmed_dir'], f"{config['sample_ID']}.q20.fastq.gz")
+	q20_fastq = os.path.join(config['fastq_trimmed_dir'], f"{config['sample_ID']}.q20.fastq")
 	prowler_fastq = os.path.join(config['fastq_trimmed_dir'], f"{config['sample_ID']}.prowler.fastq.gz")
 
 	filter_low_quality_reads(
