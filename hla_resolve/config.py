@@ -139,7 +139,7 @@ def ensure_clair3_sif():
         subprocess.run([
             "singularity", "pull",
             str(sif_file),
-            "docker://hkubal/clair3:latest"
+            "docker://hkubal/clair3:v2.0.0"
         ], check=True)
         print("Clair3 SIF download complete!")
 

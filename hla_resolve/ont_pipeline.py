@@ -6,6 +6,7 @@
 import os
 import subprocess
 from .preprocess_methods import (
+	filter_low_quality_reads,
 	trim_reads,
 	trim_adapters,
 	align_to_reference_minimap,
@@ -25,10 +26,18 @@ from .preprocess_methods import (
 from .config import min_reads_sample
 
 def preprocess_ont_sample(config):
+	q20_fastq = os.path.join(config['fastq_trimmed_dir'], f"{config['sample_ID']}.q20.fastq.gz")
 	prowler_fastq = os.path.join(config['fastq_trimmed_dir'], f"{config['sample_ID']}.prowler.fastq.gz")
 
-	trim_reads(
+	filter_low_quality_reads(
 		input_file=config['raw_fastq'],
+		output_file=q20_fastq,
+		min_quality=20,
+		threads=config['threads']
+	)
+
+	trim_reads(
+		input_file=q20_fastq,
 		output_dir=config['fastq_trimmed_dir'],
 		sample_ID=config['sample_ID'],
 		threads=config['threads'],

@@ -44,6 +44,18 @@ def convert_bam_to_fastq(input_file, output_file, platform, threads):
 	print(f"Raw fastq reads written to: {output_file}")
 	print("\n\n")
 
+# Discard reads with per-read mean Phred quality below the given threshold (ONT only)
+def filter_low_quality_reads(input_file, output_file, min_quality, threads):
+	print(f"Filtering out reads with mean Q < {min_quality} using chopper!")
+	print(f"chopper input file: {input_file}")
+
+	chopper_cmd = f"zcat {input_file} | chopper -q {min_quality} --threads {threads} | pigz -p {threads} > {output_file}"
+
+	subprocess.run(chopper_cmd, shell=True, check=True)
+
+	print(f"Quality-filtered reads written to: {output_file}")
+	print("\n\n")
+
 # Quality trimming step for ONT data using ProwlerTrimmer
 def trim_reads(input_file, output_dir, sample_ID, threads, prowler_trimmer):
 	print("Trimming reads with ProwlerTrimmer!")
@@ -51,11 +63,11 @@ def trim_reads(input_file, output_dir, sample_ID, threads, prowler_trimmer):
 	input_dir = os.path.dirname(input_file)
 	input_basename = os.path.basename(input_file)
 
-	prowler_trimmer_cmd = f'python3 {prowler_trimmer} -i {input_dir} -f {input_basename} -o {output_dir} -m "D" -q 20'
+	prowler_trimmer_cmd = f'python3 {prowler_trimmer} -i {input_dir} -f {input_basename} -o {output_dir} -m "D" -q 30'
 
 	subprocess.run(prowler_trimmer_cmd, shell=True, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-	pattern = os.path.join(output_dir, f"{sample_ID}*TrimLT-U0-D20W100L100R0.fastq")
+	pattern = os.path.join(output_dir, f"{sample_ID}*TrimLT-U0-D*W100L100R0.fastq")
 	matches = glob.glob(pattern)
 	if not matches:
 		raise FileNotFoundError(f"ProwlerTrimmer output not found matching {pattern}")
