@@ -5,6 +5,7 @@
 
 import os
 import sys
+import glob
 import subprocess
 import pysam
 import gzip
@@ -42,6 +43,28 @@ def convert_bam_to_fastq(input_file, output_file, platform, threads):
 	
 	print(f"Raw fastq reads written to: {output_file}")
 	print("\n\n")
+
+# Quality trimming step for ONT data using ProwlerTrimmer
+def trim_reads(input_file, output_dir, sample_ID, threads, prowler_trimmer):
+	print("Trimming reads with ProwlerTrimmer!")
+
+	input_dir = os.path.dirname(input_file)
+	input_basename = os.path.basename(input_file)
+
+	prowler_trimmer_cmd = f'python3 {prowler_trimmer} -i {input_dir} -f {input_basename} -o {output_dir} -m "D" -q 20'
+
+	subprocess.run(prowler_trimmer_cmd, shell=True, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+	pattern = os.path.join(output_dir, f"{sample_ID}*TrimLT-U0-D20W100L100R0.fastq")
+	matches = glob.glob(pattern)
+	if not matches:
+		raise FileNotFoundError(f"ProwlerTrimmer output not found matching {pattern}")
+	prowler_output = matches[0]
+
+	renamed_trimmed_fastq = os.path.join(output_dir, f"{sample_ID}.prowler.fastq")
+	os.rename(prowler_output, renamed_trimmed_fastq)
+	pigz_cmd = f"pigz -f -p {threads} {renamed_trimmed_fastq}"
+	subprocess.run(pigz_cmd, shell=True, check=True)
 
 def trim_adapters(adapters, input_file, output_file, sample_ID, threads, adapter_file = None, five_prime_adapter = None, three_prime_adapter = None):
 	if adapters:

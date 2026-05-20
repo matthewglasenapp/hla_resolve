@@ -17,7 +17,7 @@ from .config import (
 	mhc_start, mhc_stop, genes_bed, genes_of_interest, genes_of_interest_extended,
 	hla_genes_regions_file, reference_genome_minimap2,
 	DNA_bases, stop_codons, IMGT_XML, gff_dir, ARS_dict, gene_dict, CDS_dict, CLASS_I_GENES, dummy_reference, drb_multiallele_reference,
-	deepvariant_sif, tandem_repeat_bed, chr6_bed, pbtrgt_repeat_file, picard
+	deepvariant_sif, tandem_repeat_bed, chr6_bed, pbtrgt_repeat_file, picard, prowler_trimmer
 )
 
 class Samples:
@@ -426,6 +426,7 @@ def build_workflow_config(sample):
 		'pbtrgt_repeat_file': Samples.pbtrgt_repeat_file,
 		'longphase': longphase,
 		'picard': picard,
+		'prowler_trimmer': prowler_trimmer,
 		'cds_depth_thresh': cds_depth_thresh,
 		'cds_prop_20x_thresh': cds_prop_20x_thresh,
 		'cds_prop_30x_thresh': cds_prop_30x_thresh,

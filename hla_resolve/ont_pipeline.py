@@ -6,6 +6,7 @@
 import os
 import subprocess
 from .preprocess_methods import (
+	trim_reads,
 	trim_adapters,
 	align_to_reference_minimap,
 	classify_DRB_reads,
@@ -24,9 +25,19 @@ from .preprocess_methods import (
 from .config import min_reads_sample
 
 def preprocess_ont_sample(config):
+	prowler_fastq = os.path.join(config['fastq_trimmed_dir'], f"{config['sample_ID']}.prowler.fastq.gz")
+
+	trim_reads(
+		input_file=config['raw_fastq'],
+		output_dir=config['fastq_trimmed_dir'],
+		sample_ID=config['sample_ID'],
+		threads=config['threads'],
+		prowler_trimmer=config['prowler_trimmer']
+	)
+
 	trim_adapters(
 		adapters=config['adapters'],
-		input_file=config['raw_fastq'],
+		input_file=prowler_fastq,
 		output_file=config['trimmed_fastq'],
 		sample_ID=config['sample_ID'],
 		threads=config['threads'],
@@ -60,7 +71,9 @@ def preprocess_ont_sample(config):
 		DRB34_reads_file=config['DRB34_reads_file'],
 		threads=config['threads']
 	)
-	
+
+	subprocess.run(f"samtools view -b -e 'length(seq)>=1200' {config['hg38_chr6_bam']} -o {config['hg38_chr6_bam']}.tmp && mv {config['hg38_chr6_bam']}.tmp {config['hg38_chr6_bam']} && samtools index {config['hg38_chr6_bam']}", shell=True, check=True)
+
 	mark_duplicates_picard(
 		input_file=config['hg38_chr6_bam'],
 		output_file=config['hg38_rmdup_chr6_bam'],
