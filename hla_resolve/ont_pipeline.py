@@ -32,8 +32,12 @@ def preprocess_ont_sample(config):
 	# Skip preprocessing if the final BAM (input to variant calling) already exists.
 	# Lets a failed sample be resumed at variant calling without redoing the slow
 	# trim + align + dedup steps. Delete hg38_rmdup_chr6_bam to force a clean rerun.
-	if os.path.exists(config['hg38_rmdup_chr6_bam']):
-		print(f"Found existing {config['hg38_rmdup_chr6_bam']} — skipping preprocessing.")
+	rmdup_bam = config['hg38_rmdup_chr6_bam']
+	rmdup_exists = os.path.exists(rmdup_bam)
+	print(f"[skip-check] rmdup BAM path: {rmdup_bam}")
+	print(f"[skip-check] exists: {rmdup_exists}")
+	if rmdup_exists:
+		print(f"Found existing {rmdup_bam} — skipping preprocessing.")
 	else:
 		filter_low_quality_reads(
 			input_file=config['raw_fastq'],
