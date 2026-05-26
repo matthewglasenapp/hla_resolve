@@ -37,6 +37,9 @@ def main():
 
     args = parser.parse_args()
 
+    if args.platform == "ont":
+        parser.error("ONT support is not yet available; only --platform pacbio is supported.")
+
     # Defer heavy imports until after argument parsing so that
     # `hla_resolve` (no args) prints help instantly.
     import time
