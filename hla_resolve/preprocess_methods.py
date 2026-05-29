@@ -235,7 +235,7 @@ def classify_DRB_reads_pbmm2(input_file, output_file, DRB34_reads_file, read_gro
 	_parse_drb34_reads(output_file, DRB34_reads_file)
 
 # Mark duplicates for ONT data or WGS PacBio data
-# pbmarkdup used for targeted PacBio data but does not scale well for WGS data
+# pbmarkdup used for hybrid-capture PacBio data but does not scale well for WGS data
 def mark_duplicates_picard(input_file, output_file, metrics_file, temp_dir, picard):
 	os.makedirs(temp_dir, exist_ok=True)
 	

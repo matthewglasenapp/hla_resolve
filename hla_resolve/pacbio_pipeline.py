@@ -28,7 +28,7 @@ from .preprocess_methods import (
 from .config import min_reads_sample
 
 def preprocess_pacbio_sample(config):
-	if config['scheme'] == "targeted":
+	if config['scheme'] in ("hybrid_capture", "amplicon"):
 		trim_adapters(
 			adapters=config['adapters'],
 			input_file=config['raw_fastq'],
@@ -40,14 +40,21 @@ def preprocess_pacbio_sample(config):
 			three_prime_adapter=config['three_prime_adapter']
 		)
 
-		mark_duplicates_pbmarkdup(
-			input_file=config['trimmed_fastq'],
-			output_file=config['trimmed_pbmarkdup_fastq'],
-			threads=config['threads']
-		)
+		# Skip pbmarkdup for amplicon: shared PCR primer ends produce
+		# identical alignment coordinates that the duplicate caller would
+		# discard as PCR duplicates.
+		if config['scheme'] == "hybrid_capture":
+			mark_duplicates_pbmarkdup(
+				input_file=config['trimmed_fastq'],
+				output_file=config['trimmed_pbmarkdup_fastq'],
+				threads=config['threads']
+			)
+			align_input = config['trimmed_pbmarkdup_fastq_gz']
+		else:
+			align_input = config['trimmed_fastq']
 
 		align_to_reference_minimap(
-			input_file=config['trimmed_pbmarkdup_fastq_gz'],
+			input_file=align_input,
 			output_file=config['hg38_bam'],
 			read_group_string=config['read_group_string'],
 			reference_fasta=config['reference_genome'],
@@ -56,7 +63,7 @@ def preprocess_pacbio_sample(config):
 		)
 
 		classify_DRB_reads(
-			input_file=config['trimmed_pbmarkdup_fastq_gz'],
+			input_file=align_input,
 			output_file=config['hg38_bam_drb'],
 			DRB34_reads_file=config['DRB34_reads_file'],
 			read_group_string=config['read_group_string'],

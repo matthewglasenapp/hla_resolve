@@ -9,7 +9,7 @@
   <b>HLA Typing from PacBio Reads</b>
 </p>
 
-HLA-Resolve is a command-line tool for high-resolution (four-field) HLA typing from PacBio HiFi sequencing reads. It reconstructs phased, full-gene haplotypes for the eight classical HLA loci (HLA-A, -B, -C, -DPA1, -DPB1, -DQA1, -DQB1, -DRB1) and queries the [IPD-IMGT/HLA database](https://www.ebi.ac.uk/ipd/imgt/hla/) to return star allele calls. The tool is compatible with whole-genome, whole-exome, and targeted sequencing data.
+HLA-Resolve is a command-line tool for high-resolution (four-field) HLA typing from PacBio HiFi sequencing reads. It reconstructs phased, full-gene haplotypes for the eight classical HLA loci (HLA-A, -B, -C, -DPA1, -DPB1, -DQA1, -DQB1, -DRB1) and queries the [IPD-IMGT/HLA database](https://www.ebi.ac.uk/ipd/imgt/hla/) to return star allele calls. The tool is compatible with whole-genome, whole-exome, hybrid-capture, and amplicon sequencing data.
 
 **Authors:** [Matthew Glasenapp](https://github.com/matthewglasenapp), [Alex Symons](https://github.com/FlyingFish800), [Omar Cornejo](https://github.com/oeco28)
 
@@ -37,7 +37,7 @@ HLA-Resolve is a command-line tool for high-resolution (four-field) HLA typing f
 ## Overview
 
 #### Input
-A raw, single-sample (demultiplexed) PacBio sequencing file in FASTQ or unmapped BAM format (compressed or uncompressed). The tool is compatible with WGS, WES, and targeted sequencing schemes.
+A raw, single-sample (demultiplexed) PacBio sequencing file in FASTQ or unmapped BAM format (compressed or uncompressed). The tool is compatible with WGS, WES, hybrid-capture, and amplicon sequencing schemes.
 
 #### Output(s)
 
@@ -82,7 +82,7 @@ The first time ``hla_resolve`` is executed, it will automatically download the f
 ## Quick Start
 
 ```
-usage: hla_resolve [-h] [--version] --input_file INPUT_FILE --sample_name SAMPLE_NAME --platform {pacbio,ont} --scheme {WGS,WES,targeted} --output_dir OUTPUT_DIR
+usage: hla_resolve [-h] [--version] --input_file INPUT_FILE --sample_name SAMPLE_NAME --platform {pacbio,ont} --scheme {WGS,WES,hybrid_capture,amplicon} --output_dir OUTPUT_DIR
                    [--trim_adapters] [--adapter_file ADAPTER_FILE] [--threads THREADS] [--read_group_string READ_GROUP_STRING] [--clean-up] [--clair3_model CLAIR3_MODEL]
 
 Run HLA-Resolve
@@ -96,7 +96,7 @@ options:
                         Override the parsed sample name (default: None)
   --platform {pacbio,ont}
                         Specify sequencing platform (pacbio, ont) (default: None)
-  --scheme {WGS,WES,targeted}
+  --scheme {WGS,WES,hybrid_capture,amplicon}
                         Sequencing scheme (default: None)
   --output_dir OUTPUT_DIR
                         Output Directory (default: None)
@@ -112,20 +112,20 @@ options:
                         Clair3 model name (bundled in SIF). Defaults to r1041_e82_400bps_sup_v500 for ONT
                         and hifi_revio for PacBio. (default: None)
 
-Example: hla_resolve --input_file reads.bam --sample_name HG002 --platform pacbio --scheme targeted --output_dir out --threads 10
+Example: hla_resolve --input_file reads.bam --sample_name HG002 --platform pacbio --scheme hybrid_capture --output_dir out --threads 10
 
 ```
 
 ## Demo
 
-Input data: PacBio Revio HiFi targeted sequencing reads from HG002 (Ashkenazi Son), a sample from the GIAB and HPRC benchmarks. Run from the repository root:
+Input data: PacBio Revio HiFi hybrid-capture sequencing reads from HG002 (Ashkenazi Son), a sample from the GIAB and HPRC benchmarks. Run from the repository root:
 
 ```text
 hla_resolve \
   --input_file demo/HG002.hifi_reads.fastq.gz \
   --sample_name HG002 \
   --platform pacbio \
-  --scheme targeted \
+  --scheme hybrid_capture \
   --output_dir test \
   --trim_adapters \
   --adapter_file demo/adapters.fasta \
