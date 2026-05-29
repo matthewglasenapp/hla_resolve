@@ -4,6 +4,7 @@
 # See LICENSE.txt for license details.
 
 import os
+import sys
 import subprocess
 import pysam
 from Bio.Seq import Seq
@@ -373,7 +374,14 @@ def run_vcf2fasta(input_vcf, input_gff, reference_genome, output_dir, gene, feat
 	elif feature == "gene":
 		vcf2fasta_cmd = f"vcf2fasta --fasta {reference_genome} --vcf {input_vcf} --gff {input_gff} -o {output_dir} --feat gene --force"
 
-	subprocess.run(vcf2fasta_cmd, shell=True, check=True, capture_output=True, text=True)
+	try:
+		subprocess.run(vcf2fasta_cmd, shell=True, check=True, capture_output=True, text=True)
+	except subprocess.CalledProcessError as e:
+		if e.stdout:
+			print(e.stdout, end="")
+		if e.stderr:
+			print(e.stderr, end="", file=sys.stderr)
+		raise
 
 def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA_bases, stop_codons, unphased_genes=None, gene_dict=None, CDS_dict=None, gff_dir=None, cds_rescued_genes=None, ARS_dict=None, CLASS_I_GENES=None, gene_filtered_vcfs=None):
 	# Use subprocess.run with capture_output to avoid race conditions with temporary files
