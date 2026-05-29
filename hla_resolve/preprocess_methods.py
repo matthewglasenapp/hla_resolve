@@ -470,23 +470,12 @@ def rescue_refcalls(input_vcf, output_vcf, indels_only=False):
 						# Set genotype: hom-alt takes precedence over het
 						if passing_hom:
 							new_gt = (passing_hom[0], passing_hom[0])
-							zygosity = "hom-alt"
 						elif len(passing_het) >= 2:
 							new_gt = (passing_het[0], passing_het[1])
-							zygosity = "compound-het"
 						else:
 							new_gt = (0, passing_het[0])
-							zygosity = "het"
 						sample['GT'] = new_gt
 						rescued += 1
-
-						gt_str = "/".join(str(a) for a in new_gt)
-						alts_str = ",".join(record.alts)
-						ad_str = ",".join(str(a) for a in ad)
-						vaf_str = ",".join(f"{v:.3f}" for v in vaf)
-						is_snp = len(record.ref) == 1 and all(len(a) == 1 for a in record.alts)
-						var_type = "SNP" if is_snp else "INDEL"
-						print(f"  RESCUED {var_type}: {record.chrom}:{record.pos} {record.ref}>{alts_str} GT={gt_str} ({zygosity}) GQ={gq} DP={dp} AD={ad_str} VAF={vaf_str}")
 
 		vcf_out.write(record)
 
