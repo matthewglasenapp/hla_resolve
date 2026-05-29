@@ -110,25 +110,28 @@ def resolve_alleles(config):
 		ARS_dict=config.get('ARS_dict', None),
 		CDS_dict=config.get('CDS_dict', None))
 	
-	# Print which genes were successfully phased
-	print("Fully Phased Genes:")
-	for gene in config['genes_of_interest']:
-		if gene in phased_genes:
+	# Print which genes were successfully phased (skip empty sections)
+	fully_phased = [g for g in config['genes_of_interest'] if g in phased_genes]
+	if fully_phased:
+		print("Fully Phased Genes:")
+		for gene in fully_phased:
 			print(f"  {gene}")
-	print("\n")
+		print("\n")
 
-	print("Partially Phased Genes:")
-	for gene in config['genes_of_interest']:
-		if gene in unphased_genes:
+	partially_phased = [g for g in config['genes_of_interest'] if g in unphased_genes]
+	if partially_phased:
+		print("Partially Phased Genes:")
+		for gene in partially_phased:
 			print(f"  {gene}")
-	print("\n")
+		print("\n")
 
-	print("CDS-Rescued Genes:")
-	for gene in config['genes_of_interest']:
-		if gene in cds_rescued_genes:
+	rescued = [g for g in config['genes_of_interest'] if g in cds_rescued_genes]
+	if rescued:
+		print("CDS-Rescued Genes:")
+		for gene in rescued:
 			tier = cds_rescued_genes[gene]["tier"]
 			print(f"  {gene} (tier: {tier})")
-	print("\n")
+		print("\n")
 	
 	if config['platform'] == "PACBIO":
 		input_vcf = config['hiphase_joint_vcf']
