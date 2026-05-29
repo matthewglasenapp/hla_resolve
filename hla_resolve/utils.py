@@ -55,6 +55,7 @@ def setup_logging(output_dir, sample_name=None):
     sys._hla_resolve_log_file = log_file
 
     print(f"Logging to {log_path}")
+    print("\n")
     return log_path
 
 def check_required_commands():    
@@ -92,4 +93,4 @@ def check_required_commands():
         sys.exit(1)
     else:
         print("All tools required are installed!")
-        print("\n\n")
+        print("\n")

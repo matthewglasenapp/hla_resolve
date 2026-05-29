@@ -297,14 +297,14 @@ def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail
 
 	# ========== UNPHASED PASS SUMMARY ==========
 	if unphased_hets:
-		print(f"{gene}: {len(unphased_hets)} unphased PASS het(s) → {pass_unphased}")
+		print(f"{gene}: {len(unphased_hets)} unphased PASS het(s) → {pass_unphased}\n")
 
 	if config.VERBOSE:
 		if force_include_unphased and unphased_hets:
 			print(f"\nUnphased PASS variants in {gene}:\n")
 			for rec in unphased_hets:
 				print(str(rec).strip())
-			print()
+			print("\n")
 		else:
 			unph = pysam.VariantFile(pass_unphased)
 			records = [rec for rec in unph]
@@ -313,7 +313,7 @@ def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail
 				print(f"\nUnphased PASS variants in {gene}:\n")
 				for rec in records:
 					print(str(rec).strip())
-				print()
+				print("\n")
 
 def compute_indel_offset(vcf_path, haplotype, target_pos):
 	"""
@@ -658,10 +658,10 @@ def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA
 		
 		if feat == "CDS":
 			if allele_1[0:3] != "ATG" or allele_2[0:3] != "ATG":
-				print(f"{sample_ID} {gene} CDS sequence does not begin with start codon!")
+				print(f"{sample_ID} {gene} CDS sequence does not begin with start codon!\n")
 
 			if not allele_1[-3:] in stop_codons or not allele_2[-3:] in stop_codons:
-				print(f"{sample_ID} {gene} CDS sequence does not end with stop codon!")
+				print(f"{sample_ID} {gene} CDS sequence does not end with stop codon!\n")
 		
 		if feat not in fasta_dict:
 			fasta_dict[feat] = {}
@@ -699,7 +699,7 @@ def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA
 				cds_records.append(SeqRecord(Seq(hap2_seq), id=hap2_name, description = ""))
 
 	SeqIO.write(gene_records, outfile_gene, "fasta")
-	print(f"Wrote {len(gene_records)} records to {outfile_gene}")
+	print(f"Wrote {len(gene_records)} records to {outfile_gene}\n")
 	SeqIO.write(cds_records, outfile_CDS, "fasta")
 	print(f"Wrote {len(cds_records)} records to {outfile_CDS}")
 	print("\n")

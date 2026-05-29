@@ -142,7 +142,7 @@ class Samples:
         print(f"Processing Sample {self.sample_ID}!\n\n")
         print(f"Sample ID: {self.sample_ID}")
         print(f"Read Group: {self.read_group_string}")
-        print("\n\n")
+        print("\n")
 
         # WGS/WES PacBio uses pbmm2 directly on the input BAM — no FASTQ conversion needed
         if not (self.platform == "PACBIO" and self.scheme in ("WGS", "WES")):
