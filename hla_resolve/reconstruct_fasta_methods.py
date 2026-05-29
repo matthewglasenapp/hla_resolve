@@ -10,6 +10,7 @@ import pysam
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio import SeqIO
+from . import config
 
 def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail_vcf, sv_overlap_vcf, pass_unphased, filtered_vcf, platform, genotyper, force_include_unphased=False):
 	# Extract region
@@ -74,10 +75,10 @@ def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail
 
 	vf_sv_pass.close()
 
-	# Debug: Print collected SV regions
-	print(f"[SV-OVERLAP] {gene}: Collected {len(sv_regions)} PASS pbsv SV regions for overlap checking")
-	for sv_start, sv_end, sv_haps in sv_regions:
-		print(f"[SV-OVERLAP]   SV region: {sv_start}-{sv_end}, haplotypes: {sv_haps}")
+	if config.VERBOSE:
+		print(f"[SV-OVERLAP] {gene}: Collected {len(sv_regions)} PASS pbsv SV regions for overlap checking")
+		for sv_start, sv_end, sv_haps in sv_regions:
+			print(f"[SV-OVERLAP]   SV region: {sv_start}-{sv_end}, haplotypes: {sv_haps}")
 
 	# ========== FIRST PASS (part 2): Collect TRGT tandem repeat regions ==========
 	# TRGT records have explicit REF/ALT allele sequences. Any bcftools-called
@@ -93,9 +94,10 @@ def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail
 			tr_regions.append((tr_start, tr_end))
 	vf_tr_pass.close()
 
-	print(f"[TR-OVERLAP] {gene}: Collected {len(tr_regions)} TRGT regions for overlap suppression")
-	for tr_start, tr_end in tr_regions:
-		print(f"[TR-OVERLAP]   TR region: {tr_start}-{tr_end}")
+	if config.VERBOSE:
+		print(f"[TR-OVERLAP] {gene}: Collected {len(tr_regions)} TRGT regions for overlap suppression")
+		for tr_start, tr_end in tr_regions:
+			print(f"[TR-OVERLAP]   TR region: {tr_start}-{tr_end}")
 
 	# Helper function: check if variant overlaps a PASS SV on the same haplotype
 	def overlaps_sv_same_haplotype(pos, ref_len, var_haplotypes, indel_size=0):
@@ -164,17 +166,19 @@ def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail
 		# cause double-counting in vcf2fasta.
 		is_trgt = "TRID" in rec.info and rec.info["TRID"] not in (None, "", ".")
 		if not is_trgt and tr_regions and overlaps_tr_region(rec.pos, len(rec.ref)):
-			print(f"[TR-OVERLAP]   Suppressed: {rec.chrom}:{rec.pos} {rec.ref[:20]}->{rec.alts[0][:20] if rec.alts else '.'} (inside TRGT span)")
+			if config.VERBOSE:
+				print(f"[TR-OVERLAP]   Suppressed: {rec.chrom}:{rec.pos} {rec.ref[:20]}->{rec.alts[0][:20] if rec.alts else '.'} (inside TRGT span)")
 			sv_overlap_out.write(rec)
 			sv_overlap_count += 1
 			continue
 
 		# TRGT records with explicit alleles bypass quality filters (no DP/GQ)
 		if is_trgt:
-			sample_gt = sample.get("GT")
-			gt_str = "|".join(str(a) for a in sample_gt) if sample_gt else "."
-			alts_str = ",".join(str(a)[:30] for a in rec.alts) if rec.alts else "."
-			print(f"[TR-PASS]      {gene} {rec.chrom}:{rec.pos} REF={rec.ref[:30]} ALT={alts_str} GT={gt_str} TRID={rec.info.get('TRID','?')}")
+			if config.VERBOSE:
+				sample_gt = sample.get("GT")
+				gt_str = "|".join(str(a) for a in sample_gt) if sample_gt else "."
+				alts_str = ",".join(str(a)[:30] for a in rec.alts) if rec.alts else "."
+				print(f"[TR-PASS]      {gene} {rec.chrom}:{rec.pos} REF={rec.ref[:30]} ALT={alts_str} GT={gt_str} TRID={rec.info.get('TRID','?')}")
 			pass_out.write(rec)
 			continue
 
@@ -195,9 +199,9 @@ def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail
 					var_haplotypes.add(i)
 
 			if var_haplotypes and overlaps_sv_same_haplotype(rec.pos, len(rec.ref), var_haplotypes, indel_size):
-				# This indel overlaps a PASS SV on the same haplotype - write to sv_overlap file
 				sv_overlap_count += 1
-				print(f"[SV-OVERLAP]   Suppressed indel ({indel_size}bp): {rec.chrom}:{rec.pos} {rec.ref[:20]}...>{rec.alts[0][:20]}... GT={gt} haps={var_haplotypes}")
+				if config.VERBOSE:
+					print(f"[SV-OVERLAP]   Suppressed indel ({indel_size}bp): {rec.chrom}:{rec.pos} {rec.ref[:20]}...>{rec.alts[0][:20]}... GT={gt} haps={var_haplotypes}")
 				sv_overlap_out.write(rec)
 				continue
 
@@ -218,7 +222,8 @@ def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail
 	fail_out.close()
 	sv_overlap_out.close()
 
-	print(f"[SV-OVERLAP] {gene}: Total small variants suppressed due to SV overlap: {sv_overlap_count}")
+	if config.VERBOSE:
+		print(f"[SV-OVERLAP] {gene}: Total small variants suppressed due to SV overlap: {sv_overlap_count}")
 
 	subprocess.run(f"bcftools index -f {symbolic_vcf}", shell=True, check=True)
 	subprocess.run(f"bcftools index -f {pass_vcf}", shell=True, check=True)
@@ -240,7 +245,8 @@ def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail
 			if not sample.phased:
 				unphased_hets.append(rec)
 
-	print(f"{gene}: het={len(het_sites)}, unphased={len(unphased_hets)}")
+	if config.VERBOSE:
+		print(f"{gene}: het={len(het_sites)}, unphased={len(unphased_hets)}")
 	allow_single_unphased = (len(het_sites) == 1 and len(unphased_hets) == 1)
 
 	het_clauses = [
@@ -250,7 +256,8 @@ def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail
 
 	if force_include_unphased:
 		# CDS rescue: include ALL variants (phased + unphased) in filtered VCF
-		print(f"[CDS-RESCUE] {gene}: force_include_unphased=True, keeping all variants")
+		if config.VERBOSE:
+			print(f"[CDS-RESCUE] {gene}: force_include_unphased=True, keeping all variants")
 		unphased_expr = 'GT="9/9"'     # matches nothing → nothing sent to pass_unphased
 		keep_expr = 'GT!="9/9"'        # matches everything → all variants kept
 
@@ -288,21 +295,25 @@ def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail
 	subprocess.run(cmd, shell=True, check=True)
 	subprocess.run(f"bcftools index -f {filtered_vcf}", shell=True, check=True)
 
-	# ========== PRINT UNPHASED RECORDS NEATLY ==========
-	if force_include_unphased and unphased_hets:
-		print(f"\nUnphased PASS variants in {gene}:\n")
-		for rec in unphased_hets:
-			print(str(rec).strip())
-		print()
-	else:
-		unph = pysam.VariantFile(pass_unphased)
-		records = [rec for rec in unph]
+	# ========== UNPHASED PASS SUMMARY ==========
+	if unphased_hets:
+		print(f"{gene}: {len(unphased_hets)} unphased PASS het(s) → {pass_unphased}")
 
-		if records:
+	if config.VERBOSE:
+		if force_include_unphased and unphased_hets:
 			print(f"\nUnphased PASS variants in {gene}:\n")
-			for rec in records:
+			for rec in unphased_hets:
 				print(str(rec).strip())
 			print()
+		else:
+			unph = pysam.VariantFile(pass_unphased)
+			records = [rec for rec in unph]
+
+			if records:
+				print(f"\nUnphased PASS variants in {gene}:\n")
+				for rec in records:
+					print(str(rec).strip())
+				print()
 
 def compute_indel_offset(vcf_path, haplotype, target_pos):
 	"""
@@ -660,12 +671,13 @@ def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA
 		fasta_dict[feat][gene].append(allele_1)
 		fasta_dict[feat][gene].append(allele_2)
 
-	print("\n")
-	print("Sanity check of partially phased genes")
-	for string in logging_strings:
-		print(string)
-	print("\n")
-	
+	if config.VERBOSE:
+		print("\n")
+		print("Sanity check of partially phased genes")
+		for string in logging_strings:
+			print(string)
+		print("\n")
+
 	gene_records = []
 	cds_records = []
 

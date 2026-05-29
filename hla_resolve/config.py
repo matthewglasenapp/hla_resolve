@@ -9,6 +9,12 @@ import subprocess
 from pathlib import Path
 from zipfile import ZipFile
 
+# Runtime verbosity flag. Set to True by cli.py when --verbose is passed.
+# Consumers should `from . import config` and check `config.VERBOSE` so the
+# runtime mutation is visible (a `from .config import VERBOSE` import would
+# bind the False value at import time).
+VERBOSE = False
+
 # Get the data directory relative to this config file
 _data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 

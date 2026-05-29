@@ -32,6 +32,7 @@ def main():
     parser.add_argument("--read_group_string", required=False, help="Override the parsed read group string", default=None)
     parser.add_argument("--clean-up", action="store_true", help="Remove intermediate files")
     parser.add_argument("--clair3_model", type=str, required=False, default=None, help="Clair3 model name (bundled in SIF). Defaults to r1041_e82_400bps_sup_v500 for ONT and hifi_revio for PacBio.")
+    parser.add_argument("--verbose", action="store_true", help="Print detailed per-variant diagnostic output (overlap suppression, RefCall rescue, unphased het records, CDS sanity check)")
 
     # Show help and exit if no arguments were provided
     if len(sys.argv) == 1:
@@ -51,12 +52,15 @@ def main():
     # `hla_resolve` (no args) prints help instantly.
     import time
     import os
+    from . import config
     from .sample_manager import Samples, build_workflow_config
     from .utils import check_required_commands, setup_logging
     from .ont_pipeline import preprocess_ont_sample
     from .pacbio_pipeline import preprocess_pacbio_sample
     from .resolve_alleles_pipeline import resolve_alleles
     from .cleanup import cleanup_intermediate_files
+
+    config.VERBOSE = args.verbose
     
     args.aligner = "minimap2"
     if args.platform == "ont":
