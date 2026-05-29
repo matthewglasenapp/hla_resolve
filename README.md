@@ -15,6 +15,8 @@ HLA-Resolve is a command-line tool for high-resolution (four-field) HLA typing f
 
 **⚠️ Note:** HLA-Resolve is intended for high-coverage PacBio HiFi reads. ONT support is still in development. The HLA-Resolve [manuscript](https://doi.org/10.64898/2026.03.27.26349549) is under peer review.
 
+> **Disclaimer:** HLA-Resolve is pre-release software intended for research use only and not for use in diagnostic procedures.
+
 ## Table of Contents
 
 - [Requirements](#requirements)

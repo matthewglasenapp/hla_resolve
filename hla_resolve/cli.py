@@ -15,6 +15,9 @@ def main():
     epilog=textwrap.dedent("""\
         Example:
           hla_resolve --input_file reads.bam --sample_name HG002 --platform pacbio --scheme targeted --output_dir out --threads 10
+
+        HLA-Resolve is pre-release software intended for research use only
+        and not for use in diagnostic procedures.
     """),
 )
     parser.add_argument("--version", action="version", version=f"%(prog)s {version('hla_resolve')}")
