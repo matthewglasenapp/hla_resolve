@@ -5,7 +5,27 @@
 
 import os
 import shutil
+import subprocess
 import sys
+
+
+def run_quiet(cmd):
+    """Run a shell command with check=True. Stderr/stdout are discarded on
+    success; on non-zero exit the captured streams are re-emitted (stdout to
+    sys.stdout, stderr to sys.stderr — both of which go through TeeStream into
+    the log file) and CalledProcessError is re-raised. In --verbose mode,
+    streams pass through unfiltered so tool output reaches the terminal."""
+    from . import config
+    if config.VERBOSE:
+        return subprocess.run(cmd, shell=True, check=True)
+    try:
+        return subprocess.run(cmd, shell=True, check=True, capture_output=True, text=True)
+    except subprocess.CalledProcessError as e:
+        if e.stdout:
+            print(e.stdout, end="")
+        if e.stderr:
+            print(e.stderr, end="", file=sys.stderr)
+        raise
 
 
 class TeeStream:

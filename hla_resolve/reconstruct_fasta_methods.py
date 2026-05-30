@@ -11,6 +11,7 @@ from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio import SeqIO
 from . import config
+from .utils import run_quiet
 
 def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail_vcf, sv_overlap_vcf, pass_unphased, filtered_vcf, platform, genotyper, force_include_unphased=False):
 	# Extract region
@@ -19,8 +20,8 @@ def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail
 	region_vcf = os.path.join(os.path.dirname(filtered_vcf), f"{prefix}.vcf.gz")
 
 	cmd = f"bcftools view -r {filter_region} {input_vcf} -Oz -o {region_vcf}"
-	subprocess.run(cmd, shell=True, check=True)
-	subprocess.run(f"bcftools index -f {region_vcf}", shell=True, check=True)
+	run_quiet(cmd)
+	run_quiet(f"bcftools index -f {region_vcf}")
 
 	# ========== FIRST PASS: Collect PASS pbsv SV regions with haplotype info ==========
 	sv_regions = []  # list of (start, end, affected_haplotypes)
@@ -225,10 +226,10 @@ def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail
 	if config.VERBOSE:
 		print(f"[SV-OVERLAP] {gene}: Total small variants suppressed due to SV overlap: {sv_overlap_count}")
 
-	subprocess.run(f"bcftools index -f {symbolic_vcf}", shell=True, check=True)
-	subprocess.run(f"bcftools index -f {pass_vcf}", shell=True, check=True)
-	subprocess.run(f"bcftools index -f {fail_vcf}", shell=True, check=True)
-	subprocess.run(f"bcftools index -f {sv_overlap_vcf}", shell=True, check=True)
+	run_quiet(f"bcftools index -f {symbolic_vcf}")
+	run_quiet(f"bcftools index -f {pass_vcf}")
+	run_quiet(f"bcftools index -f {fail_vcf}")
+	run_quiet(f"bcftools index -f {sv_overlap_vcf}")
 
 	# ========== WHITELIST LOGIC (RESTORED) ==========
 	het_sites = []
@@ -287,13 +288,13 @@ def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail
 
 	# extract unphased PASS
 	cmd = f"bcftools view -i '{unphased_expr}' {pass_vcf} -Oz -o {pass_unphased}"
-	subprocess.run(cmd, shell=True, check=True)
-	subprocess.run(f"bcftools index -f {pass_unphased}", shell=True, check=True)
+	run_quiet(cmd)
+	run_quiet(f"bcftools index -f {pass_unphased}")
 
 	# extract phased PASS (final filtered VCF)
 	cmd = f"bcftools view -i '{keep_expr}' {pass_vcf} -Oz -o {filtered_vcf}"
-	subprocess.run(cmd, shell=True, check=True)
-	subprocess.run(f"bcftools index -f {filtered_vcf}", shell=True, check=True)
+	run_quiet(cmd)
+	run_quiet(f"bcftools index -f {filtered_vcf}")
 
 	# ========== UNPHASED PASS SUMMARY ==========
 	if unphased_hets:

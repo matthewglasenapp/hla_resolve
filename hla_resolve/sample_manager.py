@@ -10,6 +10,7 @@ import json
 import pysam
 from Bio import SeqIO
 from .preprocess_methods import convert_bam_to_fastq
+from .utils import run_quiet
 from .config import (
 	min_reads_sample, min_read_length,
 	longphase, clair3_sif, clair3_ont_model, clair3_hifi_model,
@@ -239,7 +240,7 @@ class Samples:
             new_fq = os.path.join(self.fastq_raw_dir, self.sample_ID + ".fastq")
             shutil.copy(self.input_file, new_fq)
             pigz_cmd = f"pigz -f -p {self.threads} {new_fq}"
-            subprocess.run(pigz_cmd, shell=True, check=True)
+            run_quiet(pigz_cmd)
             expected_output = os.path.join(self.fastq_raw_dir, self.sample_ID + ".fastq.gz")
             if not os.path.exists(expected_output):
                 raise RuntimeError(f"Compression failed: {expected_output} not found")

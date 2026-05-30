@@ -11,6 +11,7 @@ import gzip
 import shutil
 import tempfile
 from . import config
+from .utils import run_quiet
 
 # Convert BAM file of unmapped HiFi (ccs) reads to FASTQ format for marking duplicates and trimming adapters
 def convert_bam_to_fastq(input_file, output_file, platform, threads):
@@ -21,13 +22,13 @@ def convert_bam_to_fastq(input_file, output_file, platform, threads):
 		pbi_file = input_file + ".pbi"
 		if not os.path.exists(pbi_file):
 			print(f"PBI index not found for {input_file}. Indexing with pbindex...")
-			subprocess.run(f"pbindex {input_file}", shell=True, check=True)
+			run_quiet(f"pbindex {input_file}")
 
 		output_prefix = output_file.split(".fastq.gz")[0]
 
 		bam2fastq_cmd = f"bam2fastq -j {threads} {input_file} -o {output_prefix}"
 
-		subprocess.run(bam2fastq_cmd, shell=True, check=True)
+		run_quiet(bam2fastq_cmd)
 
 	elif platform == "ONT":
 		print("Converting ONT raw reads to fastq format using Samtools fastq!")
@@ -36,7 +37,7 @@ def convert_bam_to_fastq(input_file, output_file, platform, threads):
 		pigz_threads = threads - samtools_threads
 		samtools_fq_cmd = f"samtools fastq -@ {samtools_threads} {input_file} | pigz -p {pigz_threads} > {output_file}"
 		
-		subprocess.run(samtools_fq_cmd, shell=True, check=True)
+		run_quiet(samtools_fq_cmd)
 	
 	print(f"Raw fastq reads written to: {output_file}")
 	print("\n")
@@ -53,7 +54,7 @@ def trim_adapters(adapters, input_file, output_file, sample_ID, threads, adapter
 			# Use cutadapt with specific adapter sequences from the adapter file
 			cutadapt_cmd = f"cutadapt -j {threads} --quiet -n 2 --minimum-length 100 -g {five_prime_adapter} -a {three_prime_adapter} -o {output_file} {input_file}"
 
-			subprocess.run(cutadapt_cmd, shell=True, check=True)
+			run_quiet(cutadapt_cmd)
 
 			print(f"Trimmed reads written to: {output_file}")
 			print("\n")
@@ -93,7 +94,7 @@ def mark_duplicates_pbmarkdup(input_file, output_file, threads):
 		print(result.stderr, end="", file=sys.stderr)
 
 	gzip_cmd = f"pigz -f -p {threads} {output_file}"
-	subprocess.run(gzip_cmd, shell=True, check=True)
+	run_quiet(gzip_cmd)
 	
 	print(f"De-duplicated reads written to: {output_file}.gz!")
 	print("\n")
@@ -108,7 +109,7 @@ def align_to_reference_pbmm2(input_file, output_file, read_group_string, referen
 	if not os.path.exists(mmi_file):
 		print("Building pbmm2 index...")
 		index_cmd = f"pbmm2 index {reference_fasta} {mmi_file}"
-		subprocess.run(index_cmd, shell=True, check=True)
+		run_quiet(index_cmd)
 
 	pbmm2_threads = int(threads * 2 / 3)
 	samtools_threads = threads - pbmm2_threads
@@ -120,10 +121,10 @@ def align_to_reference_pbmm2(input_file, output_file, read_group_string, referen
 		pbmm2_cmd += f" --rg '{read_group_string}'"
 
 	full_cmd = f"{pbmm2_cmd} | samtools sort -@ {samtools_threads} -o {output_file}"
-	subprocess.run(full_cmd, shell=True, check=True)
+	run_quiet(full_cmd)
 
 	index_cmd = f"samtools index {output_file}"
-	subprocess.run(index_cmd, shell=True, check=True)
+	run_quiet(index_cmd)
 
 	print(f"Mapped bam written to: {output_file}")
 	print("\n")
@@ -146,8 +147,8 @@ def align_to_reference_minimap(input_file, output_file, read_group_string, refer
 	minimap2_cmd = f"minimap2 -Y -t {minimap_threads} -ax {platform_string} {reference_fasta} {input_file} -R {minimap_rg_string} | samtools sort -@ {samtools_threads} -o {output_file}"
 	index_bam = f"samtools index {output_file}"
 	
-	subprocess.run(minimap2_cmd, shell=True, check=True)
-	subprocess.run(index_bam, shell=True, check=True)
+	run_quiet(minimap2_cmd)
+	run_quiet(index_bam)
 
 	print(f"Mapped bam written to: {output_file}")
 	print("\n")
@@ -204,8 +205,8 @@ def classify_DRB_reads(input_file, output_file, DRB34_reads_file, read_group_str
 	minimap2_cmd = f"minimap2 -Y -t {minimap_threads} -ax {platform_string} {reference_fasta} {input_file} -R {minimap_rg_string} | samtools sort -@ {samtools_threads} -o {output_file}"
 	index_bam = f"samtools index {output_file}"
 
-	subprocess.run(minimap2_cmd, shell=True, check=True)
-	subprocess.run(index_bam, shell=True, check=True)
+	run_quiet(minimap2_cmd)
+	run_quiet(index_bam)
 
 	_parse_drb34_reads(output_file, DRB34_reads_file)
 
@@ -221,14 +222,14 @@ def classify_DRB_reads_pbmm2(input_file, output_file, DRB34_reads_file, read_gro
 	if not os.path.exists(mmi_file):
 		print("Building pbmm2 index for DRB reference...")
 		index_cmd = f"pbmm2 index {reference_fasta} {mmi_file}"
-		subprocess.run(index_cmd, shell=True, check=True)
+		run_quiet(index_cmd)
 
 	pbmm2_cmd = f"pbmm2 align -j {threads} {mmi_file} {input_file} {output_file} --sort --log-level INFO --bam-index BAI"
 
 	if not input_file.endswith(".bam"):
 		pbmm2_cmd += f" --rg '{read_group_string}'"
 
-	subprocess.run(pbmm2_cmd, shell=True, check=True)
+	run_quiet(pbmm2_cmd)
 
 	_parse_drb34_reads(output_file, DRB34_reads_file)
 
@@ -239,10 +240,10 @@ def mark_duplicates_picard(input_file, output_file, metrics_file, temp_dir, pica
 	
 	mark_duplicates_cmd = f"java -jar {picard} MarkDuplicates -I {input_file} -O {output_file} --TMP_DIR {temp_dir} -M {metrics_file} --CREATE_INDEX true --REMOVE_DUPLICATES true --VALIDATION_STRINGENCY LENIENT"
 	
-	subprocess.run(mark_duplicates_cmd, shell=True, check=True)
+	run_quiet(mark_duplicates_cmd)
 
 	index_bam = f"samtools index {output_file}"
-	subprocess.run(index_bam, shell=True, check=True)
+	run_quiet(index_bam)
 
 # Filter reads that did not map to chromosome 6
 def filter_reads(input_file, output_file, DRB34_reads_file, threads):
@@ -254,8 +255,8 @@ def filter_reads(input_file, output_file, DRB34_reads_file, threads):
 
 	index_cmd = f"samtools index {output_file}"
 
-	subprocess.run(samtools_cmd, shell=True, check=True)
-	subprocess.run(index_cmd, shell=True, check=True)
+	run_quiet(samtools_cmd)
+	run_quiet(index_cmd)
 
 	count_reads_cmd = f"samtools view -c {output_file}"
 
@@ -349,7 +350,7 @@ def call_variants_clair3(input_bam, output_vcf, platform, clair3_sif, reference_
 
 	raw_genotypes_file = os.path.join(output_dir, "merge_output.vcf.gz")
 	shutil.copy(raw_genotypes_file, output_vcf)
-	subprocess.run(f"tabix -p vcf {output_vcf}", shell=True, check=True)
+	run_quiet(f"tabix -p vcf {output_vcf}")
 
 	print(f"VCF written to {output_vcf}")
 	print("\n")
@@ -376,8 +377,8 @@ def call_variants_bcftools(input_file, output_file, reference_fasta, platform, t
 		f"bcftools view -i 'FORMAT/DP>=2 && ((TYPE=\"snp\" && GQ>=20 && QUAL>=10) || (TYPE=\"indel\" && GQ>=20 && QUAL>=10))' "
 		f"-Oz -o {output_file}")
 
-	subprocess.run(bcftools_command, shell=True, check=True)
-	subprocess.run(f"tabix -p vcf {output_file}", shell=True, check=True)
+	run_quiet(bcftools_command)
+	run_quiet(f"tabix -p vcf {output_file}")
 
 	print(f"VCF written to {output_file}")
 	print("\n")
@@ -397,8 +398,8 @@ def call_variants_freebayes(input_bam, output_vcf, reference_fasta):
 		f"bgzip > {output_vcf}"
 	)
 
-	subprocess.run(freebayes_cmd, shell=True, check=True)
-	subprocess.run(f"tabix -p vcf {output_vcf}", shell=True, check=True)
+	run_quiet(freebayes_cmd)
+	run_quiet(f"tabix -p vcf {output_vcf}")
 
 	print(f"VCF written to {output_vcf}")
 	print("\n")
@@ -493,7 +494,7 @@ def rescue_refcalls(input_vcf, output_vcf, indels_only=False):
 	vcf_out.close()
 
 	os.replace(tmp_path, output_vcf)
-	subprocess.run(f"tabix -p vcf {output_vcf}", shell=True, check=True)
+	run_quiet(f"tabix -p vcf {output_vcf}")
 
 	print(f"Rescued {rescued}/{total_refcalls} RefCall {mode_label}")
 	print(f"Output VCF: {output_vcf}")
@@ -505,19 +506,19 @@ def merge_hybrid_vcfs(snp_vcf, indel_vcf, indel_only_vcf, merged_vcf, filter_ind
 
 	snp_only_vcf = snp_vcf.replace('.vcf.gz', '.snps_only.vcf.gz')
 	snp_cmd = f"bcftools view -v snps {snp_vcf} -Oz -o {snp_only_vcf}"
-	subprocess.run(snp_cmd, shell=True, check=True)
-	subprocess.run(f"tabix -p vcf {snp_only_vcf}", shell=True, check=True)
+	run_quiet(snp_cmd)
+	run_quiet(f"tabix -p vcf {snp_only_vcf}")
 
 	if filter_indel_pass:
 		indel_cmd = f"bcftools view -v indels -f PASS {indel_vcf} -Oz -o {indel_only_vcf}"
 	else:
 		indel_cmd = f"bcftools view -v indels {indel_vcf} -Oz -o {indel_only_vcf}"
-	subprocess.run(indel_cmd, shell=True, check=True)
-	subprocess.run(f"tabix -p vcf {indel_only_vcf}", shell=True, check=True)
+	run_quiet(indel_cmd)
+	run_quiet(f"tabix -p vcf {indel_only_vcf}")
 
 	merge_cmd = f"bcftools concat -a {snp_only_vcf} {indel_only_vcf} | bcftools sort | bgzip > {merged_vcf}"
-	subprocess.run(merge_cmd, shell=True, check=True)
-	subprocess.run(f"tabix -p vcf {merged_vcf}", shell=True, check=True)
+	run_quiet(merge_cmd)
+	run_quiet(f"tabix -p vcf {merged_vcf}")
 
 	print(f"Merged VCF written to {merged_vcf}")
 	print("\n")
@@ -532,21 +533,21 @@ def call_structural_variants_pbsv(input_bam, output_svsig, output_vcf, threads, 
 	# -q Don't filter by MapQ
 	pbsv_discover_cmd = f"pbsv discover -a 0 -q 0 --region chr6 --tandem-repeats {tandem_repeat_bed} {input_bam} {output_svsig}"
 	
-	subprocess.run(pbsv_discover_cmd, shell=True, check=True)
+	run_quiet(pbsv_discover_cmd)
 
 	index_svsig_cmd = f"tabix -c '#' -s 3 -b 4 -e 4 {output_svsig}"
 	
-	subprocess.run(index_svsig_cmd, shell=True, check=True)
+	run_quiet(index_svsig_cmd)
 
 	pbsv_call_cmd = f"pbsv call -j {threads} --min-sv-length 20 --region chr6 --hifi {reference_fasta} {output_svsig} {output_vcf}"
 	
-	subprocess.run(pbsv_call_cmd, shell=True, check=True)
+	run_quiet(pbsv_call_cmd)
 
 	compress_cmd = f"bgzip -c {output_vcf} > {output_vcf}.gz"
 	index_vcf_cmd = f"tabix -p vcf {output_vcf}.gz"
 	
-	subprocess.run(compress_cmd, shell=True, check=True)
-	subprocess.run(index_vcf_cmd, shell=True, check=True)
+	run_quiet(compress_cmd)
+	run_quiet(index_vcf_cmd)
 
 	print(f"pbsv SV VCF written to: {output_vcf}")
 	print("\n")
@@ -556,7 +557,7 @@ def call_structural_variants_sniffles(input_bam, output_vcf, threads, reference_
 
 	sniffles_cmd = f"sniffles --output-rnames --allow-overwrite -t 1 --reference {reference_fasta} --regions {chr6_bed} -i {input_bam} -v {output_vcf} --tandem-repeats {tandem_repeat_bed}"
 
-	subprocess.run(sniffles_cmd, shell=True, check=True)
+	run_quiet(sniffles_cmd)
 
 	print(f"Sniffles SV VCF written to: {output_vcf}")
 	print("\n")
@@ -579,17 +580,17 @@ def genotype_tandem_repeats(input_bam, output_vcf, pbtrgt_dir, threads, referenc
 	try:
 		trgt_cmd = f"trgt genotype --threads {threads} --genome {reference_fasta} --reads {input_bam} --repeats {pbtrgt_repeat_file} --output-prefix {output_prefix} --preset targeted"
 
-		subprocess.run(trgt_cmd, shell=True, check=True)
+		run_quiet(trgt_cmd)
 
 		sort_cmd = f"bcftools sort -O z -o {output_prefix + '.sorted.vcf.gz'} {output_prefix + '.vcf.gz'}"
 
-		subprocess.run(sort_cmd, shell=True, check=True)
+		run_quiet(sort_cmd)
 
 		os.rename(output_prefix + ".sorted.vcf.gz", output_prefix + ".vcf.gz")
 
 		index_cmd = f"tabix -p vcf {output_prefix + '.vcf.gz'}"
 
-		subprocess.run(index_cmd, shell=True, check=True)
+		run_quiet(index_cmd)
 
 		print(f"TR VCF written to {output_vcf}")
 		print("\n")
@@ -658,19 +659,19 @@ def merge_hiphase_vcfs(input_snv, input_SV, input_TR, output_vcf, reference_fast
 
 	# Step 1: Merge and normalize SNV + SV only
 	norm_cmd = f"bcftools concat --allow-overlaps {input_snv} {input_SV} | grep -vE 'chrX|chrY' | grep -vE 'SVTYPE=BND|SVTYPE=INV|SVTYPE=DUP' | bcftools norm -d none --fasta-ref {reference_fasta} | bcftools sort | bgzip > {snv_sv_normed}"
-	subprocess.run(norm_cmd, shell=True, check=True)
-	subprocess.run(f"tabix {snv_sv_normed}", shell=True, check=True)
+	run_quiet(norm_cmd)
+	run_quiet(f"tabix {snv_sv_normed}")
 
 	# Step 2: Filter TR VCF (remove chrX/chrY) without norm
 	tr_filtered = os.path.join(output_dir, "tr_filtered.tmp.vcf.gz")
 	tr_cmd = f"bcftools view {input_TR} | grep -vE 'chrX|chrY' | bcftools sort | bgzip > {tr_filtered}"
-	subprocess.run(tr_cmd, shell=True, check=True)
-	subprocess.run(f"tabix {tr_filtered}", shell=True, check=True)
+	run_quiet(tr_cmd)
+	run_quiet(f"tabix {tr_filtered}")
 
 	# Step 3: Concat normed SNV/SV with un-normed TR, sort
 	concat_cmd = f"bcftools concat --allow-overlaps {snv_sv_normed} {tr_filtered} | bcftools sort | bgzip > {output_vcf}"
-	subprocess.run(concat_cmd, shell=True, check=True)
-	subprocess.run(f"tabix {output_vcf}", shell=True, check=True)
+	run_quiet(concat_cmd)
+	run_quiet(f"tabix {output_vcf}")
 
 	# Clean up temp files
 	for tmp in [snv_sv_normed, snv_sv_normed + ".tbi", tr_filtered, tr_filtered + ".tbi"]:
@@ -772,7 +773,7 @@ def run_mosdepth(input_file, output_dir, sample_ID, regions_file, threads):
 	# --flag 3328 excludes duplicates and secondary/supplementary alignments
 	mosdepth = f"mosdepth --flag 3328 --by {regions_file} --thresholds 10,20,30 -t {threads} {prefix} {input_file}"
 	
-	subprocess.run(mosdepth, shell=True, check=True)
+	run_quiet(mosdepth)
 	
 	print("\n")
 
