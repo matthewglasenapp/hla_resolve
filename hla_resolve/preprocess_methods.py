@@ -644,7 +644,7 @@ def phase_genotypes_hiphase(input_bam, input_snv, input_SV, input_TR, output_bam
 
 # Merge phased SNV (DeepVariant), tandem repeat (TRGT), and structural variant (pbsv) VCFs with bcftools concat
 def merge_hiphase_vcfs(input_snv, input_SV, input_TR, output_vcf, reference_fasta):
-	print("Merging phased small variant, pbsv, and TRGT VCF files!")
+	print("Merging phased small variant, pbsv, and pbtrgt VCF files!")
 
 	print(f"Small variant input file: {input_snv}")
 	print(f"pbsv input file: {input_SV}")

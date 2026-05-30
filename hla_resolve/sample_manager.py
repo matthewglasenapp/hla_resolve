@@ -140,7 +140,6 @@ class Samples:
         else:
             self.read_group_string = parsed_rg
 
-        print(f"Processing Sample {self.sample_ID}!\n\n")
         print(f"Sample ID: {self.sample_ID}")
         print(f"Read Group: {self.read_group_string}")
         print("\n")

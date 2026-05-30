@@ -62,7 +62,6 @@ def resolve_alleles(config):
 	3. HLA typing
 	4. Print results
 	"""	
-	print("Running coverage analysis...")
 	run_mosdepth(
 		input_file=config['hg38_rmdup_chr6_bam'],
 		output_dir=config['mosdepth_dir'],
@@ -139,6 +138,7 @@ def resolve_alleles(config):
 		input_vcf = config['longphase_merged_vcf']
 
 	# Filter phased VCF by gene region
+	print("Unphased PASS heterozygous variants:")
 	gene_filtered_vcfs = {}
 	for gene in config['genes_of_interest']:
 		gff_gene_name = convert_gene_name_for_gff(gene)
@@ -237,8 +237,6 @@ def resolve_alleles(config):
 	finally:
 		os.chdir(original_dir)
 	
-	# Step 4: Print results
-	print("Step 4: Printing HLA typing results...")
 	print_results(config)
 	
 	print("HLA allele resolution workflow completed!")
