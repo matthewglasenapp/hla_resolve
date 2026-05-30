@@ -701,7 +701,7 @@ def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA
 
 	print("FASTA output:")
 	SeqIO.write(gene_records, outfile_gene, "fasta")
-	print(f"  Wrote {len(gene_records)} records to {outfile_gene}")
+	print(f"  {len(gene_records)} records written to: {outfile_gene}")
 	SeqIO.write(cds_records, outfile_CDS, "fasta")
-	print(f"  Wrote {len(cds_records)} records to {outfile_CDS}")
+	print(f"  {len(cds_records)} records written to: {outfile_CDS}")
 	print("\n")

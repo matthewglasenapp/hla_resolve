@@ -96,7 +96,7 @@ def mark_duplicates_pbmarkdup(input_file, output_file, threads):
 	gzip_cmd = f"pigz -f -p {threads} {output_file}"
 	run_quiet(gzip_cmd)
 	
-	print(f"De-duplicated reads written to: {output_file}.gz!")
+	print(f"De-duplicated reads written to: {output_file}.gz")
 	print("\n")
 
 # Align to GRCh38 reference genome with pbmm2 (PacBio WGS/WES)
@@ -249,7 +249,7 @@ def mark_duplicates_picard(input_file, output_file, metrics_file, temp_dir, pica
 def filter_reads(input_file, output_file, DRB34_reads_file, threads):
 	print("Excluding BAM records that don't map to chromosome 6!")
 
-	print(f"Samtools input file: {input_file}")
+	print(f"samtools input file: {input_file}")
 
 	samtools_cmd = f"samtools view -h -F 2304 -@ {threads} {input_file} chr6:28000000-34000000 | grep -v -F -f {DRB34_reads_file} -- | samtools view -b -o {output_file}"
 
@@ -274,8 +274,8 @@ def call_variants_deepvariant(input_bam, output_vcf, output_gvcf, platform, deep
 	elif platform == "ONT":
 		model_type = "ONT_R104"
 	
-	print("Calling SNVs and small INDELS with DeepVariant!")
-	print(f"DeepVariant input file: {input_bam}")
+	print("Calling SNVs and small indels with DeepVariant!")
+	print(f"deepvariant input file: {input_bam}")
 	
 	bind_paths = [
 		f"{genotypes_dir}:/data",
@@ -305,8 +305,8 @@ def call_variants_deepvariant(input_bam, output_vcf, output_gvcf, platform, deep
 	with open(deepvariant_log, "w") as log_file:
 		subprocess.run(deepvariant_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
 
-	print(f"VCF written to {output_vcf}")
-	print(f"GVCF written to {output_gvcf}")
+	print(f"VCF written to: {output_vcf}")
+	print(f"GVCF written to: {output_gvcf}")
 	print("\n")
 
 def call_variants_clair3(input_bam, output_vcf, platform, clair3_sif, reference_fasta, threads, genotypes_dir, mapped_bam_dir, sample_ID, clair3_model):
@@ -352,7 +352,7 @@ def call_variants_clair3(input_bam, output_vcf, platform, clair3_sif, reference_
 	shutil.copy(raw_genotypes_file, output_vcf)
 	run_quiet(f"tabix -p vcf {output_vcf}")
 
-	print(f"VCF written to {output_vcf}")
+	print(f"VCF written to: {output_vcf}")
 	print("\n")
 
 # Call SNV with bcftools
@@ -362,9 +362,9 @@ def call_variants_bcftools(input_file, output_file, reference_fasta, platform, t
 	elif platform == "ONT":
 		config = "ont-sup-1.20"
 
-	print("Calling SNVs and small INDELS with bcftools!")
+	print("Calling SNVs and small indels with bcftools!")
 
-	print(f"Bcftools input file: {input_file}")
+	print(f"bcftools input file: {input_file}")
 	
 	pileup_threads = str(threads // 2)
 	call_threads = str(threads // 2)
@@ -380,7 +380,7 @@ def call_variants_bcftools(input_file, output_file, reference_fasta, platform, t
 	run_quiet(bcftools_command)
 	run_quiet(f"tabix -p vcf {output_file}")
 
-	print(f"VCF written to {output_file}")
+	print(f"VCF written to: {output_file}")
 	print("\n")
 
 # Call SNVs and small indels with FreeBayes
@@ -401,7 +401,7 @@ def call_variants_freebayes(input_bam, output_vcf, reference_fasta):
 	run_quiet(freebayes_cmd)
 	run_quiet(f"tabix -p vcf {output_vcf}")
 
-	print(f"VCF written to {output_vcf}")
+	print(f"VCF written to: {output_vcf}")
 	print("\n")
 
 # Rescue high-confidence variants from DeepVariant RefCall filter
@@ -520,7 +520,7 @@ def merge_hybrid_vcfs(snp_vcf, indel_vcf, indel_only_vcf, merged_vcf, filter_ind
 	run_quiet(merge_cmd)
 	run_quiet(f"tabix -p vcf {merged_vcf}")
 
-	print(f"Merged VCF written to {merged_vcf}")
+	print(f"Merged VCF written to: {merged_vcf}")
 	print("\n")
 
 # Run pbsv to call structural variants (SV)
@@ -592,7 +592,7 @@ def genotype_tandem_repeats(input_bam, output_vcf, pbtrgt_dir, threads, referenc
 
 		run_quiet(index_cmd)
 
-		print(f"TR VCF written to {output_vcf}")
+		print(f"TR VCF written to: {output_vcf}")
 		print("\n")
 	finally:
 		os.chdir(original_cwd)
