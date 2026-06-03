@@ -81,7 +81,7 @@ def resolve_alleles(config):
 		ars_prop_30x_thresh=config['ars_prop_30x_thresh']
 	)
 	
-	print("Reconstructing FASTA sequences")
+	print("Reconstructing FASTA sequences!")
 	if config['platform'] == "PACBIO":
 		phased_vcf = config['hiphase_joint_vcf']
 		haploblock_file = config['phased_blocks']

@@ -249,7 +249,7 @@ def mark_duplicates_picard(input_file, output_file, metrics_file, temp_dir, pica
 def filter_reads(input_file, output_file, DRB34_reads_file, threads):
 	print("Excluding BAM records that don't map to chromosome 6!")
 
-	print(f"samtools input file: {input_file}")
+	print(f"Samtools input file: {input_file}")
 
 	samtools_cmd = f"samtools view -h -F 2304 -@ {threads} {input_file} chr6:28000000-34000000 | grep -v -F -f {DRB34_reads_file} -- | samtools view -b -o {output_file}"
 
@@ -275,7 +275,7 @@ def call_variants_deepvariant(input_bam, output_vcf, output_gvcf, platform, deep
 		model_type = "ONT_R104"
 	
 	print("Calling SNVs and small indels with DeepVariant!")
-	print(f"deepvariant input file: {input_bam}")
+	print(f"DeepVariant input file: {input_bam}")
 	
 	bind_paths = [
 		f"{genotypes_dir}:/data",
@@ -364,7 +364,7 @@ def call_variants_bcftools(input_file, output_file, reference_fasta, platform, t
 
 	print("Calling SNVs and small indels with bcftools!")
 
-	print(f"bcftools input file: {input_file}")
+	print(f"Bcftools input file: {input_file}")
 	
 	pileup_threads = str(threads // 2)
 	call_threads = str(threads // 2)
@@ -564,7 +564,7 @@ def call_structural_variants_sniffles(input_bam, output_vcf, threads, reference_
 
 # Genotype tandem repeats with pbtrgt
 def genotype_tandem_repeats(input_bam, output_vcf, pbtrgt_dir, threads, reference_fasta, pbtrgt_repeat_file, original_cwd):
-	print("Genotyping tandem repeats with pbtrgt!")
+	print("Genotyping tandem repeats with TRGT!")
 
 	print(f"trgt input file: {input_bam}")
 	
@@ -599,7 +599,7 @@ def genotype_tandem_repeats(input_bam, output_vcf, pbtrgt_dir, threads, referenc
 
 # Phase genotypes with HiPhase
 def phase_genotypes_hiphase(input_bam, input_snv, input_SV, input_TR, output_bam, output_snv, output_SV, output_TR, output_summary_file, output_blocks_file, output_stats_file, threads, reference_fasta, phased_vcf_dir, sample_ID):
-	print("Phasing Genotypes with HiPhase!")
+	print("Phasing genotypes with HiPhase!")
 
 	print(f"Input BAM: {input_bam}")
 	print(f"Input SNV: {input_snv}")
@@ -644,11 +644,11 @@ def phase_genotypes_hiphase(input_bam, input_snv, input_SV, input_TR, output_bam
 
 # Merge phased SNV (DeepVariant), tandem repeat (TRGT), and structural variant (pbsv) VCFs with bcftools concat
 def merge_hiphase_vcfs(input_snv, input_SV, input_TR, output_vcf, reference_fasta):
-	print("Merging phased small variant, pbsv, and pbtrgt VCF files!")
+	print("Merging phased small variant, pbsv, and TRGT VCF files!")
 
 	print(f"Small variant input file: {input_snv}")
 	print(f"pbsv input file: {input_SV}")
-	print(f"pbtrgt input file: {input_TR}")
+	print(f"TRGT input file: {input_TR}")
 
 	# Merge SNV + SV with bcftools norm (normalizes indels, removes dups).
 	# TR records are concatenated WITHOUT norm to preserve explicit allele sequences
@@ -682,7 +682,7 @@ def merge_hiphase_vcfs(input_snv, input_SV, input_TR, output_vcf, reference_fast
 	print("\n")
 
 def phase_genotypes_longphase(input_bam, input_SNV_vcf, input_SV_vcf, output_blocks_file, output_gtf_file, phased_vcf, phased_SV_vcf, haplotagged_bam, longphase, reference_fasta, threads, phased_vcf_dir, sample_ID):
-	print("Phasing Genotypes with LongPhase!")
+	print("Phasing genotypes with LongPhase!")
 
 	print(f"Input BAM: {input_bam}")
 	print(f"Input SNV VCF: {input_SNV_vcf}")
