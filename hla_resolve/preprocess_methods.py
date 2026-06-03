@@ -31,7 +31,7 @@ def convert_bam_to_fastq(input_file, output_file, platform, threads):
 		run_quiet(bam2fastq_cmd)
 
 	elif platform == "ONT":
-		print("Converting ONT raw reads to fastq format using Samtools fastq!")
+		print("Converting ONT raw reads to fastq format using samtools fastq!")
 		print(f"Samtools fastq input file: {input_file}")
 		samtools_threads = int(threads * 2 / 3)
 		pigz_threads = threads - samtools_threads
@@ -315,7 +315,7 @@ def call_variants_clair3(input_bam, output_vcf, platform, clair3_sif, reference_
 	elif platform == "PACBIO":
 		platform_type = "hifi"
 
-	print("Calling SNVs and small INDELs with Clair3!")
+	print("Calling SNVs and small indels with Clair3!")
 	print(f"Clair3 input file: {input_bam}")
 	print(f"Clair3 model: {clair3_model}")
 
@@ -385,7 +385,7 @@ def call_variants_bcftools(input_file, output_file, reference_fasta, platform, t
 
 # Call SNVs and small indels with FreeBayes
 def call_variants_freebayes(input_bam, output_vcf, reference_fasta):
-	print("Calling SNVs and small INDELs with FreeBayes!")
+	print("Calling SNVs and small indels with FreeBayes!")
 	print(f"FreeBayes input file: {input_bam}")
 
 	freebayes_cmd = (
@@ -553,20 +553,20 @@ def call_structural_variants_pbsv(input_bam, output_svsig, output_vcf, threads, 
 	print("\n")
 
 def call_structural_variants_sniffles(input_bam, output_vcf, threads, reference_fasta, chr6_bed, tandem_repeat_bed):
-	print("Calling structural variants with Sniffles!")
+	print("Calling structural variants with Sniffles2!")
 
 	sniffles_cmd = f"sniffles --output-rnames --allow-overwrite -t 1 --reference {reference_fasta} --regions {chr6_bed} -i {input_bam} -v {output_vcf} --tandem-repeats {tandem_repeat_bed}"
 
 	run_quiet(sniffles_cmd)
 
-	print(f"Sniffles SV VCF written to: {output_vcf}")
+	print(f"Sniffles2 SV VCF written to: {output_vcf}")
 	print("\n")
 
 # Genotype tandem repeats with pbtrgt
 def genotype_tandem_repeats(input_bam, output_vcf, pbtrgt_dir, threads, reference_fasta, pbtrgt_repeat_file, original_cwd):
 	print("Genotyping tandem repeats with TRGT!")
 
-	print(f"trgt input file: {input_bam}")
+	print(f"TRGT input file: {input_bam}")
 	
 	# Extract the base name without any extensions
 	output_prefix = os.path.basename(output_vcf)
@@ -731,7 +731,7 @@ def phase_genotypes_longphase(input_bam, input_SNV_vcf, input_SV_vcf, output_blo
 	print("\n")
 
 def merge_longphase_vcfs(phased_vcf, phased_SV_vcf, merged_vcf, reference_fasta, phased_vcf_dir, sample_ID):
-	print("Merging longphase SNV and SV VCFs using bcftools...")
+	print("Merging LongPhase SNV and SV VCFs using bcftools...")
 
 	reheadered_SV_vcf = phased_SV_vcf.replace(".vcf.gz", ".reheader.vcf.gz")
 
