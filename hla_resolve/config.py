@@ -99,6 +99,27 @@ def ensure_longphase():
     
     return str(longphase_bin)
 
+def ensure_rammap():
+    """Download rammap binary if not present"""
+    rammap_dir = Path(_data_dir) / "rammap"
+    rammap_bin = rammap_dir / "rammap"
+
+    if not rammap_bin.exists():
+        print("Rammap not found! Downloading rammap...")
+        rammap_dir.mkdir(parents=True, exist_ok=True)
+
+        subprocess.run([
+            "wget",
+            "https://github.com/jwanglab/rammap/releases/download/v1.0.0/rammap_x86_64-unknown-linux-gnu_v1.0.0",
+            "-O", str(rammap_bin)
+        ], check=True)
+
+        subprocess.run(["chmod", "+x", str(rammap_bin)], check=True)
+
+        print("Rammap download complete!")
+
+    return str(rammap_bin)
+
 def ensure_picard():
     """Download Picard if not present"""
     picard_dir = Path(_data_dir) / "picard"
@@ -187,10 +208,11 @@ def ensure_hla_xml():
     zip_file.unlink()
     print("HLA XML database download complete!")
 
-# Download reference genome, Picard, longphase, HLA XML database, DeepVariant SIF, and Clair3 SIF on first import
+# Download reference genome, Picard, longphase, rammap, HLA XML database, DeepVariant SIF, and Clair3 SIF on first import
 ensure_reference_genome()
 picard = ensure_picard()
 longphase = ensure_longphase()
+rammap = ensure_rammap()
 ensure_hla_xml()
 deepvariant_sif = ensure_deepvariant_sif()
 # clair3_sif = ensure_clair3_sif()  # TODO: re-enable when running ONT

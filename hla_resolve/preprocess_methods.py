@@ -144,9 +144,10 @@ def align_to_reference_minimap(input_file, output_file, read_group_string, refer
 	samtools_threads = threads - minimap_threads
 	minimap_rg_string = "'{}'".format(read_group_string.replace("\t", "\\t"))
 
-	minimap2_cmd = f"minimap2 -Y -t {minimap_threads} -ax {platform_string} {reference_fasta} {input_file} -R {minimap_rg_string} | samtools sort -@ {samtools_threads} -o {output_file}"
+	# minimap2_cmd = f"minimap2 -Y -t {minimap_threads} -ax {platform_string} {reference_fasta} {input_file} -R {minimap_rg_string} | samtools sort -@ {samtools_threads} -o {output_file}"
+	minimap2_cmd = f"{config.rammap} -Y -t {minimap_threads} -ax {platform_string} {reference_fasta} {input_file} -R {minimap_rg_string} | samtools sort -@ {samtools_threads} -o {output_file}"
 	index_bam = f"samtools index {output_file}"
-	
+
 	run_quiet(minimap2_cmd)
 	run_quiet(index_bam)
 
@@ -202,7 +203,8 @@ def classify_DRB_reads(input_file, output_file, DRB34_reads_file, read_group_str
 	minimap_rg_string = "'{}'".format(read_group_string.replace("\t", "\\t"))
 
 	# Map reads against the multi-allele DRB reference (DRB1, DRB3, DRB4 alleles)
-	minimap2_cmd = f"minimap2 -Y -t {minimap_threads} -ax {platform_string} {reference_fasta} {input_file} -R {minimap_rg_string} | samtools sort -@ {samtools_threads} -o {output_file}"
+	# minimap2_cmd = f"minimap2 -Y -t {minimap_threads} -ax {platform_string} {reference_fasta} {input_file} -R {minimap_rg_string} | samtools sort -@ {samtools_threads} -o {output_file}"
+	minimap2_cmd = f"{config.rammap} -Y -t {minimap_threads} -ax {platform_string} {reference_fasta} {input_file} -R {minimap_rg_string} | samtools sort -@ {samtools_threads} -o {output_file}"
 	index_bam = f"samtools index {output_file}"
 
 	run_quiet(minimap2_cmd)
