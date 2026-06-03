@@ -217,6 +217,8 @@ def preprocess_ont_sample(config):
 				indel_vcf=indel_intermediate,
 				indel_only_vcf=config['hybrid_indel_vcf'],
 				merged_vcf=config['snv_vcf'],
+				snp_caller=snp_caller,
+				indel_caller=indel_caller,
 				filter_indel_pass=indel_caller in ("deepvariant", "clair3")
 			)
 

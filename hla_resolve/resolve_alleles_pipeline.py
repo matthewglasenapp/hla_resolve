@@ -50,7 +50,7 @@ def print_results(config):
 		results = data_parts[1:]
 		print(f"{config['sample_ID']} HLA Star Allele Calls:")
 		for item in results:
-			print(f"  {item}")
+			print(f"{item}")
 	else:
 		print(f"Warning: Results file not found at {results_file}")
 
@@ -223,7 +223,7 @@ def resolve_alleles(config):
 	)
 	
 	# Step 3: HLA typing
-	print("Typing HLA Alleles!")
+	print("Typing HLA alleles with hla_typer.py!")
 	original_dir = os.getcwd()
 	os.chdir(config['hla_typing_dir'])
 
@@ -238,5 +238,23 @@ def resolve_alleles(config):
 		os.chdir(original_dir)
 	
 	print_results(config)
-	
+	print("\n")
+	print(f"HLA typing result files located in dir: {config['hla_typing_dir']}/")
+	print()
+	print("g group results written to: g_group_output.csv")
+	print("three field results written to: 3_field_allele_output.csv")
+	print("four field results written to: allele_output.csv")
+	print()
+	print("Results with ambiguties in the format of genotype list strings written to:")
+	print("g_group_output_full.csv")
+	print("3_field_allele_output_full.csv")
+	print("allele_output_full.csv")
+	print()
+	print("Debugging files written to:")
+	print("g_group_assignment.log")
+	print("3_field_allele_assignment.log")
+	print("allele_assignment.log")
+	print("sample_ref_comp.csv")
+	print("\n")
+
 	print("HLA allele resolution workflow completed!")

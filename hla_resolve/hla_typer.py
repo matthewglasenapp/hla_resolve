@@ -768,7 +768,7 @@ def pass_2_classification(sequence_data, allele_to_g_groups, results_dict, sampl
     if pass_2_logfile != None:
         pass_2_logfile.close()
 
-    print(f"INFO: 0 distance allele assignments: {perfect}/{len(samples)}. See logfile for details")
+    print(f"INFO: 0 distance 3-field allele assignments: {perfect}/{len(samples)}. See logfile for details")
 
     return results
 
@@ -904,7 +904,7 @@ def pass_3_classification(sequence_data, results_dict, samples, truth_data=None,
     if pass_3_logfile != None:
         pass_3_logfile.close()
 
-    print(f"INFO: 0 distance refined allele assignments: {perfect}/{len(samples)}. See logfile for details")
+    print(f"INFO: 0 distance 4-field allele assignments: {perfect}/{len(samples)}. See logfile for details")
 
     if generate_query_ref_comp:
         pd.DataFrame(entries, columns=headers).to_csv("sample_ref_comp.csv", index=False)

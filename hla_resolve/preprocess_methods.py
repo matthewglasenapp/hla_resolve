@@ -501,8 +501,17 @@ def rescue_refcalls(input_vcf, output_vcf, indels_only=False):
 	print("\n")
 
 # Extract SNPs from snp_caller output and indels from indel_caller output, merge into a single VCF
-def merge_hybrid_vcfs(snp_vcf, indel_vcf, indel_only_vcf, merged_vcf, filter_indel_pass=True):
-	print("Merging hybrid SNP and indel VCFs!")
+_CALLER_DISPLAY = {
+	"bcftools": "bcftools",
+	"deepvariant": "DeepVariant",
+	"clair3": "Clair3",
+	"freebayes": "FreeBayes",
+}
+
+def merge_hybrid_vcfs(snp_vcf, indel_vcf, indel_only_vcf, merged_vcf, snp_caller, indel_caller, filter_indel_pass=True):
+	snp_name = _CALLER_DISPLAY.get(snp_caller, snp_caller)
+	indel_name = _CALLER_DISPLAY.get(indel_caller, indel_caller)
+	print(f"Merging hybrid SNP ({snp_name}) and indel ({indel_name}) VCFs!")
 
 	snp_only_vcf = snp_vcf.replace('.vcf.gz', '.snps_only.vcf.gz')
 	snp_cmd = f"bcftools view -v snps {snp_vcf} -Oz -o {snp_only_vcf}"
