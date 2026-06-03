@@ -129,26 +129,25 @@ def align_to_reference_pbmm2(input_file, output_file, read_group_string, referen
 	print(f"Mapped bam written to: {output_file}")
 	print("\n")
 
-# Align to GRCh38 reference genome with minimap2
-def align_to_reference_minimap(input_file, output_file, read_group_string, reference_fasta, platform, threads):
-	print("Aligning reads to GRCh38 reference genome with minimap2!")
+# Align to GRCh38 reference genome with rammap
+def align_to_reference_rammap(input_file, output_file, read_group_string, reference_fasta, platform, threads):
+	print("Aligning reads to GRCh38 reference genome with rammap!")
 
 	if platform == "PACBIO":
 		platform_string = "map-hifi"
 	elif platform == "ONT":
 		platform_string = "map-ont"
 
-	print(f"minimap2 input file: {input_file}")
+	print(f"rammap input file: {input_file}")
 
-	minimap_threads = int(threads * 2 / 3)
-	samtools_threads = threads - minimap_threads
-	minimap_rg_string = "'{}'".format(read_group_string.replace("\t", "\\t"))
+	rammap_threads = int(threads * 2 / 3)
+	samtools_threads = threads - rammap_threads
+	rammap_rg_string = "'{}'".format(read_group_string.replace("\t", "\\t"))
 
-	# minimap2_cmd = f"minimap2 -Y -t {minimap_threads} -ax {platform_string} {reference_fasta} {input_file} -R {minimap_rg_string} | samtools sort -@ {samtools_threads} -o {output_file}"
-	minimap2_cmd = f"{config.rammap} -Y -t {minimap_threads} -ax {platform_string} -R {minimap_rg_string} {reference_fasta} {input_file} | samtools sort -@ {samtools_threads} -o {output_file}"
+	rammap_cmd = f"{config.rammap} -Y -t {rammap_threads} -ax {platform_string} -R {rammap_rg_string} {reference_fasta} {input_file} | samtools sort -@ {samtools_threads} -o {output_file}"
 	index_bam = f"samtools index {output_file}"
 
-	run_quiet(minimap2_cmd)
+	run_quiet(rammap_cmd)
 	run_quiet(index_bam)
 
 	print(f"Mapped bam written to: {output_file}")
@@ -157,7 +156,7 @@ def align_to_reference_minimap(input_file, output_file, read_group_string, refer
 def _parse_drb34_reads(output_file, DRB34_reads_file):
 	"""
 	Parse aligned BAM to identify DRB3/DRB4 reads based on primary alignment.
-	Shared by both minimap2 and pbmm2 classify_DRB_reads functions.
+	Shared by both rammap and pbmm2 classify_DRB_reads functions.
 	"""
 	drb34_read_ids = set()
 
@@ -187,27 +186,26 @@ def classify_DRB_reads(input_file, output_file, DRB34_reads_file, read_group_str
 	against a multi-allele reference containing representative genomic
 	sequences from DRB1, DRB3, and DRB4.
 
-	For each read, minimap2 picks the best-matching allele as the primary
+	For each read, rammap picks the best-matching allele as the primary
 	alignment. If the best match is a DRB3 or DRB4 allele, that read ID
 	is written to DRB34_reads_file for downstream removal by filter_reads().
 	"""
-	print("Classifying DRB reads using multi-allele competitive mapping (minimap2)!")
+	print("Classifying DRB reads using multi-allele competitive mapping (rammap)!")
 
 	if platform == "PACBIO":
 		platform_string = "map-hifi"
 	elif platform == "ONT":
 		platform_string = "map-ont"
 
-	minimap_threads = int(threads * 2 / 3)
-	samtools_threads = threads - minimap_threads
-	minimap_rg_string = "'{}'".format(read_group_string.replace("\t", "\\t"))
+	rammap_threads = int(threads * 2 / 3)
+	samtools_threads = threads - rammap_threads
+	rammap_rg_string = "'{}'".format(read_group_string.replace("\t", "\\t"))
 
 	# Map reads against the multi-allele DRB reference (DRB1, DRB3, DRB4 alleles)
-	# minimap2_cmd = f"minimap2 -Y -t {minimap_threads} -ax {platform_string} {reference_fasta} {input_file} -R {minimap_rg_string} | samtools sort -@ {samtools_threads} -o {output_file}"
-	minimap2_cmd = f"{config.rammap} -Y -t {minimap_threads} -ax {platform_string} -R {minimap_rg_string} {reference_fasta} {input_file} | samtools sort -@ {samtools_threads} -o {output_file}"
+	rammap_cmd = f"{config.rammap} -Y -t {rammap_threads} -ax {platform_string} -R {rammap_rg_string} {reference_fasta} {input_file} | samtools sort -@ {samtools_threads} -o {output_file}"
 	index_bam = f"samtools index {output_file}"
 
-	run_quiet(minimap2_cmd)
+	run_quiet(rammap_cmd)
 	run_quiet(index_bam)
 
 	_parse_drb34_reads(output_file, DRB34_reads_file)

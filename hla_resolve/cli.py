@@ -62,7 +62,7 @@ def main():
 
     config.VERBOSE = args.verbose
     
-    args.aligner = "minimap2"
+    args.aligner = "rammap"
     if args.platform == "ont":
         args.snp_caller = "clair3"
         args.indel_caller = "clair3"

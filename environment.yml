@@ -22,7 +22,6 @@ dependencies:
   - pbsv=2.10.0
   - sniffles=2.7.0
   - trgt=4.0.0
-  - minimap2=2.30
   - mosdepth=0.3.10
   - bedtools=2.31.1
   - whatshap=2.3

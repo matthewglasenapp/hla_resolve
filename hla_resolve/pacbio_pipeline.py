@@ -8,7 +8,7 @@ import subprocess
 from .preprocess_methods import (
 	trim_adapters,
 	mark_duplicates_pbmarkdup,
-	align_to_reference_minimap,
+	align_to_reference_rammap,
 	align_to_reference_pbmm2,
 	mark_duplicates_picard,
 	filter_reads,
@@ -53,7 +53,7 @@ def preprocess_pacbio_sample(config):
 		else:
 			align_input = config['trimmed_fastq']
 
-		align_to_reference_minimap(
+		align_to_reference_rammap(
 			input_file=align_input,
 			output_file=config['hg38_bam'],
 			read_group_string=config['read_group_string'],

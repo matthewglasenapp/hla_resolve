@@ -7,7 +7,7 @@ import os
 import subprocess
 from .preprocess_methods import (
 	trim_adapters,
-	align_to_reference_minimap,
+	align_to_reference_rammap,
 	classify_DRB_reads,
 	mark_duplicates_picard,
 	filter_reads,
@@ -35,7 +35,7 @@ def preprocess_ont_sample(config):
 		three_prime_adapter=config['three_prime_adapter']
 	)
 	
-	align_to_reference_minimap(
+	align_to_reference_rammap(
 		input_file=config['trimmed_fastq'],
 		output_file=config['hg38_bam'],
 		read_group_string=config['read_group_string'],

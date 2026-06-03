@@ -164,7 +164,7 @@ Adapter and barcode sequences are removed from raw reads using [cutadapt](https:
 PCR duplicates are identified and removed from the trimmed reads using [pbmarkdup](https://github.com/PacificBiosciences/pbmarkdup).
 
 #### 3. Reference Genome Alignment
-Deduplicated reads are aligned to a modified GRCh38 reference genome (no-alt analysis set) using [minimap2](https://doi.org/10.1093/bioinformatics/bty191). The modified reference includes an additional scaffold containing the HLA-Y/HLA-OLI insertion to prevent mismapping of HLA-Y reads to HLA-A.
+Deduplicated reads are aligned to a modified GRCh38 reference genome (no-alt analysis set) using [rammap](https://doi.org/10.64898/2026.05.26.726289) (Wang and Li, 2026), a memory-safe Rust reimplementation of [minimap2](https://doi.org/10.1093/bioinformatics/bty191) that produces identical alignments. The modified reference includes an additional scaffold containing the HLA-Y/HLA-OLI insertion to prevent mismapping of HLA-Y reads to HLA-A.
 
 #### 4. HLA-DRB Paralog Filtering
 A separate alignment step maps reads against a multi-allele HLA-DRB reference (containing HLA-DRB1, -DRB3, and -DRB4 sequences from the IPD-IMGT/HLA database) to identify and remove HLA-DRB3/DRB4 reads that would otherwise mismap to HLA-DRB1.
@@ -204,7 +204,7 @@ Reconstructed haplotypes are compared against alleles in the [IPD-IMGT/HLA datab
    3. **Four-field refinement** — The full-gene haplotype (including introns and UTRs) is compared against candidate alleles, ranked by mismatch identity (the proportion of matching bases at 1:1-aligned positions), which avoids penalizing insertions and deletions from unreliable intronic reconstruction. Ties are broken by match length, then by lowest fourth-field value.
 
 #### Note
-For WGS and WES input, the pipeline skips adapter trimming (step 1) and pre-alignment duplicate removal (step 2), and uses [pbmm2](https://github.com/PacificBiosciences/pbmm2) instead of minimap2 for reference genome alignment.
+For WGS and WES input, the pipeline skips adapter trimming (step 1) and pre-alignment duplicate removal (step 2), and uses [pbmm2](https://github.com/PacificBiosciences/pbmm2) instead of rammap for reference genome alignment.
 
 ## Planned Features (In Development)
 
