@@ -251,7 +251,7 @@ def filter_reads(input_file, output_file, DRB34_reads_file, threads):
 
 	print(f"Samtools input file: {input_file}")
 
-	samtools_cmd = f"samtools view -h -F 256 -@ {threads} {input_file} chr6:28000000-34000000 | grep -v -F -f {DRB34_reads_file} -- | samtools view -b -o {output_file}"
+	samtools_cmd = f"samtools view -h -F 2304 -@ {threads} {input_file} chr6:28000000-34000000 | grep -v -F -f {DRB34_reads_file} -- | samtools view -b -o {output_file}"
 
 	index_cmd = f"samtools index {output_file}"
 
