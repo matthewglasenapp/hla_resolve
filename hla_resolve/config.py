@@ -67,6 +67,38 @@ def ensure_reference_genome():
             # Always return to original directory
             os.chdir(original_cwd)
 
+def ensure_masked_reference():
+    """Build a copy of augmented_hg38.fa with HLA-DRB5 hard-masked.
+
+    Removes the dominant misrouting destination for reads from divergent DRB1
+    alleles (e.g. *07, *09) whose flanking sequence aligns better to DRB5 than
+    to GRCh38's DRB1*15:01 reference. DRB6/DRB9 contribute marginally to
+    misrouting and are left intact to avoid filtering legitimate reads.
+    Coordinates from Ensembl GRCh38.110 GFF3.
+    """
+    ref_dir = Path(_data_dir) / "reference"
+    augmented_file = ref_dir / "augmented_hg38.fa"
+    masked_file = ref_dir / "augmented_hg38_drb_masked.fa"
+
+    if masked_file.exists():
+        return str(masked_file)
+
+    print("Building DRB5-masked reference (one-time)...")
+    mask_bed = ref_dir / "drb_paralog_mask.bed"
+    with open(mask_bed, "w") as f:
+        # BED is 0-based half-open; GFF3 coords are 1-based inclusive
+        f.write("chr6\t32517352\t32530287\n")  # HLA-DRB5
+
+    subprocess.run([
+        "bedtools", "maskfasta",
+        "-fi", str(augmented_file),
+        "-bed", str(mask_bed),
+        "-fo", str(masked_file)
+    ], check=True)
+    subprocess.run(["samtools", "faidx", str(masked_file)], check=True)
+    print(f"Masked reference built: {masked_file}")
+    return str(masked_file)
+
 def ensure_longphase():
     """Download and extract longphase if not present"""
     longphase_dir = Path(_data_dir) / "longphase"
@@ -210,6 +242,7 @@ def ensure_hla_xml():
 
 # Download reference genome, Picard, longphase, rammap, HLA XML database, DeepVariant SIF, and Clair3 SIF on first import
 ensure_reference_genome()
+ensure_masked_reference()
 picard = ensure_picard()
 longphase = ensure_longphase()
 rammap = ensure_rammap()
@@ -230,10 +263,14 @@ CLASS_I_GENES = {"HLA-A", "HLA-B", "HLA-C"}
 dummy_reference = os.path.join(_data_dir, "reference/DRB_1_3_4.fa")
 
 # Multi-allele DRB reference for competitive read classification
-# Contains one full-length genomic sequence per allele group from IPD-IMGT/HLA:
-# 13 DRB1 alleles (groups 01-16), 3 DRB3 alleles, 1 DRB4 allele
+# Contains one full-length genomic sequence per allele group from IPD-IMGT/HLA
+# plus GRCh38-extracted DRB5/DRB6/DRB9 paralog/pseudogene sequences:
+# 13 DRB1, 3 DRB3, 1 DRB4, 1 DRB5, 1 DRB6, 1 DRB9
+# DRB6/DRB9 included to catch paralog reads that would otherwise score as DRB1
+# (only DRB5 is masked in GRCh38; DRB6/DRB9 reads still anchor at their paralog
+# loci where they're harmless, but must be filtered if they leak to DRB1).
 # Used in classify_DRB_reads() function of preprocess_methods.py
-drb_multiallele_reference = os.path.join(_data_dir, "reference/DRB_reference.fa")
+drb_multiallele_reference = os.path.join(_data_dir, "reference/DRB_paralog_reference.fa")
 
 
 # Clair3 model names — bundled inside the Clair3 SIF at /opt/models/
@@ -243,7 +280,9 @@ clair3_ont_model = "r1041_e82_400bps_sup_v500"   # R10.4.1 SUP (default)
 clair3_hifi_model = "hifi_revio"
 
 # Reference fasta with added HLA-OLI/HLA-Y contig for baiting out reads originating from HLA-Y
-reference_genome_minimap2 = os.path.join(_data_dir, "reference/augmented_hg38.fa")
+# and with HLA-DRB5/DRB6/DRB9 hard-masked so divergent DRB1 reads (e.g. *07/*09) anchor at
+# DRB1 instead of misrouting to the paralog pseudogenes.
+reference_genome_minimap2 = os.path.join(_data_dir, "reference/augmented_hg38_drb_masked.fa")
 
 # DeepVariant SIF file path — populated by ensure_deepvariant_sif() above
 

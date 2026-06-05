@@ -65,7 +65,7 @@ def preprocess_pacbio_sample(config):
 		classify_DRB_reads(
 			input_file=align_input,
 			output_file=config['hg38_bam_drb'],
-			DRB34_reads_file=config['DRB34_reads_file'],
+			drb_paralog_reads_file=config['drb_paralog_reads_file'],
 			read_group_string=config['read_group_string'],
 			reference_fasta=config['drb_multiallele_reference'],
 			platform=config['platform'],
@@ -75,7 +75,7 @@ def preprocess_pacbio_sample(config):
 		chr6_read_count = filter_reads(
 			input_file=config['hg38_bam'],
 			output_file=config['hg38_rmdup_chr6_bam'],
-			DRB34_reads_file=config['DRB34_reads_file'],
+			drb_paralog_reads_file=config['drb_paralog_reads_file'],
 			threads=config['threads']
 		)
 
@@ -91,7 +91,7 @@ def preprocess_pacbio_sample(config):
 		classify_DRB_reads_pbmm2(
 			input_file=config['input_file'],
 			output_file=config['hg38_bam_drb'],
-			DRB34_reads_file=config['DRB34_reads_file'],
+			drb_paralog_reads_file=config['drb_paralog_reads_file'],
 			read_group_string=config['read_group_string'],
 			reference_fasta=config['drb_multiallele_reference'],
 			threads=config['threads']
@@ -100,7 +100,7 @@ def preprocess_pacbio_sample(config):
 		chr6_read_count = filter_reads(
 			input_file=config['hg38_bam'],
 			output_file=config['hg38_rmdup_chr6_bam'],
-			DRB34_reads_file=config['DRB34_reads_file'],
+			drb_paralog_reads_file=config['drb_paralog_reads_file'],
 			threads=config['threads']
 		)
 

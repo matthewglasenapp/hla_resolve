@@ -320,8 +320,8 @@ class Samples:
         self.phased_genes_tsv = os.path.join(self.parsed_haploblock_dir, "phased_genes.tsv")
         self.incomplete_genes_csv = os.path.join(self.parsed_haploblock_dir, "incomplete.csv")
 
-        # DRB34 reads file
-        self.DRB34_reads_file = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.drb34_reads.txt")
+        # DRB paralog reads file (DRB3/4/5/6/9 reads flagged for removal)
+        self.drb_paralog_reads_file = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.drb_paralog_reads.txt")
         
 
 
@@ -375,7 +375,7 @@ def build_workflow_config(sample):
 		'hg38_bam': sample.hg38_bam,
 		'hg38_bam_drb': sample.hg38_bam_drb,
 		'hg38_chr6_bam': sample.hg38_chr6_bam,
-		'DRB34_reads_file': sample.DRB34_reads_file,
+		'drb_paralog_reads_file': sample.drb_paralog_reads_file,
 		'hg38_mrkdup_metrics': sample.hg38_mrkdup_metrics,
 		'hg38_rmdup_chr6_bam': sample.hg38_rmdup_chr6_bam,
 		'hg38_rmdup_chr6_haplotag_bam': sample.hg38_rmdup_chr6_haplotag_bam,

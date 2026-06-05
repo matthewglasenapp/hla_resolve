@@ -153,12 +153,14 @@ def align_to_reference_rammap(input_file, output_file, read_group_string, refere
 	print(f"Mapped bam written to: {output_file}")
 	print("\n")
 
-def _parse_drb34_reads(output_file, DRB34_reads_file):
+def _parse_drb_paralog_reads(output_file, drb_paralog_reads_file):
 	"""
-	Parse aligned BAM to identify DRB3/DRB4 reads based on primary alignment.
-	Shared by both rammap and pbmm2 classify_DRB_reads functions.
+	Parse aligned BAM to identify DRB paralog reads (DRB3, DRB4, DRB5, DRB6, DRB9)
+	based on primary alignment. Any read whose best-matching allele is NOT a DRB1
+	allele is flagged for removal. Shared by both rammap and pbmm2 classify_DRB_reads
+	functions.
 	"""
-	drb34_read_ids = set()
+	drb_paralog_read_ids = set()
 
 	with pysam.AlignmentFile(output_file, "rb") as bam:
 		for read in bam:
@@ -166,29 +168,31 @@ def _parse_drb34_reads(output_file, DRB34_reads_file):
 			if read.is_secondary or read.is_supplementary or read.is_unmapped:
 				continue
 
-			# Check which gene the best-matching allele belongs to
-			reference_name = read.reference_name  # e.g. "DRB3*01:01:02:01"
-			if reference_name.startswith("DRB3") or reference_name.startswith("DRB4"):
-				drb34_read_ids.add(read.query_name)
+			# Flag any read whose best-matching allele is not DRB1
+			# (IPD-style headers start with "DRB1*"; pseudogene contigs use names
+			# like "DRB5_GRCh38" / "DRB6_GRCh38" / "DRB9_GRCh38".)
+			reference_name = read.reference_name
+			if not reference_name.startswith("DRB1*"):
+				drb_paralog_read_ids.add(read.query_name)
 
-	# Write flagged read IDs to file (same format as bait_DRB_paralogs output)
-	with open(DRB34_reads_file, "w") as f:
-		for read_id in sorted(drb34_read_ids):
+	with open(drb_paralog_reads_file, "w") as f:
+		for read_id in sorted(drb_paralog_read_ids):
 			f.write(read_id + "\n")
 
-	print(f"Classified {len(drb34_read_ids)} reads as DRB3/DRB4")
-	print(f"DRB3 and DRB4 read IDs written to: {DRB34_reads_file}")
+	print(f"Classified {len(drb_paralog_read_ids)} reads as DRB paralog (DRB3/4/5/6/9)")
+	print(f"DRB paralog read IDs written to: {drb_paralog_reads_file}")
 	print("\n")
 
-def classify_DRB_reads(input_file, output_file, DRB34_reads_file, read_group_string, reference_fasta, platform, threads):
+def classify_DRB_reads(input_file, output_file, drb_paralog_reads_file, read_group_string, reference_fasta, platform, threads):
 	"""
-	Identify reads originating from DRB3/DRB4 using competitive mapping
-	against a multi-allele reference containing representative genomic
-	sequences from DRB1, DRB3, and DRB4.
+	Identify reads originating from DRB paralogs (DRB3/4/5/6/9) using competitive
+	mapping against a multi-allele reference containing representative genomic
+	sequences from DRB1, DRB3, DRB4, DRB5, DRB6, and DRB9.
 
 	For each read, rammap picks the best-matching allele as the primary
-	alignment. If the best match is a DRB3 or DRB4 allele, that read ID
-	is written to DRB34_reads_file for downstream removal by filter_reads().
+	alignment. If the best match is anything other than a DRB1 allele, that
+	read ID is written to drb_paralog_reads_file for downstream removal by
+	filter_reads().
 	"""
 	print("Classifying DRB reads using multi-allele competitive mapping (rammap)!")
 
@@ -208,9 +212,9 @@ def classify_DRB_reads(input_file, output_file, DRB34_reads_file, read_group_str
 	run_quiet(rammap_cmd)
 	run_quiet(index_bam)
 
-	_parse_drb34_reads(output_file, DRB34_reads_file)
+	_parse_drb_paralog_reads(output_file, drb_paralog_reads_file)
 
-def classify_DRB_reads_pbmm2(input_file, output_file, DRB34_reads_file, read_group_string, reference_fasta, threads):
+def classify_DRB_reads_pbmm2(input_file, output_file, drb_paralog_reads_file, read_group_string, reference_fasta, threads):
 	"""
 	Same as classify_DRB_reads but uses pbmm2 for alignment.
 	Used for PacBio WGS/WES where the input file is a BAM.
@@ -231,7 +235,7 @@ def classify_DRB_reads_pbmm2(input_file, output_file, DRB34_reads_file, read_gro
 
 	run_quiet(pbmm2_cmd)
 
-	_parse_drb34_reads(output_file, DRB34_reads_file)
+	_parse_drb_paralog_reads(output_file, drb_paralog_reads_file)
 
 # Mark duplicates for ONT data or WGS PacBio data
 # pbmarkdup used for hybrid-capture PacBio data but does not scale well for WGS data
@@ -245,13 +249,39 @@ def mark_duplicates_picard(input_file, output_file, metrics_file, temp_dir, pica
 	index_bam = f"samtools index {output_file}"
 	run_quiet(index_bam)
 
+# Intergenic dead zones between DRB paralog/pseudogene loci on chr6.
+# Reads whose primary alignment lands in these regions are biologically
+# implausible (no annotated genes) and tend to be paralog-derived split
+# reads whose supplementary tag at DRB1 intron 1 triggers spurious pbsv
+# DEL calls spanning DRB1 exon 2. Excluding them upstream prevents the
+# artifact without removing legitimate DRB1 reads.
+DRB_DEAD_ZONES = [
+	"chr6:32473501-32517352",   # DRB9 to DRB5 intergenic
+	"chr6:32530288-32552712",   # DRB5 to DRB6 intergenic
+	"chr6:32560023-32577901",   # DRB6 to DRB1 intergenic
+]
+
 # Filter reads that did not map to chromosome 6
-def filter_reads(input_file, output_file, DRB34_reads_file, threads):
+def filter_reads(input_file, output_file, drb_paralog_reads_file, threads):
 	print("Excluding BAM records that don't map to chromosome 6!")
 
 	print(f"Samtools input file: {input_file}")
 
-	samtools_cmd = f"samtools view -h -F 2304 -@ {threads} {input_file} chr6:28000000-34000000 | grep -v -F -f {DRB34_reads_file} -- | samtools view -b -o {output_file}"
+	# Collect read IDs with primary alignment in DRB intergenic dead zones
+	dead_zone_ids_file = drb_paralog_reads_file + ".dead_zone"
+	dead_zone_cmd = (
+		f"samtools view -F 2304 -@ {threads} {input_file} "
+		+ " ".join(DRB_DEAD_ZONES)
+		+ f" | awk '{{print $1}}' | sort -u > {dead_zone_ids_file}"
+	)
+	run_quiet(dead_zone_cmd)
+
+	# Combine paralog + dead-zone IDs into a single exclusion list
+	combined_exclude_file = drb_paralog_reads_file + ".combined"
+	combine_cmd = f"cat {drb_paralog_reads_file} {dead_zone_ids_file} | sort -u > {combined_exclude_file}"
+	run_quiet(combine_cmd)
+
+	samtools_cmd = f"samtools view -h -F 2304 -@ {threads} {input_file} chr6:28000000-34000000 | grep -v -F -f {combined_exclude_file} -- | samtools view -b -o {output_file}"
 
 	index_cmd = f"samtools index {output_file}"
 
@@ -261,7 +291,9 @@ def filter_reads(input_file, output_file, DRB34_reads_file, threads):
 	count_reads_cmd = f"samtools view -c {output_file}"
 
 	read_count = int(subprocess.check_output(count_reads_cmd, shell=True).strip())
-	
+
+	dz_count = int(subprocess.check_output(f"wc -l < {dead_zone_ids_file}", shell=True).strip())
+	print(f"Excluded {dz_count} read IDs with primary in DRB intergenic dead zones")
 	print(f"Filtered BAM records written to: {output_file}")
 	print("\n")
 
