@@ -249,13 +249,39 @@ def mark_duplicates_picard(input_file, output_file, metrics_file, temp_dir, pica
 	index_bam = f"samtools index {output_file}"
 	run_quiet(index_bam)
 
+# Intergenic dead zones between DRB paralog/pseudogene loci on chr6.
+# Reads whose primary alignment lands in these regions are biologically
+# implausible (no annotated genes) and tend to be paralog-derived split
+# reads whose supplementary tag at DRB1 intron 1 triggers spurious pbsv
+# DEL calls spanning DRB1 exon 2. Excluding them upstream prevents the
+# artifact without removing legitimate DRB1 reads.
+DRB_DEAD_ZONES = [
+	"chr6:32473501-32517352",   # DRB9 to DRB5 intergenic
+	"chr6:32530288-32552712",   # DRB5 to DRB6 intergenic
+	"chr6:32560023-32577901",   # DRB6 to DRB1 intergenic
+]
+
 # Filter reads that did not map to chromosome 6
 def filter_reads(input_file, output_file, drb_paralog_reads_file, threads):
 	print("Excluding BAM records that don't map to chromosome 6!")
 
 	print(f"Samtools input file: {input_file}")
 
-	samtools_cmd = f"samtools view -h -F 2304 -@ {threads} {input_file} chr6:28000000-34000000 | grep -v -F -f {drb_paralog_reads_file} -- | samtools view -b -o {output_file}"
+	# Collect read IDs with primary alignment in DRB intergenic dead zones
+	dead_zone_ids_file = drb_paralog_reads_file + ".dead_zone"
+	dead_zone_cmd = (
+		f"samtools view -F 2304 -@ {threads} {input_file} "
+		+ " ".join(DRB_DEAD_ZONES)
+		+ f" | awk '{{print $1}}' | sort -u > {dead_zone_ids_file}"
+	)
+	run_quiet(dead_zone_cmd)
+
+	# Combine paralog + dead-zone IDs into a single exclusion list
+	combined_exclude_file = drb_paralog_reads_file + ".combined"
+	combine_cmd = f"cat {drb_paralog_reads_file} {dead_zone_ids_file} | sort -u > {combined_exclude_file}"
+	run_quiet(combine_cmd)
+
+	samtools_cmd = f"samtools view -h -F 2304 -@ {threads} {input_file} chr6:28000000-34000000 | grep -v -F -f {combined_exclude_file} -- | samtools view -b -o {output_file}"
 
 	index_cmd = f"samtools index {output_file}"
 
@@ -265,7 +291,9 @@ def filter_reads(input_file, output_file, drb_paralog_reads_file, threads):
 	count_reads_cmd = f"samtools view -c {output_file}"
 
 	read_count = int(subprocess.check_output(count_reads_cmd, shell=True).strip())
-	
+
+	dz_count = int(subprocess.check_output(f"wc -l < {dead_zone_ids_file}", shell=True).strip())
+	print(f"Excluded {dz_count} read IDs with primary in DRB intergenic dead zones")
 	print(f"Filtered BAM records written to: {output_file}")
 	print("\n")
 
