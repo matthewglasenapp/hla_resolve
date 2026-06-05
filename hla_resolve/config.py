@@ -264,8 +264,11 @@ dummy_reference = os.path.join(_data_dir, "reference/DRB_1_3_4.fa")
 
 # Multi-allele DRB reference for competitive read classification
 # Contains one full-length genomic sequence per allele group from IPD-IMGT/HLA
-# plus a GRCh38-extracted DRB5 paralog sequence:
-# 13 DRB1 alleles, 3 DRB3, 1 DRB4, 1 DRB5
+# plus GRCh38-extracted DRB5/DRB6/DRB9 paralog/pseudogene sequences:
+# 13 DRB1, 3 DRB3, 1 DRB4, 1 DRB5, 1 DRB6, 1 DRB9
+# DRB6/DRB9 included to catch paralog reads that would otherwise score as DRB1
+# (only DRB5 is masked in GRCh38; DRB6/DRB9 reads still anchor at their paralog
+# loci where they're harmless, but must be filtered if they leak to DRB1).
 # Used in classify_DRB_reads() function of preprocess_methods.py
 drb_multiallele_reference = os.path.join(_data_dir, "reference/DRB_paralog_reference.fa")
 
