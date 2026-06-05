@@ -47,7 +47,7 @@ def preprocess_ont_sample(config):
 	classify_DRB_reads(
 		input_file=config['trimmed_fastq'],
 		output_file=config['hg38_bam_drb'],
-		DRB34_reads_file=config['DRB34_reads_file'],
+		drb_paralog_reads_file=config['drb_paralog_reads_file'],
 		read_group_string=config['read_group_string'],
 		reference_fasta=config['drb_multiallele_reference'],
 		platform=config['platform'],
@@ -57,7 +57,7 @@ def preprocess_ont_sample(config):
 	filter_reads(
 		input_file=config['hg38_bam'],
 		output_file=config['hg38_chr6_bam'],
-		DRB34_reads_file=config['DRB34_reads_file'],
+		drb_paralog_reads_file=config['drb_paralog_reads_file'],
 		threads=config['threads']
 	)
 	
