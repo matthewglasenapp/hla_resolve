@@ -68,11 +68,13 @@ def ensure_reference_genome():
             os.chdir(original_cwd)
 
 def ensure_masked_reference():
-    """Build a copy of augmented_hg38.fa with HLA-DRB5/DRB6/DRB9 hard-masked.
+    """Build a copy of augmented_hg38.fa with HLA-DRB5 hard-masked.
 
-    Removes alignment destinations for reads from divergent DRB1 alleles
-    (e.g. *07, *09) whose flanking sequence misroutes to the paralog pseudogenes
-    in standard GRCh38. Coordinates from Ensembl GRCh38.110 GFF3.
+    Removes the dominant misrouting destination for reads from divergent DRB1
+    alleles (e.g. *07, *09) whose flanking sequence aligns better to DRB5 than
+    to GRCh38's DRB1*15:01 reference. DRB6/DRB9 contribute marginally to
+    misrouting and are left intact to avoid filtering legitimate reads.
+    Coordinates from Ensembl GRCh38.110 GFF3.
     """
     ref_dir = Path(_data_dir) / "reference"
     augmented_file = ref_dir / "augmented_hg38.fa"
@@ -81,13 +83,11 @@ def ensure_masked_reference():
     if masked_file.exists():
         return str(masked_file)
 
-    print("Building DRB-paralog masked reference (one-time)...")
+    print("Building DRB5-masked reference (one-time)...")
     mask_bed = ref_dir / "drb_paralog_mask.bed"
     with open(mask_bed, "w") as f:
         # BED is 0-based half-open; GFF3 coords are 1-based inclusive
-        f.write("chr6\t32459820\t32473500\n")  # HLA-DRB9
         f.write("chr6\t32517352\t32530287\n")  # HLA-DRB5
-        f.write("chr6\t32552712\t32560022\n")  # HLA-DRB6
 
     subprocess.run([
         "bedtools", "maskfasta",
@@ -264,8 +264,8 @@ dummy_reference = os.path.join(_data_dir, "reference/DRB_1_3_4.fa")
 
 # Multi-allele DRB reference for competitive read classification
 # Contains one full-length genomic sequence per allele group from IPD-IMGT/HLA
-# plus GRCh38-extracted DRB5/DRB6/DRB9 paralog/pseudogene sequences:
-# 13 DRB1 alleles, 3 DRB3, 1 DRB4, 1 DRB5, 1 DRB6, 1 DRB9
+# plus a GRCh38-extracted DRB5 paralog sequence:
+# 13 DRB1 alleles, 3 DRB3, 1 DRB4, 1 DRB5
 # Used in classify_DRB_reads() function of preprocess_methods.py
 drb_multiallele_reference = os.path.join(_data_dir, "reference/DRB_paralog_reference.fa")
 
