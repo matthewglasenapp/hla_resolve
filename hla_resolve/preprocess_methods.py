@@ -780,7 +780,7 @@ def run_mosdepth(input_file, output_dir, sample_ID, regions_file, threads):
 	prefix = os.path.join(output_dir, sample_ID)
 	
 	# --flag 3328 excludes duplicates and secondary/supplementary alignments
-	mosdepth = f"mosdepth --flag 1280 --by {regions_file} --thresholds 10,20,30 -t {threads} {prefix} {input_file}"
+	mosdepth = f"mosdepth --flag 3328 --by {regions_file} --thresholds 10,20,30 -t {threads} {prefix} {input_file}"
 	
 	run_quiet(mosdepth)
 	
