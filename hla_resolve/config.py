@@ -18,6 +18,25 @@ VERBOSE = False
 # Get the data directory relative to this config file
 _data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 
+def _drb5_is_masked(augmented_file):
+    """Verify that the augmented reference has HLA-DRB5 hard-masked.
+
+    Spot-checks 50 bases inside the DRB5 mask region and confirms they are all N.
+    Used so that users upgrading from v0.1.0 (which produced an unmasked
+    augmented_hg38.fa) get the reference auto-rebuilt without manual intervention.
+    """
+    if not augmented_file.exists():
+        return False
+    try:
+        result = subprocess.run(
+            ["samtools", "faidx", str(augmented_file), "chr6:32517400-32517450"],
+            capture_output=True, text=True, check=True,
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return False
+    seq = "".join(line for line in result.stdout.splitlines() if not line.startswith(">"))
+    return bool(seq) and all(c.upper() == "N" for c in seq)
+
 def ensure_reference_genome():
     """Build augmented_hg38.fa: GRCh38 + HLA-Y/OLI scaffold, with HLA-DRB5 hard-masked.
 
@@ -27,14 +46,31 @@ def ensure_reference_genome():
     misroute to the DRB5 paralog locus. The unmasked GRCh38 + HLA-Y intermediate
     is removed after masking. DRB6/DRB9 left intact since their masking does
     more harm than good (see drb_paralog_masking branch history).
+
+    If an augmented_hg38.fa already exists but its DRB5 region is unmasked
+    (e.g. a v0.1.0 install), it is removed and rebuilt with masking applied.
     """
     ref_dir = Path(_data_dir) / "reference"
     grch38_file = ref_dir / "GCA_000001405.15_GRCh38_no_alt_analysis_set.fna"
     augmented_file = ref_dir / "augmented_hg38.fa"
     hla_y_file = ref_dir / "hla_y_scaffold.fasta"
 
-    if augmented_file.exists():
+    # If a properly-masked augmented reference already exists, nothing to do.
+    if _drb5_is_masked(augmented_file):
         return
+
+    # Otherwise rebuild — either no file at all, or a v0.1.0 unmasked file.
+    if augmented_file.exists():
+        print("Existing augmented_hg38.fa is unmasked (v0.1.0 install). Rebuilding with HLA-DRB5 hard-masked...")
+        augmented_file.unlink()
+        fai = augmented_file.with_suffix(".fa.fai")
+        if fai.exists():
+            fai.unlink()
+    # Clean up the v0.1.0 sidecar that's no longer used by v0.2.0+
+    for stale in (ref_dir / "augmented_hg38_drb_masked.fa",
+                  ref_dir / "augmented_hg38_drb_masked.fa.fai"):
+        if stale.exists():
+            stale.unlink()
 
     original_cwd = os.getcwd()
     os.chdir(ref_dir)
