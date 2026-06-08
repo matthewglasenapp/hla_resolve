@@ -249,16 +249,19 @@ def mark_duplicates_picard(input_file, output_file, metrics_file, temp_dir, pica
 	index_bam = f"samtools index {output_file}"
 	run_quiet(index_bam)
 
-# Intergenic dead zones between DRB paralog/pseudogene loci on chr6.
-# Reads whose primary alignment lands in these regions are biologically
-# implausible (no annotated genes) and tend to be paralog-derived split
-# reads whose supplementary tag at DRB1 intron 1 triggers spurious pbsv
-# DEL calls spanning DRB1 exon 2. Excluding them upstream prevents the
-# artifact without removing legitimate DRB1 reads.
+# Single contiguous region from HLA-DRA's start through 5 kb 5' of HLA-DRB1.
+# Covers DRA, DRB9, DRB5, DRB6, and all intergenic stretches in between.
+# Reads with primary alignment here are off-target capture / paralog flanking
+# sequence and contribute no DRB1 typing signal (the pipeline only types
+# DRB1; DRA is monomorphic). Excluding them prevents spurious pbsv SV calls —
+# notably the 17 kb DEL spanning DRB1 exon 2 driven by reads in the
+# DRB6→DRB1 intergenic with supplementary tags at DRB1 intron 1
+# (chr6:32588292).
+# Coordinates from Ensembl GRCh38.110 GFF3:
+#   HLA-DRA start  = chr6:32439878
+#   HLA-DRB1 start = chr6:32577902 (5 kb upstream = 32572902)
 DRB_DEAD_ZONES = [
-	"chr6:32473501-32517352",   # DRB9 to DRB5 intergenic
-	"chr6:32530288-32552712",   # DRB5 to DRB6 intergenic
-	"chr6:32560023-32577901",   # DRB6 to DRB1 intergenic
+	"chr6:32439878-32572902",
 ]
 
 # Filter reads that did not map to chromosome 6

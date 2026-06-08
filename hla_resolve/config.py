@@ -19,85 +19,64 @@ VERBOSE = False
 _data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 
 def ensure_reference_genome():
-    """Download reference genome if not present"""
-    ref_dir = Path(_data_dir) / "reference"
-    ref_file = ref_dir / "GCA_000001405.15_GRCh38_no_alt_analysis_set.fna"
-    augmented_file = ref_dir / "augmented_hg38.fa"
-    
-    if not ref_file.exists():
-        print("Reference genome not found!")
-        print("Downloading reference genome!")
-        
-        # Change to reference directory
-        original_cwd = os.getcwd()
-        os.chdir(ref_dir)
-        
-        try:
-            # Download
-            subprocess.run([
-                "wget", 
-                "https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/001/405/GCA_000001405.15_GRCh38/seqs_for_alignment_pipelines.ucsc_ids/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna.gz"
-            ], check=True)
-            
-            # Decompress
-            print("Decompressing reference genome")
-            subprocess.run(["gunzip", "GCA_000001405.15_GRCh38_no_alt_analysis_set.fna.gz"], check=True)
-            
-            # Index reference
-            print("Indexing reference genome...")
-            subprocess.run(["samtools", "faidx", str(ref_file)], check=True)
-            
-            # Build augmented reference
-            hla_y_file = ref_dir / "hla_y_scaffold.fasta"
-            if hla_y_file.exists():
-                print("Augmenting reference genome...")
-                print("Do not exit!")
-                subprocess.run([
-                    "bash", "-c", 
-                    f"cat {ref_file} {hla_y_file} > {augmented_file}"
-                ], check=True)
-                print("Indexing augmented reference...")
-                subprocess.run(["samtools", "faidx", str(augmented_file)], check=True)
-            else:
-                print(f"Warning: {hla_y_file} not found, skipping augmented reference")
-            
-            print("Reference genome download complete!")
-            
-        finally:
-            # Always return to original directory
-            os.chdir(original_cwd)
+    """Build augmented_hg38.fa: GRCh38 + HLA-Y/OLI scaffold, with HLA-DRB5 hard-masked.
 
-def ensure_masked_reference():
-    """Build a copy of augmented_hg38.fa with HLA-DRB5 hard-masked.
-
-    Removes the dominant misrouting destination for reads from divergent DRB1
-    alleles (e.g. *07, *09) whose flanking sequence aligns better to DRB5 than
-    to GRCh38's DRB1*15:01 reference. DRB6/DRB9 contribute marginally to
-    misrouting and are left intact to avoid filtering legitimate reads.
-    Coordinates from Ensembl GRCh38.110 GFF3.
+    Single-pass setup. Downloads GRCh38 if absent, concatenates the HLA-Y/OLI
+    scaffold, then hard-masks HLA-DRB5 (chr6:32517353-32530287, Ensembl
+    GRCh38.110 GFF3) so reads from divergent DRB1 alleles (*07, *09) do not
+    misroute to the DRB5 paralog locus. The unmasked GRCh38 + HLA-Y intermediate
+    is removed after masking. DRB6/DRB9 left intact since their masking does
+    more harm than good (see drb_paralog_masking branch history).
     """
     ref_dir = Path(_data_dir) / "reference"
+    grch38_file = ref_dir / "GCA_000001405.15_GRCh38_no_alt_analysis_set.fna"
     augmented_file = ref_dir / "augmented_hg38.fa"
-    masked_file = ref_dir / "augmented_hg38_drb_masked.fa"
+    hla_y_file = ref_dir / "hla_y_scaffold.fasta"
 
-    if masked_file.exists():
-        return str(masked_file)
+    if augmented_file.exists():
+        return
 
-    print("Building DRB5-masked reference (one-time)...")
-    mask_bed = ref_dir / "drb_paralog_mask.bed"
-    with open(mask_bed, "w") as f:
-        # BED is 0-based half-open; GFF3 coords are 1-based inclusive
-        f.write("chr6\t32517352\t32530287\n")  # HLA-DRB5
+    original_cwd = os.getcwd()
+    os.chdir(ref_dir)
 
-    subprocess.run([
-        "bedtools", "maskfasta",
-        "-fi", str(augmented_file),
-        "-bed", str(mask_bed),
-        "-fo", str(masked_file)
-    ], check=True)
-    subprocess.run(["samtools", "faidx", str(masked_file)], check=True)
-    print(f"Masked reference built: {masked_file}")
-    return str(masked_file)
+    try:
+        # Download base GRCh38 if missing
+        if not grch38_file.exists():
+            print("Downloading GRCh38 reference genome...")
+            subprocess.run([
+                "wget",
+                "https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/001/405/GCA_000001405.15_GRCh38/seqs_for_alignment_pipelines.ucsc_ids/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna.gz"
+            ], check=True)
+            subprocess.run(["gunzip", "GCA_000001405.15_GRCh38_no_alt_analysis_set.fna.gz"], check=True)
+            subprocess.run(["samtools", "faidx", str(grch38_file)], check=True)
+
+        if not hla_y_file.exists():
+            raise FileNotFoundError(f"HLA-Y/OLI scaffold not found: {hla_y_file}")
+
+        # Concatenate GRCh38 + HLA-Y/OLI scaffold into a temporary unmasked file
+        unmasked = ref_dir / "augmented_hg38.unmasked.tmp.fa"
+        print("Augmenting GRCh38 with HLA-Y/OLI scaffold...")
+        subprocess.run(["bash", "-c", f"cat {grch38_file} {hla_y_file} > {unmasked}"], check=True)
+
+        # Hard-mask HLA-DRB5
+        # GFF3 is 1-based inclusive; BED is 0-based half-open -> start-1, end unchanged.
+        print("Hard-masking HLA-DRB5 (chr6:32517353-32530287, Ensembl GRCh38.110)...")
+        mask_bed = ref_dir / "drb5_mask.bed"
+        with open(mask_bed, "w") as f:
+            f.write("chr6\t32517352\t32530287\n")
+
+        subprocess.run([
+            "bedtools", "maskfasta",
+            "-fi", str(unmasked),
+            "-bed", str(mask_bed),
+            "-fo", str(augmented_file)
+        ], check=True)
+        subprocess.run(["samtools", "faidx", str(augmented_file)], check=True)
+
+        unmasked.unlink()
+        print(f"Reference ready: {augmented_file} (HLA-Y/OLI + HLA-DRB5 hard-masked)")
+    finally:
+        os.chdir(original_cwd)
 
 def ensure_longphase():
     """Download and extract longphase if not present"""
@@ -242,7 +221,6 @@ def ensure_hla_xml():
 
 # Download reference genome, Picard, longphase, rammap, HLA XML database, DeepVariant SIF, and Clair3 SIF on first import
 ensure_reference_genome()
-ensure_masked_reference()
 picard = ensure_picard()
 longphase = ensure_longphase()
 rammap = ensure_rammap()
@@ -262,15 +240,12 @@ CLASS_I_GENES = {"HLA-A", "HLA-B", "HLA-C"}
 # The contigs represent exon2 +/- 2kb, with the 270 bases of exon 2 hardmasked with "N"
 dummy_reference = os.path.join(_data_dir, "reference/DRB_1_3_4.fa")
 
-# Multi-allele DRB reference for competitive read classification
-# Contains one full-length genomic sequence per allele group from IPD-IMGT/HLA
-# plus GRCh38-extracted DRB5/DRB6/DRB9 paralog/pseudogene sequences:
-# 13 DRB1, 3 DRB3, 1 DRB4, 1 DRB5, 1 DRB6, 1 DRB9
-# DRB6/DRB9 included to catch paralog reads that would otherwise score as DRB1
-# (only DRB5 is masked in GRCh38; DRB6/DRB9 reads still anchor at their paralog
-# loci where they're harmless, but must be filtered if they leak to DRB1).
-# Used in classify_DRB_reads() function of preprocess_methods.py
-drb_multiallele_reference = os.path.join(_data_dir, "reference/DRB_paralog_reference.fa")
+# Multi-allele DRB reference for competitive read classification.
+# 20 entries: 13 DRB1 + 3 DRB3 + 1 DRB4 (IPD-IMGT/HLA) and GRCh38-extracted
+# DRB5/DRB6/DRB9 paralog/pseudogene sequences. Reads whose competitive primary
+# is anything other than DRB1*XX are flagged for removal by filter_reads().
+# Used in classify_DRB_reads() function of preprocess_methods.py.
+drb_multiallele_reference = os.path.join(_data_dir, "reference/DRB_reference.fa")
 
 
 # Clair3 model names — bundled inside the Clair3 SIF at /opt/models/
@@ -279,10 +254,10 @@ drb_multiallele_reference = os.path.join(_data_dir, "reference/DRB_paralog_refer
 clair3_ont_model = "r1041_e82_400bps_sup_v500"   # R10.4.1 SUP (default)
 clair3_hifi_model = "hifi_revio"
 
-# Reference fasta with added HLA-OLI/HLA-Y contig for baiting out reads originating from HLA-Y
-# and with HLA-DRB5/DRB6/DRB9 hard-masked so divergent DRB1 reads (e.g. *07/*09) anchor at
-# DRB1 instead of misrouting to the paralog pseudogenes.
-reference_genome_minimap2 = os.path.join(_data_dir, "reference/augmented_hg38_drb_masked.fa")
+# Reference fasta: GRCh38 + HLA-OLI/HLA-Y scaffold, with HLA-DRB5 hard-masked.
+# Masking forces divergent DRB1 reads (*07, *09) to anchor at DRB1 instead of
+# misrouting to the DRB5 paralog locus. Built by ensure_reference_genome().
+reference_genome_minimap2 = os.path.join(_data_dir, "reference/augmented_hg38.fa")
 
 # DeepVariant SIF file path — populated by ensure_deepvariant_sif() above
 

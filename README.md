@@ -164,13 +164,13 @@ Adapter and barcode sequences are removed from raw reads using [cutadapt](https:
 PCR duplicates are identified and removed from the trimmed reads using [pbmarkdup](https://github.com/PacificBiosciences/pbmarkdup).
 
 #### 3. Reference Genome Alignment
-Deduplicated reads are aligned to a modified GRCh38 reference genome (no-alt analysis set) using [rammap](https://doi.org/10.64898/2026.05.26.726289) (Wang and Li, 2026), a memory-safe Rust reimplementation of [minimap2](https://doi.org/10.1093/bioinformatics/bty191) that produces identical alignments. The modified reference includes an additional scaffold containing the HLA-Y/HLA-OLI insertion to prevent mismapping of HLA-Y reads to HLA-A.
+Deduplicated reads are aligned to a modified GRCh38 reference genome (no-alt analysis set) using [rammap](https://doi.org/10.64898/2026.05.26.726289) (Wang and Li, 2026), a memory-safe Rust reimplementation of [minimap2](https://doi.org/10.1093/bioinformatics/bty191) that produces identical alignments. The modified reference includes an additional scaffold containing the HLA-Y/HLA-OLI insertion to prevent mismapping of HLA-Y reads to HLA-A. 
 
 #### 4. HLA-DRB Paralog Filtering
-A separate alignment step maps reads against a multi-allele HLA-DRB reference (containing HLA-DRB1, -DRB3, and -DRB4 sequences from the IPD-IMGT/HLA database) to identify and remove HLA-DRB3/DRB4 reads that would otherwise mismap to HLA-DRB1.
+A separate alignment step maps reads against a multi-allele HLA-DRB reference (`DRB_reference.fa`) continaing 13 HLA-DRB1 alleles, 3 HLA-DRB3 alleles, and 1 HLA-DRB4 allele from IPD-IMGT/HLA, as well as the HLA-DRB5, -DRB6, and -DRB9 sequences from GRCh38. Reads with primary alignments to anything other than an HLA-DRB1 are flagged for removal. 
 
 #### 5. Read Filtering
-Aligned reads are filtered to retain only primary alignments on chromosome 6, with HLA-DRB3/DRB4 reads excluded.
+Aligned reads are filtered to retain only primary alignments on chromosome 6. Reads with primary alignments to HLA-DRB1 paralogs (identified in step 4) are removed. Additionally, reads with primary alignments upstream of HLA-DRB1 (chr6:32439878-32572902), the region containing HLA-DRA, -DRB9, -DRB5, and -DRB6 are removed to prevent spurious SV calls by pbsv based on split alignments across the DRB paralogs.
 
 #### 6. Small Variant Calling
 SNVs are called with [bcftools](https://doi.org/10.1093/bioinformatics/btr509) and indels are called with [DeepVariant](https://doi.org/10.1038/nbt.4235). DeepVariant RefCall genotypes with sufficient read support are rescued and reclassified as heterozygous or homozygous ALT based on variant allele frequency.
