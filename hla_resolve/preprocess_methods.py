@@ -249,42 +249,15 @@ def mark_duplicates_picard(input_file, output_file, metrics_file, temp_dir, pica
 	index_bam = f"samtools index {output_file}"
 	run_quiet(index_bam)
 
-# Single contiguous region from HLA-DRA's start through 5 kb 5' of HLA-DRB1.
-# Covers DRA, DRB9, DRB5, DRB6, and all intergenic stretches in between.
-# Reads with primary alignment here are off-target capture / paralog flanking
-# sequence and contribute no DRB1 typing signal (the pipeline only types
-# DRB1; DRA is monomorphic). Excluding them prevents spurious pbsv SV calls —
-# notably the 17 kb DEL spanning DRB1 exon 2 driven by reads in the
-# DRB6→DRB1 intergenic with supplementary tags at DRB1 intron 1
-# (chr6:32588292).
-# Coordinates from Ensembl GRCh38.110 GFF3:
-#   HLA-DRA start  = chr6:32439878
-#   HLA-DRB1 start = chr6:32577902 (5 kb upstream = 32572902)
-DRB_DEAD_ZONES = [
-	"chr6:32439878-32572902",
-]
-
 # Filter reads that did not map to chromosome 6
 def filter_reads(input_file, output_file, drb_paralog_reads_file, threads):
 	print("Excluding BAM records that don't map to chromosome 6!")
 
 	print(f"Samtools input file: {input_file}")
 
-	# Collect read IDs with primary alignment in DRB intergenic dead zones
-	dead_zone_ids_file = drb_paralog_reads_file + ".dead_zone"
-	dead_zone_cmd = (
-		f"samtools view -F 2304 -@ {threads} {input_file} "
-		+ " ".join(DRB_DEAD_ZONES)
-		+ f" | awk '{{print $1}}' | sort -u > {dead_zone_ids_file}"
-	)
-	run_quiet(dead_zone_cmd)
-
-	# Combine paralog + dead-zone IDs into a single exclusion list
-	combined_exclude_file = drb_paralog_reads_file + ".combined"
-	combine_cmd = f"cat {drb_paralog_reads_file} {dead_zone_ids_file} | sort -u > {combined_exclude_file}"
-	run_quiet(combine_cmd)
-
-	samtools_cmd = f"samtools view -h -F 2304 -@ {threads} {input_file} chr6:28000000-34000000 | grep -v -F -f {combined_exclude_file} -- | samtools view -b -o {output_file}"
+	# Exclude DRB paralog reads (DRB3/4/5/6/9, identified by competitive mapping),
+	# restrict to the chr6 MHC window, and drop secondary/supplementary records.
+	samtools_cmd = f"samtools view -h -F 2304 -@ {threads} {input_file} chr6:28000000-34000000 | grep -v -F -f {drb_paralog_reads_file} -- | samtools view -b -o {output_file}"
 
 	index_cmd = f"samtools index {output_file}"
 
@@ -295,8 +268,6 @@ def filter_reads(input_file, output_file, drb_paralog_reads_file, threads):
 
 	read_count = int(subprocess.check_output(count_reads_cmd, shell=True).strip())
 
-	dz_count = int(subprocess.check_output(f"wc -l < {dead_zone_ids_file}", shell=True).strip())
-	print(f"Excluded {dz_count} read IDs with primary in DRB intergenic dead zones")
 	print(f"Filtered BAM records written to: {output_file}")
 	print("\n")
 
@@ -571,6 +542,17 @@ def merge_hybrid_vcfs(snp_vcf, indel_vcf, indel_only_vcf, merged_vcf, snp_caller
 def call_structural_variants_pbsv(input_bam, output_svsig, output_vcf, threads, tandem_repeat_bed, reference_fasta):
 	print("Calling structural variants with pbsv!")
 
+	# Strip SA tags so pbsv cannot reconstruct split reads into large cross-gene
+	# SVs. Supplementary records are already removed upstream (-F 2304 in
+	# filter_reads), but the SA:Z: tags on retained primaries still let pbsv call
+	# implausible multi-kb cross-gene events from 2-8 kb reads. SVs are taken from
+	# CIGAR signatures of primary alignments only. The variant-calling/phasing BAM
+	# is left untouched; only this pbsv input copy is stripped.
+	sa_stripped_bam = input_bam.replace(".bam", ".pbsv_nosa.bam")
+	run_quiet(f"samtools view -h -x SA -b -@ {threads} -o {sa_stripped_bam} {input_bam}")
+	run_quiet(f"samtools index {sa_stripped_bam}")
+	input_bam = sa_stripped_bam
+
 	print(f"pbsv input file: {input_bam}")
 	
 	# -a Don't downsample
@@ -607,7 +589,7 @@ def call_structural_variants_sniffles(input_bam, output_vcf, threads, reference_
 	print("\n")
 
 # Genotype tandem repeats with pbtrgt
-def genotype_tandem_repeats(input_bam, output_vcf, pbtrgt_dir, threads, reference_fasta, pbtrgt_repeat_file, original_cwd):
+def genotype_tandem_repeats(input_bam, output_vcf, pbtrgt_dir, threads, reference_fasta, pbtrgt_repeat_file, original_cwd, scheme):
 	print("Genotyping tandem repeats with TRGT!")
 
 	print(f"TRGT input file: {input_bam}")
@@ -622,7 +604,11 @@ def genotype_tandem_repeats(input_bam, output_vcf, pbtrgt_dir, threads, referenc
 	os.chdir(pbtrgt_dir)
 
 	try:
-		trgt_cmd = f"trgt genotype --threads {threads} --genome {reference_fasta} --reads {input_bam} --repeats {pbtrgt_repeat_file} --output-prefix {output_prefix} --preset targeted"
+		# TRGT's 'targeted' preset (disables rq>=0.98 read filtering, uses the
+		# cluster genotyper, and targeted flank scoring) suits enriched capture/
+		# amplicon data; WGS/WES use TRGT's default 'wgs' preset.
+		trgt_preset = "targeted" if scheme in ("hybrid_capture", "amplicon") else "wgs"
+		trgt_cmd = f"trgt genotype --threads {threads} --genome {reference_fasta} --reads {input_bam} --repeats {pbtrgt_repeat_file} --output-prefix {output_prefix} --preset {trgt_preset}"
 
 		run_quiet(trgt_cmd)
 

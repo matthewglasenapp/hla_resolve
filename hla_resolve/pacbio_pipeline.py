@@ -272,7 +272,8 @@ def preprocess_pacbio_sample(config):
 			threads=config['threads'],
 			reference_fasta=config['reference_genome'],
 			pbtrgt_repeat_file=config['pbtrgt_repeat_file'],
-			original_cwd=config['ORIGINAL_CWD']
+			original_cwd=config['ORIGINAL_CWD'],
+			scheme=config['scheme']
 		)
 		
 		phase_genotypes_hiphase(
