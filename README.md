@@ -9,13 +9,13 @@
   <b>HLA Typing from PacBio Reads</b>
 </p>
 
-HLA-Resolve is a command-line tool for high-resolution (four-field) HLA typing from PacBio HiFi sequencing reads. It reconstructs phased, full-gene haplotypes for the eight classical HLA loci (HLA-A, -B, -C, -DPA1, -DPB1, -DQA1, -DQB1, -DRB1) and queries the [IPD-IMGT/HLA database](https://www.ebi.ac.uk/ipd/imgt/hla/) to return star allele calls. The tool is compatible with whole-genome, whole-exome, hybrid-capture, and amplicon sequencing data.
+HLA-Resolve is a command-line tool for high-resolution (four-field) HLA typing from high coverage PacBio HiFi sequencing reads. It reconstructs phased, full-gene sequences for the eight classical HLA loci (HLA-A, -B, -C, -DPA1, -DPB1, -DQA1, -DQB1, -DRB1) and queries the [IPD-IMGT/HLA database](https://www.ebi.ac.uk/ipd/imgt/hla/) to return HLA allele calls. The tool was designed for hybrid capture libraries (read N50 ~4kb) but should also work with whole-genome, whole-exome, and amplicon data, though WGS validation is ongoing.
 
 **Authors:** [Matthew Glasenapp](https://github.com/matthewglasenapp), [Alex Symons](https://github.com/FlyingFish800), [Omar Cornejo](https://github.com/oeco28)
 
 **⚠️ Note:** HLA-Resolve is intended for high-coverage PacBio HiFi reads. ONT support is still in development. The HLA-Resolve [manuscript](https://doi.org/10.64898/2026.03.27.26349549) is under peer review.
 
-> **Disclaimer:** HLA-Resolve is pre-release software intended for research use only and not for use in diagnostic procedures.
+> **Disclaimer:** HLA-Resolve is pre-release software in active development. It is intended for research use only and not for use in diagnostic procedures.
 
 ## Table of Contents
 
