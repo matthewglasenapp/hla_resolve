@@ -193,7 +193,7 @@ def _parse_drb_paralog_reads(output_file, drb_paralog_reads_file):
 	print(f"DRB paralog read IDs written to: {drb_paralog_reads_file}")
 	print("\n")
 
-def classify_DRB_reads(input_file, output_file, drb_paralog_reads_file, read_group_string, reference_fasta, platform, threads):
+def classify_DRB_reads(input_file, output_file, drb_paralog_reads_file, read_group_string, reference_fasta, platform, threads, region=None):
 	"""
 	Identify reads originating from DRB paralogs (DRB3/4/5/6/9) using competitive
 	mapping against a multi-allele reference containing representative genomic
@@ -203,6 +203,13 @@ def classify_DRB_reads(input_file, output_file, drb_paralog_reads_file, read_gro
 	alignment. If the best match is anything other than a DRB1 allele, that
 	read ID is written to drb_paralog_reads_file for downstream removal by
 	filter_reads().
+
+	When `region` is given, `input_file` is treated as a coordinate-sorted,
+	indexed GRCh38 BAM and only the primary reads overlapping that region (the
+	DR cluster) are competitively mapped. This restricts paralog classification
+	to reads already placed in the DR region instead of re-mapping the full read
+	set, mirroring classify_DRB_reads_pbmm2. When `region` is None the whole
+	`input_file` is mapped.
 	"""
 	print("Classifying DRB reads using multi-allele competitive mapping (rammap)!")
 
@@ -215,8 +222,14 @@ def classify_DRB_reads(input_file, output_file, drb_paralog_reads_file, read_gro
 	samtools_threads = threads - rammap_threads
 	rammap_rg_string = "'{}'".format(read_group_string.replace("\t", "\\t"))
 
+	# Restrict competitive mapping to primary reads already placed in the DR region.
+	map_input = input_file
+	if region is not None:
+		map_input = output_file.replace(".bam", ".dr_region.fastq")
+		run_quiet(f"samtools view -b -F 0x900 -@ {samtools_threads} {input_file} {region} | samtools fastq -@ {samtools_threads} - > {map_input}")
+
 	# Map reads against the multi-allele DRB reference (DRB1, DRB3, DRB4 alleles)
-	rammap_cmd = f"{config.rammap} -Y -t {rammap_threads} -ax {platform_string} -R {rammap_rg_string} {reference_fasta} {input_file} | samtools sort -@ {samtools_threads} -o {output_file}"
+	rammap_cmd = f"{config.rammap} -Y -t {rammap_threads} -ax {platform_string} -R {rammap_rg_string} {reference_fasta} {map_input} | samtools sort -@ {samtools_threads} -o {output_file}"
 	index_bam = f"samtools index {output_file}"
 
 	run_quiet(rammap_cmd)

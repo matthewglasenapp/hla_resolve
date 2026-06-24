@@ -63,13 +63,14 @@ def preprocess_pacbio_sample(config):
 		)
 
 		classify_DRB_reads(
-			input_file=align_input,
+			input_file=config['hg38_bam'],
 			output_file=config['hg38_bam_drb'],
 			drb_paralog_reads_file=config['drb_paralog_reads_file'],
 			read_group_string=config['read_group_string'],
 			reference_fasta=config['drb_multiallele_reference'],
 			platform=config['platform'],
-			threads=config['threads']
+			threads=config['threads'],
+			region=drb_region
 		)
 
 		chr6_read_count = filter_reads(
