@@ -5,4 +5,4 @@
 #!genome-date 2013-12
 #!genome-build-accession GCA_000001405.29
 #!genebuild-last-updated 2023-03
-chr6	ensembl_havana	gene	33075990	33089696	.	+	.	ID=gene:ENSG00000223865;Name=HLA-DPB1;biotype=protein_coding;description=major histocompatibility complex%2C class II%2C DP beta 1 [Source:HGNC Symbol%3BAcc:HGNC:4940];gene_id=ENSG00000223865;logic_name=ensembl_havana_gene_homo_sapiens;version=11
+chr6	ensembl_havana	gene	33075676	33089696	.	+	.	ID=gene:ENSG00000223865;Name=HLA-DPB1;biotype=protein_coding;description=major histocompatibility complex%2C class II%2C DP beta 1 [Source:HGNC Symbol%3BAcc:HGNC:4940];gene_id=ENSG00000223865;logic_name=ensembl_havana_gene_homo_sapiens;version=11
