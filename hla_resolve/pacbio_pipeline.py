@@ -25,7 +25,7 @@ from .preprocess_methods import (
 	phase_genotypes_hiphase,
 	merge_hiphase_vcfs
 )
-from .config import min_reads_sample
+from .config import min_reads_sample, drb_region
 
 def preprocess_pacbio_sample(config):
 	if config['scheme'] in ("hybrid_capture", "amplicon"):
@@ -80,21 +80,27 @@ def preprocess_pacbio_sample(config):
 		)
 
 	elif config['scheme'] == "WGS" or config['scheme'] == "WES":
-		align_to_reference_pbmm2(
+		# rammap (minimap2) aligns divergent DRB1 alleles (e.g. DRB1*04) through
+		# the exon-2 ARS instead of soft-clipping them as pbmm2 does, which is
+		# required to recover the second allele at DRB1. uBAM input is streamed to
+		# FASTQ inside align_to_reference_rammap.
+		align_to_reference_rammap(
 			input_file=config['input_file'],
 			output_file=config['hg38_bam'],
 			read_group_string=config['read_group_string'],
 			reference_fasta=config['reference_genome'],
+			platform=config['platform'],
 			threads=config['threads'],
 		)
 
 		classify_DRB_reads_pbmm2(
-			input_file=config['input_file'],
+			input_file=config['hg38_bam'],
 			output_file=config['hg38_bam_drb'],
 			drb_paralog_reads_file=config['drb_paralog_reads_file'],
 			read_group_string=config['read_group_string'],
 			reference_fasta=config['drb_multiallele_reference'],
-			threads=config['threads']
+			threads=config['threads'],
+			region=drb_region
 		)
 
 		chr6_read_count = filter_reads(

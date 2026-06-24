@@ -144,7 +144,17 @@ def align_to_reference_rammap(input_file, output_file, read_group_string, refere
 	samtools_threads = threads - rammap_threads
 	rammap_rg_string = "'{}'".format(read_group_string.replace("\t", "\\t"))
 
-	rammap_cmd = f"{config.rammap} -Y -t {rammap_threads} -ax {platform_string} -R {rammap_rg_string} {reference_fasta} {input_file} | samtools sort -@ {samtools_threads} -o {output_file}"
+	# rammap (minimap2) only accepts FASTA/FASTQ. PacBio WGS/WES input is an
+	# unmapped BAM, so stream it through samtools fastq and read from stdin ("-")
+	# rather than materializing a whole-genome FASTQ on disk.
+	if input_file.endswith(".bam"):
+		rammap_cmd = (
+			f"samtools fastq -@ {samtools_threads} {input_file} | "
+			f"{config.rammap} -Y -t {rammap_threads} -ax {platform_string} -R {rammap_rg_string} {reference_fasta} - | "
+			f"samtools sort -@ {samtools_threads} -o {output_file}"
+		)
+	else:
+		rammap_cmd = f"{config.rammap} -Y -t {rammap_threads} -ax {platform_string} -R {rammap_rg_string} {reference_fasta} {input_file} | samtools sort -@ {samtools_threads} -o {output_file}"
 	index_bam = f"samtools index {output_file}"
 
 	run_quiet(rammap_cmd)
@@ -214,10 +224,18 @@ def classify_DRB_reads(input_file, output_file, drb_paralog_reads_file, read_gro
 
 	_parse_drb_paralog_reads(output_file, drb_paralog_reads_file)
 
-def classify_DRB_reads_pbmm2(input_file, output_file, drb_paralog_reads_file, read_group_string, reference_fasta, threads):
+def classify_DRB_reads_pbmm2(input_file, output_file, drb_paralog_reads_file, read_group_string, reference_fasta, threads, region=None):
 	"""
 	Same as classify_DRB_reads but uses pbmm2 for alignment.
-	Used for PacBio WGS/WES where the input file is a BAM.
+	Used for PacBio WGS/WES.
+
+	When `region` is given, `input_file` is treated as a coordinate-sorted,
+	indexed GRCh38 BAM and only the primary reads overlapping that region (the
+	DR cluster) are competitively mapped against the panel. This restricts DRB
+	paralog classification to reads already placed in the DR region instead of
+	the whole genome, which removes genome-wide homology noise from the kill-list
+	and matches the intent: we are excluding mis-placed reads, not rehoming
+	unmapped ones. When `region` is None the whole `input_file` is mapped.
 	"""
 	print("Classifying DRB reads using multi-allele competitive mapping (pbmm2)!")
 
@@ -228,9 +246,17 @@ def classify_DRB_reads_pbmm2(input_file, output_file, drb_paralog_reads_file, re
 		index_cmd = f"pbmm2 index {reference_fasta} {mmi_file}"
 		run_quiet(index_cmd)
 
-	pbmm2_cmd = f"pbmm2 align -j {threads} {mmi_file} {input_file} {output_file} --sort --log-level INFO --bam-index BAI"
+	# Restrict competitive mapping to primary reads already placed in the DR region.
+	# Extract them as FASTQ from the GRCh38 alignment so pbmm2 re-aligns the read
+	# sequences cleanly against the multi-allele panel.
+	map_input = input_file
+	if region is not None:
+		map_input = output_file.replace(".bam", ".dr_region.fastq")
+		run_quiet(f"samtools view -b -F 0x900 -@ {threads} {input_file} {region} | samtools fastq -@ {threads} - > {map_input}")
 
-	if not input_file.endswith(".bam"):
+	pbmm2_cmd = f"pbmm2 align -j {threads} {mmi_file} {map_input} {output_file} --sort --log-level INFO --bam-index BAI"
+
+	if not map_input.endswith(".bam"):
 		pbmm2_cmd += f" --rg '{read_group_string}'"
 
 	run_quiet(pbmm2_cmd)

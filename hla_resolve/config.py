@@ -283,6 +283,13 @@ dummy_reference = os.path.join(_data_dir, "reference/DRB_1_3_4.fa")
 # Used in classify_DRB_reads() function of preprocess_methods.py.
 drb_multiallele_reference = os.path.join(_data_dir, "reference/DRB_reference.fa")
 
+# GRCh38 extent of the DR sub-region (HLA-DRA .. HLA-DRB1), spanning the DRB
+# paralog cluster (DRB5/DRB6/DRB1). For WGS/WES, competitive DRB classification
+# is restricted to primary reads already placed in this window, rather than the
+# whole genome: we are reclassifying reads that mapped into the DR region, not
+# rehoming unmapped reads. Removes genome-wide homology noise from the kill-list.
+drb_region = "chr6:32439878-32589848"
+
 
 # Clair3 model names — bundled inside the Clair3 SIF at /opt/models/
 # Users can override the ONT model via --clair3_model at the command line
