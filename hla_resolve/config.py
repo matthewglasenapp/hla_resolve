@@ -5,9 +5,11 @@
 
 # Configuration constants and paths for HLA-Resolve
 import os
+import fcntl
 import subprocess
 from pathlib import Path
 from zipfile import ZipFile
+from contextlib import contextmanager
 
 # Runtime verbosity flag. Set to True by cli.py when --verbose is passed.
 # Consumers should `from . import config` and check `config.VERBOSE` so the
@@ -17,6 +19,46 @@ VERBOSE = False
 
 # Get the data directory relative to this config file
 _data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+
+@contextmanager
+def _setup_lock(resource_dir):
+    """Serialize first-run setup for a shared resource directory across processes.
+
+    All ensure_* functions write into a single install-level data directory
+    (hla_resolve/data/...). When an array job is submitted right after install,
+    dozens of tasks import this module at once, all see the files missing, and
+    would otherwise download/build the same artifacts on top of each other ->
+    redundant multi-GB fetches and corrupted shared files.
+
+    This takes an exclusive flock on a .setup.lock file in `resource_dir`, so
+    only one process performs the work at a time; the rest block here and then
+    typically find the artifact already present and return immediately. Unix-only
+    (fcntl); fine for the Linux/macOS HPC environments this tool targets.
+    """
+    resource_dir = Path(resource_dir)
+    resource_dir.mkdir(parents=True, exist_ok=True)
+    lock_path = resource_dir / ".setup.lock"
+    with open(lock_path, "w") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(lock, fcntl.LOCK_UN)
+
+def _wget_atomic(url, dest, executable=False):
+    """Download `url` to a temp file in dest's directory, then atomically rename.
+
+    os.replace() is atomic on a single filesystem, so other processes never
+    observe a partially-downloaded `dest`: they see either no file or the
+    complete one. Pair with _setup_lock so a crashed download leaves only a
+    .tmp stub (ignored by the exists() check), never a half-written `dest`.
+    """
+    dest = Path(dest)
+    tmp = dest.with_name(dest.name + ".tmp")
+    subprocess.run(["wget", url, "-O", str(tmp)], check=True)
+    if executable:
+        subprocess.run(["chmod", "+x", str(tmp)], check=True)
+    os.replace(tmp, dest)
 
 def _drb5_is_masked(augmented_file):
     """Verify that the augmented reference has HLA-DRB5 hard-masked.
@@ -55,95 +97,124 @@ def ensure_reference_genome():
     augmented_file = ref_dir / "augmented_hg38.fa"
     hla_y_file = ref_dir / "hla_y_scaffold.fasta"
 
-    # If a properly-masked augmented reference already exists, nothing to do.
+    # Fast path (no lock): a properly-masked augmented reference already exists.
     if _drb5_is_masked(augmented_file):
         return
 
-    # Otherwise rebuild — either no file at all, or a v0.1.0 unmasked file.
-    if augmented_file.exists():
-        print("Existing augmented_hg38.fa is unmasked (v0.1.0 install). Rebuilding with HLA-DRB5 hard-masked...")
-        augmented_file.unlink()
-        fai = augmented_file.with_suffix(".fa.fai")
-        if fai.exists():
-            fai.unlink()
-    # Clean up the v0.1.0 sidecar that's no longer used by v0.2.0+
-    for stale in (ref_dir / "augmented_hg38_drb_masked.fa",
-                  ref_dir / "augmented_hg38_drb_masked.fa.fai"):
-        if stale.exists():
-            stale.unlink()
+    with _setup_lock(ref_dir):
+        # Re-check inside the lock: another process may have built it while we
+        # were waiting, in which case there is nothing left to do.
+        if _drb5_is_masked(augmented_file):
+            return
 
-    original_cwd = os.getcwd()
-    os.chdir(ref_dir)
+        # Otherwise rebuild — either no file at all, or a v0.1.0 unmasked file.
+        if augmented_file.exists():
+            print("Existing augmented_hg38.fa is unmasked (v0.1.0 install). Rebuilding with HLA-DRB5 hard-masked...")
+            augmented_file.unlink()
+            fai = augmented_file.with_suffix(".fa.fai")
+            if fai.exists():
+                fai.unlink()
+        # Clean up the v0.1.0 sidecar that's no longer used by v0.2.0+
+        for stale in (ref_dir / "augmented_hg38_drb_masked.fa",
+                      ref_dir / "augmented_hg38_drb_masked.fa.fai"):
+            if stale.exists():
+                stale.unlink()
 
-    try:
-        # Download base GRCh38 if missing
-        if not grch38_file.exists():
-            print("Downloading GRCh38 reference genome...")
+        original_cwd = os.getcwd()
+        os.chdir(ref_dir)
+
+        try:
+            # Download base GRCh38 if missing. Download+decompress to temp names
+            # and atomically rename, so an interrupted fetch never leaves a
+            # partial .fna that a later run would mistake for complete.
+            if not grch38_file.exists():
+                print("Downloading GRCh38 reference genome...")
+                tmp_gz = ref_dir / "grch38.tmp.fna.gz"
+                tmp_fna = ref_dir / "grch38.tmp.fna"
+                subprocess.run([
+                    "wget",
+                    "https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/001/405/GCA_000001405.15_GRCh38/seqs_for_alignment_pipelines.ucsc_ids/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna.gz",
+                    "-O", str(tmp_gz)
+                ], check=True)
+                subprocess.run(["gunzip", str(tmp_gz)], check=True)
+                os.replace(tmp_fna, grch38_file)
+                subprocess.run(["samtools", "faidx", str(grch38_file)], check=True)
+
+            if not hla_y_file.exists():
+                raise FileNotFoundError(f"HLA-Y/OLI scaffold not found: {hla_y_file}")
+
+            # Concatenate GRCh38 + HLA-Y/OLI scaffold into a temporary unmasked file
+            unmasked = ref_dir / "augmented_hg38.unmasked.tmp.fa"
+            print("Augmenting GRCh38 with HLA-Y/OLI scaffold...")
+            subprocess.run(["bash", "-c", f"cat {grch38_file} {hla_y_file} > {unmasked}"], check=True)
+
+            # Hard-mask HLA-DRB5
+            # GFF3 is 1-based inclusive; BED is 0-based half-open -> start-1, end unchanged.
+            print("Hard-masking HLA-DRB5 (chr6:32517353-32530287, Ensembl GRCh38.110)...")
+            mask_bed = ref_dir / "drb5_mask.bed"
+            with open(mask_bed, "w") as f:
+                f.write("chr6\t32517352\t32530287\n")
+
+            # Build into temp names, then atomically publish the reference and its
+            # index together, so the augmented_file only appears fully built and
+            # indexed — the fast-path check above never sees a half-masked file.
+            masked_tmp = ref_dir / "augmented_hg38.masked.tmp.fa"
             subprocess.run([
-                "wget",
-                "https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/001/405/GCA_000001405.15_GRCh38/seqs_for_alignment_pipelines.ucsc_ids/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna.gz"
+                "bedtools", "maskfasta",
+                "-fi", str(unmasked),
+                "-bed", str(mask_bed),
+                "-fo", str(masked_tmp)
             ], check=True)
-            subprocess.run(["gunzip", "GCA_000001405.15_GRCh38_no_alt_analysis_set.fna.gz"], check=True)
-            subprocess.run(["samtools", "faidx", str(grch38_file)], check=True)
+            subprocess.run(["samtools", "faidx", str(masked_tmp)], check=True)
 
-        if not hla_y_file.exists():
-            raise FileNotFoundError(f"HLA-Y/OLI scaffold not found: {hla_y_file}")
+            os.replace(masked_tmp, augmented_file)
+            os.replace(str(masked_tmp) + ".fai", str(augmented_file) + ".fai")
 
-        # Concatenate GRCh38 + HLA-Y/OLI scaffold into a temporary unmasked file
-        unmasked = ref_dir / "augmented_hg38.unmasked.tmp.fa"
-        print("Augmenting GRCh38 with HLA-Y/OLI scaffold...")
-        subprocess.run(["bash", "-c", f"cat {grch38_file} {hla_y_file} > {unmasked}"], check=True)
-
-        # Hard-mask HLA-DRB5
-        # GFF3 is 1-based inclusive; BED is 0-based half-open -> start-1, end unchanged.
-        print("Hard-masking HLA-DRB5 (chr6:32517353-32530287, Ensembl GRCh38.110)...")
-        mask_bed = ref_dir / "drb5_mask.bed"
-        with open(mask_bed, "w") as f:
-            f.write("chr6\t32517352\t32530287\n")
-
-        subprocess.run([
-            "bedtools", "maskfasta",
-            "-fi", str(unmasked),
-            "-bed", str(mask_bed),
-            "-fo", str(augmented_file)
-        ], check=True)
-        subprocess.run(["samtools", "faidx", str(augmented_file)], check=True)
-
-        unmasked.unlink()
-        print(f"Reference ready: {augmented_file} (HLA-Y/OLI + HLA-DRB5 hard-masked)")
-    finally:
-        os.chdir(original_cwd)
+            unmasked.unlink()
+            print(f"Reference ready: {augmented_file} (HLA-Y/OLI + HLA-DRB5 hard-masked)")
+        finally:
+            os.chdir(original_cwd)
 
 def ensure_longphase():
     """Download and extract longphase if not present"""
     longphase_dir = Path(_data_dir) / "longphase"
     longphase_bin = longphase_dir / "longphase_linux-x64"
     tar_file = longphase_dir / "longphase_linux-x64.tar.xz"
-    
-    if not longphase_bin.exists():
-        print("Longphase not found! Downloading longphase...")
-        longphase_dir.mkdir(parents=True, exist_ok=True)
-        
-        # Download
-        subprocess.run([
-            "wget", 
-            "https://github.com/twolinin/longphase/releases/download/v2.0/longphase_linux-x64.tar.xz",
-            "-O", str(tar_file)
-        ], check=True)
-        
-        # Extract
-        print("Extracting longphase...")
-        subprocess.run([
-            "tar", "-xJf", str(tar_file), "-C", str(longphase_dir)
-        ], check=True)
-        
-        # Make executable
-        subprocess.run(["chmod", "+x", str(longphase_bin)], check=True)
-        
-        # Remove tar file
-        tar_file.unlink()
-        print("Longphase download complete!")
-    
+
+    if longphase_bin.exists():
+        return str(longphase_bin)
+
+    with _setup_lock(longphase_dir):
+        if not longphase_bin.exists():
+            print("Longphase not found! Downloading longphase...")
+
+            # Download
+            subprocess.run([
+                "wget",
+                "https://github.com/twolinin/longphase/releases/download/v2.0/longphase_linux-x64.tar.xz",
+                "-O", str(tar_file)
+            ], check=True)
+
+            # Extract into a temp dir, then atomically move the binary into place,
+            # so a crash mid-extract can't leave a partial binary that a later run
+            # mistakes for complete.
+            print("Extracting longphase...")
+            extract_tmp = longphase_dir / ".extract.tmp"
+            subprocess.run(["rm", "-rf", str(extract_tmp)], check=True)
+            extract_tmp.mkdir(parents=True)
+            subprocess.run([
+                "tar", "-xJf", str(tar_file), "-C", str(extract_tmp)
+            ], check=True)
+
+            extracted_bin = extract_tmp / "longphase_linux-x64"
+            subprocess.run(["chmod", "+x", str(extracted_bin)], check=True)
+            os.replace(extracted_bin, longphase_bin)
+
+            # Clean up the tarball and temp extraction dir
+            tar_file.unlink()
+            subprocess.run(["rm", "-rf", str(extract_tmp)], check=True)
+            print("Longphase download complete!")
+
     return str(longphase_bin)
 
 def ensure_rammap():
@@ -151,19 +222,18 @@ def ensure_rammap():
     rammap_dir = Path(_data_dir) / "rammap"
     rammap_bin = rammap_dir / "rammap"
 
-    if not rammap_bin.exists():
-        print("Rammap not found! Downloading rammap...")
-        rammap_dir.mkdir(parents=True, exist_ok=True)
+    if rammap_bin.exists():
+        return str(rammap_bin)
 
-        subprocess.run([
-            "wget",
-            "https://github.com/jwanglab/rammap/releases/download/v1.0.0/rammap_x86_64-unknown-linux-gnu_v1.0.0",
-            "-O", str(rammap_bin)
-        ], check=True)
-
-        subprocess.run(["chmod", "+x", str(rammap_bin)], check=True)
-
-        print("Rammap download complete!")
+    with _setup_lock(rammap_dir):
+        if not rammap_bin.exists():
+            print("Rammap not found! Downloading rammap...")
+            _wget_atomic(
+                "https://github.com/jwanglab/rammap/releases/download/v1.0.0/rammap_x86_64-unknown-linux-gnu_v1.0.0",
+                rammap_bin,
+                executable=True,
+            )
+            print("Rammap download complete!")
 
     return str(rammap_bin)
 
@@ -171,18 +241,19 @@ def ensure_picard():
     """Download Picard if not present"""
     picard_dir = Path(_data_dir) / "picard"
     picard_jar = picard_dir / "picard.jar"
-    
-    if not picard_jar.exists():
-        print("Picard not found! Downloading Picard")
-        picard_dir.mkdir(parents=True, exist_ok=True)
-        
-        subprocess.run([
-            "wget", 
-            "https://github.com/broadinstitute/picard/releases/download/2.27.4/picard.jar",
-            "-O", str(picard_jar)
-        ], check=True)
-        print("Picard download complete!")
-    
+
+    if picard_jar.exists():
+        return str(picard_jar)
+
+    with _setup_lock(picard_dir):
+        if not picard_jar.exists():
+            print("Picard not found! Downloading Picard")
+            _wget_atomic(
+                "https://github.com/broadinstitute/picard/releases/download/2.27.4/picard.jar",
+                picard_jar,
+            )
+            print("Picard download complete!")
+
     return str(picard_jar)
 
 def ensure_deepvariant_sif():
@@ -190,15 +261,20 @@ def ensure_deepvariant_sif():
     sif_dir = Path(_data_dir) / "deepvariant_sif"
     sif_file = sif_dir / "deepvariant.sif"
 
-    if not sif_file.exists():
-        print("DeepVariant SIF not found! Pulling from Docker Hub...")
-        sif_dir.mkdir(parents=True, exist_ok=True)
-        subprocess.run([
-            "singularity", "pull",
-            str(sif_file),
-            "docker://google/deepvariant:1.6.1"
-        ], check=True)
-        print("DeepVariant SIF download complete!")
+    if sif_file.exists():
+        return str(sif_file)
+
+    with _setup_lock(sif_dir):
+        if not sif_file.exists():
+            print("DeepVariant SIF not found! Pulling from Docker Hub...")
+            tmp_sif = sif_file.with_name(sif_file.name + ".tmp")
+            subprocess.run([
+                "singularity", "pull", "--force",
+                str(tmp_sif),
+                "docker://google/deepvariant:1.6.1"
+            ], check=True)
+            os.replace(tmp_sif, sif_file)
+            print("DeepVariant SIF download complete!")
 
     return str(sif_file)
 
@@ -207,15 +283,20 @@ def ensure_clair3_sif():
     sif_dir = Path(_data_dir) / "clair3_sif"
     sif_file = sif_dir / "clair3.sif"
 
-    if not sif_file.exists():
-        print("Clair3 SIF not found! Pulling from Docker Hub...")
-        sif_dir.mkdir(parents=True, exist_ok=True)
-        subprocess.run([
-            "singularity", "pull",
-            str(sif_file),
-            "docker://hkubal/clair3:latest"
-        ], check=True)
-        print("Clair3 SIF download complete!")
+    if sif_file.exists():
+        return str(sif_file)
+
+    with _setup_lock(sif_dir):
+        if not sif_file.exists():
+            print("Clair3 SIF not found! Pulling from Docker Hub...")
+            tmp_sif = sif_file.with_name(sif_file.name + ".tmp")
+            subprocess.run([
+                "singularity", "pull", "--force",
+                str(tmp_sif),
+                "docker://hkubal/clair3:latest"
+            ], check=True)
+            os.replace(tmp_sif, sif_file)
+            print("Clair3 SIF download complete!")
 
     return str(sif_file)
 
@@ -230,30 +311,38 @@ def ensure_hla_xml():
     #db_url = "https://raw.githubusercontent.com/ANHIG/IMGTHLA/93c70bcfe271a737bc75b7ca7f5f9844bf65136d/xml/hla.xml.zip"
     # Latest
     db_url = "https://raw.githubusercontent.com/ANHIG/IMGTHLA/Latest/xml/hla.xml.zip"
-    # Create directory if it doesn't exist
-    xml_dir.mkdir(parents=True, exist_ok=True)
-    
-    # If file exists, no need to download (using specific release)
+
+    # Fast path (no lock): the database is already present.
     if xml_file.exists():
         return
-    else:
+
+    with _setup_lock(xml_dir):
+        if xml_file.exists():
+            return
         print("INFO: Downloading HLA XML database")
-    
-    # Download the zip file
-    print("Downloading HLA XML database...")
-    subprocess.run([
-        "wget", 
-        db_url,
-        "-O", str(zip_file)
-    ], check=True)
-    
-    # Extract using zipfile library
-    with ZipFile(zip_file) as zip_ref:
-        zip_ref.extractall(xml_dir)
-    
-    # Remove zip file
-    zip_file.unlink()
-    print("HLA XML database download complete!")
+
+        # Download the zip file
+        print("Downloading HLA XML database...")
+        subprocess.run([
+            "wget",
+            db_url,
+            "-O", str(zip_file)
+        ], check=True)
+
+        # Extract into a temp dir, then atomically move hla.xml into place, so a
+        # crash mid-extract can't leave a partial hla.xml that a later run treats
+        # as complete.
+        extract_tmp = xml_dir / ".extract.tmp"
+        subprocess.run(["rm", "-rf", str(extract_tmp)], check=True)
+        extract_tmp.mkdir(parents=True)
+        with ZipFile(zip_file) as zip_ref:
+            zip_ref.extractall(extract_tmp)
+        os.replace(extract_tmp / "hla.xml", xml_file)
+
+        # Clean up the zip and temp extraction dir
+        zip_file.unlink()
+        subprocess.run(["rm", "-rf", str(extract_tmp)], check=True)
+        print("HLA XML database download complete!")
 
 # Download reference genome, Picard, longphase, rammap, HLA XML database, DeepVariant SIF, and Clair3 SIF on first import
 ensure_reference_genome()
