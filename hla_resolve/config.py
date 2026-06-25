@@ -285,10 +285,16 @@ def ensure_deepvariant_sif():
         if not sif_file.exists():
             print(f"DeepVariant SIF {DEEPVARIANT_VERSION} not found! Pulling from Docker Hub...")
             tmp_sif = sif_file.with_name(sif_file.name + ".tmp")
+            # Pin by DIGEST, not tag, so we get exactly the verified 1.6.1 image
+            # (immune to tag mutation), and --disable-cache so the pull never
+            # reuses a previously-cached image. _setup_lock already bounds this to
+            # a single pull per install (other array tasks wait and reuse the
+            # resulting .sif), so disabling the cache costs at most one ~2.7 GB
+            # download, not one per task.
             subprocess.run([
-                "singularity", "pull", "--force",
+                "singularity", "pull", "--force", "--disable-cache",
                 str(tmp_sif),
-                f"docker://google/deepvariant:{DEEPVARIANT_VERSION}"
+                f"docker://google/deepvariant@{DEEPVARIANT_DIGEST}"
             ], check=True)
             os.replace(tmp_sif, sif_file)
             print("DeepVariant SIF download complete!")
