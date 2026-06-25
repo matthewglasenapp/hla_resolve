@@ -30,6 +30,11 @@ PICARD_VERSION = "2.27.4"
 LONGPHASE_VERSION = "v2.0"
 RAMMAP_VERSION = "v1.0.0"
 DEEPVARIANT_VERSION = "1.6.1"
+# WARNING: the official google/deepvariant:1.6.1 image self-reports "1.6.0" via
+# `run_deepvariant --version` — upstream left `ARG VERSION=1.6.0` in the r1.6.1
+# Dockerfile (google/deepvariant issue #830). The image IS 1.6.1; do NOT "correct"
+# the pin to 1.6.0. Verify identity by manifest digest (below), not by --version.
+DEEPVARIANT_DIGEST = "sha256:ccab95548e6c3ec28c75232987f31209ff1392027d67732435ce1ba3d0b55c68"
 CLAIR3_VERSION = "latest"  # NOTE: a moving tag — filename can't detect upstream :latest updates
 
 @contextmanager
