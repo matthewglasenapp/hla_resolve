@@ -360,11 +360,6 @@ genes_of_interest = ("HLA-A", "HLA-B", "HLA-C", "HLA-DPA1", "HLA-DPB1", "HLA-DQA
 # Class I HLA genes (ARS = CDS exon 2 + exon 3, with intron 2 between them)
 CLASS_I_GENES = {"HLA-A", "HLA-B", "HLA-C"}
 
-# Small dummy reference used to identify raw sequencing reads originating from DRB3 and DRB4 genes
-# This reference consists of a contig for each of DRB1, DRB3 and DRB4
-# The contigs represent exon2 +/- 2kb, with the 270 bases of exon 2 hardmasked with "N"
-dummy_reference = os.path.join(_data_dir, "reference/DRB_1_3_4.fa")
-
 # Multi-allele DRB reference for competitive read classification.
 # 20 entries: 13 DRB1 + 3 DRB3 + 1 DRB4 (IPD-IMGT/HLA) and GRCh38-extracted
 # DRB5/DRB6/DRB9 paralog/pseudogene sequences. Reads whose competitive primary

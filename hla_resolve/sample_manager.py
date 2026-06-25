@@ -17,7 +17,7 @@ from .config import (
 	cds_depth_thresh, cds_prop_20x_thresh, cds_prop_30x_thresh, ars_depth_thresh, ars_prop_20x_thresh, ars_prop_30x_thresh,
 	mhc_start, mhc_stop, genes_bed, genes_of_interest, genes_of_interest_extended,
 	hla_genes_regions_file, reference_genome_minimap2,
-	DNA_bases, stop_codons, IMGT_XML, gff_dir, ARS_dict, gene_dict, CDS_dict, CLASS_I_GENES, dummy_reference, drb_multiallele_reference,
+	DNA_bases, stop_codons, IMGT_XML, gff_dir, ARS_dict, gene_dict, CDS_dict, CLASS_I_GENES, drb_multiallele_reference,
 	deepvariant_sif, tandem_repeat_bed, chr6_bed, pbtrgt_repeat_file, picard
 )
 
@@ -416,7 +416,6 @@ def build_workflow_config(sample):
 		
 		# Reference files and tool paths (from Samples class and config.py)
 		'reference_genome': reference_genome,
-		'dummy_reference': dummy_reference,
 		'drb_multiallele_reference': drb_multiallele_reference,
 		'deepvariant_sif': Samples.deepvariant_sif,
 		'clair3_sif': Samples.clair3_sif,
