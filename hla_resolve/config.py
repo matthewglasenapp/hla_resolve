@@ -5,6 +5,7 @@
 
 # Configuration constants and paths for HLA-Resolve
 import os
+import re
 import fcntl
 import subprocess
 from pathlib import Path
@@ -36,6 +37,10 @@ DEEPVARIANT_VERSION = "1.6.1"
 # the pin to 1.6.0. Verify identity by manifest digest (below), not by --version.
 DEEPVARIANT_DIGEST = "sha256:ccab95548e6c3ec28c75232987f31209ff1392027d67732435ce1ba3d0b55c68"
 CLAIR3_VERSION = "latest"  # NOTE: a moving tag — filename can't detect upstream :latest updates
+# IPD-IMGT/HLA database release. Keep in sync with the active (uncommented) db_url
+# in ensure_hla_xml() below; verify_download_versions.sh checks the installed
+# hla.xml's <release version="..."> header against this.
+IMGT_RELEASE = "3.63.0"
 
 @contextmanager
 def _setup_lock(resource_dir):
@@ -326,14 +331,16 @@ def ensure_clair3_sif():
 def ensure_hla_xml():
     """Download HLA XML database if not present"""
     xml_dir = Path(_data_dir) / "IPD_IMGT_XML"
-    xml_file = xml_dir / "hla.xml"
+    xml_file = xml_dir / f"hla_{IMGT_RELEASE}.xml"
     zip_file = xml_dir / "hla.xml.zip"
     # IPD-IMGT/HLA Release 3.60.0
     #db_url = "https://raw.githubusercontent.com/ANHIG/IMGTHLA/652dbe954426f117a9f3619826fc4e3687713d90/xml/hla.xml.zip"
     # IPD-IMGT/HLA Release 3.61.0
     #db_url = "https://raw.githubusercontent.com/ANHIG/IMGTHLA/93c70bcfe271a737bc75b7ca7f5f9844bf65136d/xml/hla.xml.zip"
-    # Latest
-    db_url = "https://raw.githubusercontent.com/ANHIG/IMGTHLA/Latest/xml/hla.xml.zip"
+    # IPD-IMGT/HLA Release 3.63.0 (v3.63.0-alpha) — pinned; developed and validated against this release
+    db_url = "https://raw.githubusercontent.com/ANHIG/IMGTHLA/8382fbebcb583ea60008baf045502279f37958b0/xml/hla.xml.zip"
+    # Latest (uncomment to always pull the newest IPD-IMGT/HLA release; NOT reproducible)
+    #db_url = "https://raw.githubusercontent.com/ANHIG/IMGTHLA/Latest/xml/hla.xml.zip"
 
     # Fast path (no lock): the database is already present.
     if xml_file.exists():
@@ -342,30 +349,44 @@ def ensure_hla_xml():
     with _setup_lock(xml_dir):
         if xml_file.exists():
             return
-        print("INFO: Downloading HLA XML database")
+        print(f"INFO: Downloading HLA XML database (IPD-IMGT/HLA {IMGT_RELEASE})")
 
         # Download the zip file
-        print("Downloading HLA XML database...")
         subprocess.run([
             "wget",
             db_url,
             "-O", str(zip_file)
         ], check=True)
 
-        # Extract into a temp dir, then atomically move hla.xml into place, so a
-        # crash mid-extract can't leave a partial hla.xml that a later run treats
-        # as complete.
+        # Extract into a temp dir, then atomically move the versioned hla.xml into
+        # place, so a crash mid-extract can't leave a partial file that a later run
+        # treats as complete.
         extract_tmp = xml_dir / ".extract.tmp"
         subprocess.run(["rm", "-rf", str(extract_tmp)], check=True)
         extract_tmp.mkdir(parents=True)
         with ZipFile(zip_file) as zip_ref:
             zip_ref.extractall(extract_tmp)
-        os.replace(extract_tmp / "hla.xml", xml_file)
+        extracted = extract_tmp / "hla.xml"
+
+        # Self-check: the downloaded file's <release version="..."> header must
+        # match the pinned IMGT_RELEASE, guarding against the db_url commit and the
+        # IMGT_RELEASE constant drifting out of sync. (hla.xml is ISO-8859-1.)
+        with open(extracted, encoding="latin-1") as fh:
+            header = fh.read(4096)
+        match = re.search(r'<release version="([0-9.]+)"', header)
+        found = match.group(1) if match else None
+        if found != IMGT_RELEASE:
+            raise ValueError(
+                f"Downloaded hla.xml is IPD-IMGT/HLA release {found}, but IMGT_RELEASE "
+                f"is {IMGT_RELEASE} -- the db_url commit and IMGT_RELEASE are out of sync."
+            )
+
+        os.replace(extracted, xml_file)
 
         # Clean up the zip and temp extraction dir
         zip_file.unlink()
         subprocess.run(["rm", "-rf", str(extract_tmp)], check=True)
-        print("HLA XML database download complete!")
+        print(f"HLA XML database download complete! (IPD-IMGT/HLA {IMGT_RELEASE})")
 
 # Download reference genome, Picard, longphase, rammap, HLA XML database, DeepVariant SIF, and Clair3 SIF on first import
 ensure_reference_genome()
@@ -481,7 +502,7 @@ stop_codons = ["TAA", "TAG", "TGA"]
 # IPD/IMGT HLA XML file for HLA allele classification
 # Downloaded from https://github.com/ANHIG/IMGTHLA
 # Used in hla_typer.py for HLA typing
-IMGT_XML = os.path.join(_data_dir, "IPD_IMGT_XML/hla.xml")
+IMGT_XML = os.path.join(_data_dir, f"IPD_IMGT_XML/hla_{IMGT_RELEASE}.xml")
 
 # GRCh38 HLA gene antigen recognition sequence coordinates (1-based coordinates, GFF format)
 # Used in evaluate_gene_haploblocks() function of investigate_haploblocks_methods.py 

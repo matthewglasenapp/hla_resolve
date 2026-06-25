@@ -25,7 +25,7 @@ DATA="$PKG/data"; CONFIG="$PKG/config.py"
 ver() { grep -oE "^$1 = \"[^\"]+\"" "$CONFIG" | sed -E 's/.*"([^"]+)".*/\1/'; }
 PICARD_V=$(ver PICARD_VERSION);     LONGPHASE_V=$(ver LONGPHASE_VERSION)
 RAMMAP_V=$(ver RAMMAP_VERSION);     DV_V=$(ver DEEPVARIANT_VERSION)
-DV_DIGEST=$(ver DEEPVARIANT_DIGEST)
+DV_DIGEST=$(ver DEEPVARIANT_DIGEST); IMGT_V=$(ver IMGT_RELEASE)
 
 pass=0; fail=0
 ok()  { echo "  PASS  $1"; pass=$((pass+1)); }
@@ -72,6 +72,17 @@ else
   else
     bad "deepvariant: tag :${DV_V} digest is $got, expected $DV_DIGEST"
   fi
+fi
+
+# hla.xml — versioned IPD-IMGT/HLA database; read the <release version> header
+# (head -c so we never scan the full multi-hundred-MB file)
+XML="$DATA/IPD_IMGT_XML/hla_${IMGT_V}.xml"
+if [[ ! -f "$XML" ]]; then
+  bad "hla.xml: MISSING $XML"
+else
+  got=$(head -c 4096 "$XML" | grep -o '<release version="[0-9.]*"' | head -1 | grep -o '[0-9][0-9.]*')
+  if [[ "$got" == "$IMGT_V" ]]; then ok "hla.xml: IPD-IMGT/HLA release $got"
+  else bad "hla.xml: header says '${got:-?}', expected $IMGT_V"; fi
 fi
 
 echo "== $pass passed, $fail failed/missing =="
