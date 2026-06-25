@@ -11,10 +11,10 @@
 
 HLA-Resolve is a command-line tool for high-resolution HLA typing from high-coverage PacBio HiFi sequencing reads. It reconstructs phased, full-gene sequences for the eight classical HLA loci (HLA-A, -B, -C, -DPA1, -DPB1, -DQA1, -DQB1, -DRB1) and queries the [IPD-IMGT/HLA database](https://www.ebi.ac.uk/ipd/imgt/hla/) to assign HLA allele calls.
 
-HLA-Resolve was designed for and fully validated on PacBio hybrid-capture libraries (read N50 ~4 kb). It should also work with PacBio whole-genome (WGS), whole-exome (WES), and amplicon data. WGS support has so far been validated on 30× Revio data for the GIAB Ashkenazim son (HG002):
+HLA-Resolve was designed for and fully validated on PacBio hybrid-capture libraries (read N50 ~4 kb). It should also work with PacBio whole-genome (WGS), whole-exome (WES), and amplicon data. WGS support has so far been validated on 30× Revio data for the GIAB Ashkenazim son (HG002), available from this [GIAB FTP directory](https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/AshkenazimTrio/HG002_NA24385_son/PacBio_HiFi-Revio_20231031/):
 
-- [HG002 Revio — SMRT cell s1](https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/AshkenazimTrio/HG002_NA24385_son/PacBio_HiFi-Revio_20231031/HG002_PacBio-Revio_m84039_231005_222902_s1.hifi_reads.bam)
-- [HG002 Revio — SMRT cell s3](https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/AshkenazimTrio/HG002_NA24385_son/PacBio_HiFi-Revio_20231031/HG002_PacBio-Revio_m84039_230928_213653_s3.hifi_reads.bam)
+- `HG002_PacBio-Revio_m84039_231005_222902_s1.hifi_reads.bam`
+- `HG002_PacBio-Revio_m84039_230928_213653_s3.hifi_reads.bam`
 
 **Authors:** [Matthew Glasenapp](https://github.com/matthewglasenapp), [Alex Symons](https://github.com/FlyingFish800), [Omar Cornejo](https://github.com/oeco28)
 
