@@ -31,7 +31,7 @@ HLA-Resolve is a command-line tool for high-resolution (four-field) HLA typing f
 
 ## Requirements
 
-- **Linux (x86_64)** — Several dependencies (pbmarkdup, hiphase, trgt, pbsv, pbmm2) are distributed as precompiled Linux binaries via Bioconda and are not available for macOS.
+- **Linux (x86_64)** — Several dependencies (pbmarkdup, hiphase, trgt, pbsv) are distributed as precompiled Linux binaries via Bioconda and are not available for macOS.
 - **Conda** and **pip** — Used to install all dependencies (see [Installation](#installation)).
 
 ## Overview
@@ -60,7 +60,7 @@ Runtime depends heavily on input file size and available compute resources. Targ
 ## Installation
 ```text
 git clone https://github.com/matthewglasenapp/hla_resolve
-cd hla_resolve
+cd hla_resolve        # the repository directory created by the clone above
 conda env create -f environment.yml
 conda activate hla_resolve
 pip install -e .
@@ -77,6 +77,12 @@ The first time ``hla_resolve`` is executed, it will automatically download the f
 | DeepVariant Singularity image | Docker Hub |
 
 **Note:** These downloads are large. Ensure sufficient disk space is available in the install directory before the first run.
+
+## Updating
+To update an existing installation to the latest version, run ``update.sh`` from the root of your cloned ``hla_resolve`` repository:
+```text
+bash update.sh
+```
 
 
 ## Quick Start
@@ -204,7 +210,7 @@ Reconstructed haplotypes are compared against alleles in the [IPD-IMGT/HLA datab
    3. **Four-field refinement** — The full-gene haplotype (including introns and UTRs) is compared against candidate alleles, ranked by mismatch identity (the proportion of matching bases at 1:1-aligned positions), which avoids penalizing insertions and deletions from unreliable intronic reconstruction. Ties are broken by match length, then by lowest fourth-field value.
 
 #### Note
-For WGS and WES input, the pipeline skips adapter trimming (step 1) and pre-alignment duplicate removal (step 2), and uses [pbmm2](https://github.com/PacificBiosciences/pbmm2) instead of rammap for reference genome alignment.
+For WGS and WES input, the pipeline skips adapter trimming (step 1) and pre-alignment duplicate removal (step 2).
 
 ## Planned Features (In Development)
 
