@@ -155,3 +155,6 @@ hla_genes.shifted.bed
 parse_haploblocks_bed.shifted.bed
 DRB_1_3_4.fa
 DRB_1_3_4.fa.fai
+
+# Setup lock files created by config.py ensure_* functions (one per data subdir)
+.setup.lock
