@@ -9,11 +9,9 @@ from .preprocess_methods import (
 	trim_adapters,
 	mark_duplicates_pbmarkdup,
 	align_to_reference_rammap,
-	align_to_reference_pbmm2,
 	mark_duplicates_picard,
 	filter_reads,
 	classify_DRB_reads,
-	classify_DRB_reads_pbmm2,
 	call_variants_bcftools,
 	call_variants_deepvariant,
 	call_variants_clair3,
@@ -94,12 +92,13 @@ def preprocess_pacbio_sample(config):
 			threads=config['threads'],
 		)
 
-		classify_DRB_reads_pbmm2(
+		classify_DRB_reads(
 			input_file=config['hg38_bam'],
 			output_file=config['hg38_bam_drb'],
 			drb_paralog_reads_file=config['drb_paralog_reads_file'],
 			read_group_string=config['read_group_string'],
 			reference_fasta=config['drb_multiallele_reference'],
+			platform=config['platform'],
 			threads=config['threads'],
 			region=drb_region
 		)

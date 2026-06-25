@@ -99,36 +99,6 @@ def mark_duplicates_pbmarkdup(input_file, output_file, threads):
 	print(f"De-duplicated reads written to: {output_file}.gz")
 	print("\n")
 
-# Align to GRCh38 reference genome with pbmm2 (PacBio WGS/WES)
-def align_to_reference_pbmm2(input_file, output_file, read_group_string, reference_fasta, threads):
-	print("Aligning reads to GRCh38 reference genome with pbmm2!")
-	print(f"pbmm2 input file: {input_file}")
-
-	# Build .mmi index if it doesn't already exist
-	mmi_file = reference_fasta + ".mmi"
-	if not os.path.exists(mmi_file):
-		print("Building pbmm2 index...")
-		index_cmd = f"pbmm2 index {reference_fasta} {mmi_file}"
-		run_quiet(index_cmd)
-
-	pbmm2_threads = int(threads * 2 / 3)
-	samtools_threads = threads - pbmm2_threads
-
-	pbmm2_cmd = f"pbmm2 align -j {pbmm2_threads} {mmi_file} {input_file} --log-level INFO"
-
-	# --rg is only valid for FASTA/FASTQ inputs; BAM files carry their own read groups
-	if not input_file.endswith(".bam"):
-		pbmm2_cmd += f" --rg '{read_group_string}'"
-
-	full_cmd = f"{pbmm2_cmd} | samtools sort -@ {samtools_threads} -o {output_file}"
-	run_quiet(full_cmd)
-
-	index_cmd = f"samtools index {output_file}"
-	run_quiet(index_cmd)
-
-	print(f"Mapped bam written to: {output_file}")
-	print("\n")
-
 # Align to GRCh38 reference genome with rammap
 def align_to_reference_rammap(input_file, output_file, read_group_string, reference_fasta, platform, threads):
 	print("Aligning reads to GRCh38 reference genome with rammap!")
@@ -167,8 +137,7 @@ def _parse_drb_paralog_reads(output_file, drb_paralog_reads_file):
 	"""
 	Parse aligned BAM to identify DRB paralog reads (DRB3, DRB4, DRB5, DRB6, DRB9)
 	based on primary alignment. Any read whose best-matching allele is NOT a DRB1
-	allele is flagged for removal. Shared by both rammap and pbmm2 classify_DRB_reads
-	functions.
+	allele is flagged for removal. Shared helper for classify_DRB_reads.
 	"""
 	drb_paralog_read_ids = set()
 
@@ -208,8 +177,7 @@ def classify_DRB_reads(input_file, output_file, drb_paralog_reads_file, read_gro
 	indexed GRCh38 BAM and only the primary reads overlapping that region (the
 	DR cluster) are competitively mapped. This restricts paralog classification
 	to reads already placed in the DR region instead of re-mapping the full read
-	set, mirroring classify_DRB_reads_pbmm2. When `region` is None the whole
-	`input_file` is mapped.
+	set. When `region` is None the whole `input_file` is mapped.
 	"""
 	print("Classifying DRB reads using multi-allele competitive mapping (rammap)!")
 
@@ -234,45 +202,6 @@ def classify_DRB_reads(input_file, output_file, drb_paralog_reads_file, read_gro
 
 	run_quiet(rammap_cmd)
 	run_quiet(index_bam)
-
-	_parse_drb_paralog_reads(output_file, drb_paralog_reads_file)
-
-def classify_DRB_reads_pbmm2(input_file, output_file, drb_paralog_reads_file, read_group_string, reference_fasta, threads, region=None):
-	"""
-	Same as classify_DRB_reads but uses pbmm2 for alignment.
-	Used for PacBio WGS/WES.
-
-	When `region` is given, `input_file` is treated as a coordinate-sorted,
-	indexed GRCh38 BAM and only the primary reads overlapping that region (the
-	DR cluster) are competitively mapped against the panel. This restricts DRB
-	paralog classification to reads already placed in the DR region instead of
-	the whole genome, which removes genome-wide homology noise from the kill-list
-	and matches the intent: we are excluding mis-placed reads, not rehoming
-	unmapped ones. When `region` is None the whole `input_file` is mapped.
-	"""
-	print("Classifying DRB reads using multi-allele competitive mapping (pbmm2)!")
-
-	# Build .mmi index for the DRB reference if it doesn't already exist
-	mmi_file = reference_fasta + ".mmi"
-	if not os.path.exists(mmi_file):
-		print("Building pbmm2 index for DRB reference...")
-		index_cmd = f"pbmm2 index {reference_fasta} {mmi_file}"
-		run_quiet(index_cmd)
-
-	# Restrict competitive mapping to primary reads already placed in the DR region.
-	# Extract them as FASTQ from the GRCh38 alignment so pbmm2 re-aligns the read
-	# sequences cleanly against the multi-allele panel.
-	map_input = input_file
-	if region is not None:
-		map_input = output_file.replace(".bam", ".dr_region.fastq")
-		run_quiet(f"samtools view -b -F 0x900 -@ {threads} {input_file} {region} | samtools fastq -@ {threads} - > {map_input}")
-
-	pbmm2_cmd = f"pbmm2 align -j {threads} {mmi_file} {map_input} {output_file} --sort --log-level INFO --bam-index BAI"
-
-	if not map_input.endswith(".bam"):
-		pbmm2_cmd += f" --rg '{read_group_string}'"
-
-	run_quiet(pbmm2_cmd)
 
 	_parse_drb_paralog_reads(output_file, drb_paralog_reads_file)
 

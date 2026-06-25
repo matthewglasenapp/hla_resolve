@@ -20,6 +20,18 @@ VERBOSE = False
 # Get the data directory relative to this config file
 _data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 
+# Pinned versions for downloaded tools. The version is baked into the on-disk
+# filename, so the exists() check in each ensure_* below is version-aware:
+# bumping a version here changes the target filename, which makes the check fail
+# for the old artifact and re-download the new one. Without this, exists() only
+# saw a generic name (e.g. picard.jar) and a version bump would silently keep
+# the stale artifact on existing installs.
+PICARD_VERSION = "2.27.4"
+LONGPHASE_VERSION = "v2.0"
+RAMMAP_VERSION = "v1.0.0"
+DEEPVARIANT_VERSION = "1.6.1"
+CLAIR3_VERSION = "latest"  # NOTE: a moving tag — filename can't detect upstream :latest updates
+
 @contextmanager
 def _setup_lock(resource_dir):
     """Serialize first-run setup for a shared resource directory across processes.
@@ -178,20 +190,20 @@ def ensure_reference_genome():
 def ensure_longphase():
     """Download and extract longphase if not present"""
     longphase_dir = Path(_data_dir) / "longphase"
-    longphase_bin = longphase_dir / "longphase_linux-x64"
-    tar_file = longphase_dir / "longphase_linux-x64.tar.xz"
+    longphase_bin = longphase_dir / f"longphase_linux-x64_{LONGPHASE_VERSION}"
+    tar_file = longphase_dir / f"longphase_linux-x64_{LONGPHASE_VERSION}.tar.xz"
 
     if longphase_bin.exists():
         return str(longphase_bin)
 
     with _setup_lock(longphase_dir):
         if not longphase_bin.exists():
-            print("Longphase not found! Downloading longphase...")
+            print(f"Longphase {LONGPHASE_VERSION} not found! Downloading longphase...")
 
             # Download
             subprocess.run([
                 "wget",
-                "https://github.com/twolinin/longphase/releases/download/v2.0/longphase_linux-x64.tar.xz",
+                f"https://github.com/twolinin/longphase/releases/download/{LONGPHASE_VERSION}/longphase_linux-x64.tar.xz",
                 "-O", str(tar_file)
             ], check=True)
 
@@ -220,16 +232,16 @@ def ensure_longphase():
 def ensure_rammap():
     """Download rammap binary if not present"""
     rammap_dir = Path(_data_dir) / "rammap"
-    rammap_bin = rammap_dir / "rammap"
+    rammap_bin = rammap_dir / f"rammap_{RAMMAP_VERSION}"
 
     if rammap_bin.exists():
         return str(rammap_bin)
 
     with _setup_lock(rammap_dir):
         if not rammap_bin.exists():
-            print("Rammap not found! Downloading rammap...")
+            print(f"Rammap {RAMMAP_VERSION} not found! Downloading rammap...")
             _wget_atomic(
-                "https://github.com/jwanglab/rammap/releases/download/v1.0.0/rammap_x86_64-unknown-linux-gnu_v1.0.0",
+                f"https://github.com/jwanglab/rammap/releases/download/{RAMMAP_VERSION}/rammap_x86_64-unknown-linux-gnu_{RAMMAP_VERSION}",
                 rammap_bin,
                 executable=True,
             )
@@ -240,16 +252,16 @@ def ensure_rammap():
 def ensure_picard():
     """Download Picard if not present"""
     picard_dir = Path(_data_dir) / "picard"
-    picard_jar = picard_dir / "picard.jar"
+    picard_jar = picard_dir / f"picard_{PICARD_VERSION}.jar"
 
     if picard_jar.exists():
         return str(picard_jar)
 
     with _setup_lock(picard_dir):
         if not picard_jar.exists():
-            print("Picard not found! Downloading Picard")
+            print(f"Picard {PICARD_VERSION} not found! Downloading Picard")
             _wget_atomic(
-                "https://github.com/broadinstitute/picard/releases/download/2.27.4/picard.jar",
+                f"https://github.com/broadinstitute/picard/releases/download/{PICARD_VERSION}/picard.jar",
                 picard_jar,
             )
             print("Picard download complete!")
@@ -259,19 +271,19 @@ def ensure_picard():
 def ensure_deepvariant_sif():
     """Pull DeepVariant Singularity image if not present"""
     sif_dir = Path(_data_dir) / "deepvariant_sif"
-    sif_file = sif_dir / "deepvariant.sif"
+    sif_file = sif_dir / f"deepvariant_{DEEPVARIANT_VERSION}.sif"
 
     if sif_file.exists():
         return str(sif_file)
 
     with _setup_lock(sif_dir):
         if not sif_file.exists():
-            print("DeepVariant SIF not found! Pulling from Docker Hub...")
+            print(f"DeepVariant SIF {DEEPVARIANT_VERSION} not found! Pulling from Docker Hub...")
             tmp_sif = sif_file.with_name(sif_file.name + ".tmp")
             subprocess.run([
                 "singularity", "pull", "--force",
                 str(tmp_sif),
-                "docker://google/deepvariant:1.6.1"
+                f"docker://google/deepvariant:{DEEPVARIANT_VERSION}"
             ], check=True)
             os.replace(tmp_sif, sif_file)
             print("DeepVariant SIF download complete!")
@@ -281,19 +293,19 @@ def ensure_deepvariant_sif():
 def ensure_clair3_sif():
     """Pull Clair3 Singularity image if not present"""
     sif_dir = Path(_data_dir) / "clair3_sif"
-    sif_file = sif_dir / "clair3.sif"
+    sif_file = sif_dir / f"clair3_{CLAIR3_VERSION}.sif"
 
     if sif_file.exists():
         return str(sif_file)
 
     with _setup_lock(sif_dir):
         if not sif_file.exists():
-            print("Clair3 SIF not found! Pulling from Docker Hub...")
+            print(f"Clair3 SIF {CLAIR3_VERSION} not found! Pulling from Docker Hub...")
             tmp_sif = sif_file.with_name(sif_file.name + ".tmp")
             subprocess.run([
                 "singularity", "pull", "--force",
                 str(tmp_sif),
-                "docker://hkubal/clair3:latest"
+                f"docker://hkubal/clair3:{CLAIR3_VERSION}"
             ], check=True)
             os.replace(tmp_sif, sif_file)
             print("Clair3 SIF download complete!")

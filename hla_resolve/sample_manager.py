@@ -144,7 +144,8 @@ class Samples:
         print(f"Read Group: {self.read_group_string}")
         print("\n")
 
-        # WGS/WES PacBio uses pbmm2 directly on the input BAM — no FASTQ conversion needed
+        # WGS/WES PacBio aligns the uBAM directly with rammap (streamed to FASTQ
+        # internally) — no separate up-front FASTQ conversion needed
         if not (self.platform == "PACBIO" and self.scheme in ("WGS", "WES")):
             self.prepare_raw_fastq()
 
