@@ -22,6 +22,7 @@ HLA-Resolve is a command-line tool for high-resolution (four-field) HLA typing f
 - [Requirements](#requirements)
 - [Overview](#overview)
 - [Installation](#installation)
+- [Updating](#updating)
 - [Quick Start](#quick-start)
 - [Demo](#demo)
 - [Workflow and Dependencies](#workflow-and-dependencies)
