@@ -6,6 +6,8 @@
 import os
 import sys
 import subprocess
+import tempfile
+import shutil
 import pysam
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
@@ -359,19 +361,28 @@ def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail
 					print(str(rec).strip())
 				print("\n")
 
-def compute_indel_offset(vcf_path, haplotype, target_pos):
-	"""
-	Compute cumulative indel offset for a haplotype from all variants
-	with pos < target_pos. Returns the net bp shift (positive = net insertion,
-	negative = net deletion) in forward-strand coordinate space.
-	"""
-	offset = 0
+def read_gene_gff_cols(gff_dir, gene_lower):
+	"""Return the 9 tab-separated columns of the 'gene' feature line from
+	{gene_lower}_gene.gff3 (the same file used for full-gene vcf2fasta runs)."""
+	path = os.path.join(gff_dir, f"{gene_lower}_gene.gff3")
+	with open(path) as f:
+		for line in f:
+			if line.startswith("#"):
+				continue
+			cols = line.rstrip("\n").split("\t")
+			if len(cols) >= 8 and cols[2] == "gene":
+				return cols
+	raise RuntimeError(f"No 'gene' feature line found in {path}")
+
+
+def deletion_spans(vcf_path, haplotype):
+	"""Reference positions DELETED on this haplotype: for each variant where the
+	chosen allele is shorter than REF, the deleted bases are (pos+1 .. pos+len(ref)-1).
+	The anchor base (pos) is retained. Returns a list of (del_start, del_end) inclusive."""
+	spans = []
 	vcf = pysam.VariantFile(vcf_path)
 	for rec in vcf:
-		if rec.pos >= target_pos:
-			break
-		sample = list(rec.samples.values())[0]
-		gt = sample.get('GT')
+		gt = list(rec.samples.values())[0].get("GT")
 		if gt is None or None in gt:
 			continue
 		allele_idx = gt[haplotype]
@@ -379,48 +390,139 @@ def compute_indel_offset(vcf_path, haplotype, target_pos):
 			continue
 		ref = rec.ref
 		alt = rec.alleles[allele_idx]
-		offset += len(alt) - len(ref)
+		if len(alt) < len(ref):
+			spans.append((rec.pos + 1, rec.pos + len(ref) - 1))
 	vcf.close()
-	return offset
+	return spans
 
 
+def snap_left_out_of_deletion(pos, spans):
+	"""Push a left/start boundary forward to the first reference base that is not
+	deleted on either haplotype. A feature start on a deleted base makes vcf2fasta
+	emit the record twice (doubling); it also mis-indexed the old clamp."""
+	moved = True
+	while moved:
+		moved = False
+		for del_start, del_end in spans:
+			if del_start <= pos <= del_end:
+				pos = del_end + 1
+				moved = True
+	return pos
 
-def clamp_fasta_sequence(allele_seq, haplotype, clamped_start, clamped_stop, gene_start, is_minus_strand, vcf_path):
+
+def snap_right_out_of_deletion(pos, spans):
+	"""Push a right/stop boundary back to the last reference base that is not deleted."""
+	moved = True
+	while moved:
+		moved = False
+		for del_start, del_end in spans:
+			if del_start <= pos <= del_end:
+				pos = del_start - 1
+				moved = True
+	return pos
+
+
+def hap_net_indel(vcf_path, haplotype, start, stop):
+	"""Net length change (sum of len(alt)-len(ref)) of variants on this haplotype
+	whose POS falls within [start, stop]. Used to compute the expected length of a
+	clean interval extraction for the doubling guard."""
+	net = 0
+	vcf = pysam.VariantFile(vcf_path)
+	for rec in vcf:
+		if rec.pos < start or rec.pos > stop:
+			continue
+		gt = list(rec.samples.values())[0].get("GT")
+		if gt is None or None in gt:
+			continue
+		allele_idx = gt[haplotype]
+		if allele_idx == 0:
+			continue
+		net += len(rec.alleles[allele_idx]) - len(rec.ref)
+	vcf.close()
+	return net
+
+
+def extract_interval_vcf2fasta(gene, gene_lower, clamped_start, clamped_stop, gff_dir, reference_genome, vcf_path):
 	"""
-	Clamp a vcf2fasta haplotype sequence to a genomic interval, accounting for
-	indel-induced coordinate shifts and strand orientation.
+	Reconstruct a genomic sub-interval of a gene's two haplotypes by re-running vcf2fasta
+	on a one-feature GFF for [clamped_start, clamped_stop], instead of indexing into the
+	full-gene reconstruction.
 
-	vcf2fasta applies variants to the forward-strand reference, then reverse
-	complements for minus-strand genes. Reference-based indices don't account
-	for insertions/deletions that shift the sequence, so we compute per-haplotype
-	offsets from the VCF to find the correct FASTA indices.
+	This replaces the former clamp_fasta_sequence/compute_indel_offset approach, which
+	indexed into the already-reconstructed (indel-shifted, reverse-complemented) sequence
+	using cumulative per-haplotype offsets. That arithmetic mis-shifted one haplotype's
+	window whenever the gene carried a het indel, and could not represent a boundary landing
+	inside an indel. vcf2fasta extraction is reference-coordinate-anchored per feature, so it
+	avoids both failure modes and is guaranteed consistent with the full-gene reconstruction.
 
-	Args:
-		allele_seq: Full haplotype sequence from vcf2fasta
-		haplotype: 0 or 1 (which haplotype to compute offsets for)
-		clamped_start: Low genomic coordinate of desired interval
-		clamped_stop: High genomic coordinate of desired interval
-		gene_start: Lowest genomic coordinate of the gene (GFF start)
-		is_minus_strand: Whether the gene is on the minus strand
-		vcf_path: Path to the filtered VCF used by vcf2fasta
+	Boundaries are snapped out of any deletion's REF span (union of both haplotypes) because a
+	feature start that lands on a deleted base makes vcf2fasta emit the record twice (a 2x
+	"doubling"). A length guard raises if any residual doubling slips through.
+
+	Returns (allele_1, allele_2), already strand-oriented by vcf2fasta. Returns ("", "") if the
+	snapped interval collapses (caller writes no record).
 	"""
-	total_len = len(allele_seq)
+	left = min(clamped_start, clamped_stop)
+	right = max(clamped_start, clamped_stop)
 
-	offset_at_start = compute_indel_offset(vcf_path, haplotype, clamped_start)
-	offset_at_stop = compute_indel_offset(vcf_path, haplotype, clamped_stop + 1)
+	spans = deletion_spans(vcf_path, 0) + deletion_spans(vcf_path, 1)
+	snapped_left = snap_left_out_of_deletion(left, spans)
+	snapped_right = snap_right_out_of_deletion(right, spans)
+	if snapped_left != left or snapped_right != right:
+		print(f"{gene}: snapped interval boundary out of indel "
+			f"[{left}-{right}] -> [{snapped_left}-{snapped_right}]")
+	if snapped_left > snapped_right:
+		return "", ""
 
-	# Forward-strand intermediate indices (before reverse complement)
-	fwd_low = (clamped_start - gene_start) + offset_at_start
-	fwd_high = (clamped_stop - gene_start) + offset_at_stop
+	cols = read_gene_gff_cols(gff_dir, gene_lower)
+	cols[3] = str(snapped_left)
+	cols[4] = str(snapped_right)
 
-	if is_minus_strand:
-		fasta_start = total_len - 1 - fwd_high
-		fasta_stop = total_len - 1 - fwd_low
-	else:
-		fasta_start = fwd_low
-		fasta_stop = fwd_high
+	workdir = tempfile.mkdtemp(prefix=f"{gene_lower}_interval_")
+	try:
+		gff_path = os.path.join(workdir, f"{gene_lower}_interval.gff3")
+		with open(gff_path, "w") as f:
+			f.write("##gff-version 3\n")
+			f.write("\t".join(cols) + "\n")
 
-	return allele_seq[fasta_start:fasta_stop + 1]
+		out_dir = os.path.join(workdir, "v2f")
+		run_vcf2fasta(
+			input_vcf=vcf_path,
+			input_gff=gff_path,
+			reference_genome=reference_genome,
+			output_dir=out_dir,
+			gene=gene,
+			feature="gene",
+		)
+
+		# vcf2fasta appends "_<feat>" to the -o path
+		real_out = out_dir + "_gene"
+		find_cmd = f"find {real_out} -type f"
+		result = subprocess.run(find_cmd, shell=True, capture_output=True, text=True)
+		fasta_files = [x for x in result.stdout.split() if not x.endswith(".gff3")]
+		if not fasta_files:
+			raise FileNotFoundError(
+				f"{gene}: no vcf2fasta output for interval {snapped_left}-{snapped_right}")
+
+		with open(fasta_files[0]) as f:
+			records = f.read().split(">")[1:]
+		haplotypes = ["".join(rec.split("\n")[1:]).replace("-", "").strip() for rec in records]
+		if len(haplotypes) < 2:
+			raise ValueError(
+				f"{gene}: expected 2 haplotype records from interval extraction, got {len(haplotypes)}")
+
+		ref_len = snapped_right - snapped_left + 1
+		for hap in (0, 1):
+			expected = ref_len + hap_net_indel(vcf_path, hap, snapped_left, snapped_right)
+			if len(haplotypes[hap]) > 1.5 * max(expected, 1):
+				raise RuntimeError(
+					f"{gene}: vcf2fasta interval extraction doubled "
+					f"(hap{hap} len={len(haplotypes[hap])}, expected ~{expected}, "
+					f"interval {snapped_left}-{snapped_right}). Boundary may sit inside an indel.")
+
+		return haplotypes[0], haplotypes[1]
+	finally:
+		shutil.rmtree(workdir, ignore_errors=True)
 
 
 def run_vcf2fasta(input_vcf, input_gff, reference_genome, output_dir, gene, feature):
@@ -438,7 +540,7 @@ def run_vcf2fasta(input_vcf, input_gff, reference_genome, output_dir, gene, feat
 			print(e.stderr, end="", file=sys.stderr)
 		raise
 
-def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA_bases, stop_codons, unphased_genes=None, gene_dict=None, CDS_dict=None, gff_dir=None, cds_rescued_genes=None, ARS_dict=None, CLASS_I_GENES=None, gene_filtered_vcfs=None):
+def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA_bases, stop_codons, unphased_genes=None, gene_dict=None, CDS_dict=None, gff_dir=None, cds_rescued_genes=None, ARS_dict=None, CLASS_I_GENES=None, gene_filtered_vcfs=None, reference_genome=None):
 	# Use subprocess.run with capture_output to avoid race conditions with temporary files
 	find_cmd = f"find {vcf2fasta_output_dir} -type f"
 	result = subprocess.run(find_cmd, shell=True, check=True, capture_output=True, text=True)
@@ -552,12 +654,10 @@ def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA
 					if interval:
 						clamped_start = max(interval[0], gene_start_coord)
 						clamped_stop = min(interval[1], gene_stop_coord)
-						is_minus = gene_coords[0] > gene_coords[-1]
-						gff_gene_start = min(gene_start_coord, gene_stop_coord)
 						vcf_path = gene_filtered_vcfs.get(gene) if gene_filtered_vcfs else None
 						if vcf_path:
-							allele_1 = clamp_fasta_sequence(allele_1, 0, clamped_start, clamped_stop, gff_gene_start, is_minus, vcf_path)
-							allele_2 = clamp_fasta_sequence(allele_2, 1, clamped_start, clamped_stop, gff_gene_start, is_minus, vcf_path)
+							allele_1, allele_2 = extract_interval_vcf2fasta(
+								gene, gene_lower, clamped_start, clamped_stop, gff_dir, reference_genome, vcf_path)
 						else:
 							idx1 = gene_coords.index(clamped_start)
 							idx2 = gene_coords.index(clamped_stop)
@@ -618,12 +718,10 @@ def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA
 
 						clamped_start = max(left, gene_start_coord)
 						clamped_stop = min(right, gene_stop_coord)
-						is_minus = gene_coords[0] > gene_coords[-1]
-						gff_gene_start = min(gene_start_coord, gene_stop_coord)
 						vcf_path = gene_filtered_vcfs.get(gene) if gene_filtered_vcfs else None
 						if vcf_path:
-							allele_1 = clamp_fasta_sequence(allele_1, 0, clamped_start, clamped_stop, gff_gene_start, is_minus, vcf_path)
-							allele_2 = clamp_fasta_sequence(allele_2, 1, clamped_start, clamped_stop, gff_gene_start, is_minus, vcf_path)
+							allele_1, allele_2 = extract_interval_vcf2fasta(
+								gene, gene_lower, clamped_start, clamped_stop, gff_dir, reference_genome, vcf_path)
 						else:
 							idx1 = gene_coords.index(clamped_start)
 							idx2 = gene_coords.index(clamped_stop)
@@ -645,12 +743,10 @@ def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA
 				clamped_start = max(best_haploblock_start, gene_dict[gene][0])
 				clamped_stop  = min(best_haploblock_end,   gene_dict[gene][1])
 
-				is_minus = gene_coords[0] > gene_coords[-1]
-				gff_gene_start = min(gene_dict[gene][0], gene_dict[gene][1])
 				vcf_path = gene_filtered_vcfs.get(gene) if gene_filtered_vcfs else None
 				if vcf_path:
-					allele_1 = clamp_fasta_sequence(allele_1, 0, clamped_start, clamped_stop, gff_gene_start, is_minus, vcf_path)
-					allele_2 = clamp_fasta_sequence(allele_2, 1, clamped_start, clamped_stop, gff_gene_start, is_minus, vcf_path)
+					allele_1, allele_2 = extract_interval_vcf2fasta(
+						gene, gene_lower, clamped_start, clamped_stop, gff_dir, reference_genome, vcf_path)
 				else:
 					idx1 = gene_coords.index(clamped_start)
 					idx2 = gene_coords.index(clamped_stop)
