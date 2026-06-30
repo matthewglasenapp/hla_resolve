@@ -11,7 +11,7 @@
 
 HLA-Resolve is a command-line tool for high-resolution HLA typing from high-coverage PacBio HiFi sequencing reads. It reconstructs phased, full-gene sequences for the eight classical HLA loci (HLA-A, -B, -C, -DPA1, -DPB1, -DQA1, -DQB1, -DRB1) and queries the [IPD-IMGT/HLA database](https://www.ebi.ac.uk/ipd/imgt/hla/) to assign HLA allele calls.
 
-HLA-Resolve was designed for and fully validated on PacBio hybrid-capture libraries (read N50 ~4 kb). It should also work with PacBio whole-genome (WGS), whole-exome (WES), and amplicon data. WGS support has been validated on PacBio HiFi libraries from the GIAB and HPRC benchmarks (see [Validated WGS Libraries](#validated-wgs-libraries)).
+HLA-Resolve was designed for and fully validated on PacBio hybrid-capture libraries (read N50 ~4 kb). It should also work with PacBio whole-genome (WGS), whole-exome (WES), and amplicon data. WGS support has been validated on high-coverage PacBio HiFi libraries from the GIAB and HPRC benchmarks (see [Validated WGS Libraries](#validated-wgs-libraries)).
 
 **Authors:** [Matthew Glasenapp](https://github.com/matthewglasenapp), [Alex Symons](https://github.com/FlyingFish800), [Omar Cornejo](https://github.com/oeco28)
 
