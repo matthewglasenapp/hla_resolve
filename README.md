@@ -63,7 +63,7 @@ Runtime depends heavily on input file size and available compute resources. Targ
 
 ## Validated WGS Libraries
 
-HLA-Resolve has produced high-quality calls for the following whole-genome (WGS) PacBio HiFi libraries. Depth is the mean read coverage across the HLA gene regions.
+HLA-Resolve has produced high-quality calls for the following whole-genome (WGS) PacBio HiFi libraries:
 
 | Sample | Source | Instrument | HLA Coverage |
 |--------|--------|------------|------------------|
