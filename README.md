@@ -49,7 +49,7 @@ A raw, single-sample (demultiplexed) PacBio sequencing file in FASTQ or unmapped
 
 **Primary Results**
 
-HLA star-allele calls for the following genes:
+HLA allele calls for the following genes:
 
 ```
 HLA-A, HLA-B, HLA-C, HLA-DPA1, HLA-DPB1, HLA-DQA1, HLA-DQB1, HLA-DRB1
@@ -144,7 +144,7 @@ hla_resolve \
   --threads 6
 ```
 
-The command will print the final star allele calls to STDOUT, along with important logging information, including coverage depth metrics, heterozygous genotypes that could not be phased, and the paths of intermediate files (e.g., BAM, VCF).
+The command will print the final HLA allele calls to STDOUT, along with important logging information, including coverage depth metrics, heterozygous genotypes that could not be phased, and the paths of intermediate files (e.g., BAM, VCF).
 
 Intermediate files will be written to the following dirctories. The user can specify the ```--clean-up``` option if they do not want intermediate files, such as mapped BAM, phased genotypes (VCFs), or fasta haplotype nucleotide sequences for the HLA genes.
 
@@ -167,7 +167,7 @@ Intermediate files will be written to the following dirctories. The user can spe
 
 ## Workflow and Dependencies
 
-HLA-Resolve takes raw PacBio HiFi reads (FASTQ or uBAM) as input and executes the following steps to produce four-field HLA star allele calls.
+HLA-Resolve takes raw PacBio HiFi reads (FASTQ or uBAM) as input and executes the following steps to produce four-field HLA allele assignments.
 
 #### 1. Adapter Trimming
 Adapter and barcode sequences are removed from raw reads using [cutadapt](https://doi.org/10.14806/ej.17.1.200) (when adapter sequences are provided) or [fastplong](https://doi.org/10.1002/imt2.107) (auto-detection mode).
@@ -225,7 +225,6 @@ For WGS and WES input, the pipeline skips adapter trimming (step 1) and pre-alig
    (HLA-E, HLA-F, HLA-G; HLA-H, HLA-J, HLA-K, HLA-L, HLA-S, HLA-V, HLA-W)
 3. HLA typing for additional HLA Class II protein-coding genes
    (HLA-DRB3, HLA-DRB4, HLA-DRB5)
-4. CYP21A2 star-allele calling
 
 #### Technical Reference
 For detailed documentation on the algorithms, decision logic, and tools used internally by HLA-Resolve, see the
