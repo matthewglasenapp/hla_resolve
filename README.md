@@ -175,7 +175,7 @@ HLA-Resolve has produced high-quality calls for the following whole-genome (WGS)
 | HG01258 | HPRC | Revio | ~19× | `s3://human-pangenomics/working/HPRC/HG01258/raw_data/PacBio_HiFi/m84046_231202_090949_s3.hifi_reads.bc2054.bam` |
 | HG03579 | HPRC | Sequel II | ~15× | `s3://human-pangenomics/working/HPRC/HG03579/raw_data/PacBio_HiFi/m64043_200516_230634.ccs.bam` |
 
-HPRC libraries can be downloaded without credentials using the AWS CLI, e.g. `aws s3 cp --no-sign-request <s3-path> .`
+HPRC libraries can be downloaded without credentials using the AWS CLI: `aws s3 cp --no-sign-request <s3-path> .`
 
 ## Workflow and Dependencies
 
