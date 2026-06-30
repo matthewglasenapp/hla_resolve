@@ -11,10 +11,7 @@
 
 HLA-Resolve is a command-line tool for high-resolution HLA typing from high-coverage PacBio HiFi sequencing reads. It reconstructs phased, full-gene sequences for the eight classical HLA loci (HLA-A, -B, -C, -DPA1, -DPB1, -DQA1, -DQB1, -DRB1) and queries the [IPD-IMGT/HLA database](https://www.ebi.ac.uk/ipd/imgt/hla/) to assign HLA allele calls.
 
-HLA-Resolve was designed for and fully validated on PacBio hybrid-capture libraries (read N50 ~4 kb). It should also work with PacBio whole-genome (WGS), whole-exome (WES), and amplicon data. WGS support has so far been validated on 30× Revio data for the GIAB Ashkenazim son (HG002), available from this [GIAB FTP directory](https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/AshkenazimTrio/HG002_NA24385_son/PacBio_HiFi-Revio_20231031/):
-
-- `HG002_PacBio-Revio_m84039_231005_222902_s1.hifi_reads.bam`
-- `HG002_PacBio-Revio_m84039_230928_213653_s3.hifi_reads.bam`
+HLA-Resolve was designed for and fully validated on PacBio hybrid-capture libraries (read N50 ~4 kb). It should also work with PacBio whole-genome (WGS), whole-exome (WES), and amplicon data. WGS support has been validated on PacBio HiFi libraries from the GIAB and HPRC benchmarks — see [Validated WGS Libraries](#validated-wgs-libraries).
 
 **Authors:** [Matthew Glasenapp](https://github.com/matthewglasenapp), [Alex Symons](https://github.com/FlyingFish800), [Omar Cornejo](https://github.com/oeco28)
 
@@ -26,6 +23,7 @@ HLA-Resolve was designed for and fully validated on PacBio hybrid-capture librar
 
 - [Requirements](#requirements)
 - [Overview](#overview)
+- [Validated WGS Libraries](#validated-wgs-libraries)
 - [Installation](#installation)
 - [Updating](#updating)
 - [Quick Start](#quick-start)
@@ -62,6 +60,33 @@ HLA-A, HLA-B, HLA-C, HLA-DPA1, HLA-DPB1, HLA-DQA1, HLA-DQB1, HLA-DRB1
 
 #### Runtime and Required Resources
 Runtime depends heavily on input file size and available compute resources. Targeted HLA capture data typically completes in **<30 minutes** using **6 CPUs and 20 GB RAM**. Runtime increases for high-coverage WGS or WES datasets, as all reads must be mapped to the human reference genome prior to restricting downstream analysis to the HLA region on chromosome 6.
+
+## Validated WGS Libraries
+
+HLA-Resolve has produced high-quality calls for the following whole-genome (WGS) PacBio HiFi libraries. Depth is the mean read coverage across the HLA gene regions.
+
+| Sample | Source | Instrument | HLA Coverage |
+|--------|--------|------------|------------------|
+| HG002 | GIAB | Revio | ~30× |
+| HG002 | HPRC | Revio | ~33× |
+| HG01258 | HPRC | Revio | ~19× |
+| HG03579 | HPRC | Sequel II | ~15× |
+
+**File locations**
+
+- **HG002** (GIAB) — [GIAB FTP directory](https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/AshkenazimTrio/HG002_NA24385_son/PacBio_HiFi-Revio_20231031/):
+  - `HG002_PacBio-Revio_m84039_231005_222902_s1.hifi_reads.bam`
+  - `HG002_PacBio-Revio_m84039_230928_213653_s3.hifi_reads.bam`
+- **HG002** (HPRC) — `s3://human-pangenomics/working/HPRC_PLUS/HG002/raw_data/PacBio_HiFi/wMods/`:
+  - `m84011_220902_175841_s1.hifi_reads.bam`
+- **HG01258** — `s3://human-pangenomics/working/HPRC/HG01258/raw_data/PacBio_HiFi/`:
+  - `m84046_231202_090949_s3.hifi_reads.bc2054.bam`
+- **HG03579** — `s3://human-pangenomics/working/HPRC/HG03579/raw_data/PacBio_HiFi/`:
+  - `m64043_200516_230634.ccs.bam`
+
+HPRC libraries can be downloaded without credentials using the [AWS CLI](https://aws.amazon.com/cli/), e.g. `aws s3 cp --no-sign-request <s3-path> .`
+
+> **Coverage guidance:** Complete eight-locus typing requires roughly **≥15× across the HLA region** (HG03579 typed cleanly at ~15×, with its lowest locus at ~11×). Below this, individual loci begin to drop from the output for lack of sufficient ARS-region depth.
 
 ## Installation
 ```text
