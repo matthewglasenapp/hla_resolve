@@ -198,7 +198,7 @@ def evaluate_gene_haploblocks(output_file, incomplete_file, sample_ID, genes_bed
 				
 				if largest_ars_spanning_block:
 					best_haploblock = largest_ars_spanning_block
-					unphased_genes[gene] = best_haploblock
+					unphased_genes[gene] = {"haploblock": best_haploblock, "cds_hets": len([h for h in gene_het_sites if CDS_dict and any(s <= h <= e for s, e in CDS_dict.get(gene, []))])}
 					print(f"{sample_ID} {gene} has a haploblock that fully spans the antigen recognition sequence")
 					print(f"{sample_ID} {gene} largest ARS-spanning haploblock: chr6:{largest_ars_spanning_block[0]}-{largest_ars_spanning_block[1]}")
 				else:

@@ -100,6 +100,38 @@ def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail
 		for tr_start, tr_end in tr_regions:
 			print(f"[TR-OVERLAP]   TR region: {tr_start}-{tr_end}")
 
+	# ========== FIRST PASS (part 3): Collect homozygous deletion spans ==========
+	# A base inside a homozygous deletion is absent from BOTH haplotypes, so any other
+	# variant called there (typically a low-depth het SNP from reads that misaligned across
+	# the deletion) is spurious. pbsv/TRGT spans are handled above; this catches small
+	# homozygous deletions from the small-variant caller (too small for pbsv, not in a TRGT
+	# catalog), whose deleted bases would otherwise carry junk het calls into vcf2fasta.
+	hom_del_spans = []  # (del_start, del_end) inclusive -- bases deleted on both haplotypes
+	vf_hd = pysam.VariantFile(region_vcf)
+	for rec in vf_hd:
+		if rec.alts is None:
+			continue
+		hd_sample = list(rec.samples.values())[0]
+		hd_gt = hd_sample.get("GT")
+		if hd_gt is None or None in hd_gt or len(set(hd_gt)) != 1 or hd_gt[0] == 0:
+			continue  # require a homozygous ALT genotype
+		hd_alt = rec.alleles[hd_gt[0]]
+		if len(hd_alt) < len(rec.ref):
+			hom_del_spans.append((rec.pos + 1, rec.pos + len(rec.ref) - 1))
+	vf_hd.close()
+
+	if config.VERBOSE:
+		print(f"[HOMDEL-OVERLAP] {gene}: Collected {len(hom_del_spans)} homozygous deletion spans")
+		for hd_start, hd_end in hom_del_spans:
+			print(f"[HOMDEL-OVERLAP]   deleted span: {hd_start}-{hd_end}")
+
+	# Helper function: is a position inside any homozygous deletion span?
+	def inside_homozygous_deletion(pos):
+		for hd_start, hd_end in hom_del_spans:
+			if hd_start <= pos <= hd_end:
+				return True
+		return False
+
 	# Helper function: check if variant overlaps a PASS SV on the same haplotype
 	def overlaps_sv_same_haplotype(pos, ref_len, var_haplotypes, indel_size=0):
 		var_end = pos + ref_len - 1
@@ -158,6 +190,17 @@ def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail
 				pass_out.write(rec)
 			else:
 				fail_out.write(rec)
+			continue
+
+		# ========== HOMOZYGOUS DELETION OVERLAP CHECK ==========
+		# A heterozygous call at a homozygously-deleted base cannot be real (the base is absent
+		# from both haplotypes). Suppress it so vcf2fasta does not apply a spurious variant.
+		# Homozygous variants are left alone -- they define the sequence.
+		if hom_del_spans and len(set(gt)) > 1 and inside_homozygous_deletion(rec.pos):
+			if config.VERBOSE:
+				print(f"[HOMDEL-OVERLAP]   Suppressed: {rec.chrom}:{rec.pos} {rec.ref[:20]}->{rec.alts[0][:20] if rec.alts else '.'} (het inside homozygous deletion)")
+			sv_overlap_out.write(rec)
+			sv_overlap_count += 1
 			continue
 
 		# ========== TR OVERLAP CHECK ==========
@@ -590,8 +633,8 @@ def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA
 						logging_strings.append(f"{sample_ID} {gene} CDS rescue tier=ars_only: gene interval chr6:{clamped_start}-{clamped_stop}")
 
 		elif unphased_genes and gene in unphased_genes:
-			best_haploblock_start = unphased_genes[gene][0]
-			best_haploblock_end   = unphased_genes[gene][1]
+			best_haploblock_start = unphased_genes[gene]["haploblock"][0]
+			best_haploblock_end   = unphased_genes[gene]["haploblock"][1]
 
 			if feat == "gene":
 				# Load gene coords (1-based genomic positions)
@@ -621,18 +664,21 @@ def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA
 				cds_coords_file = os.path.join(gff_dir, f"{gene_lower}_cds_sorted_coords.txt")
 				cds_coords = [int(item) for item in open(cds_coords_file).read().splitlines()]
 
-				# Collect overlap of haploblock with CDS
-				cds_overlap = [pos for pos in cds_coords if best_haploblock_start <= pos <= best_haploblock_end]
-
-				if cds_overlap:
-					idx1 = cds_coords.index(cds_overlap[0])
-					idx2 = cds_coords.index(cds_overlap[-1])
-					cds_fasta_start, cds_fasta_stop = sorted((idx1, idx2))
-					allele_1 = allele_1[cds_fasta_start:cds_fasta_stop+1]
-					allele_2 = allele_2[cds_fasta_start:cds_fasta_stop+1]
-				else:
-					# no overlap between haploblock and CDS, wipe to empty
-					allele_1, allele_2 = "", ""
+				# If the CDS is effectively homozygous (<= 1 CDS het), use the full concatenated
+				# exon output untrimmed (mirrors the cds_full rescue tier) so coding-sequence
+				# matching (fields 1-3) is unaffected by the partial phasing. Otherwise trim the
+				# CDS to the haploblock overlap.
+				if unphased_genes[gene]["cds_hets"] > 1:
+					cds_overlap = [pos for pos in cds_coords if best_haploblock_start <= pos <= best_haploblock_end]
+					if cds_overlap:
+						idx1 = cds_coords.index(cds_overlap[0])
+						idx2 = cds_coords.index(cds_overlap[-1])
+						cds_fasta_start, cds_fasta_stop = sorted((idx1, idx2))
+						allele_1 = allele_1[cds_fasta_start:cds_fasta_stop+1]
+						allele_2 = allele_2[cds_fasta_start:cds_fasta_stop+1]
+					else:
+						# no overlap between haploblock and CDS, wipe to empty
+						allele_1, allele_2 = "", ""
 
 				pass_cds_counter = 0
 				for cds_start, cds_stop in CDS_dict[gene]:
