@@ -178,6 +178,7 @@ HLA-Resolve has produced high-quality calls for the following whole-genome (WGS)
 HPRC libraries can be downloaded without credentials using the AWS CLI: `aws s3 cp --no-sign-request <s3-path> .`
 
 The hla_resolve command used to analyze these libraries was:
+
 `hla_resolve --input_file <INPUT_uBAM> --sample_name <sample_name> --platform pacbio --scheme WGS --output_dir <output_dir> --threads <threads>`
 
 ## Workflow and Dependencies
