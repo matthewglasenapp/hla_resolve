@@ -531,6 +531,82 @@ def extract_interval_vcf2fasta(gene, gene_lower, clamped_start, clamped_stop, gf
 		shutil.rmtree(gff_workdir, ignore_errors=True)
 
 
+def extract_cds_subset_vcf2fasta(gene, gene_lower, keep_ranges, gff_dir, reference_genome, vcf_path, vcf2fasta_output_dir):
+	"""
+	Reconstruct a SUBSET of a gene's CDS (only the exons/sub-ranges in keep_ranges) by clipping
+	the CDS GFF to keep_ranges and re-running vcf2fasta --feat CDS --blend, instead of index-
+	slicing the reconstructed CDS by a reference coordinate (which is off by the in-CDS indel
+	shift). Reference-anchored per feature, so correct regardless of CDS indels.
+
+	keep_ranges: unphased trim (cds_hets>1) -> [(haploblock_start, haploblock_end)];
+	ars_only tier -> the ARS CDS exon ranges. Persists into vcf2fasta_out/{gene}_CDS (replacing
+	the full-CDS first-round output). Returns (allele_1, allele_2), or ("","") if nothing kept.
+	A length guard raises if --feat CDS --blend doubles on a clipped boundary.
+	"""
+	cds_gff = os.path.join(gff_dir, f"{gene_lower}_cds_sorted.gff3")
+	clipped = []  # (start, end, gff_line) for CDS records clipped to keep_ranges
+	for raw in open(cds_gff):
+		if raw.startswith("#"):
+			continue
+		cols = raw.rstrip("\n").split("\t")
+		if len(cols) < 9 or cols[2] != "CDS":
+			continue
+		s, e = int(cols[3]), int(cols[4])
+		for ks, ke in keep_ranges:
+			cs, ce = max(s, ks), min(e, ke)
+			if cs <= ce:
+				rc = list(cols)
+				rc[3], rc[4] = str(cs), str(ce)
+				clipped.append((cs, ce, "\t".join(rc)))
+
+	out_base = os.path.join(vcf2fasta_output_dir, gene)
+	real_out = out_base + "_CDS"
+	shutil.rmtree(real_out, ignore_errors=True)  # drop the full-CDS first-round output
+	if not clipped:
+		return "", ""
+	clipped.sort()
+
+	gff_workdir = tempfile.mkdtemp(prefix=f"{gene_lower}_cdssubset_gff_")
+	try:
+		gff_path = os.path.join(gff_workdir, f"{gene_lower}_cds_subset.gff3")
+		with open(gff_path, "w") as f:
+			f.write("##gff-version 3\n")
+			for _, _, line in clipped:
+				f.write(line + "\n")
+
+		run_vcf2fasta(
+			input_vcf=vcf_path,
+			input_gff=gff_path,
+			reference_genome=reference_genome,
+			output_dir=out_base,
+			gene=gene,
+			feature="CDS",
+		)
+
+		find = subprocess.run(f"find {real_out} -type f", shell=True, capture_output=True, text=True)
+		fasta_files = [x for x in find.stdout.split() if not x.endswith(".gff3")]
+		if not fasta_files:
+			raise FileNotFoundError(f"{gene}: no vcf2fasta CDS output for subset")
+
+		with open(fasta_files[0]) as f:
+			records = f.read().split(">")[1:]
+		haplotypes = ["".join(rec.split("\n")[1:]).replace("-", "").strip() for rec in records]
+		if len(haplotypes) < 2:
+			raise ValueError(
+				f"{gene}: expected 2 CDS haplotype records from subset extraction, got {len(haplotypes)}")
+
+		expected = sum(ce - cs + 1 for cs, ce, _ in clipped)
+		for hap in haplotypes:
+			if len(hap) > 1.8 * max(expected, 1):
+				raise RuntimeError(
+					f"{gene}: vcf2fasta CDS subset extraction doubled (len={len(hap)}, "
+					f"expected ~{expected}). A clipped CDS boundary may sit inside an indel.")
+
+		return haplotypes[0], haplotypes[1]
+	finally:
+		shutil.rmtree(gff_workdir, ignore_errors=True)
+
+
 def run_vcf2fasta(input_vcf, input_gff, reference_genome, output_dir, gene, feature):
 	if feature == "CDS":
 		vcf2fasta_cmd = f"vcf2fasta --fasta {reference_genome} --vcf {input_vcf} --gff {input_gff} -o {output_dir} --feat CDS --blend --force"
@@ -676,25 +752,19 @@ def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA
 			elif tier == "ars_only":
 				# Branch 3b-ii-A: CDS hets > 1, ARS CDS hets <= 1
 				if feat == "CDS":
-					# Extract only ARS CDS positions from CDS sequence
+					# Reconstruct only the ARS CDS exons via vcf2fasta on a clipped CDS GFF
+					# (reference-anchored; replaces the cds_coords.index() slice that was off by
+					# the in-CDS indel shift).
 					gene_lower = gene.lower().replace("-", "_")
-					cds_coords_file = os.path.join(gff_dir, f"{gene_lower}_cds_sorted_coords.txt")
-					cds_coords = [int(item) for item in open(cds_coords_file).read().splitlines()]
-
 					ars_cds_ranges = rescue_info["ars_cds_ranges"]
-					ars_cds_positions = [pos for pos in cds_coords
-										if any(s <= pos <= e for s, e in ars_cds_ranges)]
-
-					if ars_cds_positions:
-						idx1 = cds_coords.index(ars_cds_positions[0])
-						idx2 = cds_coords.index(ars_cds_positions[-1])
-						cds_fasta_start, cds_fasta_stop = sorted((idx1, idx2))
-						allele_1 = allele_1[cds_fasta_start:cds_fasta_stop+1]
-						allele_2 = allele_2[cds_fasta_start:cds_fasta_stop+1]
-						logging_strings.append(f"{sample_ID} {gene} CDS rescue tier=ars_only: extracting ARS CDS ({len(ars_cds_positions)} positions)")
+					vcf_path = gene_filtered_vcfs.get(gene) if gene_filtered_vcfs else None
+					if vcf_path and ars_cds_ranges:
+						allele_1, allele_2 = extract_cds_subset_vcf2fasta(
+							gene, gene_lower, ars_cds_ranges, gff_dir, reference_genome, vcf_path, vcf2fasta_output_dir)
+						logging_strings.append(f"{sample_ID} {gene} CDS rescue tier=ars_only: extracted ARS CDS ({len(ars_cds_ranges)} exon range(s))")
 					else:
 						allele_1, allele_2 = "", ""
-						logging_strings.append(f"{sample_ID} {gene} CDS rescue tier=ars_only: no ARS CDS positions found")
+						logging_strings.append(f"{sample_ID} {gene} CDS rescue tier=ars_only: no ARS CDS ranges or VCF")
 
 				elif feat == "gene":
 					gene_lower = gene.lower().replace("-", "_")
@@ -761,25 +831,19 @@ def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA
 					allele_2 = allele_2[fasta_start:fasta_stop+1]
 
 			elif feat == "CDS":
-				# Load CDS coords (flattened genomic positions from all CDS exons)
 				gene_lower = gene.lower().replace("-", "_")
-				cds_coords_file = os.path.join(gff_dir, f"{gene_lower}_cds_sorted_coords.txt")
-				cds_coords = [int(item) for item in open(cds_coords_file).read().splitlines()]
-
-				# If the CDS is effectively homozygous (<= 1 CDS het), use the full concatenated
-				# exon output untrimmed (mirrors the cds_full rescue tier) so coding-sequence
-				# matching (fields 1-3) is unaffected by the partial phasing. Otherwise trim the
-				# CDS to the haploblock overlap.
+				# If the CDS is effectively homozygous (<=1 CDS het), use the full untrimmed CDS
+				# (mirrors the cds_full tier) so fields 1-3 are unaffected by the partial phasing.
+				# Otherwise reconstruct the CDS clipped to the haploblock via vcf2fasta on a clipped
+				# CDS GFF (reference-anchored; replaces the cds_coords.index() slice that was off by
+				# the in-CDS indel shift).
 				if unphased_genes[gene]["cds_hets"] > 1:
-					cds_overlap = [pos for pos in cds_coords if best_haploblock_start <= pos <= best_haploblock_end]
-					if cds_overlap:
-						idx1 = cds_coords.index(cds_overlap[0])
-						idx2 = cds_coords.index(cds_overlap[-1])
-						cds_fasta_start, cds_fasta_stop = sorted((idx1, idx2))
-						allele_1 = allele_1[cds_fasta_start:cds_fasta_stop+1]
-						allele_2 = allele_2[cds_fasta_start:cds_fasta_stop+1]
+					vcf_path = gene_filtered_vcfs.get(gene) if gene_filtered_vcfs else None
+					if vcf_path:
+						allele_1, allele_2 = extract_cds_subset_vcf2fasta(
+							gene, gene_lower, [(best_haploblock_start, best_haploblock_end)],
+							gff_dir, reference_genome, vcf_path, vcf2fasta_output_dir)
 					else:
-						# no overlap between haploblock and CDS, wipe to empty
 						allele_1, allele_2 = "", ""
 
 				pass_cds_counter = 0
