@@ -442,7 +442,7 @@ def hap_net_indel(vcf_path, haplotype, start, stop):
 	return net
 
 
-def extract_interval_vcf2fasta(gene, gene_lower, clamped_start, clamped_stop, gff_dir, reference_genome, vcf_path):
+def extract_interval_vcf2fasta(gene, gene_lower, clamped_start, clamped_stop, gff_dir, reference_genome, vcf_path, vcf2fasta_output_dir):
 	"""
 	Reconstruct a genomic sub-interval of a gene's two haplotypes by re-running vcf2fasta
 	on a one-feature GFF for [clamped_start, clamped_stop], instead of indexing into the
@@ -471,6 +471,14 @@ def extract_interval_vcf2fasta(gene, gene_lower, clamped_start, clamped_stop, gf
 	if snapped_left != left or snapped_right != right:
 		print(f"{gene}: snapped interval boundary out of indel "
 			f"[{left}-{right}] -> [{snapped_left}-{snapped_right}]")
+	# Write the contracted extraction into the persistent vcf2fasta_out location, replacing the
+	# full-gene first-round output, so that dir holds the sequence actually used for matching
+	# (the ARS-spanning interval) rather than the untrusted full gene. vcf2fasta appends "_gene"
+	# to -o, so out_base -> real_out = out_base + "_gene".
+	out_base = os.path.join(vcf2fasta_output_dir, gene)
+	real_out = out_base + "_gene"
+	shutil.rmtree(real_out, ignore_errors=True)
+
 	if snapped_left > snapped_right:
 		return "", ""
 
@@ -478,25 +486,23 @@ def extract_interval_vcf2fasta(gene, gene_lower, clamped_start, clamped_stop, gf
 	cols[3] = str(snapped_left)
 	cols[4] = str(snapped_right)
 
-	workdir = tempfile.mkdtemp(prefix=f"{gene_lower}_interval_")
+	# The interval GFF is scratch; only the vcf2fasta output (in real_out) is kept.
+	gff_workdir = tempfile.mkdtemp(prefix=f"{gene_lower}_interval_gff_")
 	try:
-		gff_path = os.path.join(workdir, f"{gene_lower}_interval.gff3")
+		gff_path = os.path.join(gff_workdir, f"{gene_lower}_interval.gff3")
 		with open(gff_path, "w") as f:
 			f.write("##gff-version 3\n")
 			f.write("\t".join(cols) + "\n")
 
-		out_dir = os.path.join(workdir, "v2f")
 		run_vcf2fasta(
 			input_vcf=vcf_path,
 			input_gff=gff_path,
 			reference_genome=reference_genome,
-			output_dir=out_dir,
+			output_dir=out_base,
 			gene=gene,
 			feature="gene",
 		)
 
-		# vcf2fasta appends "_<feat>" to the -o path
-		real_out = out_dir + "_gene"
 		find_cmd = f"find {real_out} -type f"
 		result = subprocess.run(find_cmd, shell=True, capture_output=True, text=True)
 		fasta_files = [x for x in result.stdout.split() if not x.endswith(".gff3")]
@@ -522,7 +528,7 @@ def extract_interval_vcf2fasta(gene, gene_lower, clamped_start, clamped_stop, gf
 
 		return haplotypes[0], haplotypes[1]
 	finally:
-		shutil.rmtree(workdir, ignore_errors=True)
+		shutil.rmtree(gff_workdir, ignore_errors=True)
 
 
 def run_vcf2fasta(input_vcf, input_gff, reference_genome, output_dir, gene, feature):
@@ -657,7 +663,7 @@ def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA
 						vcf_path = gene_filtered_vcfs.get(gene) if gene_filtered_vcfs else None
 						if vcf_path:
 							allele_1, allele_2 = extract_interval_vcf2fasta(
-								gene, gene_lower, clamped_start, clamped_stop, gff_dir, reference_genome, vcf_path)
+								gene, gene_lower, clamped_start, clamped_stop, gff_dir, reference_genome, vcf_path, vcf2fasta_output_dir)
 						else:
 							idx1 = gene_coords.index(clamped_start)
 							idx2 = gene_coords.index(clamped_stop)
@@ -721,7 +727,7 @@ def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA
 						vcf_path = gene_filtered_vcfs.get(gene) if gene_filtered_vcfs else None
 						if vcf_path:
 							allele_1, allele_2 = extract_interval_vcf2fasta(
-								gene, gene_lower, clamped_start, clamped_stop, gff_dir, reference_genome, vcf_path)
+								gene, gene_lower, clamped_start, clamped_stop, gff_dir, reference_genome, vcf_path, vcf2fasta_output_dir)
 						else:
 							idx1 = gene_coords.index(clamped_start)
 							idx2 = gene_coords.index(clamped_stop)
@@ -746,7 +752,7 @@ def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA
 				vcf_path = gene_filtered_vcfs.get(gene) if gene_filtered_vcfs else None
 				if vcf_path:
 					allele_1, allele_2 = extract_interval_vcf2fasta(
-						gene, gene_lower, clamped_start, clamped_stop, gff_dir, reference_genome, vcf_path)
+						gene, gene_lower, clamped_start, clamped_stop, gff_dir, reference_genome, vcf_path, vcf2fasta_output_dir)
 				else:
 					idx1 = gene_coords.index(clamped_start)
 					idx2 = gene_coords.index(clamped_stop)
@@ -790,7 +796,11 @@ def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA
 
 
 		if len(allele_1) == 0 or len(allele_2) == 0:
-			print(f"File {file} has no sequence!")
+			print(f"File {file} has no sequence -- removing untrusted vcf2fasta output")
+			try:
+				os.remove(file)
+			except OSError:
+				pass
 			continue
 			
 		if not set(allele_1).issubset(DNA_bases):
