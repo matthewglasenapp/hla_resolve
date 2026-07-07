@@ -375,49 +375,44 @@ def read_gene_gff_cols(gff_dir, gene_lower):
 	raise RuntimeError(f"No 'gene' feature line found in {path}")
 
 
-def deletion_spans(vcf_path, haplotype):
-	"""Reference positions DELETED on this haplotype: for each variant where the
-	chosen allele is shorter than REF, the deleted bases are (pos+1 .. pos+len(ref)-1).
-	The anchor base (pos) is retained. Returns a list of (del_start, del_end) inclusive."""
+def variant_ref_spans(vcf_path):
+	"""Reference footprints an interval boundary must not land inside. vcf2fasta emits a
+	feature record TWICE (a 2x "doubling") whenever the feature start or stop falls inside
+	the REF span of a record that covers more than one reference base (a deletion or MNP).
+	This is independent of genotype: hom-ref (0/0) records trigger it too, because the
+	doubling is a parser artifact of the overlapping REF span, not of the applied allele.
+	Returns the full inclusive footprint (pos, pos+len(ref)-1) of every such record."""
 	spans = []
 	vcf = pysam.VariantFile(vcf_path)
 	for rec in vcf:
-		gt = list(rec.samples.values())[0].get("GT")
-		if gt is None or None in gt:
-			continue
-		allele_idx = gt[haplotype]
-		if allele_idx == 0:
-			continue
-		ref = rec.ref
-		alt = rec.alleles[allele_idx]
-		if len(alt) < len(ref):
-			spans.append((rec.pos + 1, rec.pos + len(ref) - 1))
+		if len(rec.ref) > 1:
+			spans.append((rec.pos, rec.pos + len(rec.ref) - 1))
 	vcf.close()
 	return spans
 
 
-def snap_left_out_of_deletion(pos, spans):
-	"""Push a left/start boundary forward to the first reference base that is not
-	deleted on either haplotype. A feature start on a deleted base makes vcf2fasta
-	emit the record twice (doubling); it also mis-indexed the old clamp."""
+def snap_left_out_of_variant_span(pos, spans):
+	"""Push a left/start boundary forward to the first reference base outside every
+	variant REF span. A feature start inside a multi-base REF span makes vcf2fasta emit
+	the record twice (doubling); it also mis-indexed the old clamp."""
 	moved = True
 	while moved:
 		moved = False
-		for del_start, del_end in spans:
-			if del_start <= pos <= del_end:
-				pos = del_end + 1
+		for span_start, span_end in spans:
+			if span_start <= pos <= span_end:
+				pos = span_end + 1
 				moved = True
 	return pos
 
 
-def snap_right_out_of_deletion(pos, spans):
-	"""Push a right/stop boundary back to the last reference base that is not deleted."""
+def snap_right_out_of_variant_span(pos, spans):
+	"""Push a right/stop boundary back to the last reference base outside every variant REF span."""
 	moved = True
 	while moved:
 		moved = False
-		for del_start, del_end in spans:
-			if del_start <= pos <= del_end:
-				pos = del_start - 1
+		for span_start, span_end in spans:
+			if span_start <= pos <= span_end:
+				pos = span_start - 1
 				moved = True
 	return pos
 
@@ -455,9 +450,10 @@ def extract_interval_vcf2fasta(gene, gene_lower, clamped_start, clamped_stop, gf
 	inside an indel. vcf2fasta extraction is reference-coordinate-anchored per feature, so it
 	avoids both failure modes and is guaranteed consistent with the full-gene reconstruction.
 
-	Boundaries are snapped out of any deletion's REF span (union of both haplotypes) because a
-	feature start that lands on a deleted base makes vcf2fasta emit the record twice (a 2x
-	"doubling"). A length guard raises if any residual doubling slips through.
+	Boundaries are snapped out of the REF span of any multi-base variant record (all records,
+	any genotype) because a feature start or stop that lands inside such a span makes vcf2fasta
+	emit the record twice (a 2x "doubling"). A length guard raises if any residual doubling
+	slips through.
 
 	Returns (allele_1, allele_2), already strand-oriented by vcf2fasta. Returns ("", "") if the
 	snapped interval collapses (caller writes no record).
@@ -465,9 +461,9 @@ def extract_interval_vcf2fasta(gene, gene_lower, clamped_start, clamped_stop, gf
 	left = min(clamped_start, clamped_stop)
 	right = max(clamped_start, clamped_stop)
 
-	spans = deletion_spans(vcf_path, 0) + deletion_spans(vcf_path, 1)
-	snapped_left = snap_left_out_of_deletion(left, spans)
-	snapped_right = snap_right_out_of_deletion(right, spans)
+	spans = variant_ref_spans(vcf_path)
+	snapped_left = snap_left_out_of_variant_span(left, spans)
+	snapped_right = snap_right_out_of_variant_span(right, spans)
 	if snapped_left != left or snapped_right != right:
 		print(f"{gene}: snapped interval boundary out of indel "
 			f"[{left}-{right}] -> [{snapped_left}-{snapped_right}]")
