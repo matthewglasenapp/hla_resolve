@@ -61,6 +61,8 @@ HLA-A, HLA-B, HLA-C, HLA-DPA1, HLA-DPB1, HLA-DQA1, HLA-DQB1, HLA-DRB1
 #### Runtime and Required Resources
 Runtime depends heavily on input file size and available compute resources. Targeted HLA capture data typically completes in **<30 minutes** using **6 CPUs and 20 GB RAM**. Runtime increases for high-coverage WGS or WES datasets, as all reads must be mapped to the human reference genome prior to restricting downstream analysis to the HLA region on chromosome 6.
 
+Reference genome alignment is the rate-limiting step and is multithreaded, so increasing the thread count with `--threads` (default **6**) provides the largest runtime reduction, particularly for high-coverage WGS or WES inputs.
+
 ## Installation
 ```text
 git clone https://github.com/matthewglasenapp/hla_resolve
