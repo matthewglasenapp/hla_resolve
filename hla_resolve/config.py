@@ -101,6 +101,28 @@ def _drb5_is_masked(augmented_file):
     seq = "".join(line for line in result.stdout.splitlines() if not line.startswith(">"))
     return bool(seq) and all(c.upper() == "N" for c in seq)
 
+def _drb6_is_masked(augmented_file):
+    """Verify that the augmented reference has HLA-DRB6 hard-masked.
+
+    Spot-checks 50 bases inside the DRB6 mask region (near the exon-2 paralog
+    locus that competes with DRB1) and confirms they are all N. Mirrors
+    _drb5_is_masked so an existing DRB5-only-masked reference is auto-rebuilt
+    with DRB6 added. EXPERIMENTAL (drb6-mask-test): testing whether masking
+    DRB6 rescues divergent DR4 alleles (e.g. DRB1*04:12) whose reads lose MAPQ
+    to the DRB6 pseudogene.
+    """
+    if not augmented_file.exists():
+        return False
+    try:
+        result = subprocess.run(
+            ["samtools", "faidx", str(augmented_file), "chr6:32556800-32556850"],
+            capture_output=True, text=True, check=True,
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return False
+    seq = "".join(line for line in result.stdout.splitlines() if not line.startswith(">"))
+    return bool(seq) and all(c.upper() == "N" for c in seq)
+
 def ensure_reference_genome():
     """Build augmented_hg38.fa: GRCh38 + HLA-Y/OLI scaffold, with HLA-DRB5 hard-masked.
 
@@ -108,8 +130,13 @@ def ensure_reference_genome():
     scaffold, then hard-masks HLA-DRB5 (chr6:32517353-32530287, Ensembl
     GRCh38.110 GFF3) so reads from divergent DRB1 alleles (*07, *09) do not
     misroute to the DRB5 paralog locus. The unmasked GRCh38 + HLA-Y intermediate
-    is removed after masking. DRB6/DRB9 left intact since their masking does
-    more harm than good (see drb_paralog_masking branch history).
+    is removed after masking. DRB9 left intact.
+
+    EXPERIMENTAL (drb6-mask-test): HLA-DRB6 (chr6:32552713-32560022) is now also
+    hard-masked, to test whether it rescues divergent DR4 alleles (DRB1*04:12 in
+    IHW09118) whose reads lose MAPQ to the DRB6 pseudogene. An earlier attempt to
+    mask DRB6/DRB9 *together* was net-harmful (drb_paralog_masking branch); this
+    isolates DRB6 alone. Revert if the regression check across the cohort regresses.
 
     If an augmented_hg38.fa already exists but its DRB5 region is unmasked
     (e.g. a v0.1.0 install), it is removed and rebuilt with masking applied.
@@ -120,18 +147,19 @@ def ensure_reference_genome():
     hla_y_file = ref_dir / "hla_y_scaffold.fasta"
 
     # Fast path (no lock): a properly-masked augmented reference already exists.
-    if _drb5_is_masked(augmented_file):
+    if _drb5_is_masked(augmented_file) and _drb6_is_masked(augmented_file):
         return
 
     with _setup_lock(ref_dir):
         # Re-check inside the lock: another process may have built it while we
         # were waiting, in which case there is nothing left to do.
-        if _drb5_is_masked(augmented_file):
+        if _drb5_is_masked(augmented_file) and _drb6_is_masked(augmented_file):
             return
 
-        # Otherwise rebuild — either no file at all, or a v0.1.0 unmasked file.
+        # Otherwise rebuild — either no file at all, or a v0.1.0 unmasked file,
+        # or a DRB5-only-masked reference from before the DRB6 mask was added.
         if augmented_file.exists():
-            print("Existing augmented_hg38.fa is unmasked (v0.1.0 install). Rebuilding with HLA-DRB5 hard-masked...")
+            print("Existing augmented_hg38.fa is missing a required mask (DRB5/DRB6). Rebuilding...")
             augmented_file.unlink()
             fai = augmented_file.with_suffix(".fa.fai")
             if fai.exists():
@@ -170,12 +198,17 @@ def ensure_reference_genome():
             print("Augmenting GRCh38 with HLA-Y/OLI scaffold...")
             subprocess.run(["bash", "-c", f"cat {grch38_file} {hla_y_file} > {unmasked}"], check=True)
 
-            # Hard-mask HLA-DRB5
+            # Hard-mask HLA-DRB5 and HLA-DRB6.
             # GFF3 is 1-based inclusive; BED is 0-based half-open -> start-1, end unchanged.
-            print("Hard-masking HLA-DRB5 (chr6:32517353-32530287, Ensembl GRCh38.110)...")
+            # DRB6 (chr6:32552713-32560022) is EXPERIMENTAL (drb6-mask-test): its
+            # exon-2 competes with DRB1 for divergent DR4 reads (e.g. DRB1*04:12),
+            # collapsing their MAPQ. Real DRB6 reads are still handled by the DRB
+            # panel bait (DRB6_GRCh38), as with DRB5.
+            print("Hard-masking HLA-DRB5 (chr6:32517353-32530287) and HLA-DRB6 (chr6:32552713-32560022)...")
             mask_bed = ref_dir / "drb5_mask.bed"
             with open(mask_bed, "w") as f:
                 f.write("chr6\t32517352\t32530287\n")
+                f.write("chr6\t32552712\t32560022\n")
 
             # Build into temp names, then atomically publish the reference and its
             # index together, so the augmented_file only appears fully built and
