@@ -135,7 +135,7 @@ def align_to_reference_rammap(input_file, output_file, read_group_string, refere
 
 def _parse_drb_paralog_reads(output_file, drb_paralog_reads_file):
 	"""
-	Parse aligned BAM to identify DRB paralog reads (DRB3, DRB4, DRB5, DRB6, DRB9)
+	Parse aligned BAM to identify DRB paralog reads (DRB3, DRB4, DRB5, DRB6, DRB7, DRB8, DRB9)
 	based on primary alignment. Any read whose best-matching allele is NOT a DRB1
 	allele is flagged for removal. Shared helper for classify_DRB_reads.
 	"""
@@ -158,15 +158,15 @@ def _parse_drb_paralog_reads(output_file, drb_paralog_reads_file):
 		for read_id in sorted(drb_paralog_read_ids):
 			f.write(read_id + "\n")
 
-	print(f"Classified {len(drb_paralog_read_ids)} reads as DRB paralog (DRB3/4/5/6/9)")
+	print(f"Classified {len(drb_paralog_read_ids)} reads as DRB paralog (DRB3/4/5/6/7/8/9)")
 	print(f"DRB paralog read IDs written to: {drb_paralog_reads_file}")
 	print("\n")
 
 def classify_DRB_reads(input_file, output_file, drb_paralog_reads_file, read_group_string, reference_fasta, platform, threads, region=None):
 	"""
-	Identify reads originating from DRB paralogs (DRB3/4/5/6/9) using competitive
+	Identify reads originating from DRB paralogs (DRB3/4/5/6/7/8/9) using competitive
 	mapping against a multi-allele reference containing representative genomic
-	sequences from DRB1, DRB3, DRB4, DRB5, DRB6, and DRB9.
+	sequences from DRB1, DRB3, DRB4, DRB5, DRB6, DRB7, DRB8, and DRB9.
 
 	For each read, rammap picks the best-matching allele as the primary
 	alignment. If the best match is anything other than a DRB1 allele, that
@@ -223,7 +223,7 @@ def filter_reads(input_file, output_file, drb_paralog_reads_file, threads):
 
 	print(f"Samtools input file: {input_file}")
 
-	# Exclude DRB paralog reads (DRB3/4/5/6/9, identified by competitive mapping),
+	# Exclude DRB paralog reads (DRB3/4/5/6/7/8/9, identified by competitive mapping),
 	# restrict to the chr6 MHC window, and drop secondary/supplementary records.
 	samtools_cmd = f"samtools view -h -F 2304 -@ {threads} {input_file} chr6:28000000-34000000 | grep -v -F -f {drb_paralog_reads_file} -- | samtools view -b -o {output_file}"
 
