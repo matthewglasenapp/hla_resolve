@@ -176,11 +176,11 @@ This section describes the decision tree used to classify genes by phasing statu
      - Remove unphased genotypes, run vcf2fasta
      - CDS (vcf2fasta --feat CDS):
        - If the CDS is effectively homozygous (<=1 heterozygous genotype in the CDS), write the full concatenated exon output **untrimmed** to `_CDS.fasta`. The confidently phased haploblock need not span every exon, and it may exclude an exon that distinguishes competing alleles. Trimming the CDS to the haploblock would discard that discriminating sequence. When the coding sequence is homozygous, phase within the CDS is irrelevant, so the full CDS is used.
-       - If there is >1 heterozygous genotype in the CDS, subset the CDS to the exon positions overlapping the haploblock.
-     - Gene (vcf2fasta --feat gene): subset the full-gene output to the haploblock coordinates.
+       - If there is >1 heterozygous genotype in the CDS, restrict the CDS to the haploblock.
+     - Gene (vcf2fasta --feat gene): restrict to the haploblock coordinates.
      - Match to the HLA database with these sequences.
 
-     Note: Because vcf2fasta applies indels that change the sequence length relative to the reference, subsetting the gene-level output by genomic coordinates requires computing per-haplotype indel offsets from the filtered VCF. For minus-strand genes, the vcf2fasta output is reverse-complemented, so the coordinate transformation must account for strand orientation. This applies to the gene-level FASTA subsetting in sections 3a and 3b.
+     Note. To restrict a gene interval or a CDS to a region, truncate the GFF to that region and run vcf2fasta over it. `extract_interval_vcf2fasta` does the gene and `extract_cds_subset_vcf2fasta` does the CDS. Every subset in 3a and 3b works this way.
 
    - **b. ARS NOT spanned** — CDS-aware rescue
 
@@ -196,7 +196,7 @@ This section describes the decision tree used to classify genes by phasing statu
            1. Sort all het positions in the gene: h1, h2, ..., hn
            2. For each het h_i, compute interval_i = [h_(i-1) + 1, h_(i+1) - 1] (gene boundaries as fallback) — this is the maximal region containing only h_i
            3. Filter to intervals overlapping ARS
-           4. Pick the largest; clamp gene output to that interval
+           4. Pick the largest and restrict the gene to that interval
 
            If no interval overlaps ARS, do not write gene record. (With <=1 het, phase is irrelevant — vcf2fasta random assignment produces both haplotypes correctly.)
 
@@ -205,7 +205,7 @@ This section describes the decision tree used to classify genes by phasing statu
        - **A. ARS CDS hets <= 1**
          - Whitelist all heterozygous genotypes in `filter_vcf_gene`
          - Run vcf2fasta
-         - CDS: extract ARS CDS sequence only, write to `_CDS.fasta`
+         - CDS: reconstruct only the ARS CDS exons, write to `_CDS.fasta`
          - Gene:
            - Class II: extend ARS (exon 2) outward to the nearest heterozygous genotypes in each direction; write that interval to `_gene.fasta`.
            - Class I: check if any heterozygous genotype exists in intron 2 (gap between the two ARS CDS exons).
