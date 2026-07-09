@@ -525,6 +525,17 @@ mhc_stop = 33409896
 DNA_bases = {"A", "T", "G", "C"}
 stop_codons = ["TAA", "TAG", "TGA"]
 
+# Read re-consensus refinement of the 4th field for HLA-DRB1/DQA1/DQB1 only.
+# Rewrites the 4th field of those genes' calls in place; never changes the
+# 3-field lineage and never touches HLA-A/B/C/DPA1/DPB1. Set False to disable.
+# Used in hla_typer.py (threaded from resolve_alleles_pipeline.py, PacBio only).
+reconsensus_drdq = True
+
+# Read-assignment mode for the DR/DQ re-consensus: "hp_tag" (default) splits reads
+# by their HP:i:1 / HP:i:2 tag; "self_sort" sorts reads by primary alignment to a
+# 2-contig scaffold reference instead.
+reconsensus_read_assignment = "hp_tag"
+
 # IPD/IMGT HLA XML file for HLA allele classification
 # Downloaded from https://github.com/ANHIG/IMGTHLA
 # Used in hla_typer.py for HLA typing

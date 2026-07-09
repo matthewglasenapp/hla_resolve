@@ -19,6 +19,7 @@ from .reconstruct_fasta_methods import (
 	parse_fastas
 )
 from .hla_typer import main as classify_hla_alleles
+from . import config as hla_config
 
 def convert_gene_name_for_gff(gene_name):
 	"""
@@ -223,6 +224,18 @@ def resolve_alleles(config):
 		reference_genome=config['reference_genome']
 	)
 	
+	# DR/DQ read re-consensus context (PacBio only; gated by config flag).
+	from .reconsensus_drdq import DRDQ_GENES
+	reconsensus_ctx = None
+	if getattr(hla_config, "reconsensus_drdq", False) and config['platform'] == "PACBIO":
+		reconsensus_ctx = {
+			"enabled": True,
+			"mode": getattr(hla_config, "reconsensus_read_assignment", "hp_tag"),
+			"bam": config['hg38_rmdup_chr6_haplotag_bam'],
+			"gene_vcfs": {gene: gene_filtered_vcfs.get(gene) for gene in DRDQ_GENES},
+			"gene_dict": config['gene_dict'],
+		}
+
 	# Step 3: HLA typing
 	print("Typing HLA alleles with hla_typer.py!")
 	original_dir = os.getcwd()
@@ -233,7 +246,8 @@ def resolve_alleles(config):
 			reference_xml_file=config['IMGT_XML'],
 			hla_fasta_dir=config['hla_fasta_dir'],
 			sample_ID=config['sample_ID'],
-			generate_query_ref_comp=True
+			generate_query_ref_comp=True,
+			reconsensus_ctx=reconsensus_ctx
 		)
 	finally:
 		os.chdir(original_dir)

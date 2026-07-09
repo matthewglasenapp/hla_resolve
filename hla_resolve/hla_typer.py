@@ -783,7 +783,8 @@ def pass_2_classification(sequence_data, allele_to_g_groups, results_dict, sampl
 # Output: {sample_name: (g_group, distance)}
 @print_time_taken
 def pass_3_classification(sequence_data, results_dict, samples, truth_data=None, metric="identity",
-                          generate_query_ref_comp=False, log_assignment_condition=False, tie_metric="match_length"):
+                          generate_query_ref_comp=False, log_assignment_condition=False, tie_metric="match_length",
+                          reconsensus_ctx=None):
     print("INFO: Beginning classification pass 3...")
 
     headers = ["sample", "ref_allele_name", "CIGAR", "alignment_path_start", "alignment_path_stop", "raw_edit", "gc_edit", "prop_mismatch", "match_length"]
@@ -798,11 +799,22 @@ def pass_3_classification(sequence_data, results_dict, samples, truth_data=None,
 
     assignment_methods = {"primary_metric": 0, "tiebreak_metric": 0, "alphabetical": 0}
 
+    # DR/DQ genes are refined by read re-consensus after this loop; suppress their
+    # standard-matcher log lines here so the log carries only the re-consensus entry.
+    recon_enabled = bool(reconsensus_ctx and reconsensus_ctx.get("enabled"))
+    recon_genes = ()
+    if recon_enabled:
+        from .reconsensus_drdq import DRDQ_GENES
+        recon_genes = DRDQ_GENES
+
     results = {}
     for sample_name, classification in results_dict.items():
         current += 1
         if current % 20 == 0:
             print(f"INFO: Processing {current}/{len(results_dict)} ({(current/len(results_dict))*100:.2f}%)")
+
+        is_drdq = recon_enabled and ("HLA-" + get_gene(sample_name, asterisk=False)) in recon_genes
+        loop_log = None if is_drdq else pass_3_logfile
 
         # Strip last field from the allele, to get substring that matches the exon region
         classified_allele = classification[0]
@@ -810,17 +822,17 @@ def pass_3_classification(sequence_data, results_dict, samples, truth_data=None,
         # Log if classification was None, and skip
         if classified_allele == None:
             print(f"ERR: Encountered allele that couldn't be classified:", sample_name)
-            if pass_3_logfile != None:
-                pass_3_logfile.writelines(f"{sample_name} was assigned None in pass 2\n")
+            if loop_log != None:
+                loop_log.writelines(f"{sample_name} was assigned None in pass 2\n")
             continue
 
         sample_3_fields = trunc_to_3_fields(classified_allele)
 
         if not sample_name in samples.keys():
             print("WARN:", sample_name, "was not found in the full sequence file. Using 3-field assignment from pass 2:", sample_3_fields)
-            if pass_3_logfile != None:
-                pass_3_logfile.writelines(f"{sample_name} was not found in provided full sequence file. Using 3 fields from pass 2\n")
-                pass_3_logfile.writelines(f"{sample_name}: {classified_allele} -> {sample_3_fields}\n")
+            if loop_log != None:
+                loop_log.writelines(f"{sample_name} was not found in provided full sequence file. Using 3 fields from pass 2\n")
+                loop_log.writelines(f"{sample_name}: {classified_allele} -> {sample_3_fields}\n")
 
             results[sample_name] = (sample_3_fields, 0, 1, 1.0, 1.0, False, classification[-1])
             continue
@@ -832,16 +844,16 @@ def pass_3_classification(sequence_data, results_dict, samples, truth_data=None,
         pass2_3field_prefixes = set(trunc_to_3_fields(a) for a in pass2_equidistant)
         cross_3field_tie = len(pass2_3field_prefixes) > 1
 
-        if cross_3field_tie and pass_3_logfile != None:
-            pass_3_logfile.writelines(f"{sample_name} has pass 2 ties across 3-field groups: {', '.join(sorted(pass2_3field_prefixes))}\n")
+        if cross_3field_tie and loop_log != None:
+            loop_log.writelines(f"{sample_name} has pass 2 ties across 3-field groups: {', '.join(sorted(pass2_3field_prefixes))}\n")
 
         # For four field alleles, trim of last field so we can replace it with wildcard
         if len(fields) > 3:
             exon_match = sample_3_fields
         else:
             # If there is no fourth field, no need for wildcard search
-            if pass_3_logfile != None:
-                pass_3_logfile.writelines(f"{sample_name} does not have fourth field. Short circuit to {classified_allele}\n")
+            if loop_log != None:
+                loop_log.writelines(f"{sample_name} does not have fourth field. Short circuit to {classified_allele}\n")
             results[sample_name] = (classified_allele, 0, 1, 1.0, 1.0, False, classification[-1])
             continue
 
@@ -852,15 +864,15 @@ def pass_3_classification(sequence_data, results_dict, samples, truth_data=None,
             if dist == 0: # Allele names will match perfectly!
                 all_exon_matches.append(allele)
 
-        if pass_3_logfile != None:
-            pass_3_logfile.writelines(f"{classified_allele} -> {exon_match} ({len(all_exon_matches)})     {','.join(all_exon_matches)}\n")
+        if loop_log != None:
+            loop_log.writelines(f"{classified_allele} -> {exon_match} ({len(all_exon_matches)})     {','.join(all_exon_matches)}\n")
 
         # Database of allele data from alleles found to have matching exons
         allele_sequence_db = produce_allele_seq_db(sequence_data, selected_alleles=all_exon_matches, exon_only=False)
 
         # Same as pass 2, but this time, classify full sequence input against full sequence db
         result = assign_classification_to_sample_full_seq(allele_sequence_db, samples[sample_name], sample_name,
-                                                          logfile=pass_3_logfile, eval_metric=metric, tie_metric=tie_metric)
+                                                          logfile=loop_log, eval_metric=metric, tie_metric=tie_metric)
         if result[1] == 0:
             perfect += 1
 
@@ -872,7 +884,7 @@ def pass_3_classification(sequence_data, results_dict, samples, truth_data=None,
 
         results[sample_name] = result
 
-        if log_assignment_condition:
+        if log_assignment_condition and not is_drdq:
             # If equidistant samples reported, alphabetically first match was chosen
             if len(result[-1]) > 1:
                 assignment_methods["alphabetical"] += 1
@@ -887,9 +899,9 @@ def pass_3_classification(sequence_data, results_dict, samples, truth_data=None,
 
         # If truth data was given and has an entry of this sample
         if truth_data != None and sample_id in truth_data.keys():
-            dist_to_truth_allele(sample_name, truth_data, all_allele_sequence_db, samples[sample_name], pass_3_logfile)
+            dist_to_truth_allele(sample_name, truth_data, all_allele_sequence_db, samples[sample_name], loop_log)
 
-        if generate_query_ref_comp:
+        if generate_query_ref_comp and not is_drdq:
             detailed_metrics = get_distance(allele_sequence_db[result[0]], samples[sample_name], get_detailed=True)
             entries["sample"].append(sample_name)
             entries["ref_allele_name"].append(result[0])
@@ -900,6 +912,11 @@ def pass_3_classification(sequence_data, results_dict, samples, truth_data=None,
             entries["gc_edit"].append(detailed_metrics[4])
             entries["prop_mismatch"].append(detailed_metrics[5])
             entries["match_length"].append(detailed_metrics[6])
+
+    # Read re-consensus 4th-field refinement for HLA-DRB1/DQA1/DQB1 only.
+    if recon_enabled:
+        from .reconsensus_drdq import refine_drdq
+        refine_drdq(results, samples, sequence_data, reconsensus_ctx, logfile=pass_3_logfile)
 
     if pass_3_logfile != None:
         pass_3_logfile.close()
@@ -1073,9 +1090,10 @@ def write_json(sequence_data, g_group_dict):
 #           ignore_unconfirmed: (bool) ignore XML database entries marked as 'unconfirmed'
 #           ignore_incomplete: (bool) ignore XML entries missing ANY features
 # Output:   (None) Writes to assignment.log and output.csv files for each stage
-def run_classification(reference_xml_file, samples_file, full_sample_file=None, truth_file=None, 
+def run_classification(reference_xml_file, samples_file, full_sample_file=None, truth_file=None,
                        pass2_metric="edit_distance", pass3_metric="mismatch_identity", ignore_unconfirmed=False,
-                       ignore_incomplete=True, write_full=False, generate_query_ref_comp=False, log_assignment_condition=False):
+                       ignore_incomplete=True, write_full=False, generate_query_ref_comp=False, log_assignment_condition=False,
+                       reconsensus_ctx=None):
 
     truth_data = load_truth_data(truth_file)
 
@@ -1112,7 +1130,7 @@ def run_classification(reference_xml_file, samples_file, full_sample_file=None, 
         exit(0)
 
     print("INFO: Refining allele classifications based on non-coding regions", pass3_metric)
-    refined_classifications = pass_3_classification(sequence_data, allele_classifications, full_samples, truth_data=truth_data, metric=pass3_metric, generate_query_ref_comp=generate_query_ref_comp, log_assignment_condition=log_assignment_condition)
+    refined_classifications = pass_3_classification(sequence_data, allele_classifications, full_samples, truth_data=truth_data, metric=pass3_metric, generate_query_ref_comp=generate_query_ref_comp, log_assignment_condition=log_assignment_condition, reconsensus_ctx=reconsensus_ctx)
 
     print("INFO: Writing refined allele results")
     output_results(refined_classifications, "allele_output.csv", "allele_output_full.csv" if write_full else None)
@@ -1157,10 +1175,11 @@ if __name__ == "__main__":
 # Output:   (None) Writes to assignment.log and output.csv files for each stage
 def main(reference_xml_file, hla_fasta_dir, sample_ID, pass2_metric = "edit_distance",
          pass3_metric = "mismatch_identity", ignore_unconfirmed = False,
-         ignore_incomplete = True, generate_query_ref_comp=False):
+         ignore_incomplete = True, generate_query_ref_comp=False, reconsensus_ctx=None):
     samples_file = os.path.join(hla_fasta_dir, str(sample_ID) + "_HLA_haplotypes_CDS.fasta")
     full_sample_file = os.path.join(hla_fasta_dir, str(sample_ID) + "_HLA_haplotypes_gene.fasta")
 
     run_classification(reference_xml_file, samples_file, full_sample_file, pass2_metric=pass2_metric,
                        pass3_metric=pass3_metric, ignore_unconfirmed=ignore_unconfirmed,
-                       ignore_incomplete=ignore_incomplete, write_full=True, generate_query_ref_comp=generate_query_ref_comp)
+                       ignore_incomplete=ignore_incomplete, write_full=True, generate_query_ref_comp=generate_query_ref_comp,
+                       reconsensus_ctx=reconsensus_ctx)
