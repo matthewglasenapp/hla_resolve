@@ -9,11 +9,23 @@ import sys
 from importlib.metadata import version
 
 def main():
+    # `hla_resolve setup`: one-time download/build of every external dependency.
+    # Run once after install so later array jobs find everything present and never
+    # race to fetch or rebuild it. Handled before the main parser, which requires
+    # --input_file etc. for an actual typing run.
+    if len(sys.argv) >= 2 and sys.argv[1] == "setup":
+        from . import config
+        config.run_setup()
+        return
+
     parser = argparse.ArgumentParser(
     description="Run HLA-Resolve",
     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     epilog=textwrap.dedent("""\
-        Example:
+        One-time setup (downloads references, binaries, and images):
+          hla_resolve setup
+
+        Example run:
           hla_resolve --input_file reads.bam --sample_name HG002 --platform pacbio --scheme hybrid_capture --output_dir out --threads 10
 
         HLA-Resolve is pre-release software intended for research use only

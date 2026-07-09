@@ -6,6 +6,7 @@
 # Configuration constants and paths for HLA-Resolve
 import os
 import re
+import time
 import fcntl
 import subprocess
 from pathlib import Path
@@ -82,43 +83,57 @@ def _wget_atomic(url, dest, executable=False):
         subprocess.run(["chmod", "+x", str(tmp)], check=True)
     os.replace(tmp, dest)
 
-def _drb5_is_masked(augmented_file):
-    """Verify that the augmented reference has HLA-DRB5 hard-masked.
+# 50-base spot-check windows inside each hard-mask region.
+_DRB5_MASK_CHECK = "chr6:32517400-32517450"
+_DRB6_MASK_CHECK = "chr6:32556800-32556850"
 
-    Spot-checks 50 bases inside the DRB5 mask region and confirms they are all N.
-    Used so that users upgrading from v0.1.0 (which produced an unmasked
-    augmented_hg38.fa) get the reference auto-rebuilt without manual intervention.
+def _region_all_N(augmented_file, region, retries=3):
+    """Return True if every base of `region` is N, False if any base is real.
+
+    Raises RuntimeError if the region cannot be read (missing index, samtools
+    failure, transient network-FS blip) after `retries` attempts. The point is to
+    NEVER silently mistake "could not read it" for "not masked": a transient read
+    failure under a cold N-way array launch on a shared filesystem was what let a
+    good reference get deleted and rebuilt, cascading the whole array into a race.
+    """
+    last_err = None
+    for _ in range(retries):
+        try:
+            result = subprocess.run(
+                ["samtools", "faidx", str(augmented_file), region],
+                capture_output=True, text=True, check=True,
+            )
+            seq = "".join(line for line in result.stdout.splitlines() if not line.startswith(">"))
+            if not seq:
+                raise RuntimeError(f"empty read for {region}")
+            return all(c.upper() == "N" for c in seq)
+        except (subprocess.CalledProcessError, FileNotFoundError, RuntimeError) as e:
+            last_err = e
+            time.sleep(2)
+    raise RuntimeError(f"could not read {region} from {augmented_file}: {last_err}")
+
+def _drb5_is_masked(augmented_file):
+    """Fast-path check: is HLA-DRB5 hard-masked? Swallows read errors (returns
+    False) so a flake just sends us into the lock, where the rebuild decision is
+    made strictly via _region_all_N. Never deletes anything on its own.
     """
     if not augmented_file.exists():
         return False
     try:
-        result = subprocess.run(
-            ["samtools", "faidx", str(augmented_file), "chr6:32517400-32517450"],
-            capture_output=True, text=True, check=True,
-        )
-    except (subprocess.CalledProcessError, FileNotFoundError):
+        return _region_all_N(augmented_file, _DRB5_MASK_CHECK, retries=1)
+    except RuntimeError:
         return False
-    seq = "".join(line for line in result.stdout.splitlines() if not line.startswith(">"))
-    return bool(seq) and all(c.upper() == "N" for c in seq)
 
 def _drb6_is_masked(augmented_file):
-    """Verify that the augmented reference has HLA-DRB6 hard-masked.
-
-    Spot-checks 50 bases inside the DRB6 mask region (the exon-2 paralog locus
-    that competes with DRB1) and confirms they are all N. Mirrors _drb5_is_masked
-    so an existing DRB5-only-masked reference is auto-rebuilt with DRB6 added.
+    """Fast-path check: is HLA-DRB6 hard-masked? Mirrors _drb5_is_masked (swallows
+    read errors so a flake sends us into the lock, never deletes on its own).
     """
     if not augmented_file.exists():
         return False
     try:
-        result = subprocess.run(
-            ["samtools", "faidx", str(augmented_file), "chr6:32556800-32556850"],
-            capture_output=True, text=True, check=True,
-        )
-    except (subprocess.CalledProcessError, FileNotFoundError):
+        return _region_all_N(augmented_file, _DRB6_MASK_CHECK, retries=1)
+    except RuntimeError:
         return False
-    seq = "".join(line for line in result.stdout.splitlines() if not line.startswith(">"))
-    return bool(seq) and all(c.upper() == "N" for c in seq)
 
 def ensure_reference_genome():
     """Build augmented_hg38.fa: GRCh38 + HLA-Y/OLI scaffold, with HLA-DRB5 and HLA-DRB6 hard-masked.
@@ -152,7 +167,27 @@ def ensure_reference_genome():
 
         # Otherwise rebuild — either no file at all, or a v0.1.0 unmasked file,
         # or a DRB5-only-masked reference from before the DRB6 mask was added.
+        # But a file that exists is only deleted if we can CONFIRM it is genuinely
+        # missing a mask. The fast-path check above swallows read errors, so an
+        # existing-but-not-confirmed file might just have flaked under FS load;
+        # verify strictly here and refuse to destroy a reference we cannot read.
         if augmented_file.exists():
+            try:
+                confirmed_masked = (
+                    _region_all_N(augmented_file, _DRB5_MASK_CHECK)
+                    and _region_all_N(augmented_file, _DRB6_MASK_CHECK)
+                )
+            except RuntimeError as e:
+                raise RuntimeError(
+                    f"Could not verify HLA-DRB5/DRB6 masks on existing {augmented_file} "
+                    f"({e}). Refusing to delete or rebuild it, so a transient filesystem "
+                    f"error cannot destroy a good reference. Re-run 'hla_resolve setup' "
+                    f"when the filesystem is quiet, or remove the file manually if it is "
+                    f"truly stale."
+                )
+            if confirmed_masked:
+                # The reference is fine; the fast-path check merely flaked earlier.
+                return
             print("Existing augmented_hg38.fa is missing a required mask (DRB5/DRB6). Rebuilding...")
             augmented_file.unlink()
             fai = augmented_file.with_suffix(".fa.fai")
@@ -413,6 +448,23 @@ def ensure_hla_xml():
         zip_file.unlink()
         subprocess.run(["rm", "-rf", str(extract_tmp)], check=True)
         print(f"HLA XML database download complete! (IPD-IMGT/HLA {IMGT_RELEASE})")
+
+def run_setup():
+    """Download and build every external dependency once, up front.
+
+    Intended to be run a single time right after install (`hla_resolve setup`),
+    so later runs — including array jobs launched simultaneously — find every
+    artifact already present and never race to download or rebuild it. Idempotent:
+    safe to re-run, each step no-ops when its artifact is already there.
+    """
+    ensure_reference_genome()
+    ensure_picard()
+    ensure_longphase()
+    ensure_rammap()
+    ensure_hla_xml()
+    ensure_deepvariant_sif()
+    # ensure_clair3_sif()  # re-enable when ONT support lands
+    print("hla_resolve setup complete: all dependencies present.")
 
 # Download reference genome, Picard, longphase, rammap, HLA XML database, DeepVariant SIF, and Clair3 SIF on first import
 ensure_reference_genome()

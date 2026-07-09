@@ -70,8 +70,9 @@ cd hla_resolve        # the repository directory created by the clone above
 conda env create -f environment.yml
 conda activate hla_resolve
 pip install -e .
+hla_resolve setup
 ```
-The first time ``hla_resolve`` is executed, it will automatically download the following required files:
+``hla_resolve setup`` downloads and builds every required dependency once, up front:
 
 | File | Source |
 |------|--------|
