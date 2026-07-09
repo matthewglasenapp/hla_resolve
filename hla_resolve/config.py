@@ -254,7 +254,7 @@ def ensure_reference_genome():
             os.replace(str(masked_tmp) + ".fai", str(augmented_file) + ".fai")
 
             unmasked.unlink()
-            print(f"Reference ready: {augmented_file} (HLA-Y/OLI + HLA-DRB5 hard-masked)")
+            print(f"Reference ready: {augmented_file} (HLA-Y/OLI added, HLA-DRB5 and HLA-DRB6 hard-masked)")
         finally:
             os.chdir(original_cwd)
 

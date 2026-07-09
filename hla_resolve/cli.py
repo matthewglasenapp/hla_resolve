@@ -8,6 +8,11 @@ import argparse
 import sys
 from importlib.metadata import version
 
+class _HelpFormatter(argparse.ArgumentDefaultsHelpFormatter, argparse.RawDescriptionHelpFormatter):
+    # Show argument defaults AND keep the epilog's line breaks (raw), so the
+    # setup/example blocks don't get rewrapped into one run-on paragraph.
+    pass
+
 def main():
     # `hla_resolve setup`: one-time download/build of every external dependency.
     # Run once after install so later array jobs find everything present and never
@@ -20,7 +25,7 @@ def main():
 
     parser = argparse.ArgumentParser(
     description="Run HLA-Resolve",
-    formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    formatter_class=_HelpFormatter,
     epilog=textwrap.dedent("""\
         One-time setup (downloads references, binaries, and images):
           hla_resolve setup
