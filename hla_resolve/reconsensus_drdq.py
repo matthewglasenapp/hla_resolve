@@ -15,6 +15,8 @@ import subprocess
 
 import edlib
 
+from . import config
+
 DRDQ_GENES = ("HLA-DRB1", "HLA-DQA1", "HLA-DQB1")
 
 _WILDCARD_EQUALITIES = [("N", b) for b in "ACGT"] + [(b, "N") for b in "ACGT"]
@@ -149,7 +151,7 @@ def _extract_reads_fastq(bam, region, out_fq, hp=None):
 def _consensus_on_scaffold(scaffold_fa, reads_fq, workdir, tag):
     aln = os.path.join(workdir, f"{tag}.aln.bam")
     cons = os.path.join(workdir, f"{tag}.cons.fa")
-    _run(f"minimap2 -a -x map-hifi {scaffold_fa} {reads_fq} | "
+    _run(f"{config.rammap} -a -x map-hifi {scaffold_fa} {reads_fq} | "
          f"samtools sort -o {aln} - && samtools index {aln}")
     _run(f"samtools consensus -f fasta {aln} > {cons}")
     return _read_fasta_seq(cons)
@@ -161,7 +163,7 @@ def _consensus_self_sort(scaffold_seq_1, scaffold_seq_2, reads_fq, workdir):
         fh.write(f">sc1\n{scaffold_seq_1}\n>sc2\n{scaffold_seq_2}\n")
     aln = os.path.join(workdir, "sort.aln.bam")
     prim = os.path.join(workdir, "sort.prim.bam")
-    _run(f"minimap2 -a -x map-hifi {ref} {reads_fq} | "
+    _run(f"{config.rammap} -a -x map-hifi {ref} {reads_fq} | "
          f"samtools sort -o {aln} - && samtools index {aln}")
     _run(f"samtools view -b -F 0x900 {aln} > {prim} && samtools index {prim}")
     cons1 = os.path.join(workdir, "sort.cons1.fa")
@@ -174,7 +176,7 @@ def _consensus_self_sort(scaffold_seq_1, scaffold_seq_2, reads_fq, workdir):
 def _align_and_count(reads_fq, ref_fa, workdir, tag):
     aln = os.path.join(workdir, f"{tag}.aln.bam")
     prim = os.path.join(workdir, f"{tag}.prim.bam")
-    _run(f"minimap2 -a -x map-hifi {ref_fa} {reads_fq} | "
+    _run(f"{config.rammap} -a -x map-hifi {ref_fa} {reads_fq} | "
          f"samtools sort -o {aln} - && samtools index {aln}")
     _run(f"samtools view -b -F 0x900 {aln} > {prim} && samtools index {prim}")
     result = subprocess.run(f"samtools idxstats {prim}", shell=True, check=True,
