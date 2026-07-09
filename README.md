@@ -86,7 +86,7 @@ hla_resolve setup
 **Note:** These downloads are large. Ensure sufficient disk space is available in the install directory before the first run.
 
 ## Updating
-To update an existing installation to the latest version, run ``update.sh`` from the root of your cloned ``hla_resolve`` repository:
+Please ensure you are running the latest version. To update an existing installation to the latest version, run ``update.sh`` from the root of your cloned ``hla_resolve`` repository:
 ```text
 bash update.sh
 ```
