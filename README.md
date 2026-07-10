@@ -170,15 +170,17 @@ Intermediate files will be written to the following dirctories. The user can spe
 
 HLA-Resolve has produced high-quality calls for the following whole-genome (WGS) PacBio HiFi libraries:
 
-| Sample | Source | Instrument | HLA Coverage | File |
-|--------|--------|------------|--------------|------|
-| HG002 | GIAB | Revio | ~30× | `https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/AshkenazimTrio/HG002_NA24385_son/PacBio_HiFi-Revio_20231031/HG002_PacBio-Revio_m84039_231005_222902_s1.hifi_reads.bam` |
-| HG002 | GIAB | Revio | ~30× | `https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/AshkenazimTrio/HG002_NA24385_son/PacBio_HiFi-Revio_20231031/HG002_PacBio-Revio_m84039_230928_213653_s3.hifi_reads.bam` |
-| HG002 | HPRC | Revio | ~33× | `s3://human-pangenomics/working/HPRC_PLUS/HG002/raw_data/PacBio_HiFi/wMods/m84011_220902_175841_s1.hifi_reads.bam` |
-| HG01258 | HPRC | Revio | ~19× | `s3://human-pangenomics/working/HPRC/HG01258/raw_data/PacBio_HiFi/m84046_231202_090949_s3.hifi_reads.bc2054.bam` |
-| HG03579 | HPRC | Sequel II | ~15× | `s3://human-pangenomics/working/HPRC/HG03579/raw_data/PacBio_HiFi/m64043_200516_230634.ccs.bam` |
+| Sample | Source | Instrument | HLA Coverage | Concordance | File |
+|--------|--------|------------|--------------|-------------|------|
+| HG002 | GIAB | Revio | ~30× | 100% 1–3 field; 7/8 4-field | `https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/AshkenazimTrio/HG002_NA24385_son/PacBio_HiFi-Revio_20231031/HG002_PacBio-Revio_m84039_231005_222902_s1.hifi_reads.bam` |
+| HG002 | GIAB | Revio | ~30× | 100% 1–3 field; 100% 4-field | `https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/AshkenazimTrio/HG002_NA24385_son/PacBio_HiFi-Revio_20231031/HG002_PacBio-Revio_m84039_230928_213653_s3.hifi_reads.bam` |
+| HG002 | HPRC | Revio | ~33× | 100% 1–3 field; 100% 4-field | `s3://human-pangenomics/working/HPRC_PLUS/HG002/raw_data/PacBio_HiFi/wMods/m84011_220902_175841_s1.hifi_reads.bam` |
+| HG01258 | HPRC | Revio | ~19× | 100% 1–3 field; 7/8 4-field | `s3://human-pangenomics/working/HPRC/HG01258/raw_data/PacBio_HiFi/m84046_231202_090949_s3.hifi_reads.bc2054.bam` |
+| HG03579 | HPRC | Sequel II | ~15× | 100% 1–3 field; 7/8 4-field | `s3://human-pangenomics/working/HPRC/HG03579/raw_data/PacBio_HiFi/m64043_200516_230634.ccs.bam` |
 
 HPRC libraries can be downloaded without credentials using the AWS CLI: `aws s3 cp --no-sign-request <s3-path> .`
+
+**Note:** Concordance was evaluated against ground-truth HLA annotations provided by Lai et al. 2023 ([DOI: 10.1016/j.csbj.2024.03.030](https://doi.org/10.1016/j.csbj.2024.03.030); [Supplementary File 6](docs/Lai_Supplementary-6.xlsx)). All 4-field discordances are single-field miscalls in the fourth field; 1–3 field concordance is 100% across all libraries.
 
 The `hla_resolve` command used to analyze these libraries was:
 
