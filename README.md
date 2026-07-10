@@ -239,6 +239,7 @@ Reconstructed haplotypes are compared against alleles in the [IPD-IMGT/HLA datab
    1. **G-group assignment** — The antigen recognition sequence (ARS exons) is matched to G-group reference sequences by edit distance. An exact match is required.
    2. **Three-field allele assignment** — The full concatenated exon sequence is compared against alleles within the assigned G group, ranked by edit distance.
    3. **Four-field refinement** — The full-gene haplotype (including introns and UTRs) is compared against candidate alleles, ranked by mismatch identity (the proportion of matching bases at 1:1-aligned positions), which avoids penalizing insertions and deletions from unreliable intronic reconstruction. Ties are broken by match length, then by lowest fourth-field value.
+   4. **DR/DQ re-consensus refinement** — For HLA-DQA1, HLA-DQB1, and HLA-DRB1, the fourth-field call is re-derived by re-mapping the underlying reads to the best-guess allele, rebuilding a consensus, and re-matching within the same three-field group.
 
 #### Note
 For WGS and WES input, the pipeline skips adapter trimming (step 1) and pre-alignment duplicate removal (step 2).

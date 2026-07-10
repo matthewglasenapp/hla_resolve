@@ -328,6 +328,10 @@ The typing algorithm employs a **three-pass hierarchical approach**:
 - Compares full-gene sequences including introns and UTRs
 - Uses sequence identity rather than raw edit distance
 
+#### Pass 4: DR/DQ Re-consensus Refinement
+- Applied to HLA-DQA1, HLA-DQB1, and HLA-DRB1
+- Re-maps the reads underlying each call to the best-guess allele, rebuilds a consensus, and re-matches to the fourth-field options within the same three-field group
+
 ---
 
 ### 5.5 Assignment Metrics
