@@ -172,19 +172,17 @@ HLA-Resolve has produced high-quality calls for the following whole-genome (WGS)
 
 | Sample | Source | Instrument | HLA&nbsp;Coverage | Concordance | File |
 |--------|--------|------------|--------------|-------------|------|
-| HG002 | GIAB | Revio | ~30× | 1–3&nbsp;field:&nbsp;100%<br>4-field:&nbsp;7/8 | [s1 uBAM][hg002-s1] |
-| HG002 | GIAB | Revio | ~30× | 1–3&nbsp;field:&nbsp;100%<br>4-field:&nbsp;100% | [s3 uBAM][hg002-s3] |
-| HG002 | HPRC | Revio | ~33× | 1–3&nbsp;field:&nbsp;100%<br>4-field:&nbsp;100% | [uBAM][hg002-hprc] |
-| HG01258 | HPRC | Revio | ~19× | 1–3&nbsp;field:&nbsp;100%<br>4-field:&nbsp;7/8 | [uBAM][hg01258] |
-| HG03579 | HPRC | Sequel II | ~15× | 1–3&nbsp;field:&nbsp;100%<br>4-field:&nbsp;7/8 | [ccs BAM][hg03579] |
+| HG002 | GIAB | Revio | ~30× | 1–3&nbsp;field:&nbsp;100%<br>4-field:&nbsp;7/8 | [HG002_PacBio-Revio_m84039_231005_222902_s1.hifi_reads.bam][hg002-s1] |
+| HG002 | GIAB | Revio | ~30× | 1–3&nbsp;field:&nbsp;100%<br>4-field:&nbsp;100% | [HG002_PacBio-Revio_m84039_230928_213653_s3.hifi_reads.bam][hg002-s3] |
+| HG002 | HPRC | Revio | ~33× | 1–3&nbsp;field:&nbsp;100%<br>4-field:&nbsp;100% | [m84011_220902_175841_s1.hifi_reads.bam][hg002-hprc]<br>`aws s3 cp --no-sign-request s3://human-pangenomics/working/HPRC_PLUS/HG002/raw_data/PacBio_HiFi/wMods/m84011_220902_175841_s1.hifi_reads.bam .` |
+| HG01258 | HPRC | Revio | ~19× | 1–3&nbsp;field:&nbsp;100%<br>4-field:&nbsp;7/8 | [m84046_231202_090949_s3.hifi_reads.bc2054.bam][hg01258]<br>`aws s3 cp --no-sign-request s3://human-pangenomics/working/HPRC/HG01258/raw_data/PacBio_HiFi/m84046_231202_090949_s3.hifi_reads.bc2054.bam .` |
+| HG03579 | HPRC | Sequel II | ~15× | 1–3&nbsp;field:&nbsp;100%<br>4-field:&nbsp;7/8 | [m64043_200516_230634.ccs.bam][hg03579]<br>`aws s3 cp --no-sign-request s3://human-pangenomics/working/HPRC/HG03579/raw_data/PacBio_HiFi/m64043_200516_230634.ccs.bam .` |
 
 [hg002-s1]: https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/AshkenazimTrio/HG002_NA24385_son/PacBio_HiFi-Revio_20231031/HG002_PacBio-Revio_m84039_231005_222902_s1.hifi_reads.bam
 [hg002-s3]: https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/AshkenazimTrio/HG002_NA24385_son/PacBio_HiFi-Revio_20231031/HG002_PacBio-Revio_m84039_230928_213653_s3.hifi_reads.bam
-[hg002-hprc]: s3://human-pangenomics/working/HPRC_PLUS/HG002/raw_data/PacBio_HiFi/wMods/m84011_220902_175841_s1.hifi_reads.bam
-[hg01258]: s3://human-pangenomics/working/HPRC/HG01258/raw_data/PacBio_HiFi/m84046_231202_090949_s3.hifi_reads.bc2054.bam
-[hg03579]: s3://human-pangenomics/working/HPRC/HG03579/raw_data/PacBio_HiFi/m64043_200516_230634.ccs.bam
-
-HPRC libraries can be downloaded without credentials using the AWS CLI: `aws s3 cp --no-sign-request <s3-path> .` The exact `s3://` paths are the link targets above (right-click → copy link).
+[hg002-hprc]: https://human-pangenomics.s3.amazonaws.com/working/HPRC_PLUS/HG002/raw_data/PacBio_HiFi/wMods/m84011_220902_175841_s1.hifi_reads.bam
+[hg01258]: https://human-pangenomics.s3.amazonaws.com/working/HPRC/HG01258/raw_data/PacBio_HiFi/m84046_231202_090949_s3.hifi_reads.bc2054.bam
+[hg03579]: https://human-pangenomics.s3.amazonaws.com/working/HPRC/HG03579/raw_data/PacBio_HiFi/m64043_200516_230634.ccs.bam
 
 **Note:** Concordance was evaluated against ground-truth HLA annotations provided by Lai et al. 2023 ([DOI: 10.1016/j.csbj.2024.03.030](https://doi.org/10.1016/j.csbj.2024.03.030); [Supplementary File 6](docs/Lai_Supplementary-6.xlsx)). All 4-field discordances are single-field miscalls in the fourth field; 1–3 field concordance is 100% across all libraries.
 
