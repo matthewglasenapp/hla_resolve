@@ -72,6 +72,93 @@ def _full_sequence(sequence_data, allele):
     return "".join(seq for _, seq in segments)
 
 
+def _full_with_exon_intervals(sequence_data, allele):
+    # Full (UTR+Exon+Intron) sequence plus the [start, stop) offsets of each
+    # exon within it. Sorted identically to _full_sequence so offsets line up.
+    feats = sequence_data.get(allele)
+    if not feats:
+        return "", []
+    tagged = []
+    for feature_type, entries in feats.items():
+        if feature_type in ("UTR", "Exon", "Intron"):
+            for pos, seq in entries:
+                tagged.append((pos, seq, feature_type))
+    tagged.sort(key=lambda x: (x[0], x[1]))
+    parts = []
+    intervals = []
+    offset = 0
+    for _, seq, feature_type in tagged:
+        if feature_type == "Exon":
+            intervals.append((offset, offset + len(seq)))
+        parts.append(seq)
+        offset += len(seq)
+    return "".join(parts), intervals
+
+
+def _project_cds(consensus, allele, sequence_data):
+    # Extract the CDS (exon concatenation) of the re-consensus sequence by
+    # aligning the consensus to the chosen allele's full sequence and pulling
+    # the consensus bases that fall within each exon interval.
+    full, intervals = _full_with_exon_intervals(sequence_data, allele)
+    if not consensus or not full or not intervals:
+        return ""
+    result = edlib.align(consensus, full, mode="NW", task="path",
+                         additionalEqualities=_WILDCARD_EQUALITIES)
+    cigar = result.get("cigar") or ""
+    if not cigar:
+        return ""
+    # ref_q[r] = consensus index aligned at full-sequence position r
+    ref_q = [0] * (len(full) + 1)
+    r = q = 0
+    for count, op in re.findall(r"(\d+)([=XID])", cigar):
+        count = int(count)
+        if op in ("=", "X"):
+            for _ in range(count):
+                ref_q[r] = q
+                r += 1
+                q += 1
+        elif op == "D":  # base in full only (gap in consensus)
+            for _ in range(count):
+                ref_q[r] = q
+                r += 1
+        else:            # "I": base in consensus only
+            q += count
+    ref_q[len(full)] = q
+    return "".join(consensus[ref_q[s]:ref_q[e]] for s, e in intervals)
+
+
+def _iter_fasta_records(path):
+    header, seq = None, []
+    with open(path) as fh:
+        for line in fh:
+            if line.startswith(">"):
+                if header is not None:
+                    yield header, "".join(seq)
+                header, seq = line[1:].strip(), []
+            else:
+                seq.append(line.strip())
+    if header is not None:
+        yield header, "".join(seq)
+
+
+def _rewrite_fasta(path, replacements):
+    # Overwrite the sequence of any record whose id is in replacements; leave
+    # all other records untouched. Wrap at 60 cols to match SeqIO output.
+    if not path or not os.path.isfile(path) or not replacements:
+        return
+    records = []
+    for header, seq in _iter_fasta_records(path):
+        rid = header.split()[0]
+        if rid in replacements:
+            seq = replacements[rid]
+        records.append((rid, seq))
+    with open(path, "w") as fh:
+        for rid, seq in records:
+            fh.write(f">{rid}\n")
+            for i in range(0, len(seq), 60):
+                fh.write(seq[i:i + 60] + "\n")
+
+
 def _edit_distance(query, ref):
     if not query or not ref:
         return _BIG
@@ -245,7 +332,7 @@ def _log_hap(logfile, name, tup, changed):
 
 
 def _refine_one_gene(sample_ID, gene, name1, name2, results, query_seqs,
-                     sequence_data, ctx, core_cache, logfile=None):
+                     sequence_data, ctx, core_cache, logfile=None, overrides=None):
     changed = set()
     try:
         best_guess_1 = results[name1][0]
@@ -368,8 +455,18 @@ def _refine_one_gene(sample_ID, gene, name1, name2, results, query_seqs,
                 for i, (allele, cons, tie) in assign.items():
                     dist, mlen, _, seq_id, mm_id = _match_metrics(cons, _core_sequence(sequence_data, allele))
                     used_tb = len(tie) > 1
-                    results[name_by_idx[i]] = (allele, dist, mlen, seq_id, mm_id, used_tb, tie)
-                    changed.add(name_by_idx[i])
+                    name = name_by_idx[i]
+                    results[name] = (allele, dist, mlen, seq_id, mm_id, used_tb, tie)
+                    changed.add(name)
+                    # Override the deposited haplotype with the re-consensus
+                    # sequence: full gene = consensus, CDS = exon projection.
+                    if overrides is not None and cons:
+                        overrides[name] = {
+                            "gene": cons,
+                            "cds": _project_cds(cons, allele, sequence_data),
+                        }
+                        if query_seqs is not None:
+                            query_seqs[name] = cons
         finally:
             shutil.rmtree(workdir, ignore_errors=True)
     finally:
@@ -383,6 +480,7 @@ def refine_drdq(results, query_seqs, sequence_data, ctx, logfile=None):
         return
 
     core_cache = {}
+    overrides = {}
     groups = {}
     for name in results.keys():
         for gene in DRDQ_GENES:
@@ -398,6 +496,15 @@ def refine_drdq(results, query_seqs, sequence_data, ctx, logfile=None):
         names.sort(key=lambda n: n.rsplit("_", 1)[-1])
         try:
             _refine_one_gene(sample_ID, gene, names[0], names[1],
-                            results, query_seqs, sequence_data, ctx, core_cache, logfile=logfile)
+                            results, query_seqs, sequence_data, ctx, core_cache,
+                            logfile=logfile, overrides=overrides)
         except Exception:
             continue
+
+    # Deposit the re-consensus sequence into the final haplotype FASTAs for the
+    # refined DR/DQ haplotypes only; declined haplotypes keep vcf2fasta output.
+    if overrides:
+        gene_reps = {name: ov["gene"] for name, ov in overrides.items() if ov.get("gene")}
+        cds_reps = {name: ov["cds"] for name, ov in overrides.items() if ov.get("cds")}
+        _rewrite_fasta(ctx.get("gene_fasta"), gene_reps)
+        _rewrite_fasta(ctx.get("cds_fasta"), cds_reps)

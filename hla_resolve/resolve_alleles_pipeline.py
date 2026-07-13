@@ -234,6 +234,8 @@ def resolve_alleles(config):
 			"bam": config['hg38_rmdup_chr6_haplotag_bam'],
 			"gene_vcfs": {gene: gene_filtered_vcfs.get(gene) for gene in DRDQ_GENES},
 			"gene_dict": config['gene_dict'],
+			"gene_fasta": config['hla_gene_fasta'],
+			"cds_fasta": config['hla_cds_fasta'],
 		}
 
 	# Step 3: HLA typing
