@@ -158,3 +158,15 @@ DRB_1_3_4.fa.fai
 
 # Setup lock files created by config.py ensure_* functions (one per data subdir)
 .setup.lock
+
+# Downloaded/generated artifacts fetched on demand by config.py ensure_* (not source)
+hla_resolve/data/IPD_IMGT_XML/
+hla_resolve/data/deepvariant_sif/
+hla_resolve/data/longphase/
+hla_resolve/data/picard/
+hla_resolve/data/rammap/
+hla_resolve/data/reference/*.fna
+hla_resolve/data/reference/*.fna.fai
+hla_resolve/data/reference/augmented_hg38.fa
+hla_resolve/data/reference/augmented_hg38.fa.fai
+hla_resolve/data/reference/drb5_mask.bed
