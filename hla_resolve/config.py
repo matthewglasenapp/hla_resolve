@@ -41,7 +41,7 @@ CLAIR3_VERSION = "latest"  # NOTE: a moving tag — filename can't detect upstre
 # IPD-IMGT/HLA database release. Keep in sync with the active (uncommented) db_url
 # in ensure_hla_xml() below; verify_download_versions.sh checks the installed
 # hla.xml's <release version="..."> header against this.
-IMGT_RELEASE = "3.63.0"
+IMGT_RELEASE = "3.64.0"
 
 @contextmanager
 def _setup_lock(resource_dir):
@@ -398,8 +398,8 @@ def ensure_hla_xml():
     #db_url = "https://raw.githubusercontent.com/ANHIG/IMGTHLA/652dbe954426f117a9f3619826fc4e3687713d90/xml/hla.xml.zip"
     # IPD-IMGT/HLA Release 3.61.0
     #db_url = "https://raw.githubusercontent.com/ANHIG/IMGTHLA/93c70bcfe271a737bc75b7ca7f5f9844bf65136d/xml/hla.xml.zip"
-    # IPD-IMGT/HLA Release 3.63.0 (v3.63.0-alpha) — pinned; developed and validated against this release
-    db_url = "https://raw.githubusercontent.com/ANHIG/IMGTHLA/8382fbebcb583ea60008baf045502279f37958b0/xml/hla.xml.zip"
+    # IPD-IMGT/HLA Release 3.64.0 (v3.64.0-alpha) — pinned; developed and validated against this release
+    db_url = "https://raw.githubusercontent.com/ANHIG/IMGTHLA/bdc6233a79b1d0323140c25ef6e2e6d4e7187c26/xml/hla.xml.zip"
     # Latest (uncomment to always pull the newest IPD-IMGT/HLA release; NOT reproducible)
     #db_url = "https://raw.githubusercontent.com/ANHIG/IMGTHLA/Latest/xml/hla.xml.zip"
 
