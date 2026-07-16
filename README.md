@@ -88,6 +88,7 @@ hla_resolve setup
 ## Updating
 Please ensure you are running the latest version. To update an existing installation to the latest version, run ``update.sh`` from the root of your cloned ``hla_resolve`` repository:
 ```text
+chmod a+x update.sh
 bash update.sh
 ```
 
