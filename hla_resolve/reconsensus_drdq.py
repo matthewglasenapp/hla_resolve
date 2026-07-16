@@ -417,13 +417,24 @@ def _refine_one_gene(sample_ID, gene, name1, name2, results, query_seqs,
                 slot_contig = {1: "sc1", 2: "sc2"}
                 slot_lineage = {1: lineage_1, 2: lineage_2}
                 slot_guess = {1: best_guess_1, 2: best_guess_2}
+                slot_scaffold_seq = {1: scaffold_seq_1, 2: scaffold_seq_2}
                 for slot in (1, 2):
                     if _num_fields(slot_guess[slot]) < 4:
                         continue
                     hp = tag_by_slot[slot]
                     if prim[hp] is None:
                         continue
-                    cons = _consensus_region(prim[hp], slot_contig[slot], workdir, f"slot{slot}")
+                    # Force HP: build this slot's consensus from the assigned HP tag's
+                    # reads mapped to the slot's scaffold ALONE. The two-scaffold step
+                    # above only decides which tag pairs with which allele; it must not
+                    # also re-drop reads whose primary lands on the other scaffold over
+                    # regions identical between the two alleles, which starved a slot
+                    # under the competitive consensus and produced runs of N.
+                    slot_scaffold_fa = os.path.join(workdir, f"slot{slot}.scaffold.fa")
+                    with open(slot_scaffold_fa, "w") as fh:
+                        fh.write(f">{slot_contig[slot]}\n{slot_scaffold_seq[slot]}\n")
+                    hp_fq = os.path.join(workdir, f"hp{hp}.fq")
+                    cons = _consensus_on_scaffold(slot_scaffold_fa, hp_fq, workdir, f"slot{slot}")
                     cons_of[slot] = cons
                     refined[slot] = _best_in_lineage(cons, slot_lineage[slot], gene, sequence_data, core_cache)
 
