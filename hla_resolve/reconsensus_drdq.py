@@ -22,6 +22,14 @@ DRDQ_GENES = ("HLA-DRB1", "HLA-DQA1", "HLA-DQB1")
 _WILDCARD_EQUALITIES = [("N", b) for b in "ACGT"] + [(b, "N") for b in "ACGT"]
 _BIG = 10 ** 9
 
+# A het DR/DQ read whose competitive primary lands on the OTHER haplotype's
+# scaffold with MAPQ at or above this is treated as mis-phased (decisively
+# wrong-haplotype, e.g. reads HiPhase tagged to the wrong HP) and dropped before
+# that slot's consensus. Reads on their own scaffold, or with low MAPQ over
+# regions identical between the two alleles, are retained so Force HP keeps its
+# no-starvation behavior.
+_PHASING_DROP_MAPQ = 30
+
 
 def _run(cmd):
     subprocess.run(cmd, shell=True, check=True, capture_output=True, text=True)
@@ -276,6 +284,17 @@ def _align_and_count(reads_fq, ref_fa, workdir, tag):
     return prim, counts
 
 
+def _retained_reads_fastq(prim_bam, own_contig, out_fq, min_mapq=_PHASING_DROP_MAPQ):
+    # From the competitive (two-scaffold) primary BAM for one HP tag, keep every
+    # read EXCEPT those whose primary aligns to the OTHER haplotype's scaffold
+    # with MAPQ >= min_mapq (decisively mis-phased). Reads on their own contig,
+    # unmapped reads, or low-MAPQ reads over identical regions are retained.
+    # Returns True if the retained fastq is non-empty.
+    expr = f'(rname == "{own_contig}") || (mapq < {min_mapq})'
+    _run(f"samtools view -b -e '{expr}' {prim_bam} | samtools fastq - > {out_fq}")
+    return os.path.isfile(out_fq) and os.path.getsize(out_fq) > 0
+
+
 def _consensus_region(prim_bam, contig, workdir, tag):
     cons = os.path.join(workdir, f"{tag}.cons.fa")
     _run(f"samtools consensus -f fasta -r {contig} {prim_bam} > {cons}")
@@ -430,11 +449,21 @@ def _refine_one_gene(sample_ID, gene, name1, name2, results, query_seqs,
                     # also re-drop reads whose primary lands on the other scaffold over
                     # regions identical between the two alleles, which starved a slot
                     # under the competitive consensus and produced runs of N.
+                    #
+                    # Margin gate: before building the consensus, drop only reads whose
+                    # competitive primary decisively prefers the OTHER slot's scaffold
+                    # (MAPQ >= _PHASING_DROP_MAPQ) — mis-phased reads HiPhase tagged to
+                    # the wrong HP. Reads on their own scaffold or ambiguous over
+                    # identical regions (low MAPQ) are retained, so no slot is starved.
                     slot_scaffold_fa = os.path.join(workdir, f"slot{slot}.scaffold.fa")
                     with open(slot_scaffold_fa, "w") as fh:
                         fh.write(f">{slot_contig[slot]}\n{slot_scaffold_seq[slot]}\n")
-                    hp_fq = os.path.join(workdir, f"hp{hp}.fq")
-                    cons = _consensus_on_scaffold(slot_scaffold_fa, hp_fq, workdir, f"slot{slot}")
+                    gated_fq = os.path.join(workdir, f"slot{slot}.gated.fq")
+                    if _retained_reads_fastq(prim[hp], slot_contig[slot], gated_fq):
+                        reads_fq = gated_fq
+                    else:
+                        reads_fq = os.path.join(workdir, f"hp{hp}.fq")
+                    cons = _consensus_on_scaffold(slot_scaffold_fa, reads_fq, workdir, f"slot{slot}")
                     cons_of[slot] = cons
                     refined[slot] = _best_in_lineage(cons, slot_lineage[slot], gene, sequence_data, core_cache)
 
