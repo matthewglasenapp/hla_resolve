@@ -44,7 +44,7 @@ def main():
     parser.add_argument("--scheme", choices=["WGS", "WES", "hybrid_capture", "amplicon"], required=True, help="Sequencing scheme")
     parser.add_argument("--output_dir", required=True, help="Output Directory", default=None)
     parser.add_argument("--trim_adapters", action="store_true", help="Enable adapter trimming before processing")
-    parser.add_argument("--adapter_file", type=str, required=False, default=None, help="Path to a file with custom adapter sequences (FASTA/FASTQ). If not provided, default adapters will be used.")
+    parser.add_argument("--adapter_file", type=str, required=False, default=None, help="Path to a file with custom adapter sequences (FASTA/FASTQ). If not provided, fastplong auto-detection will be used.")
     parser.add_argument("--threads", type=int, required=False, help="Number of threads to use", default=6)
     parser.add_argument("--read_group_string", required=False, help="Override the parsed read group string", default=None)
     parser.add_argument("--clean-up", action="store_true", help="Remove intermediate files")
