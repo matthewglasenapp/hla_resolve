@@ -978,19 +978,9 @@ def output_results(results, file_path, equidistant_file_path=None, trunc=False):
             if trunc: equidist_alleles = list(map(trunc_to_3_fields, equidist_alleles))
             data_equidist[name_index][allele_index+1] = ";".join(equidist_alleles)
 
-    # Swap alleles 1 and 2 when 2 > 1
-    for entry in range(len(data)):
-        for i in range(1,len(unique_alleles),2):
-            # Get alleles HLA-* 1 and 2
-            allele_1 = data[entry][i]
-            allele_2 = data[entry][i+1]
+    # Columns stay in haplotype-record order (_1/_2) so they line up with the
+    # deposited haplotype FASTA records. Genotype grading is order-independent.
 
-            # If 2 alphabetically greater than 1, swap
-            if allele_1 != None and allele_2 != None:
-                if allele_2 < allele_1:
-                    data[entry][i] = allele_2
-                    data[entry][i+1] = allele_1
-            
     # Turn into dataframe and output to csv file
     df = pd.DataFrame(data, columns=["sample"]+unique_alleles)
     df.to_csv(file_path, index=False)
