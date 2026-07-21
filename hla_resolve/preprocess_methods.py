@@ -42,17 +42,29 @@ def convert_bam_to_fastq(input_file, output_file, platform, threads):
 	print(f"Raw fastq reads written to: {output_file}")
 	print("\n")
 
-def trim_adapters(adapters, input_file, output_file, sample_ID, threads, adapter_file = None, five_prime_adapter = None, three_prime_adapter = None):
+def trim_adapters(adapters, input_file, output_file, sample_ID, threads, adapter_file = None, five_prime_adapter = None, three_prime_adapter = None, revcomp = False):
 	if adapters:
 
-		if adapter_file and five_prime_adapter and three_prime_adapter:
+		if adapter_file:
 			print("Trimming adapter sequences with cutadapt!")
 			print(f"cutadapt input file: {input_file}")
-			print(f"5' adapter: {five_prime_adapter}")
-			print(f"3' adapter: {three_prime_adapter}")
 
-			# Use cutadapt with specific adapter sequences from the adapter file
-			cutadapt_cmd = f"cutadapt -j {threads} --quiet -n 2 --minimum-length 100 -g {five_prime_adapter} -a {three_prime_adapter} -o {output_file} {input_file}"
+			# Build cutadapt adapter flags from whichever ends the user supplied
+			adapter_flags = []
+			if five_prime_adapter:
+				print(f"5' adapter: {five_prime_adapter}")
+				adapter_flags.append(f"-g {five_prime_adapter}")
+			if three_prime_adapter:
+				print(f"3' adapter: {three_prime_adapter}")
+				adapter_flags.append(f"-a {three_prime_adapter}")
+
+			# Distinct 5'/3' adapters (e.g. amplicon primers) need both read orientations
+			# scanned. Symmetric adapters do not, so revcomp is left off for them.
+			revcomp_flag = "--revcomp " if revcomp else ""
+			if revcomp:
+				print("Adapters are asymmetric: scanning reverse complement (--revcomp)")
+
+			cutadapt_cmd = f"cutadapt -j {threads} --quiet -n 2 --minimum-length 100 {revcomp_flag}{' '.join(adapter_flags)} -o {output_file} {input_file}"
 
 			run_quiet(cutadapt_cmd)
 

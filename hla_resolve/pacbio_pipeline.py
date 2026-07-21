@@ -35,7 +35,8 @@ def preprocess_pacbio_sample(config):
 			threads=config['threads'],
 			adapter_file=config['adapter_file'],
 			five_prime_adapter=config['five_prime_adapter'],
-			three_prime_adapter=config['three_prime_adapter']
+			three_prime_adapter=config['three_prime_adapter'],
+			revcomp=config['revcomp']
 		)
 
 		# Skip pbmarkdup for amplicon: shared PCR primer ends produce
