@@ -349,8 +349,11 @@ def _log_hap(logfile, name, tup, changed):
         outcome = f"not refined (guess {allele} has no 4th field to resolve); kept prior call"
     else:
         outcome = f"not refined (re-consensus not accepted); kept prior call {allele}"
-    logfile.writelines(f"For {name}, re-consensus: {outcome} dist {dist} len {mlen} "
-                       f"id {seq_id} mismatch {mm_id} using edit_distance (Exon+Intron core)\n")
+    if dist is None:
+        logfile.writelines(f"For {name}, re-consensus: {outcome} (no full-sequence match measured)\n")
+    else:
+        logfile.writelines(f"For {name}, re-consensus: {outcome} dist {dist} len {mlen} "
+                           f"id {seq_id} mismatch {mm_id} using edit_distance (Exon+Intron core)\n")
     if isinstance(tie, (list, tuple)) and len(tie) > 1:
         logfile.writelines(f"Equidistant (re-consensus) for {name}: {', '.join(tie)}\n")
 

@@ -834,7 +834,7 @@ def pass_3_classification(sequence_data, results_dict, samples, truth_data=None,
                 loop_log.writelines(f"{sample_name} was not found in provided full sequence file. Using 3 fields from pass 2\n")
                 loop_log.writelines(f"{sample_name}: {classified_allele} -> {sample_3_fields}\n")
 
-            results[sample_name] = (sample_3_fields, 0, 1, 1.0, 1.0, False, classification[-1])
+            results[sample_name] = (sample_3_fields, None, None, None, None, False, classification[-1])
             continue
 
         fields = classified_allele.split(":")
@@ -854,7 +854,7 @@ def pass_3_classification(sequence_data, results_dict, samples, truth_data=None,
             # If there is no fourth field, no need for wildcard search
             if loop_log != None:
                 loop_log.writelines(f"{sample_name} does not have fourth field. Short circuit to {classified_allele}\n")
-            results[sample_name] = (classified_allele, 0, 1, 1.0, 1.0, False, classification[-1])
+            results[sample_name] = (classified_allele, None, None, None, None, False, classification[-1])
             continue
 
         # Build list of all alleles that match the exon substring
