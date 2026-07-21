@@ -32,7 +32,8 @@ def preprocess_ont_sample(config):
 		threads=config['threads'],
 		adapter_file=config['adapter_file'],
 		five_prime_adapter=config['five_prime_adapter'],
-		three_prime_adapter=config['three_prime_adapter']
+		three_prime_adapter=config['three_prime_adapter'],
+		revcomp=config['revcomp']
 	)
 	
 	align_to_reference_rammap(

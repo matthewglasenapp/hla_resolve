@@ -9,6 +9,7 @@ import subprocess
 import json
 import pysam
 from Bio import SeqIO
+from Bio.Seq import Seq
 from .preprocess_methods import convert_bam_to_fastq
 from .utils import run_quiet
 from .config import (
@@ -61,16 +62,30 @@ class Samples:
             with open(self.adapter_file) as f:
                 sequences = [str(record.seq).strip().upper() for record in SeqIO.parse(f, "fasta")]
 
-            if len(sequences) != 2:
+            if len(sequences) == 1:
+                self.five_prime_adapter = sequences[0]
+                self.three_prime_adapter = None
+            elif len(sequences) == 2:
+                self.five_prime_adapter, self.three_prime_adapter = sequences
+            else:
                 raise ValueError(
-                    f"Adapter file must contain exactly two sequences (forward, reverse), found {len(sequences)}."
+                    f"Adapter file must contain one (5') or two (5', 3') sequences, found {len(sequences)}."
                 )
-
-            self.five_prime_adapter, self.three_prime_adapter = sequences[:2]
         
         else:
             self.five_prime_adapter = None
             self.three_prime_adapter = None
+
+        # Decide whether cutadapt should also scan the reverse complement.
+        # Symmetric adapters (3' == revcomp of 5', e.g. Tn5 mosaic ends) already match
+        # on the forward strand in either read orientation, so revcomp stays off.
+        # Distinct 5'/3' adapters (e.g. amplicon primers) do not, so reverse-oriented
+        # reads would be missed without it.
+        if self.five_prime_adapter and self.three_prime_adapter:
+            rc_five = str(Seq(self.five_prime_adapter).reverse_complement())
+            self.revcomp = self.three_prime_adapter != rc_five
+        else:
+            self.revcomp = False
 
         self.platform = platform.upper()
         self.threads = threads
@@ -350,6 +365,7 @@ def build_workflow_config(sample):
 		'adapter_file': sample.adapter_file,
 		'five_prime_adapter': sample.five_prime_adapter,
 		'three_prime_adapter': sample.three_prime_adapter,
+		'revcomp': sample.revcomp,
 		'read_group_string': sample.read_group_string,
 		
 		# Directory paths

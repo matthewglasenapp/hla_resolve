@@ -618,6 +618,92 @@ def run_vcf2fasta(input_vcf, input_gff, reference_genome, output_dir, gene, feat
 			print(e.stderr, end="", file=sys.stderr)
 		raise
 
+def extract_cds_padded_and_trim(gene, gene_lower, gff_dir, reference_genome, vcf_path,
+								vcf2fasta_output_dir, stop_codons, pad=5, accept_window=5):
+	"""
+	Repair a full-length CDS that reconstructs WITHOUT a stop codon because the allele
+	carries a small 3'-terminal homopolymer contraction relative to the reference genome.
+	e.g. DPB1*13:01 (and *27:01/*107:01/*135:01) drop 1bp from a poly-A run at the CDS 3'
+	terminus vs GRCh38, so the fixed reference-coordinate CDS window ends one base short of
+	the (now shifted) stop and comes back as 776bp ending ATA instead of 777bp ending TAA.
+
+	Re-runs vcf2fasta --feat CDS --blend on a CDS GFF whose 3'-terminal exon is extended by
+	`pad` reference bases (strand-aware), then trims each haplotype to the first in-frame
+	stop codon, accepting only if that stop lands within +/-accept_window of the annotated
+	CDS length. Reference-anchored throughout; vcf2fasta stays coordinate-based, the trim is
+	done here. Writes to a temp dir (does not disturb the persisted vcf2fasta_out).
+
+	Returns (hap1, hap2); a haplotype is None if no in-frame stop was recovered inside the
+	accept window, in which case the caller keeps the original (unrepaired) sequence.
+	"""
+	cds_gff = os.path.join(gff_dir, f"{gene_lower}_cds_sorted.gff3")
+	recs = []
+	strand = None
+	for raw in open(cds_gff):
+		if raw.startswith("#"):
+			continue
+		cols = raw.rstrip("\n").split("\t")
+		if len(cols) < 9 or cols[2] != "CDS":
+			continue
+		recs.append((int(cols[3]), int(cols[4]), cols))
+		strand = cols[6]
+	if not recs or strand not in ("+", "-"):
+		return None, None
+	ann_len = sum(e - s + 1 for s, e, _ in recs)
+
+	# Extend the transcript's 3'-terminal exon by `pad` reference bases: the largest-end
+	# exon on the + strand, the smallest-start exon on the - strand.
+	if strand == "+":
+		idx = max(range(len(recs)), key=lambda i: recs[i][1])
+		recs[idx][2][4] = str(recs[idx][1] + pad)
+	else:
+		idx = min(range(len(recs)), key=lambda i: recs[i][0])
+		recs[idx][2][3] = str(max(1, recs[idx][0] - pad))
+
+	gff_workdir = tempfile.mkdtemp(prefix=f"{gene_lower}_cdspad_gff_")
+	pad_out = tempfile.mkdtemp(prefix=f"{gene_lower}_cdspad_out_")
+	try:
+		gff_path = os.path.join(gff_workdir, f"{gene_lower}_cds_padded.gff3")
+		with open(gff_path, "w") as f:
+			f.write("##gff-version 3\n")
+			for _, _, cols in sorted(recs, key=lambda r: (r[0], r[1])):
+				f.write("\t".join(cols) + "\n")
+
+		run_vcf2fasta(
+			input_vcf=vcf_path,
+			input_gff=gff_path,
+			reference_genome=reference_genome,
+			output_dir=os.path.join(pad_out, gene),
+			gene=gene,
+			feature="CDS",
+		)
+		real_out = os.path.join(pad_out, gene) + "_CDS"
+		find = subprocess.run(f"find {real_out} -type f", shell=True, capture_output=True, text=True)
+		fasta_files = [x for x in find.stdout.split() if not x.endswith(".gff3")]
+		if not fasta_files:
+			return None, None
+		with open(fasta_files[0]) as f:
+			records = f.read().split(">")[1:]
+		haps = ["".join(rec.split("\n")[1:]).replace("-", "").strip() for rec in records]
+
+		def trim(seq):
+			# First in-frame stop codon; accept only within +/-accept_window of ann_len,
+			# else abort (a premature stop or nothing near the terminus -> keep original).
+			for p in range(0, len(seq) - 2, 3):
+				if seq[p:p + 3] in stop_codons:
+					end = p + 3
+					if ann_len - accept_window <= end <= ann_len + accept_window:
+						return seq[:end]
+					return None
+			return None
+
+		h1 = trim(haps[0]) if len(haps) > 0 else None
+		h2 = trim(haps[1]) if len(haps) > 1 else None
+		return h1, h2
+	finally:
+		shutil.rmtree(gff_workdir, ignore_errors=True)
+		shutil.rmtree(pad_out, ignore_errors=True)
+
 def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA_bases, stop_codons, unphased_genes=None, gene_dict=None, CDS_dict=None, gff_dir=None, cds_rescued_genes=None, ARS_dict=None, CLASS_I_GENES=None, gene_filtered_vcfs=None, reference_genome=None):
 	# Use subprocess.run with capture_output to avoid race conditions with temporary files
 	find_cmd = f"find {vcf2fasta_output_dir} -type f"
@@ -868,7 +954,29 @@ def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA
 
 		if not set(allele_2).issubset(DNA_bases):
 			print(f"{file} has invalid characters!")
-		
+
+		# DPB1 3'-terminal homopolymer-contraction repair. A fully-phased DPB1 CDS can
+		# reconstruct full-length but WITHOUT a stop because the allele (e.g. DPB1*13:01,
+		# *27:01, *107:01, *135:01) drops 1bp of a poly-A at the CDS 3' terminus vs GRCh38,
+		# sliding the stop's last base one position past the annotated CDS boundary. Re-extract
+		# with a padded terminal exon and trim to the recovered in-frame stop. Scoped to DPB1;
+		# skips rescued/partial records; no-op on records that already end in a stop.
+		if (feat == "CDS" and gene == "HLA-DPB1"
+				and (not cds_rescued_genes or gene not in cds_rescued_genes)
+				and (not unphased_genes or gene not in unphased_genes)):
+			vcf_path = gene_filtered_vcfs.get(gene) if gene_filtered_vcfs else None
+			needs_repair = (allele_1[-3:] not in stop_codons) or (allele_2[-3:] not in stop_codons)
+			if needs_repair and vcf_path and gff_dir and reference_genome:
+				fixed_1, fixed_2 = extract_cds_padded_and_trim(
+					gene, gene.lower().replace("-", "_"), gff_dir, reference_genome,
+					vcf_path, vcf2fasta_output_dir, stop_codons)
+				if allele_1[-3:] not in stop_codons and fixed_1:
+					allele_1 = fixed_1
+					print(f"{sample_ID} {gene} CDS terminal stop recovered via padded re-extraction (hap1)")
+				if allele_2[-3:] not in stop_codons and fixed_2:
+					allele_2 = fixed_2
+					print(f"{sample_ID} {gene} CDS terminal stop recovered via padded re-extraction (hap2)")
+
 		if feat == "CDS":
 			if allele_1[0:3] != "ATG" or allele_2[0:3] != "ATG":
 				print(f"{sample_ID} {gene} CDS sequence does not begin with start codon!\n")
