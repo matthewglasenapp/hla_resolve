@@ -196,13 +196,13 @@ hla_resolve --input_file <INPUT_uBAM> --sample_name <sample_name> --platform pac
 HLA-Resolve takes raw PacBio HiFi reads (FASTQ or uBAM) as input and executes the following steps to produce four-field HLA allele assignments.
 
 #### 1. Adapter Trimming
-HLA-Resolve expects reads that have already been demultiplexed so that SMRTbell adapters and sample barcodes are removed. lima is the standard tool for this on PacBio data. HLA-Resolve does not remove those sequences.
+HLA-Resolve expects demultiplexed reads, with SMRTbell adapters and sample barcodes removed. PacBio's `lima` is the standard tool for this.
 
 Adapter trimming with `--trim_adapters` is an optional step for residual library preparation adapters that demultiplexing leaves behind, such as transposase mosaic ends or amplicon primers. It is off by default. Reads that are already clean can skip it.
 
-With `--trim_adapters` and no `--adapter_file`, [fastplong](https://doi.org/10.1002/imt2.107) auto-detects and removes adapters. With `--adapter_file`, [cutadapt](https://doi.org/10.14806/ej.17.1.200) trims the sequences you provide. The file holds one or two FASTA records. One record is treated as the 5' adapter. Two records are treated as the 5' adapter followed by the 3' adapter.
+With `--trim_adapters` and no `--adapter_file`, [fastplong](https://doi.org/10.1002/imt2.107) auto-detects and removes adapters. With `--adapter_file`, [cutadapt](https://doi.org/10.14806/ej.17.1.200) trims the sequences you provide. A file with one recorded uses that sequence as the 5' adapter. A file with two records uses them as the 5' and 3' adapters. 
 
-When two adapters are given, HLA-Resolve checks whether the 3' adapter is the reverse complement of the 5' adapter. Symmetric adapters such as Tn5 mosaic ends match on the forward strand in either read orientation, so no extra handling is needed. Distinct adapters such as amplicon primers do not, so cutadapt also scans the reverse complement to trim reads that were sequenced in the opposite orientation.
+When two adapters are given, HLA-Resolve checks whether the 3' adapter is the reverse complement of the 5' adapter. When it is, the adapters are symmetric, such as Tn5 mosaic ends, and a read shows the same two sequences in either orientation, so scanning the forward strand trims both ends. When the adapters are not symmetric, such as amplicon primers, a reverse-oriented read would go untrimmed, so cutadapt also scans the reverse complement with `--revcomp`.
 
 #### 2. PCR Duplicate Removal
 PCR duplicates are identified and removed from the trimmed reads using [pbmarkdup](https://github.com/PacificBiosciences/pbmarkdup).
