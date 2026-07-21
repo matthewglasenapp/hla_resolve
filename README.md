@@ -173,11 +173,11 @@ HLA-Resolve has produced high-quality calls for the following whole-genome (WGS)
 
 | Sample | Source | Instrument | HLA&nbsp;Coverage | Concordance | File |
 |--------|--------|------------|--------------|-------------|------|
-| HG002 | GIAB | Revio | ~30× | 1–3&nbsp;field:&nbsp;100%<br>4-field:&nbsp;7/8 | `https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/AshkenazimTrio/HG002_NA24385_son/PacBio_HiFi-Revio_20231031/HG002_PacBio-Revio_m84039_231005_222902_s1.hifi_reads.bam` |
+| HG002 | GIAB | Revio | ~30× | 1–3&nbsp;field:&nbsp;100%<br>4-field:&nbsp;15/16 | `https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/AshkenazimTrio/HG002_NA24385_son/PacBio_HiFi-Revio_20231031/HG002_PacBio-Revio_m84039_231005_222902_s1.hifi_reads.bam` |
 | HG002 | GIAB | Revio | ~30× | 1–3&nbsp;field:&nbsp;100%<br>4-field:&nbsp;100% | `https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/AshkenazimTrio/HG002_NA24385_son/PacBio_HiFi-Revio_20231031/HG002_PacBio-Revio_m84039_230928_213653_s3.hifi_reads.bam` |
 | HG002 | HPRC | Revio | ~33× | 1–3&nbsp;field:&nbsp;100%<br>4-field:&nbsp;100% | `s3://human-pangenomics/working/HPRC_PLUS/HG002/raw_data/PacBio_HiFi/wMods/m84011_220902_175841_s1.hifi_reads.bam` |
-| HG01258 | HPRC | Revio | ~19× | 1–3&nbsp;field:&nbsp;100%<br>4-field:&nbsp;7/8 | `s3://human-pangenomics/working/HPRC/HG01258/raw_data/PacBio_HiFi/m84046_231202_090949_s3.hifi_reads.bc2054.bam` |
-| HG03579 | HPRC | Sequel II | ~15× | 1–3&nbsp;field:&nbsp;100%<br>4-field:&nbsp;7/8 | `s3://human-pangenomics/working/HPRC/HG03579/raw_data/PacBio_HiFi/m64043_200516_230634.ccs.bam` |
+| HG01258 | HPRC | Revio | ~19× | 1–3&nbsp;field:&nbsp;100%<br>4-field:&nbsp;15/16 | `s3://human-pangenomics/working/HPRC/HG01258/raw_data/PacBio_HiFi/m84046_231202_090949_s3.hifi_reads.bc2054.bam` |
+| HG03579 | HPRC | Sequel II | ~15× | 1–3&nbsp;field:&nbsp;100%<br>4-field:&nbsp;15/16 | `s3://human-pangenomics/working/HPRC/HG03579/raw_data/PacBio_HiFi/m64043_200516_230634.ccs.bam` |
 
 HPRC libraries can be downloaded without credentials using the AWS CLI:
 
