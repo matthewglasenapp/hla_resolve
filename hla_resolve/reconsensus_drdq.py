@@ -343,8 +343,13 @@ def _log_hap(logfile, name, tup, changed):
         return
     allele, dist, mlen, seq_id, mm_id = tup[0], tup[1], tup[2], tup[3], tup[4]
     tie = tup[6] if len(tup) > 6 else [allele]
-    verb = "refined to" if changed else "kept"
-    logfile.writelines(f"For {name}, re-consensus {verb} {allele} dist {dist} len {mlen} "
+    if changed:
+        outcome = f"refined to {allele}"
+    elif _num_fields(allele) < 4:
+        outcome = f"not refined (guess {allele} has no 4th field to resolve); kept prior call"
+    else:
+        outcome = f"not refined (re-consensus not accepted); kept prior call {allele}"
+    logfile.writelines(f"For {name}, re-consensus: {outcome} dist {dist} len {mlen} "
                        f"id {seq_id} mismatch {mm_id} using edit_distance (Exon+Intron core)\n")
     if isinstance(tie, (list, tuple)) and len(tie) > 1:
         logfile.writelines(f"Equidistant (re-consensus) for {name}: {', '.join(tie)}\n")
