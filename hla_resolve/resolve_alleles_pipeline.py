@@ -49,7 +49,7 @@ def print_results(config):
 			return
 		
 		results = data_parts[1:]
-		print(f"{config['sample_ID']} HLA Star Allele Calls:")
+		print(f"{config['sample_ID']} HLA Allele Calls:")
 		for item in results:
 			print(f"{item}")
 	else:

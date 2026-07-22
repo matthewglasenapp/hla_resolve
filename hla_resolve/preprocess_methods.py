@@ -906,7 +906,7 @@ def parse_mosdepth(regions_file, thresholds_file, cds_depth_thresh, cds_prop_20x
 				reasons.append(
 					f"ARS [depth={a['depth']:.1f} prop_20x={a['prop_20x']:.2f} prop_30x={a['prop_30x']:.2f}]"
 				)
-			print(f"Gene {gene} has insufficient {' and '.join(reasons)} coverage for haplotyping and star allele calling")
+			print(f"Gene {gene} has insufficient {' and '.join(reasons)} coverage for haplotyping and allele calling")
 
 	print("\n")
 	return sufficient_coverage_genes
