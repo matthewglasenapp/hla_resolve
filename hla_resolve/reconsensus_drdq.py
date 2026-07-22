@@ -175,6 +175,18 @@ def _edit_distance(query, ref):
                        additionalEqualities=_WILDCARD_EQUALITIES)["editDistance"]
 
 
+def _penalized_distance(query, ref):
+    # Edit distance with N treated as a real mismatch (NO wildcard) so an
+    # ambiguous/blurry consensus (Ns at unresolved het positions) scores as a
+    # WORSE match than a clean one. Used only by the un-pooling accept gate: the
+    # pooled consensus of a true het carries Ns exactly at the positions that
+    # distinguish the two 4th fields, and must not win them for free.
+    if not query or not ref:
+        return _BIG
+    a, b = (query, ref) if len(query) <= len(ref) else (ref, query)
+    return edlib.align(a, b, mode="HW", task="distance")["editDistance"]
+
+
 def _read_fasta_seq(path):
     if not os.path.isfile(path):
         return ""
@@ -216,7 +228,13 @@ def _gene_region(gene, phased_vcf, gene_dict, pad=3000):
     return f"{chrom}:{max(1, start)}-{stop}"
 
 
-def _has_het_genotype(phased_vcf):
+def _has_pass_phased_het_genotype(phased_vcf):
+    # True only if the gene VCF carries at least one PASS-filter, phased,
+    # heterozygous genotype. This is the trigger for un-pooling: a same-lineage
+    # call is split into two haplotypes only when there is a real phased het to
+    # split on. Unphased hets (HiPhase could not phase them) and non-PASS records
+    # (DR-region reconstruction artifacts) do not qualify, so those loci stay
+    # pooled and are called homozygous.
     if not phased_vcf or not os.path.isfile(phased_vcf):
         return False
     opener = gzip.open if phased_vcf.endswith(".gz") else open
@@ -228,7 +246,11 @@ def _has_het_genotype(phased_vcf):
                 parts = line.rstrip("\n").split("\t")
                 if len(parts) < 10:
                     continue
+                if parts[6] not in ("PASS", "."):
+                    continue
                 gt = parts[9].split(":")[0]
+                if "|" not in gt:
+                    continue
                 present = {a for a in re.split(r"[|/]", gt) if a not in (".", "")}
                 if len(present) > 1:
                     return True
@@ -322,6 +344,23 @@ def _best_in_lineage(consensus, lineage, gene, sequence_data, core_cache):
     return (best, min_dist, tied)
 
 
+def _pooled_alternative(bam, region, scaffold_seq, lineage, gene,
+                        sequence_data, core_cache, workdir):
+    # Build the single pooled (homozygous) consensus on the shared scaffold from
+    # ALL reads in the region — the alternative to splitting by HP tag — and
+    # return (consensus, best-in-lineage tuple). Used only by the same-lineage
+    # un-pooling accept gate.
+    fq = os.path.join(workdir, "pooled_alt.fq")
+    if not _extract_reads_fastq(bam, region, fq):
+        return "", None
+    fa = os.path.join(workdir, "pooled_alt.scaffold.fa")
+    with open(fa, "w") as fh:
+        fh.write(f">scaffold\n{scaffold_seq}\n")
+    cons = _consensus_on_scaffold(fa, fq, workdir, "pooled_alt")
+    ref = _best_in_lineage(cons, lineage, gene, sequence_data, core_cache)
+    return cons, ref
+
+
 def _match_metrics(consensus, core):
     # (raw_distance, match_len, mismatch_len, seq_identity, mismatch_identity)
     if not consensus or not core:
@@ -376,7 +415,12 @@ def _refine_one_gene(sample_ID, gene, name1, name2, results, query_seqs,
             return
 
         same_lineage = lineage_1 == lineage_2
-        pooled = same_lineage or not _has_het_genotype(phased_vcf)
+        # Pool (call homozygous) only when there is no real phased het to split
+        # on. A same-lineage locus that carries a PASS-phased het is NOT pooled
+        # up front; it goes through the HP split and the un-pooling accept gate
+        # below, which decides whether the two haplotypes truly differ at the
+        # 4th field or the locus is homozygous with artifact hets.
+        pooled = not _has_pass_phased_het_genotype(phased_vcf)
 
         bam = ctx["bam"]
         mode = ctx.get("mode", "hp_tag")
@@ -419,6 +463,15 @@ def _refine_one_gene(sample_ID, gene, name1, name2, results, query_seqs,
                 # then consensus each tag on its assigned scaffold for the 4th-field call.
                 scaffold_seq_1 = _full_sequence(sequence_data, best_guess_1)
                 scaffold_seq_2 = _full_sequence(sequence_data, best_guess_2)
+                if same_lineage:
+                    # Un-pooled same-lineage het: both haplotypes share ONE
+                    # 4th-field scaffold so neither per-HP consensus is biased
+                    # toward a per-slot seed (the seed-echo that would otherwise
+                    # decide the 4th field). The competitive two-scaffold step
+                    # below then drops nothing (identical contigs), so the split
+                    # is purely by HP tag.
+                    shared = scaffold_seq_1 if _num_fields(best_guess_1) >= 4 else scaffold_seq_2
+                    scaffold_seq_1 = scaffold_seq_2 = shared
                 if not scaffold_seq_1 or not scaffold_seq_2:
                     return
                 ref_fa = os.path.join(workdir, "two_scaffold.fa")
@@ -484,15 +537,52 @@ def _refine_one_gene(sample_ID, gene, name1, name2, results, query_seqs,
 
             # assign[slot] = (allele, consensus, tie_set) for the slots to overwrite
             assign = {}
-            if same_lineage:
+            refined_q = sum(refined[i][1] for i in present)
+            if pooled and same_lineage:
+                # Genuinely homozygous locus (no phased het): one pooled
+                # consensus assigned to both slots.
                 winner = min(present, key=lambda i: refined[i][1])
                 allele, _, tie = refined[winner]
                 assign[1] = assign[2] = (allele, cons_of[winner], tie)
+            elif same_lineage and len(present) == 2:
+                # Un-pooled same-lineage het: accept the HP split into two
+                # distinct 4th fields only if the two per-haplotype consensuses
+                # explain the reads better (N-penalized) than a single pooled
+                # homozygous consensus. The N penalty stops a blurry pooled blend
+                # from matching an allele for free at the very positions that
+                # distinguish the two 4th fields. On a true homozygote the pooled
+                # consensus (full depth) is cleaner than either half-depth split,
+                # so the split loses and the call stays homozygous.
+                shared_seq = _full_sequence(
+                    sequence_data,
+                    best_guess_1 if _num_fields(best_guess_1) >= 4 else best_guess_2)
+                pooled_cons, pooled_ref = _pooled_alternative(
+                    bam, region, shared_seq, lineage_1, gene, sequence_data,
+                    core_cache, workdir)
+                split_pen = sum(
+                    _penalized_distance(cons_of[i], _core_sequence(sequence_data, refined[i][0]))
+                    for i in present)
+                pooled_pen = (2 * _penalized_distance(pooled_cons, _core_sequence(sequence_data, pooled_ref[0]))
+                              if pooled_ref and pooled_cons else _BIG)
+                if split_pen < pooled_pen:
+                    for i in present:
+                        assign[i] = (refined[i][0], cons_of[i], refined[i][2])
+                    if logfile is not None:
+                        logfile.writelines(
+                            f"For {sample_ID} {gene}, un-pooled het accepted: split "
+                            f"residual {split_pen} < pooled {pooled_pen}\n")
+                else:
+                    allele, _, tie = pooled_ref
+                    assign[1] = assign[2] = (allele, pooled_cons, tie)
+                    refined_q = 2 * pooled_ref[1]
+                    if logfile is not None:
+                        logfile.writelines(
+                            f"For {sample_ID} {gene}, un-pooled het rejected (kept "
+                            f"homozygous): split residual {split_pen} >= pooled {pooled_pen}\n")
             else:
                 for i in present:
                     assign[i] = (refined[i][0], cons_of[i], refined[i][2])
 
-            refined_q = sum(refined[i][1] for i in present)
             original_q = 0
             for i in present:
                 query = query_seqs.get(name_by_idx[i])
