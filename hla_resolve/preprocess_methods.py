@@ -280,7 +280,7 @@ def call_variants_deepvariant(input_bam, output_vcf, output_gvcf, platform, deep
 			--reads=/input/{os.path.basename(input_bam)} \
 			--output_vcf=/data/{os.path.basename(output_vcf)} \
 			--output_gvcf=/data/{os.path.basename(output_gvcf)} \
-			--regions chr6 \
+			--regions chr6:{config.mhc_start}-{config.mhc_stop} \
 			--num_shards={deepvariant_shards}
 		"""
 
