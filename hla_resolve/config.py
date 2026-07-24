@@ -572,6 +572,12 @@ ars_prop_30x_thresh = 0
 mhc_start = 29555628
 mhc_stop = 33409896
 
+# DeepVariant calling region. Kept tighter than the extended MHC to avoid a homopolymer
+# RefCall artifact near chr6 31354430 that the wider MHC bounds trigger for HG002 HLA-B.
+# Still spans all eight typed genes with margin.
+dv_region_start = 29900000
+dv_region_stop = 33150000
+
 # DNA bases and stop codons
 # Used in parse_fastas() function of reconstruct_fasta_methods.py for vcf2fasta sanity checking
 DNA_bases = {"A", "T", "G", "C"}

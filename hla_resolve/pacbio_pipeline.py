@@ -137,7 +137,6 @@ def preprocess_pacbio_sample(config):
 				call_variants_deepvariant(
 					input_bam=config['hg38_rmdup_chr6_bam'],
 					output_vcf=dv_output,
-					output_gvcf=config['snv_gvcf'],
 					platform=config['platform'],
 					deepvariant_sif=config['deepvariant_sif'],
 					reference_fasta=config['reference_genome'],
@@ -187,7 +186,6 @@ def preprocess_pacbio_sample(config):
 				call_variants_deepvariant(
 					input_bam=config['hg38_rmdup_chr6_bam'],
 					output_vcf=snp_intermediate,
-					output_gvcf=config['snv_gvcf'],
 					platform=config['platform'],
 					deepvariant_sif=config['deepvariant_sif'],
 					reference_fasta=config['reference_genome'],
@@ -222,7 +220,6 @@ def preprocess_pacbio_sample(config):
 				call_variants_deepvariant(
 					input_bam=config['hg38_rmdup_chr6_bam'],
 					output_vcf=indel_intermediate,
-					output_gvcf=config['snv_gvcf'],
 					platform=config['platform'],
 					deepvariant_sif=config['deepvariant_sif'],
 					reference_fasta=config['reference_genome'],

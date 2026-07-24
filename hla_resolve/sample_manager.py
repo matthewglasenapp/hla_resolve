@@ -288,7 +288,6 @@ class Samples:
         
         # VCF files
         self.snv_vcf = os.path.join(self.genotypes_dir, f"{self.sample_ID}.vcf.gz")
-        self.snv_gvcf = os.path.join(self.genotypes_dir, f"{self.sample_ID}.dv.g.vcf.gz")
         self.bcftools_snp_vcf = os.path.join(self.genotypes_dir, f"{self.sample_ID}.bcftools.snps.vcf.gz")
         self.dv_full_vcf = os.path.join(self.genotypes_dir, f"{self.sample_ID}.dv.vcf.gz")
         self.dv_rescued_vcf = os.path.join(self.genotypes_dir, f"{self.sample_ID}.dv.rescued.vcf.gz")
@@ -397,7 +396,6 @@ def build_workflow_config(sample):
 		'hg38_rmdup_chr6_bam': sample.hg38_rmdup_chr6_bam,
 		'hg38_rmdup_chr6_haplotag_bam': sample.hg38_rmdup_chr6_haplotag_bam,
 		'snv_vcf': sample.snv_vcf,
-		'snv_gvcf': sample.snv_gvcf,
 		'bcftools_snp_vcf': sample.bcftools_snp_vcf,
 		'dv_full_vcf': sample.dv_full_vcf,
 		'dv_rescued_vcf': sample.dv_rescued_vcf,
