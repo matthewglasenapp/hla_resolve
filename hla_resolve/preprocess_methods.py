@@ -254,7 +254,7 @@ def filter_reads(input_file, output_file, drb_paralog_reads_file, threads):
 	return read_count
 	
 # Call SNV with DeepVariant
-def call_variants_deepvariant(input_bam, output_vcf, output_gvcf, platform, deepvariant_sif, reference_fasta, genotypes_dir, mapped_bam_dir, sample_ID, threads):
+def call_variants_deepvariant(input_bam, output_vcf, platform, deepvariant_sif, reference_fasta, genotypes_dir, mapped_bam_dir, sample_ID, threads):
 	if platform == "PACBIO":
 		model_type = "PACBIO"
 	elif platform == "ONT":
@@ -279,8 +279,7 @@ def call_variants_deepvariant(input_bam, output_vcf, output_gvcf, platform, deep
 			--ref=/reference/{os.path.basename(reference_fasta)} \
 			--reads=/input/{os.path.basename(input_bam)} \
 			--output_vcf=/data/{os.path.basename(output_vcf)} \
-			--output_gvcf=/data/{os.path.basename(output_gvcf)} \
-			--regions chr6:{config.mhc_start}-{config.mhc_stop} \
+			--regions chr6:{config.dv_region_start}-{config.dv_region_stop} \
 			--num_shards={deepvariant_shards}
 		"""
 
@@ -292,7 +291,6 @@ def call_variants_deepvariant(input_bam, output_vcf, output_gvcf, platform, deep
 		subprocess.run(deepvariant_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
 
 	print(f"VCF written to: {output_vcf}")
-	print(f"GVCF written to: {output_gvcf}")
 	print("\n")
 
 def call_variants_clair3(input_bam, output_vcf, platform, clair3_sif, reference_fasta, threads, genotypes_dir, mapped_bam_dir, sample_ID, clair3_model):
