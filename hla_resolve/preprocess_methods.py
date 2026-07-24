@@ -426,10 +426,9 @@ def rescue_refcalls(input_vcf, output_vcf, indels_only=False):
 			ad = sample.get('AD')
 			vaf = sample.get('VAF')
 
+			# To re-enable GQ filtering, add: gq >= 20 and
 			if all(v is not None for v in (gq, dp, ad, vaf)):
-				# GQ >= 10 keeps genuine RefCall rescues while dropping low-confidence
-				# calls (e.g. PacBio homopolymer-repeat deletions DeepVariant flags 0/0).
-				if gq >= 10 and dp >= 30:
+				if dp >= 30:
 					# Normalize VAF to tuple (pysam may return scalar for biallelic)
 					if isinstance(vaf, (int, float)):
 						vaf = (vaf,)
