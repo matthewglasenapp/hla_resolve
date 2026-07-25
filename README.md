@@ -15,7 +15,7 @@ HLA-Resolve was designed for and fully validated on PacBio hybrid-capture librar
 
 **Authors:** [Matthew Glasenapp](https://github.com/matthewglasenapp), [Alex Symons](https://github.com/FlyingFish800), [Omar Cornejo](https://github.com/oeco28)
 
-**⚠️ Note:** HLA-Resolve is intended for high-coverage PacBio HiFi reads. ONT support is still in development. The HLA-Resolve [manuscript](https://doi.org/10.64898/2026.03.27.26349549) is under peer review.
+**⚠️ Note:** HLA-Resolve is intended for high-coverage PacBio HiFi reads. ONT support is still in development, and `--platform ont` is rejected at runtime until it lands. The HLA-Resolve [manuscript](https://doi.org/10.64898/2026.03.27.26349549) is under peer review.
 
 > **Disclaimer:** HLA-Resolve is pre-release software in active development. It is intended for research use only and not for use in diagnostic procedures.
 
@@ -79,8 +79,8 @@ hla_resolve setup
 | GRCh38 reference genome | NCBI |
 | Picard | Broad Institute |
 | LongPhase binary | GitHub |
-| hla.xml ([IPD-IMGT/HLA database](https://github.com/ANHIG/IMGTHLA)) | IMGTHLA |
-| Clair3 Singularity image | Docker Hub |
+| rammap binary | GitHub |
+| hla.xml ([IPD-IMGT/HLA database](https://github.com/ANHIG/IMGTHLA), release 3.64.0) | IMGTHLA |
 | DeepVariant Singularity image | Docker Hub |
 
 **Note:** These downloads are large. Ensure sufficient disk space is available in the install directory before the first run.
@@ -98,6 +98,7 @@ bash update.sh
 ```
 usage: hla_resolve [-h] [--version] --input_file INPUT_FILE --sample_name SAMPLE_NAME --platform {pacbio,ont} --scheme {WGS,WES,hybrid_capture,amplicon} --output_dir OUTPUT_DIR
                    [--trim_adapters] [--adapter_file ADAPTER_FILE] [--threads THREADS] [--read_group_string READ_GROUP_STRING] [--clean-up] [--clair3_model CLAIR3_MODEL]
+                   [--verbose]
 
 Run HLA-Resolve
 
@@ -125,8 +126,17 @@ options:
   --clair3_model CLAIR3_MODEL
                         Clair3 model name (bundled in SIF). Defaults to r1041_e82_400bps_sup_v500 for ONT
                         and hifi_revio for PacBio. (default: None)
+  --verbose             Print detailed per-variant diagnostic output (overlap suppression, RefCall
+                        rescue, unphased het records, CDS sanity check) (default: False)
 
-Example: hla_resolve --input_file reads.bam --sample_name HG002 --platform pacbio --scheme hybrid_capture --output_dir out --threads 10
+One-time setup (downloads references, binaries, and images):
+  hla_resolve setup
+
+Example run:
+  hla_resolve --input_file reads.bam --sample_name HG002 --platform pacbio --scheme hybrid_capture --output_dir out --threads 10
+
+HLA-Resolve is pre-release software intended for research use only
+and not for use in diagnostic procedures.
 
 ```
 
@@ -200,7 +210,7 @@ HLA-Resolve expects demultiplexed reads, with SMRTbell adapters and sample barco
 
 Adapter trimming with `--trim_adapters` is an optional step for residual library preparation adapters that demultiplexing leaves behind, such as transposase mosaic ends or amplicon primers. It is off by default. Reads that are already clean can skip it.
 
-With `--trim_adapters` and no `--adapter_file`, [fastplong](https://doi.org/10.1002/imt2.107) auto-detects and removes adapters. With `--adapter_file`, [cutadapt](https://doi.org/10.14806/ej.17.1.200) trims the sequences you provide. A file with one recorded uses that sequence as the 5' adapter. A file with two records uses them as the 5' and 3' adapters. 
+With `--trim_adapters` and no `--adapter_file`, [fastplong](https://doi.org/10.1002/imt2.107) auto-detects and removes adapters. With `--adapter_file`, [cutadapt](https://doi.org/10.14806/ej.17.1.200) trims the sequences you provide. A file with one record uses that sequence as the 5' adapter. A file with two records uses them as the 5' and 3' adapters. 
 
 When two adapters are given, HLA-Resolve checks whether the 3' adapter is the reverse complement of the 5' adapter. When it is, the adapters are symmetric, such as Tn5 mosaic ends, and a read shows the same two sequences in either orientation, so scanning the forward strand trims both ends. When the adapters are not symmetric, such as amplicon primers, a reverse-oriented read would go untrimmed, so cutadapt also scans the reverse complement with `--revcomp`.
 
@@ -211,13 +221,13 @@ PCR duplicates are identified and removed from the trimmed reads using [pbmarkdu
 Deduplicated reads are aligned to a modified GRCh38 reference genome (no-alt analysis set) using [rammap](https://doi.org/10.64898/2026.05.26.726289) (Wang and Li, 2026), a memory-safe Rust reimplementation of [minimap2](https://doi.org/10.1093/bioinformatics/bty191) that produces identical alignments. The modified reference includes an additional scaffold containing the HLA-Y/HLA-OLI insertion to prevent mismapping of HLA-Y reads to HLA-A. 
 
 #### 4. HLA-DRB Paralog Filtering
-A separate alignment step maps reads against a multi-allele HLA-DRB reference (`DRB_reference.fa`) continaing 13 HLA-DRB1 alleles, 3 HLA-DRB3 alleles, and 1 HLA-DRB4 allele from IPD-IMGT/HLA, as well as the HLA-DRB5, -DRB6, and -DRB9 sequences from GRCh38. Reads with primary alignments to anything other than an HLA-DRB1 are flagged for removal. 
+A separate alignment step maps reads against a multi-allele HLA-DRB bait (`DRB_reference.fa`) of 33 sequences. These are 13 HLA-DRB1, 3 HLA-DRB3, and 1 HLA-DRB4 allele from IPD-IMGT/HLA, the HLA-DRB5, -DRB6, and -DRB9 sequences from GRCh38, HLA-DRB7 and -DRB8 from the SSTO haplotype, one element from CM089004.1, and 10 paralog and intergenic blocks lifted from HPRC assemblies, most with their own HLA-DRB1 copy masked so that they compete only for paralog reads. Reads whose primary alignment lands on anything other than an HLA-DRB1 allele are flagged for removal. For WGS and WES input the bait is applied only to reads already placed in the DR cluster (chr6:32439878-32589848) rather than to the whole read set.
 
 #### 5. Read Filtering
-Aligned reads are filtered to retain only primary alignments on chromosome 6. Reads with primary alignments to HLA-DRB1 paralogs (identified in step 4) are removed. Additionally, reads with primary alignments upstream of HLA-DRB1 (chr6:32439878-32572902), the region containing HLA-DRA, -DRB9, -DRB5, and -DRB6 are removed to prevent spurious SV calls by pbsv based on split alignments across the DRB paralogs.
+Aligned reads are filtered to the MHC window on chromosome 6 (chr6:28000000-34000000), keeping only primary alignments. Reads flagged as HLA-DRB1 paralogs in step 4 are removed.
 
 #### 6. Small Variant Calling
-SNVs are called with [bcftools](https://doi.org/10.1093/bioinformatics/btr509) and indels are called with [DeepVariant](https://doi.org/10.1038/nbt.4235). DeepVariant RefCall genotypes with sufficient read support are rescued and reclassified as heterozygous or homozygous ALT based on variant allele frequency.
+SNVs are called with [bcftools](https://doi.org/10.1093/bioinformatics/btr509) and indels are called with [DeepVariant](https://doi.org/10.1038/nbt.4235). DeepVariant is run over chr6:29900000-33150000 rather than all of chromosome 6. The window spans all eight typed genes with margin. RefCall genotypes are rescued at DP ≥ 30 with alt allele depth ≥ 10, and reclassified as heterozygous at VAF 0.3 to 0.7 or homozygous ALT above 0.7.
 
 #### 7. Structural Variant Calling
 Structural variants are called from the aligned reads using [pbsv](https://github.com/PacificBiosciences/pbsv).
@@ -240,13 +250,15 @@ Phased genotypes are filtered by gene to remove redundant calls from overlapping
 #### 13. Haplotype Reconstruction
 Phased, filtered genotypes are applied to GRCh38 gene models using [vcf2fasta](https://github.com/santiagosnchez/vcf2fasta) to reconstruct full-gene and coding-sequence haplotype FASTA files for each HLA gene.
 
+A small number of HLA-DPB1 alleles, including DPB1\*13:01, \*27:01, \*107:01, and \*135:01, are one base shorter than GRCh38 in a poly-A run at the very end of the coding sequence. Because vcf2fasta works in reference coordinates, the annotated CDS window ends one base short of the shifted stop codon and the haplotype comes back without a stop. When this happens, HLA-Resolve re-extracts the coding sequence with the final exon extended by a few reference bases and trims each haplotype back to its first in-frame stop. The repair is accepted only if that stop falls within a few bases of the expected CDS length, otherwise the original sequence is kept.
+
 #### 14. IPD-IMGT/HLA Database Matching
 Reconstructed haplotypes are compared against alleles in the [IPD-IMGT/HLA database](https://doi.org/10.1093/nar/gkac1011) with a three-pass hierarchical classification algorithm using [edlib](https://doi.org/10.1093/bioinformatics/btw753):
 
    1. **G-group assignment** — The antigen recognition sequence (ARS exons) is matched to G-group reference sequences by edit distance. An exact match is required.
    2. **Three-field allele assignment** — The full concatenated exon sequence is compared against alleles within the assigned G group, ranked by edit distance.
    3. **Four-field refinement** — The full-gene haplotype (including introns and UTRs) is compared against candidate alleles, ranked by mismatch identity (the proportion of matching bases at 1:1-aligned positions), which avoids penalizing insertions and deletions from unreliable intronic reconstruction. Ties are broken by match length, then by lowest fourth-field value.
-   4. **DR/DQ re-consensus refinement** — For HLA-DQA1, HLA-DQB1, and HLA-DRB1, the fourth-field call is re-derived by re-mapping the underlying reads to the best-guess allele, rebuilding a consensus, and re-matching within the same three-field group.
+   4. **DR/DQ re-consensus refinement** — HLA-DQA1, HLA-DQB1, and HLA-DRB1 reconstruct poorly in their noncoding sequence, which makes the fourth field from pass 3 unreliable. For these three genes the fourth field is re-derived from the reads themselves. The reads over each gene are re-mapped to the best-guess allele, a consensus is rebuilt for each haplotype, and that consensus is re-matched against the fourth-field options within the same three-field group. The three-field call never changes and no other gene is affected. Accepted haplotypes also have their reconstructed FASTA sequence replaced by the re-consensus sequence. See the [Technical Reference](https://github.com/matthewglasenapp/hla_resolve/blob/main/docs/technical_reference.md) for details.
 
 #### Note
 For WGS and WES input, the pipeline skips adapter trimming (step 1) and pre-alignment duplicate removal (step 2).

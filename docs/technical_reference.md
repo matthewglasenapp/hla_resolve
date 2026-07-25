@@ -4,7 +4,15 @@ Detailed documentation on the algorithms, decision logic, and tools used by HLA-
 
 ---
 
-## 1. Preparing Phased VCF for vcf2fasta
+## 1. Small Variant Calling and Preparing the Phased VCF for vcf2fasta
+
+### Small variant calling
+
+In the default PacBio configuration, SNVs are called with bcftools and indels with DeepVariant. DeepVariant is run over `chr6:29900000-33150000` rather than all of chromosome 6. The window spans all eight typed genes with margin and keeps runtime down. No gVCF is produced.
+
+DeepVariant is conservative in the HLA region and filters real variants as RefCall. Those records are reviewed and overturned to PASS when the evidence supports them. A RefCall record qualifies when its depth is at least 30 and the alternate allele is supported by at least 10 reads. The genotype is then set from the variant allele frequency, heterozygous between 0.3 and 0.7 and homozygous ALT above 0.7. Records that pass on two alternate alleles are written as compound heterozygotes. Rescued records are written to `SAMPLE.dv.rescued.vcf.gz`, and `--verbose` prints each one.
+
+### Preparing the phased VCF
 
 Following phasing with HiPhase or longphase, the SNV and SV VCFs are merged and normalized with bcftools. The following steps are taken to prepare the VCF records for use with vcf2fasta.
 1. Filter the joint phased VCF by gene. The gene coordinates are defined by the GRCh38 GFF3 records.
@@ -29,11 +37,13 @@ Following phasing with HiPhase or longphase, the SNV and SV VCFs are merged and 
 
 The HLA Class II regions contains a cluster of HLA-DRB paralogs with high sequence identity to HLA-DRB1. HLA-Resolve applies specialized handling to prevent sequencing reads from paralogs of HLA-DRB1 from contaminating HLA-DRB1 variant calling and phasing. 
 
-1. **HLA-DRB5 hard-masking** (`ensure_reference_genome()` in `config.py`). An augmented GRCh38 reference FASTA is built in one step. HLA-DRB5 is hard-masked with `bedtools maskfasta` (chr6:32517353-32530287). Forces divergent HLA-DRB1 reads to anchor at HLA-DRB1 rather than HLA-DRB5
+1. **HLA-DRB5 and HLA-DRB6 hard-masking** (`ensure_reference_genome()` in `config.py`). An augmented GRCh38 reference FASTA is built in one step. HLA-DRB5 (chr6:32517353-32530287) and HLA-DRB6 (chr6:32552713-32560022) are hard-masked with `bedtools maskfasta`. Masking forces divergent HLA-DRB1 reads to anchor at HLA-DRB1 rather than losing MAPQ and coverage to a paralog locus. HLA-DRB5 draws HLA-DRB1\*07 and \*09 reads, and HLA-DRB6 draws divergent DR4 alleles such as HLA-DRB1\*04:12. Genuine HLA-DRB5 and HLA-DRB6 reads are still recognized, because both sequences remain in the competitive bait below.
 
-2. **Multi-allele competitive classifier** (`classify_DRB_reads()` in `preprocess_methods.py`). All reads are re-aligned against `DRB_reference.fa` (13 HLA-DRB1 alleles, 3 HLA-DRB3 alleles, and 1 HLA-DRB4 from IPD-IMGT/HLA, as well has HLA-DRB5, -6, and -9 from GRCh38). Any read whose primary alignment is not to a `DRB1*` sequence is flagged for removal.
+2. **Multi-allele competitive classifier** (`classify_DRB_reads()` in `preprocess_methods.py`). Reads are re-aligned against `DRB_reference.fa`, a bait of 33 sequences. These are 13 HLA-DRB1, 3 HLA-DRB3, and 1 HLA-DRB4 allele from IPD-IMGT/HLA, HLA-DRB5, -DRB6, and -DRB9 from GRCh38, HLA-DRB7 and -DRB8 from the SSTO haplotype, one element from CM089004.1, and 10 paralog and intergenic blocks lifted from HPRC assemblies. Most of the HPRC blocks carry their own HLA-DRB1 copy masked, so that they compete only for paralog reads. Any read whose primary alignment is not to a `DRB1*` sequence is flagged for removal by `filter_reads()`.
 
-3. **Upstream dead-zone filter** (`filter_reads()` in `preprocess_methods.py`). Reads with primary alignment in `chr6:32439878-32572902` are excluded. This region covers HLA-DRA, HLA-DRB9, HLA-DRB5, HLA-DRB6, and intervening intergenic DNA. These reads often have split/supplementary alignments that cause pbsv to make spurious SV calls.
+    For WGS and WES input the classifier is applied only to primary reads already placed in the DR cluster (`drb_region`, chr6:32439878-32589848). The goal is to reclassify reads that mapped into the DR region, not to rehome unmapped reads, and the restriction keeps genome-wide homology noise out of the kill-list.
+
+3. **MHC read filtering** (`filter_reads()` in `preprocess_methods.py`). Aligned reads are restricted to `chr6:28000000-34000000`, secondary and supplementary records are dropped, and the paralog kill-list from step 2 is removed.
 
 ---
 
@@ -61,6 +71,14 @@ vcf2fasta checks the first genotype of the overall VCF to determine phase status
 ```
 
 When vcf2fasta treats a VCF as "phased," it treats unphased heterozygous genotypes as phased and arbitrarily assigns each allele to a haplotype. This means that unphased heterozygous genotypes must be removed from the phased VCF prior to running vcf2fasta. However, if there is only one heterozygous genotype in the single-gene VCF and it remains unphased, it should not be filtered before vcf2fasta. Because we care only about phased haplotypes within genes, it doesn't matter which haplotype gets which allele in this scenario. The two reconstructed haplotypes will be correct. However, the standard pipeline removes unphased heterozygous genotypes from the VCF before vcf2fasta, because when operating in "phased" mode, if there is a mix of phased and unphased heterozygous genotypes, vcf2fasta randomly assigns alleles from the unphased heterozygous genotypes to haplotypes, resulting in inevitable switch errors. The edge case of a single unphased heterozygous genotype is addressed in `reconstruct_fasta_methods.py`.
+
+### Terminal stop codon repair for HLA-DPB1
+
+A small number of HLA-DPB1 alleles, including DPB1\*13:01, \*27:01, \*107:01, and \*135:01, are one base shorter than GRCh38 in a poly-A run at the very end of the coding sequence. vcf2fasta works in reference coordinates, so the annotated CDS window ends one base short of the shifted stop codon. The haplotype comes back 776 bp ending in ATA instead of 777 bp ending in TAA. The allele is functional, and the annotation is correct, so neither the GFF nor the database is at fault.
+
+`extract_cds_padded_and_trim()` in `reconstruct_fasta_methods.py` repairs this. The CDS GFF is rewritten with its 3'-terminal exon extended by 5 reference bases, chosen strand-aware, vcf2fasta is re-run on the padded model in a temporary directory, and each haplotype is trimmed back to its first in-frame stop codon. The repair is accepted only if that stop lands within 5 bp of the annotated CDS length, which rejects premature stops and cases where nothing was recovered near the terminus. A rejected haplotype keeps its original sequence.
+
+The repair is scoped to HLA-DPB1 and runs only when a haplotype does not already end in a stop codon. Genes that went through the CDS rescue pipeline, or that are unphased, are skipped, since their CDS records are deliberately partial. The persisted `vcf2fasta_out/` directory is left untouched.
 
 ### Bug fixes in the fork
 
@@ -227,7 +245,7 @@ The typing workflow operates downstream of variant calling, phasing, and FASTA r
 
 ### 5.1 Reference Data
 
-Reference data are derived from the [IPD-IMGT/HLA](https://www.ebi.ac.uk/ipd/imgt/hla/) database.
+Reference data are derived from the [IPD-IMGT/HLA](https://www.ebi.ac.uk/ipd/imgt/hla/) database, pinned to release 3.64.0 so that calls are reproducible across installs.
 
 The XML reference file (`hla.xml`) is parsed to extract:
 - Allele nucleotide sequences
@@ -284,6 +302,10 @@ The typing program produces both CSV result files and detailed log files documen
   Final four-field–accurate allele assignments (when full-gene sequence data are provided).
   Uses standard HLA nomenclature including the `HLA-` prefix.
 
+In all three files, the two columns for a gene stay in haplotype-record order, so that column 1 corresponds to the `_1` record of the deposited haplotype FASTA and column 2 to the `_2` record. They are no longer sorted alphabetically within a gene. Grading a genotype is order independent, and keeping record order lets a call be traced back to the sequence it came from.
+
+Each of the three files has a companion `_full.csv` (`g_group_output_full.csv`, `3_field_allele_output_full.csv`, `allele_output_full.csv`) that reports every equidistant option as a genotype list string rather than the single chosen call.
+
 #### Log Files
 
 - **`g_group_assignment.log`**
@@ -299,6 +321,9 @@ The typing program produces both CSV result files and detailed log files documen
   - Final assignment metrics
 
 #### Auxiliary Data
+
+- **`sample_ref_comp.csv`**
+  Per-haplotype comparison of the query sequence against the assigned reference allele, written when the pipeline runs with query-reference comparison enabled. DR/DQ haplotypes that go through re-consensus are omitted, since their pass 3 comparison is superseded.
 
 - **`database_data.json`**
   Serialized reference data for debugging and testing, including:
@@ -326,11 +351,12 @@ The typing algorithm employs a **three-pass hierarchical approach**:
 - Performed only if full-gene FASTA input is provided
 - Ignores the previously assigned fourth field and searches using a wildcard (e.g., `C*02:02:02:XX`)
 - Compares full-gene sequences including introns and UTRs
-- Uses sequence identity rather than raw edit distance
+- Uses mismatch identity rather than raw edit distance
 
 #### Pass 4: DR/DQ Re-consensus Refinement
 - Applied to HLA-DQA1, HLA-DQB1, and HLA-DRB1
 - Re-maps the reads underlying each call to the best-guess allele, rebuilds a consensus, and re-matches to the fourth-field options within the same three-field group
+- Described in full in [Section 6](#6-drdq-read-re-consensus)
 
 ---
 
@@ -343,11 +369,12 @@ During passes 1 and 2, similarity is evaluated using a modified Levenshtein edit
 - Continuous insertions or deletions of any length are penalized as a single event
 - This reflects a parsimonious mutation model for indels
 
-#### Sequence Identity (Pass 3)
-For four-field refinement, sequence identity is used: identity = 1 - (edit_distance / match_length)
+#### Mismatch Identity (Pass 3)
+For four-field refinement, the default metric is mismatch identity, the proportion of matching bases among the positions that align one to one: mismatch_identity = matches / (matches + mismatches)
 
+Insertions and deletions are left out of the denominator. Intronic reconstruction is the least reliable part of the haplotype, and its indels are usually artifacts of variant representation rather than real differences from the reference allele. Scoring only substituted positions keeps those artifacts from deciding the call, and it avoids bias toward incomplete reference alleles when comparing noncoding regions.
 
-This avoids bias toward incomplete reference alleles when comparing noncoding regions, where higher mutation rates are expected.
+Plain sequence identity, identity = 1 - (edit_distance / match_length), is also implemented and can be selected with `--pass3-metric identity`, along with `edit_distance` and `match_length`. Ties are broken by match length.
 
 ---
 
@@ -361,3 +388,23 @@ This includes:
 - Peptide-binding domain extraction
 
 Sanity checks ensure consistency between G-group definitions and peptide-binding domain sequences.
+
+---
+
+## 6. DR/DQ Read Re-consensus
+
+HLA-DQA1, HLA-DQB1, and HLA-DRB1 reconstruct poorly enough in their intronic and UTR sequence that the pass 3 full-gene comparison often lands on the wrong fourth field. For these three genes only, the fourth field is re-derived from the reads themselves. The three-field lineage from pass 2 is never changed, and no other gene is touched. The step is implemented in `reconsensus_drdq.py`, gated by `reconsensus_drdq` in `config.py`, and runs for PacBio only.
+
+For each gene the pipeline takes the two pass 3 calls, pulls the reads over the gene window from the haplotagged BAM, and rebuilds a consensus for each haplotype against an IPD-IMGT/HLA reference sequence. Each consensus is then re-matched by edit distance against every fourth-field option inside its own three-field group, using the exon plus intron core rather than the full sequence, so that unreliable UTR reconstruction cannot decide the call. Ties go to the lowest fourth field.
+
+The gene window comes from the span of the gene's filtered VCF plus 3 kb on each side, falling back to the annotated gene coordinates when the VCF is empty.
+
+**Pooling.** A locus is pooled and called homozygous when its gene VCF carries no PASS-filter phased heterozygous genotype. Unphased heterozygous genotypes and non-PASS records, which in the DR region are usually reconstruction artifacts, do not qualify. Pooled loci get one consensus built from all reads and assigned to both haplotypes.
+
+**Force HP.** When the reads at a locus are not pooled, they are split by HP tag. Both tags are first mapped competitively against a two-scaffold reference so that the pipeline can decide which tag pairs with which allele, by primary alignment fraction. Each haplotype's consensus is then built against its own scaffold alone. Before that consensus is built, reads whose competitive primary lands decisively on the other haplotype's scaffold, at MAPQ 30 or above, are dropped as mis-phased.
+
+**Un-pooling.** Sometimes both haplotypes get the same three-field call and the gene still carries a real phased heterozygous genotype in intronic regions, so the two copies may differ only in the fourth field. Here both haplotypes are built against the same reference sequence. The pipeline then compares a single consensus from all the reads pooled to a separate consensus where reads are separated by HP tag. Ambiguous bases count against a consensus in this comparison, because a consensus built from both copies at once goes ambiguous at exactly the positions that tell the two fourth fields apart. The two-haplotype answer is accepted only when it explains the reads better. On a gene that really is homozygous, the single consensus draws on all the reads and comes out cleaner than either half, so the call stays homozygous.
+
+**Accept and deposit.** The refinement is kept only if the summed re-consensus edit distance is no worse than the summed distance of the original pass 3 calls. Accepted haplotypes also have their deposited sequence overwritten, the full gene FASTA with the consensus and the CDS FASTA with the exon projection of that consensus, recovered by aligning the consensus to the chosen allele and pulling the bases inside each exon interval. Declined haplotypes keep their vcf2fasta output.
+
+Every decision is written to `allele_assignment.log`, including whether each haplotype was refined or kept, the metrics behind the accepted match, any equidistant fourth-field options, and whether an un-pooled heterozygote was accepted or rejected.
