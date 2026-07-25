@@ -483,10 +483,12 @@ genes_of_interest = ("HLA-A", "HLA-B", "HLA-C", "HLA-DPA1", "HLA-DPB1", "HLA-DQA
 CLASS_I_GENES = {"HLA-A", "HLA-B", "HLA-C"}
 
 # Multi-allele DRB reference for competitive read classification.
-# 20 entries: 13 DRB1 + 3 DRB3 + 1 DRB4 (IPD-IMGT/HLA) and GRCh38-extracted
-# DRB5/DRB6/DRB9 paralog/pseudogene sequences. Reads whose competitive primary
-# is anything other than DRB1*XX are flagged for removal by filter_reads().
-# Used in classify_DRB_reads() function of preprocess_methods.py.
+# 33 entries: 13 DRB1 + 3 DRB3 + 1 DRB4 (IPD-IMGT/HLA), GRCh38-extracted
+# DRB5/DRB6/DRB9, DRB7/DRB8 from the SSTO haplotype, one CM089004.1 element, and
+# 10 paralog/intergenic blocks lifted from HPRC assemblies (most with their own
+# DRB1 copy masked, so they compete only for paralog reads). Reads whose
+# competitive primary is anything other than DRB1*XX are flagged for removal by
+# filter_reads(). Used in classify_DRB_reads() function of preprocess_methods.py.
 drb_multiallele_reference = os.path.join(_data_dir, "reference/DRB_reference.fa")
 
 # GRCh38 extent of the DR sub-region (HLA-DRA .. HLA-DRB1), spanning the DRB
@@ -503,9 +505,10 @@ drb_region = "chr6:32439878-32589848"
 clair3_ont_model = "r1041_e82_400bps_sup_v500"   # R10.4.1 SUP (default)
 clair3_hifi_model = "hifi_revio"
 
-# Reference fasta: GRCh38 + HLA-OLI/HLA-Y scaffold, with HLA-DRB5 hard-masked.
-# Masking forces divergent DRB1 reads (*07, *09) to anchor at DRB1 instead of
-# misrouting to the DRB5 paralog locus. Built by ensure_reference_genome().
+# Reference fasta: GRCh38 + HLA-OLI/HLA-Y scaffold, with HLA-DRB5 and HLA-DRB6
+# hard-masked. Masking forces divergent DRB1 reads to anchor at DRB1 instead of
+# misrouting to a paralog locus: DRB5 draws *07/*09, DRB6 draws divergent DR4
+# alleles such as DRB1*04:12. Built by ensure_reference_genome().
 reference_genome_minimap2 = os.path.join(_data_dir, "reference/augmented_hg38.fa")
 
 # DeepVariant SIF file path — populated by ensure_deepvariant_sif() above
