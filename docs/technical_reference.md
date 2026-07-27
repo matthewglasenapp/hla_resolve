@@ -399,7 +399,7 @@ For each gene the pipeline takes the two pass 3 calls, pulls the reads over the 
 
 The gene window comes from the span of the gene's filtered VCF plus 3 kb on each side, falling back to the annotated gene coordinates when the VCF is empty.
 
-**Pooling.** A locus is pooled and called homozygous when its gene VCF carries no PASS-filter phased heterozygous genotype. Unphased heterozygous genotypes and non-PASS records, which in the DR region are usually reconstruction artifacts, do not qualify. Pooled loci get one consensus built from all reads and assigned to both haplotypes.
+**Pooling.** A locus is pooled and called homozygous when its gene VCF carries no PASS-filter phased heterozygous genotype. Unphased heterozygous genotypes were already removed earlier in the pipeline. Pooled loci get one consensus built from all reads and assigned to both haplotypes.
 
 **Force HP.** When the reads at a locus are not pooled, they are split by HP tag. Both tags are first mapped competitively against a two-scaffold reference so that the pipeline can decide which tag pairs with which allele, by primary alignment fraction. Each haplotype's consensus is then built against its own scaffold alone. Before that consensus is built, reads whose competitive primary lands decisively on the other haplotype's scaffold, at MAPQ 30 or above, are dropped as mis-phased.
 
