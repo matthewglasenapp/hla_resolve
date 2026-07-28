@@ -371,7 +371,7 @@ The typing algorithm employs a **three-pass hierarchical approach**:
 #### Edit Distance
 Similarity in passes 1 and 2 is evaluated with Levenshtein edit distance computed by [edlib](https://github.com/Martinsos/edlib) in infix mode (free end gaps), so the shorter sequence is located within the longer one and end gaps are not penalized.
 
-`get_distance()` can additionally return a gap-compressed distance, in which a continuous insertion or deletion of any length is charged as a single event rather than one per base, reflecting a parsimonious mutation model for indels. **This compression does not affect any reported call.** Pass 1 requests it but accepts a G group only at distance zero, and a gap-compressed distance is zero exactly when the raw distance is zero, so the compression cannot change that decision. Pass 2 ranks candidate alleles on raw edit distance, with gap compression explicitly disabled. The gap-compressed value therefore appears only in the diagnostic logs and in the query-reference comparison table.
+Pass 1 assigns a G group only at distance zero. Pass 2 ranks candidate alleles within that G group on raw edit distance: haplotype reconstruction over the coding sequence is accurate enough that the correct allele is normally reached at distance zero, so no indel-weighting scheme is applied.
 
 #### Mismatch Identity (Pass 3)
 For four-field refinement, the default metric is mismatch identity, the proportion of matching bases among the positions that align one to one: mismatch_identity = matches / (matches + mismatches)
