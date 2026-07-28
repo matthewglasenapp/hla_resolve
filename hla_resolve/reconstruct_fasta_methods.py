@@ -232,10 +232,24 @@ def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail
 		# Skip non-SV variants that overlap a PASS SV on the same haplotype
 		# Only apply haplotype-aware suppression for phased indels ≥30bp
 		# Never suppress SNPs - they are real variants near SV breakpoints
+		# Size and type are taken from the alleles this sample actually carries,
+		# not from rec.alts[0]. DeepVariant frequently emits a multiallelic
+		# record carrying both a SNP alt and an indel alt at one position
+		# (e.g. T -> A,TG). Reading only the first ALT classified such a record
+		# as a SNP with indel_size 0, which exempted it from SV-overlap
+		# suppression altogether and made the >=50 bp proximity rule meaningless
+		# — and which of the two alts came first was arbitrary.
+		#
+		# Splitting multiallelics with `bcftools norm -m-` would make the length
+		# calculation trivial, but norm has to run before phasing, where it
+		# measurably costs allele typing concordance. So the record is left
+		# intact and the genotype is inspected here instead.
 		ref_len = len(rec.ref)
-		alt_len = len(rec.alts[0]) if rec.alts else 0
-		indel_size = abs(ref_len - alt_len)
-		is_snp = (ref_len == 1 and alt_len == 1)
+		gt_alleles = [rec.alleles[a] for a in gt if a is not None and a < len(rec.alleles)]
+		if not gt_alleles:
+			gt_alleles = [a for a in rec.alts if a is not None]
+		indel_size = max((abs(ref_len - len(a)) for a in gt_alleles), default=0)
+		is_snp = ref_len == 1 and all(len(a) == 1 for a in gt_alleles)
 
 		is_homozygous = gt is not None and len(set(a for a in gt if a is not None)) == 1
 		if (sample.phased or is_homozygous) and not is_snp:
