@@ -8,9 +8,11 @@ Detailed documentation on the algorithms, decision logic, and tools used by HLA-
 
 ### Small variant calling
 
-In the default PacBio configuration, SNVs are called with bcftools and indels with DeepVariant. DeepVariant is run over `chr6:29900000-33150000` rather than all of chromosome 6. The window spans all eight typed genes with margin and keeps runtime down. No gVCF is produced.
+SNVs are called with bcftools and indels with DeepVariant. This pairing is fixed: `cli.py` assigns it for `--platform pacbio` and it is not user-configurable. bcftools is run over `chr6:28000000-34000000`; DeepVariant is run over the narrower `chr6:29900000-33150000` rather than all of chromosome 6. That window spans all eight typed genes with margin and keeps runtime down. No gVCF is produced.
 
-DeepVariant is conservative in the HLA region and filters real variants as RefCall. Those records are reviewed and overturned to PASS when the evidence supports them. A RefCall record qualifies when its depth is at least 30 and the alternate allele is supported by at least 10 reads. The genotype is then set from the variant allele frequency, heterozygous between 0.3 and 0.7 and homozygous ALT above 0.7. Records that pass on two alternate alleles are written as compound heterozygotes. Rescued records are written to `SAMPLE.dv.rescued.vcf.gz`, and `--verbose` prints each one.
+The two call sets are merged by taking only SNV records from bcftools and only indel records from DeepVariant. Records typed as neither, such as MNPs and complex substitutions, are not carried into the merged VCF.
+
+DeepVariant is conservative in the HLA region and filters real variants as RefCall. Those records are reviewed and overturned to PASS when the evidence supports them. Because DeepVariant supplies only the indels, the rescue is applied to indel records alone; RefCall SNVs are never rescued, since DeepVariant's SNVs are discarded by the merge in any case. A RefCall indel qualifies when its depth is at least 30 and the alternate allele is supported by at least 10 reads. The genotype is then set from the variant allele frequency, heterozygous between 0.3 and 0.7 and homozygous ALT above 0.7. Records that pass on two alternate alleles are written as compound heterozygotes. Rescued records are written to `SAMPLE.dv.rescued.vcf.gz`, and `--verbose` prints each one.
 
 ### Preparing the phased VCF
 
@@ -23,11 +25,11 @@ Following phasing with HiPhase or longphase, the SNV and SV VCFs are merged and 
 
 4. Suppress heterozygous genotypes that fall inside a homozygous deletion. A base that is homozygously deleted is absent from both haplotypes, so any heterozygous genotype called at that position cannot be real. These are typically low-depth calls in repetitive regions resulting from reads that misaligned across a deletion. The pipeline scans the per-gene, region-filtered joint VCF and identifies records where the sample is homozygous for an ALT allele shorter than REF. These are the small-variant calls present in the merged VCF. The pbsv deletions are handled separately (step 3), and TRGT repeat deletions are covered by the tandem-repeat overlap check. Any heterozygous genotype whose position falls inside one of these deletions is suppressed: the record is written to SAMPLE_GENE_SV_OVERLAP.vcf.gz and excluded from downstream processing. This step does not affect phasing classification. The heterozygous count that determines phasing status is computed upstream in `parse_haploblocks()`, while this suppression happens later in `filter_vcf_gene()` and only cleans the per-gene VCF that feeds haplotype reconstruction.
 
-5. Apply hard filters to all non-symbolic variants and send QC-pass variants to SAMPLE_GENE_PASS.vcf.gz and QC-fail variants to SAMPLE_GENE_FAIL.vcf.gz. In the default PacBio configuration, indels are called by DeepVariant and filtered on FILTER=PASS only, with no additional QUAL, GQ, or DP thresholds applied. SNVs are called by bcftools and filtered at QUAL ≥ 10, GQ ≥ 20, and DP ≥ 2. If bcftools is used as the indel caller instead, its indels are filtered at GQ ≥ 10 and DP ≥ 2, with GQ allowed to be missing and no QUAL threshold. If DeepVariant or Clair3 is used as the SNV caller, those SNVs are filtered on FILTER=PASS only. Pbsv non-symbolic SV genotypes (e.g., insertion, deletion) are filtered separately, scanning only for FILTER=PASS. 
+5. Sort all non-symbolic variants into QC-pass (SAMPLE_GENE_PASS.vcf.gz) and QC-fail (SAMPLE_GENE_FAIL.vcf.gz). The thresholds that govern the SNVs are applied earlier, in the bcftools calling command itself (QUAL ≥ 10, GQ ≥ 20, and DP ≥ 2); by the time a bcftools record reaches this step it has already cleared them, so it is passed through without re-testing. DeepVariant indels are sorted here on FILTER=PASS, with no additional QUAL, GQ, or DP threshold. Pbsv non-symbolic SV genotypes (e.g., insertion, deletion) are likewise sorted on FILTER=PASS. TRGT records carry explicit REF/ALT allele sequences and bypass quality filtering entirely.
 
-6. Count heterozygous genotypes to address edge-case of a single heterozygous genotype that is unphased. If there is only one heterozygous genotype and it is unphased, generate a whitelist expression that allows it to be retained in the QC-pass phased genotype VCF.
+6. Count heterozygous genotypes to address the edge case of a single heterozygous genotype that is unphased. If a gene's only heterozygous genotype is unphased, it is retained in the QC-pass phased genotype VCF rather than discarded: with one heterozygous site, which haplotype receives which allele is arbitrary, but the reconstructed pair is still correct.
 
-7. Filter the QC-pass genotypes (SAMPLE_GENE_PASS.vcf.gz) to remove unphased heterozygous genotypes. If there is only one heterozygous genotype and it is unphased, it will be retained due to the whitelist rule. The QC-pass genotypes with unphased heterozygous genotypes removed are written to SAMPLE_GENE_PASS_phased.vcf.gz. Unphased heterozygous genotypes are written to SAMPLE_GENE_PASS_UNPHASED.vcf.gz.
+7. Filter the QC-pass genotypes (SAMPLE_GENE_PASS.vcf.gz) to remove unphased heterozygous genotypes. The QC-pass genotypes with unphased heterozygous genotypes removed are written to SAMPLE_GENE_PASS_phased.vcf.gz. Unphased heterozygous genotypes are written to SAMPLE_GENE_PASS_UNPHASED.vcf.gz. Genes that entered CDS rescue, and the single-unphased-heterozygote case in step 6, keep all their genotypes and send nothing to the UNPHASED file. The split is decided per record from the parsed genotype and its phase flag, so every heterozygous combination at a multiallelic site is handled, not just the common biallelic ones.
 
 8. Both symbolic genotypes and unphased QC-pass heterozygous genotypes that overlap an HLA gene will be reported. These records cannot be incorporated into the vcf2fasta haplotype reconstruction, but may confer important information.
 
@@ -41,7 +43,9 @@ The HLA Class II regions contains a cluster of HLA-DRB paralogs with high sequen
 
 2. **Multi-allele competitive classifier** (`classify_DRB_reads()` in `preprocess_methods.py`). Reads are re-aligned against `DRB_reference.fa`, a bait of 33 sequences. These are 13 HLA-DRB1, 3 HLA-DRB3, and 1 HLA-DRB4 allele from IPD-IMGT/HLA, HLA-DRB5, -DRB6, and -DRB9 from GRCh38, HLA-DRB7 and -DRB8 from the SSTO haplotype, one element from CM089004.1, and 10 paralog and intergenic blocks lifted from HPRC assemblies. Most of the HPRC blocks carry their own HLA-DRB1 copy masked, so that they compete only for paralog reads. Any read whose primary alignment is not to a `DRB1*` sequence is flagged for removal by `filter_reads()`.
 
-    For WGS and WES input the classifier is applied only to primary reads already placed in the DR cluster (`drb_region`, chr6:32439878-32589848). The goal is to reclassify reads that mapped into the DR region, not to rehome unmapped reads, and the restriction keeps genome-wide homology noise out of the kill-list.
+    On every PacBio scheme the classifier is applied only to primary reads already placed in the DR cluster (`drb_region`, chr6:32439878-32589848) by the GRCh38 alignment, never to the whole read set. The goal is to reclassify reads that mapped into the DR region, not to rehome unmapped reads, and the restriction keeps genome-wide homology noise out of the kill-list.
+
+    The window ends at the 3' end of HLA-DRB1. This is not a coverage gap: reads are selected by overlap, so a read that begins inside the window and extends past it is still classified, and a read lying entirely downstream cannot contribute to HLA-DRB1 variant calling in the first place. The kill-list itself is applied genome-wide within the MHC by `filter_reads()`, so a flagged read is removed everywhere, not only where it was classified.
 
 3. **MHC read filtering** (`filter_reads()` in `preprocess_methods.py`). Aligned reads are restricted to `chr6:28000000-34000000`, secondary and supplementary records are dropped, and the paralog kill-list from step 2 is removed.
 
@@ -253,6 +257,8 @@ The XML reference file (`hla.xml`) is parsed to extract:
 - Peptide-binding domain definitions
 - G-group membership metadata
 
+Records whose feature annotation is partial are dropped as the database is read, so the search space holds only alleles with a complete, contiguous feature set from the 5' UTR through the 3' UTR. Partially sequenced entries, such as the many exon-2-only and exon-2-plus-3 records, cannot be compared against a reconstructed full-gene haplotype and are not candidates for assignment.
+
 This metadata is used to:
 - Reconstruct reference exon and full-gene sequences
 - Generate allele lookup tables by G group
@@ -337,10 +343,10 @@ Each of the three files has a companion `_full.csv` (`g_group_output_full.csv`, 
 The typing algorithm employs a **three-pass hierarchical approach**:
 
 #### Pass 1: G-group Assignment
-- Compares the query peptide-binding domain sequence to stored G-group peptide-binding domain sequences
-- Uses gap-compressed edit distance
-- A G group is assigned only if edit distance equals zero
-- If no G group is assigned, the algorithm proceeds with an unrestricted search
+- Searches each G group's peptide-binding domain sequence within the query's concatenated exon sequence, in infix mode. There is no step that extracts an ARS from the query; the reference domain is located inside the whole query CDS
+- For class II this is exon 2. For class I, exons 2 and 3 are searched independently and their distances summed, so they need not be adjacent or in order
+- A G group is assigned only if the total distance is zero, which requires every ARS exon of that group to be present exactly. Sequence outside the ARS exons does not affect the assignment
+- If no G group is assigned, the algorithm proceeds with an unrestricted search across the locus
 
 #### Pass 2: Three-field Assignment
 - Compares concatenated exon sequences of the query allele against reconstructed exon sequences of candidate reference alleles
@@ -362,19 +368,17 @@ The typing algorithm employs a **three-pass hierarchical approach**:
 
 ### 5.5 Assignment Metrics
 
-#### Gap-compressed Edit Distance
-During passes 1 and 2, similarity is evaluated using a modified Levenshtein edit distance computed with [edlib](https://github.com/Martinsos/edlib):
+#### Edit Distance
+Similarity in passes 1 and 2 is evaluated with Levenshtein edit distance computed by [edlib](https://github.com/Martinsos/edlib) in infix mode (free end gaps), so the shorter sequence is located within the longer one and end gaps are not penalized.
 
-- Calculated in infix mode (free end gaps)
-- Continuous insertions or deletions of any length are penalized as a single event
-- This reflects a parsimonious mutation model for indels
+`get_distance()` can additionally return a gap-compressed distance, in which a continuous insertion or deletion of any length is charged as a single event rather than one per base, reflecting a parsimonious mutation model for indels. **This compression does not affect any reported call.** Pass 1 requests it but accepts a G group only at distance zero, and a gap-compressed distance is zero exactly when the raw distance is zero, so the compression cannot change that decision. Pass 2 ranks candidate alleles on raw edit distance, with gap compression explicitly disabled. The gap-compressed value therefore appears only in the diagnostic logs and in the query-reference comparison table.
 
 #### Mismatch Identity (Pass 3)
 For four-field refinement, the default metric is mismatch identity, the proportion of matching bases among the positions that align one to one: mismatch_identity = matches / (matches + mismatches)
 
 Insertions and deletions are left out of the denominator. Intronic reconstruction is the least reliable part of the haplotype, and its indels are usually artifacts of variant representation rather than real differences from the reference allele. Scoring only substituted positions keeps those artifacts from deciding the call, and it avoids bias toward incomplete reference alleles when comparing noncoding regions.
 
-Plain sequence identity, identity = 1 - (edit_distance / match_length), is also implemented and can be selected with `--pass3-metric identity`, along with `edit_distance` and `match_length`. Ties are broken by match length.
+Plain sequence identity, identity = 1 - (edit_distance / match_length), is also implemented, along with `edit_distance` and `match_length`. These are alternatives at the code level, selectable through the `pass3_metric` argument or `hla_typer.py`'s own `--pass3-metric` flag when it is run standalone; the `hla_resolve` command line does not expose them and always uses mismatch identity. Ties are broken first by match length, then by the lowest fourth field, compared numerically so that a three-digit fourth field is not ranked ahead of a two-digit one.
 
 ---
 
@@ -399,7 +403,7 @@ For each gene the pipeline takes the two pass 3 calls, pulls the reads over the 
 
 The gene window comes from the span of the gene's filtered VCF plus 3 kb on each side, falling back to the annotated gene coordinates when the VCF is empty.
 
-**Pooling.** A locus is pooled and called homozygous when its gene VCF carries no PASS-filter phased heterozygous genotype. Unphased heterozygous genotypes were already removed earlier in the pipeline. Pooled loci get one consensus built from all reads and assigned to both haplotypes.
+**Pooling.** A locus is pooled when its gene VCF carries no PASS-filter phased heterozygous genotype, meaning there is nothing left to split the reads on. Unphased heterozygous genotypes were already removed earlier in the pipeline. A pooled locus gets one consensus built from all reads. When the two pass 3 calls share a three-field lineage, that single consensus decides one fourth field and both haplotypes receive it, so the locus is called homozygous. When the two calls carry different three-field lineages, the lineage from pass 2 is authoritative and is never overwritten here, so each haplotype is matched against the fourth-field options within its own lineage, both readings taken from that same pooled consensus.
 
 **Force HP.** When the reads at a locus are not pooled, they are split by HP tag. Both tags are first mapped competitively against a two-scaffold reference so that the pipeline can decide which tag pairs with which allele, by primary alignment fraction. Each haplotype's consensus is then built against its own scaffold alone. Before that consensus is built, reads whose competitive primary lands decisively on the other haplotype's scaffold, at MAPQ 30 or above, are dropped as mis-phased.
 
