@@ -16,17 +16,6 @@ import os
 
 NUM_SAMPLES = None
 
-# Known problematic entries whose exons 2 (or 3 if applicable) do not
-# match with other alleles in their G group
-non_matching_exons = {"HLA-C*07:02:01:17N": "C*07:02:01G",
-                      "HLA-C*15:02:01:08N": "C*15:02:01G",
-                      "HLA-DRB4*01:03:01:02N": "DRB4*01:01:01G",
-                      "HLA-DRB4*01:03:01:13N": "DRB4*01:01:01G",
-                      "HLA-DRB4*01:03:01:26N": "DRB4*01:01:01G",
-                      "HLA-DRB4*01:03:01:28N": "DRB4*01:01:01G",
-                      "HLA-DRB4*01:03:41N": "DRB4*01:01:01G",
-                      "HLA-DMB*01:05": "DMB*01:01:01G"}
-
 # Get Gene from sample name
 def get_gene(sample_name, asterisk = True):
     # Get HLA-<gene>_<idx> portion, then get portion between '_' and '-'
@@ -35,6 +24,18 @@ def get_gene(sample_name, asterisk = True):
     hla_gene = hla_gene[hla_gene.index("-")+1:]
     if asterisk: hla_gene = hla_gene + "*"
     return hla_gene
+
+# Anchored locus test for a reference key.
+# `key` is either a G group ("A*01:01:01G") or an allele name
+# ("HLA-A*01:01:01:01", "MICA*008:01"); `hla_gene` is "A*", "DRB1*", etc.
+# An unanchored `hla_gene in key` test also matched other loci that merely
+# contain the token: "A*" matched MICA*, HLA-DMA*, HLA-DOA* and HLA-DRA*,
+# and "B*" matched MICB*, HLA-DMB* and HLA-DOB*, pulling them into the
+# candidate pool for every HLA-A / HLA-B query.
+def locus_matches(hla_gene, key):
+    if key.startswith("HLA-"):
+        key = key[4:]
+    return key.startswith(hla_gene)
 
 # Get sample ID from sample name
 def get_sampleid(sample_name):
@@ -336,7 +337,7 @@ def get_g_group_exons(allele_to_g_groups, sequence_data):
                     print("INFO: Corresponding G Group sequence:", corresponding_seq)
                     print("INFO: Calculated distance:", get_distance(entry[1], corresponding_seq))
                     return None
-                
+
             common_sequence[g_group] = peptide_domain_sequence
 
     return common_sequence #, orphan_alleles
@@ -367,7 +368,7 @@ def assign_classification_to_sample(common_sequenes, sequence, sample_name, logf
 
     # Go through each reference sequence and find closest match
     for class_name, exons in common_sequenes.items():
-        if hla_gene not in class_name:
+        if not locus_matches(hla_gene, class_name):
             continue
 
         # Check all exons for reference sample
@@ -414,8 +415,8 @@ def assign_classification_to_sample_full_seq(full_sequence, sequence, full_sampl
     hla_gene = get_gene(full_sample_name)
 
     for class_name, sequence_data in full_sequence.items():
-        # Skip if not the same gene
-        if hla_gene not in class_name:
+        # Skip if not the same locus
+        if not locus_matches(hla_gene, class_name):
             continue
 
         # Get distance metrics between test and sample sequences
@@ -676,6 +677,22 @@ def dist_to_truth_allele(sample_name, truth_data, sequence_db, sequence, logfile
         logfile.writelines(f"Sample {sample_name} with truth table entry {truth_data[sample_id][gene_with_index]}")
         logfile.writelines(f" (calculated distance to {gene_with_index}: {correct_allele}) had distance {correct_allele_dist} and match length {leng}\n")
 
+# Numeric value of an allele's fourth field, for tie-breaking.
+# Returns a large sentinel when there is no fourth field, so such names sort
+# last. Parsed numerically rather than lexicographically because dictionary
+# order would rank a 3-digit fourth field (":120") ahead of a 2-digit one
+# (":99"). Mirrors _fourth_field_num() in reconsensus_drdq.py.
+_NO_FOURTH_FIELD = 10 ** 9
+
+def fourth_field_num(allele):
+    if not allele or "*" not in allele:
+        return _NO_FOURTH_FIELD
+    fields = allele.split("*", 1)[1].split(":")
+    if len(fields) < 4:
+        return _NO_FOURTH_FIELD
+    match = re.match(r"(\d+)", fields[3])
+    return int(match.group(1)) if match else _NO_FOURTH_FIELD
+
 # Truncates an allele name to 3 fields
 # Inputs: allele: str
 # Output: allele_3_fields: str
@@ -873,6 +890,19 @@ def pass_3_classification(sequence_data, results_dict, samples, truth_data=None,
         # Same as pass 2, but this time, classify full sequence input against full sequence db
         result = assign_classification_to_sample_full_seq(allele_sequence_db, samples[sample_name], sample_name,
                                                           logfile=loop_log, eval_metric=metric, tie_metric=tie_metric)
+
+        # Break any remaining tie on the lowest fourth field, explicitly and
+        # numerically. Previously the winner was whichever tied allele the
+        # database dict yielded first, which is alphabetical order — equivalent
+        # only while every fourth field in the group has the same digit count.
+        remaining_ties = result[-1]
+        if len(remaining_ties) > 1:
+            lowest = min(sorted(remaining_ties), key=fourth_field_num)
+            if lowest != result[0]:
+                if loop_log != None:
+                    loop_log.writelines(f"{sample_name} tie broken on lowest fourth field: {result[0]} -> {lowest}\n")
+                result = (lowest, *result[1:])
+
         if result[1] == 0:
             perfect += 1
 
