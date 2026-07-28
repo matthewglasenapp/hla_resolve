@@ -312,33 +312,54 @@ def get_g_group_exons(allele_to_g_groups, sequence_data):
 
     print("INFO: Finding common g group sequences")
     common_sequence = dict()
+    skipped = 0
     # Check that peptide binding domain is same for every allele in g group
     for g_group, alleles in g_group_to_allele.items():
         if g_group == "None":
             continue
 
         # Grab first one as comparison reference
-        peptide_domain_sequence = sequence_data[alleles[0]]["peptide_binding_domain"]
+        peptide_domain_sequence = sequence_data[alleles[0]].get("peptide_binding_domain")
+        if not peptide_domain_sequence:
+            print(f"WARN: {g_group} reference allele {alleles[0]} has no peptide binding domain; skipping G group")
+            skipped += 1
+            continue
 
         # Iterate over other alleles to compare
+        consistent = True
         for allele in alleles[1:]:
-            if len(sequence_data[allele]["peptide_binding_domain"]) != len(peptide_domain_sequence):
+            if len(sequence_data[allele].get("peptide_binding_domain", [])) != len(peptide_domain_sequence):
                 print("WARN: Number of peptide binding domain related exons not consistent across g group")
 
             # Check each entry in the peptide binding domain sequence
             # Will contain Exon 2 and 3 for type I, Exon 2 for type II
-            for entry in sequence_data[allele]["peptide_binding_domain"]:
+            for entry in sequence_data[allele].get("peptide_binding_domain", []):
 
-                # If entries not in common, return
-                corresponding_seq = [s[1] for s in peptide_domain_sequence if s[0] == entry[0]][0]
-                if get_distance(entry[1], corresponding_seq) != 0:
-                    print(f"ERR: Allele {allele} contains sequence not found in {g_group}")
-                    print("INFO: Test sequence:", entry)
-                    print("INFO: Corresponding G Group sequence:", corresponding_seq)
-                    print("INFO: Calculated distance:", get_distance(entry[1], corresponding_seq))
-                    return None
+                # A G group whose members disagree on the ARS contradicts the
+                # definition of a G group. Skip just that group with a warning
+                # rather than aborting the whole run: every other group is still
+                # usable, and a query whose G group was dropped falls through to
+                # the unrestricted pass 2 search.
+                corresponding = [s[1] for s in peptide_domain_sequence if s[0] == entry[0]]
+                if not corresponding or get_distance(entry[1], corresponding[0]) != 0:
+                    print(f"WARN: Allele {allele} contains sequence not found in {g_group}; skipping G group")
+                    consistent = False
+                    break
+            if not consistent:
+                break
 
+        # Register the group OUTSIDE the per-allele loop. Previously this
+        # assignment sat inside `for allele in alleles[1:]`, so a G group whose
+        # only member is its own reference allele was never added and pass 1
+        # could not assign it. 80 of the 675 G groups at the eight typed loci
+        # are singletons (up to 28% at HLA-DQA1).
+        if consistent:
             common_sequence[g_group] = peptide_domain_sequence
+        else:
+            skipped += 1
+
+    if skipped:
+        print(f"WARN: skipped {skipped} G group(s) with inconsistent or missing peptide binding domains")
 
     return common_sequence #, orphan_alleles
 
