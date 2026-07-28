@@ -492,10 +492,12 @@ CLASS_I_GENES = {"HLA-A", "HLA-B", "HLA-C"}
 drb_multiallele_reference = os.path.join(_data_dir, "reference/DRB_reference.fa")
 
 # GRCh38 extent of the DR sub-region (HLA-DRA .. HLA-DRB1), spanning the DRB
-# paralog cluster (DRB5/DRB6/DRB1). For WGS/WES, competitive DRB classification
-# is restricted to primary reads already placed in this window, rather than the
-# whole genome: we are reclassifying reads that mapped into the DR region, not
-# rehoming unmapped reads. Removes genome-wide homology noise from the kill-list.
+# paralog cluster (DRB5/DRB6/DRB1). On every PacBio scheme, competitive DRB
+# classification is restricted to primary reads already placed in this window,
+# rather than the whole read set: we are reclassifying reads that mapped into
+# the DR region, not rehoming unmapped reads. Removes genome-wide homology noise
+# from the kill-list. Reads are selected by overlap, so a read starting inside
+# the window and extending past HLA-DRB1's 3' end is still classified.
 drb_region = "chr6:32439878-32589848"
 
 
@@ -619,12 +621,14 @@ ARS_dict = {
 
 # Gene coordinates (1-based coordinates, GFF format)
 # Used in parse_fastas() function of reconstruct_fasta_methods.py to clamp haploblock coordinates to gene coordinates
-# HLA-B and HLA-DQA1 coordinates were slightly modified from the raw GFF3 file to exclude exons that are not part of the MANE Select transcript
+# These match the gene feature records in data/hla_gff/<gene>_gene.gff3, which are
+# the intervals vcf2fasta actually reconstructs. HLA-C is padded 1 kb on each side
+# relative to the Ensembl gene (see GENE_PADDING in supplementary_scripts/sort_cds.py).
 gene_dict = {
 	"HLA-A":    (29941260, 29949572),
-	"HLA-B":    (31353872, 31367067),
+	"HLA-B":    (31353270, 31367067),
 	"HLA-C":    (31267749, 31273130),
-	"HLA-DPA1": (33064569, 33080775),
+	"HLA-DPA1": (33064270, 33080775),
 	"HLA-DPB1": (33075990, 33089696),
 	"HLA-DQA1": (32628179, 32647062),
 	"HLA-DQB1": (32659467, 32668383),

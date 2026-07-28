@@ -80,6 +80,19 @@ def _full_sequence(sequence_data, allele):
     return "".join(seq for _, seq in segments)
 
 
+def _utr_parts(sequence_data, allele):
+    # (5' UTR, 3' UTR) of an allele. Returns ("", "") unless the record carries
+    # both, so a partially-annotated entry contributes no UTR to the shared span
+    # rather than an ambiguously-oriented one.
+    feats = sequence_data.get(allele)
+    if not feats:
+        return "", ""
+    utrs = sorted(feats.get("UTR", []))
+    if len(utrs) != 2:
+        return "", ""
+    return utrs[0][1], utrs[-1][1]
+
+
 def _full_with_exon_intervals(sequence_data, allele):
     # Full (UTR+Exon+Intron) sequence plus the [start, stop) offsets of each
     # exon within it. Sorted identically to _full_sequence so offsets line up.
@@ -340,6 +353,40 @@ def _best_in_lineage(consensus, lineage, gene, sequence_data, core_cache):
     scored = [(_edit_distance(consensus, core), name) for name, core in cores]
     min_dist = min(d for d, _ in scored)
     tied = sorted(name for d, name in scored if d == min_dist)
+
+    if len(tied) > 1:
+        # The exon+intron core could not separate these candidates. In most
+        # such sets it never can: the tied alleles are byte-identical across
+        # every exon and intron, and the only sequence that distinguishes them
+        # is UTR.
+        #
+        # Comparing full sequences would be unfair, because the tied records
+        # carry different amounts of UTR and an allele could win simply by
+        # having more of it annotated. So each candidate is trimmed to the UTR
+        # span that ALL of them share -- the innermost min(5' UTR) and
+        # min(3' UTR) bases, UTRs extending outward from the coding sequence --
+        # and every candidate is scored over an identical window.
+        #
+        # This runs only on sets the core left tied, so it cannot disturb a
+        # call the core already decided. Where it still cannot separate them,
+        # the lowest fourth field decides as before.
+        utrs = {name: _utr_parts(sequence_data, name) for name in tied}
+        keep5 = min(len(utrs[name][0]) for name in tied)
+        keep3 = min(len(utrs[name][1]) for name in tied)
+        if keep5 or keep3:
+            def _shared_span(name):
+                utr5, utr3 = utrs[name]
+                return ((utr5[-keep5:] if keep5 else "")
+                        + core_cache[name]
+                        + (utr3[:keep3] if keep3 else ""))
+
+            rescored = [(_edit_distance(consensus, _shared_span(name)), name)
+                        for name in tied]
+            best_shared = min(d for d, _ in rescored)
+            narrowed = sorted(name for d, name in rescored if d == best_shared)
+            if len(narrowed) < len(tied):
+                tied = narrowed
+
     best = min(tied, key=_fourth_field_num)
     return (best, min_dist, tied)
 
@@ -392,7 +439,8 @@ def _log_hap(logfile, name, tup, changed):
         logfile.writelines(f"For {name}, re-consensus: {outcome} (no full-sequence match measured)\n")
     else:
         logfile.writelines(f"For {name}, re-consensus: {outcome} dist {dist} len {mlen} "
-                           f"id {seq_id} mismatch {mm_id} using edit_distance (Exon+Intron core)\n")
+                           f"id {seq_id} mismatch {mm_id} using edit_distance "
+                           f"(Exon+Intron core; ties broken on shared UTR)\n")
     if isinstance(tie, (list, tuple)) and len(tie) > 1:
         logfile.writelines(f"Equidistant (re-consensus) for {name}: {', '.join(tie)}\n")
 

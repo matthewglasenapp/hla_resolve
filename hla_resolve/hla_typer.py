@@ -16,17 +16,6 @@ import os
 
 NUM_SAMPLES = None
 
-# Known problematic entries whose exons 2 (or 3 if applicable) do not
-# match with other alleles in their G group
-non_matching_exons = {"HLA-C*07:02:01:17N": "C*07:02:01G",
-                      "HLA-C*15:02:01:08N": "C*15:02:01G",
-                      "HLA-DRB4*01:03:01:02N": "DRB4*01:01:01G",
-                      "HLA-DRB4*01:03:01:13N": "DRB4*01:01:01G",
-                      "HLA-DRB4*01:03:01:26N": "DRB4*01:01:01G",
-                      "HLA-DRB4*01:03:01:28N": "DRB4*01:01:01G",
-                      "HLA-DRB4*01:03:41N": "DRB4*01:01:01G",
-                      "HLA-DMB*01:05": "DMB*01:01:01G"}
-
 # Get Gene from sample name
 def get_gene(sample_name, asterisk = True):
     # Get HLA-<gene>_<idx> portion, then get portion between '_' and '-'
@@ -35,6 +24,18 @@ def get_gene(sample_name, asterisk = True):
     hla_gene = hla_gene[hla_gene.index("-")+1:]
     if asterisk: hla_gene = hla_gene + "*"
     return hla_gene
+
+# Anchored locus test for a reference key.
+# `key` is either a G group ("A*01:01:01G") or an allele name
+# ("HLA-A*01:01:01:01", "MICA*008:01"); `hla_gene` is "A*", "DRB1*", etc.
+# An unanchored `hla_gene in key` test also matched other loci that merely
+# contain the token: "A*" matched MICA*, HLA-DMA*, HLA-DOA* and HLA-DRA*,
+# and "B*" matched MICB*, HLA-DMB* and HLA-DOB*, pulling them into the
+# candidate pool for every HLA-A / HLA-B query.
+def locus_matches(hla_gene, key):
+    if key.startswith("HLA-"):
+        key = key[4:]
+    return key.startswith(hla_gene)
 
 # Get sample ID from sample name
 def get_sampleid(sample_name):
@@ -311,33 +312,54 @@ def get_g_group_exons(allele_to_g_groups, sequence_data):
 
     print("INFO: Finding common g group sequences")
     common_sequence = dict()
+    skipped = 0
     # Check that peptide binding domain is same for every allele in g group
     for g_group, alleles in g_group_to_allele.items():
         if g_group == "None":
             continue
 
         # Grab first one as comparison reference
-        peptide_domain_sequence = sequence_data[alleles[0]]["peptide_binding_domain"]
+        peptide_domain_sequence = sequence_data[alleles[0]].get("peptide_binding_domain")
+        if not peptide_domain_sequence:
+            print(f"WARN: {g_group} reference allele {alleles[0]} has no peptide binding domain; skipping G group")
+            skipped += 1
+            continue
 
         # Iterate over other alleles to compare
+        consistent = True
         for allele in alleles[1:]:
-            if len(sequence_data[allele]["peptide_binding_domain"]) != len(peptide_domain_sequence):
+            if len(sequence_data[allele].get("peptide_binding_domain", [])) != len(peptide_domain_sequence):
                 print("WARN: Number of peptide binding domain related exons not consistent across g group")
 
             # Check each entry in the peptide binding domain sequence
             # Will contain Exon 2 and 3 for type I, Exon 2 for type II
-            for entry in sequence_data[allele]["peptide_binding_domain"]:
+            for entry in sequence_data[allele].get("peptide_binding_domain", []):
 
-                # If entries not in common, return
-                corresponding_seq = [s[1] for s in peptide_domain_sequence if s[0] == entry[0]][0]
-                if get_distance(entry[1], corresponding_seq) != 0:
-                    print(f"ERR: Allele {allele} contains sequence not found in {g_group}")
-                    print("INFO: Test sequence:", entry)
-                    print("INFO: Corresponding G Group sequence:", corresponding_seq)
-                    print("INFO: Calculated distance:", get_distance(entry[1], corresponding_seq))
-                    return None
-                
+                # A G group whose members disagree on the ARS contradicts the
+                # definition of a G group. Skip just that group with a warning
+                # rather than aborting the whole run: every other group is still
+                # usable, and a query whose G group was dropped falls through to
+                # the unrestricted pass 2 search.
+                corresponding = [s[1] for s in peptide_domain_sequence if s[0] == entry[0]]
+                if not corresponding or get_distance(entry[1], corresponding[0]) != 0:
+                    print(f"WARN: Allele {allele} contains sequence not found in {g_group}; skipping G group")
+                    consistent = False
+                    break
+            if not consistent:
+                break
+
+        # Register the group OUTSIDE the per-allele loop. Previously this
+        # assignment sat inside `for allele in alleles[1:]`, so a G group whose
+        # only member is its own reference allele was never added and pass 1
+        # could not assign it. 80 of the 675 G groups at the eight typed loci
+        # are singletons (up to 28% at HLA-DQA1).
+        if consistent:
             common_sequence[g_group] = peptide_domain_sequence
+        else:
+            skipped += 1
+
+    if skipped:
+        print(f"WARN: skipped {skipped} G group(s) with inconsistent or missing peptide binding domains")
 
     return common_sequence #, orphan_alleles
 
@@ -367,7 +389,7 @@ def assign_classification_to_sample(common_sequenes, sequence, sample_name, logf
 
     # Go through each reference sequence and find closest match
     for class_name, exons in common_sequenes.items():
-        if hla_gene not in class_name:
+        if not locus_matches(hla_gene, class_name):
             continue
 
         # Check all exons for reference sample
@@ -414,8 +436,8 @@ def assign_classification_to_sample_full_seq(full_sequence, sequence, full_sampl
     hla_gene = get_gene(full_sample_name)
 
     for class_name, sequence_data in full_sequence.items():
-        # Skip if not the same gene
-        if hla_gene not in class_name:
+        # Skip if not the same locus
+        if not locus_matches(hla_gene, class_name):
             continue
 
         # Get distance metrics between test and sample sequences
@@ -676,6 +698,22 @@ def dist_to_truth_allele(sample_name, truth_data, sequence_db, sequence, logfile
         logfile.writelines(f"Sample {sample_name} with truth table entry {truth_data[sample_id][gene_with_index]}")
         logfile.writelines(f" (calculated distance to {gene_with_index}: {correct_allele}) had distance {correct_allele_dist} and match length {leng}\n")
 
+# Numeric value of an allele's fourth field, for tie-breaking.
+# Returns a large sentinel when there is no fourth field, so such names sort
+# last. Parsed numerically rather than lexicographically because dictionary
+# order would rank a 3-digit fourth field (":120") ahead of a 2-digit one
+# (":99"). Mirrors _fourth_field_num() in reconsensus_drdq.py.
+_NO_FOURTH_FIELD = 10 ** 9
+
+def fourth_field_num(allele):
+    if not allele or "*" not in allele:
+        return _NO_FOURTH_FIELD
+    fields = allele.split("*", 1)[1].split(":")
+    if len(fields) < 4:
+        return _NO_FOURTH_FIELD
+    match = re.match(r"(\d+)", fields[3])
+    return int(match.group(1)) if match else _NO_FOURTH_FIELD
+
 # Truncates an allele name to 3 fields
 # Inputs: allele: str
 # Output: allele_3_fields: str
@@ -873,6 +911,54 @@ def pass_3_classification(sequence_data, results_dict, samples, truth_data=None,
         # Same as pass 2, but this time, classify full sequence input against full sequence db
         result = assign_classification_to_sample_full_seq(allele_sequence_db, samples[sample_name], sample_name,
                                                           logfile=loop_log, eval_metric=metric, tie_metric=tie_metric)
+
+        # Still tied after mismatch identity and match length: prefer the
+        # candidate at the lowest RAW edit distance.
+        #
+        # Neither earlier metric can see an indel. Mismatch identity excludes
+        # insertions and deletions from its denominator by design, and match
+        # length counts matching bases rather than aligned span, so a longer
+        # allele gains insertions rather than matches. Two alleles differing
+        # only by an intronic indel therefore score identically under both:
+        # A*01:01:01:01 and A*01:01:01:21 differ by 5 bases of intron 3, and
+        # against a query carrying the shorter form both score identity
+        # 1.000000 and match length 3503. Raw edit distance separates them
+        # (0 vs 5).
+        #
+        # This runs strictly downstream of both metrics, so it cannot override
+        # them — it only replaces an arbitrary pick with an evidence-based one
+        # where no evidence was being used at all.
+        remaining_ties = result[-1]
+        if len(remaining_ties) > 1:
+            raw_dists = {}
+            for candidate in remaining_ties:
+                candidate_seq = allele_sequence_db.get(candidate)
+                if candidate_seq:
+                    raw_dists[candidate] = get_distance(samples[sample_name], candidate_seq,
+                                                        gap_compressed=False)
+            if raw_dists:
+                lowest_ed = min(raw_dists.values())
+                closest = sorted(c for c, d in raw_dists.items() if d == lowest_ed)
+                if len(closest) < len(remaining_ties):
+                    if loop_log != None:
+                        loop_log.writelines(
+                            f"{sample_name} tie narrowed by raw edit distance ({lowest_ed}): "
+                            f"{len(remaining_ties)} -> {len(closest)} candidate(s): {', '.join(closest)}\n")
+                    kept = result[0] if result[0] in closest else closest[0]
+                    result = (kept, *result[1:-1], closest)
+                    remaining_ties = closest
+
+        # Break any remaining tie on the lowest fourth field, explicitly and
+        # numerically. Previously the winner was whichever tied allele the
+        # database dict yielded first, which is alphabetical order — equivalent
+        # only while every fourth field in the group has the same digit count.
+        if len(remaining_ties) > 1:
+            lowest = min(sorted(remaining_ties), key=fourth_field_num)
+            if lowest != result[0]:
+                if loop_log != None:
+                    loop_log.writelines(f"{sample_name} tie broken on lowest fourth field: {result[0]} -> {lowest}\n")
+                result = (lowest, *result[1:])
+
         if result[1] == 0:
             perfect += 1
 

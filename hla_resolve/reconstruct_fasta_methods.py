@@ -232,10 +232,24 @@ def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail
 		# Skip non-SV variants that overlap a PASS SV on the same haplotype
 		# Only apply haplotype-aware suppression for phased indels ≥30bp
 		# Never suppress SNPs - they are real variants near SV breakpoints
+		# Size and type are taken from the alleles this sample actually carries,
+		# not from rec.alts[0]. DeepVariant frequently emits a multiallelic
+		# record carrying both a SNP alt and an indel alt at one position
+		# (e.g. T -> A,TG). Reading only the first ALT classified such a record
+		# as a SNP with indel_size 0, which exempted it from SV-overlap
+		# suppression altogether and made the >=50 bp proximity rule meaningless
+		# — and which of the two alts came first was arbitrary.
+		#
+		# Splitting multiallelics with `bcftools norm -m-` would make the length
+		# calculation trivial, but norm has to run before phasing, where it
+		# measurably costs allele typing concordance. So the record is left
+		# intact and the genotype is inspected here instead.
 		ref_len = len(rec.ref)
-		alt_len = len(rec.alts[0]) if rec.alts else 0
-		indel_size = abs(ref_len - alt_len)
-		is_snp = (ref_len == 1 and alt_len == 1)
+		gt_alleles = [rec.alleles[a] for a in gt if a is not None and a < len(rec.alleles)]
+		if not gt_alleles:
+			gt_alleles = [a for a in rec.alts if a is not None]
+		indel_size = max((abs(ref_len - len(a)) for a in gt_alleles), default=0)
+		is_snp = ref_len == 1 and all(len(a) == 1 for a in gt_alleles)
 
 		is_homozygous = gt is not None and len(set(a for a in gt if a is not None)) == 1
 		if (sample.phased or is_homozygous) and not is_snp:
@@ -277,69 +291,73 @@ def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail
 	run_quiet(f"bcftools index -f {sv_overlap_vcf}")
 
 	# ========== WHITELIST LOGIC (RESTORED) ==========
-	het_sites = []
-	unphased_hets = []
+	def is_unphased_het(rec):
+		"""True for a heterozygous genotype that HiPhase/LongPhase left unphased.
 
-	pass_vf = pysam.VariantFile(pass_vcf)
-	for rec in pass_vf:
+		Tested on the parsed genotype rather than by matching genotype strings in
+		a bcftools expression. The previous implementation enumerated six literal
+		genotypes ('0/1', '1/0', '1/2', '2/1', '2/3', '3/2'); any other
+		heterozygous combination at a multiallelic site (0/2, 0/3, 1/3, ...) fell
+		through both the keep and the drop expression, so it stayed in the VCF
+		handed to vcf2fasta, which — forced into phased mode — would assign its
+		two alleles to haplotypes arbitrarily.
+		"""
 		sample = list(rec.samples.values())[0]
 		gt = sample.get("GT")
 		if gt is None or None in gt:
-			continue
-		if len(set(gt)) == 2:  # heterozygous
-			het_sites.append(rec)
-			if not sample.phased:
-				unphased_hets.append(rec)
+			return False
+		if len(set(gt)) < 2:
+			return False
+		return not sample.phased
+
+	het_sites = []
+	unphased_hets = []
+
+	with pysam.VariantFile(pass_vcf) as pass_vf:
+		for rec in pass_vf:
+			sample = list(rec.samples.values())[0]
+			gt = sample.get("GT")
+			if gt is None or None in gt:
+				continue
+			if len(set(gt)) >= 2:  # heterozygous
+				het_sites.append(rec)
+				if not sample.phased:
+					unphased_hets.append(rec)
 
 	if config.VERBOSE:
 		print(f"{gene}: het={len(het_sites)}, unphased={len(unphased_hets)}")
 	allow_single_unphased = (len(het_sites) == 1 and len(unphased_hets) == 1)
 
-	het_clauses = [
-		'GT="0/1"', 'GT="1/0"', 'GT="1/2"',
-		'GT="2/1"', 'GT="2/3"', 'GT="3/2"'
-	]
+	# Keep every unphased heterozygous genotype when the gene went through CDS
+	# rescue (force_include_unphased), or when the gene's only heterozygous
+	# genotype is that single unphased one — with one het site, which haplotype
+	# receives which allele is arbitrary but the pair is still correct.
+	drop_unphased_hets = not (force_include_unphased or allow_single_unphased)
 
-	if force_include_unphased:
-		# CDS rescue: include ALL variants (phased + unphased) in filtered VCF
-		if config.VERBOSE:
+	if config.VERBOSE:
+		if force_include_unphased:
 			print(f"[CDS-RESCUE] {gene}: force_include_unphased=True, keeping all variants")
-		unphased_expr = 'GT="9/9"'     # matches nothing → nothing sent to pass_unphased
-		keep_expr = 'GT!="9/9"'        # matches everything → all variants kept
+		elif allow_single_unphased:
+			print(f"{gene}: single unphased het whitelisted, keeping all variants")
 
-	elif allow_single_unphased:
-		# one heterozygous site, unphased → treat as fully phased
-		chosen = unphased_hets[0]
-		chrom = chosen.chrom
-		pos   = chosen.pos
+	# Split the QC-pass records: unphased hets to pass_unphased (reported, not
+	# reconstructed), everything else to the filtered VCF that feeds vcf2fasta.
+	n_routed = 0
+	with pysam.VariantFile(pass_vcf) as vf_in:
+		with pysam.VariantFile(pass_unphased, "wz", header=vf_in.header) as unph_out, \
+			 pysam.VariantFile(filtered_vcf, "wz", header=vf_in.header) as filt_out:
+			for rec in vf_in:
+				if drop_unphased_hets and is_unphased_het(rec):
+					unph_out.write(rec)
+					n_routed += 1
+				else:
+					filt_out.write(rec)
 
-		# NEGATED form for "keep all non-hets"
-		negated = " && ".join([f'{c.replace("=", "!=")}' for c in het_clauses])
-
-		# whitelist the one unphased site so it remains in phased VCF
-		whitelist = f'(CHROM="{chrom}" && POS={pos})'
-
-		keep_expr = f'({negated}) || {whitelist}'
-
-		# IMPORTANT: prevent *anything* from being written to pass_unphased
-		unphased_expr = 'GT="9/9"'     # matches nothing
-
-	else:
-		# Normal case: send all heterozygous unphased variants to pass_unphased
-		unphased_expr = " || ".join(het_clauses)
-
-		# phased variants = everything NOT matching the het genotypes
-		keep_expr = " && ".join([f'{c.replace("=", "!=")}' for c in het_clauses])
-
-	# extract unphased PASS
-	cmd = f"bcftools view -i '{unphased_expr}' {pass_vcf} -Oz -o {pass_unphased}"
-	run_quiet(cmd)
 	run_quiet(f"bcftools index -f {pass_unphased}")
-
-	# extract phased PASS (final filtered VCF)
-	cmd = f"bcftools view -i '{keep_expr}' {pass_vcf} -Oz -o {filtered_vcf}"
-	run_quiet(cmd)
 	run_quiet(f"bcftools index -f {filtered_vcf}")
+
+	if config.VERBOSE and n_routed != len(unphased_hets) and drop_unphased_hets:
+		print(f"WARNING: {gene}: routed {n_routed} unphased hets but counted {len(unphased_hets)}")
 
 	# ========== UNPHASED PASS SUMMARY ==========
 	if unphased_hets:
