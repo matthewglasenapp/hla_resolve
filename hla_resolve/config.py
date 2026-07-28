@@ -626,9 +626,9 @@ ARS_dict = {
 # relative to the Ensembl gene (see GENE_PADDING in supplementary_scripts/sort_cds.py).
 gene_dict = {
 	"HLA-A":    (29941260, 29949572),
-	"HLA-B":    (31353872, 31367067),
+	"HLA-B":    (31353270, 31367067),
 	"HLA-C":    (31267749, 31273130),
-	"HLA-DPA1": (33064569, 33080775),
+	"HLA-DPA1": (33064270, 33080775),
 	"HLA-DPB1": (33075990, 33089696),
 	"HLA-DQA1": (32628179, 32647062),
 	"HLA-DQB1": (32659467, 32668383),
