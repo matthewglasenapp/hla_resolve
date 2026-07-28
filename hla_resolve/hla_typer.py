@@ -912,11 +912,46 @@ def pass_3_classification(sequence_data, results_dict, samples, truth_data=None,
         result = assign_classification_to_sample_full_seq(allele_sequence_db, samples[sample_name], sample_name,
                                                           logfile=loop_log, eval_metric=metric, tie_metric=tie_metric)
 
+        # Still tied after mismatch identity and match length: prefer the
+        # candidate at the lowest RAW edit distance.
+        #
+        # Neither earlier metric can see an indel. Mismatch identity excludes
+        # insertions and deletions from its denominator by design, and match
+        # length counts matching bases rather than aligned span, so a longer
+        # allele gains insertions rather than matches. Two alleles differing
+        # only by an intronic indel therefore score identically under both:
+        # A*01:01:01:01 and A*01:01:01:21 differ by 5 bases of intron 3, and
+        # against a query carrying the shorter form both score identity
+        # 1.000000 and match length 3503. Raw edit distance separates them
+        # (0 vs 5).
+        #
+        # This runs strictly downstream of both metrics, so it cannot override
+        # them — it only replaces an arbitrary pick with an evidence-based one
+        # where no evidence was being used at all.
+        remaining_ties = result[-1]
+        if len(remaining_ties) > 1:
+            raw_dists = {}
+            for candidate in remaining_ties:
+                candidate_seq = allele_sequence_db.get(candidate)
+                if candidate_seq:
+                    raw_dists[candidate] = get_distance(samples[sample_name], candidate_seq,
+                                                        gap_compressed=False)
+            if raw_dists:
+                lowest_ed = min(raw_dists.values())
+                closest = sorted(c for c, d in raw_dists.items() if d == lowest_ed)
+                if len(closest) < len(remaining_ties):
+                    if loop_log != None:
+                        loop_log.writelines(
+                            f"{sample_name} tie narrowed by raw edit distance ({lowest_ed}): "
+                            f"{len(remaining_ties)} -> {len(closest)} candidate(s): {', '.join(closest)}\n")
+                    kept = result[0] if result[0] in closest else closest[0]
+                    result = (kept, *result[1:-1], closest)
+                    remaining_ties = closest
+
         # Break any remaining tie on the lowest fourth field, explicitly and
         # numerically. Previously the winner was whichever tied allele the
         # database dict yielded first, which is alphabetical order — equivalent
         # only while every fourth field in the group has the same digit count.
-        remaining_ties = result[-1]
         if len(remaining_ties) > 1:
             lowest = min(sorted(remaining_ties), key=fourth_field_num)
             if lowest != result[0]:
