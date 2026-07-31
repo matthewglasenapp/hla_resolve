@@ -382,7 +382,7 @@ For four-field refinement, the default metric is mismatch identity, the proporti
 
 Insertions and deletions are left out of the denominator. Intronic reconstruction is the least reliable part of the haplotype, and its indels are usually artifacts of variant representation rather than real differences from the reference allele. Scoring only substituted positions keeps those artifacts from deciding the call, and it avoids bias toward incomplete reference alleles when comparing noncoding regions.
 
-Plain sequence identity, identity = 1 - (edit_distance / match_length), is also implemented, along with `edit_distance` and `match_length`. These are alternatives at the code level, selectable through the `pass3_metric` argument or `hla_typer.py`'s own `--pass3-metric` flag when it is run standalone; the `hla_resolve` command line does not expose them and always uses mismatch identity. Ties are broken first by match length, then by the lowest fourth field, compared numerically so that a three-digit fourth field is not ranked ahead of a two-digit one.
+Ties are broken first by match length, then by raw edit distance, then by the lowest fourth field, compared numerically so that a three-digit fourth field is not ranked ahead of a two-digit one. Each tier runs only on the candidates the previous tier could not separate, so no tier can overturn an earlier decision.
 
 ---
 
@@ -403,7 +403,9 @@ Sanity checks ensure consistency between G-group definitions and peptide-binding
 
 HLA-DQA1, HLA-DQB1, and HLA-DRB1 reconstruct poorly enough in their intronic and UTR sequence that the pass 3 full-gene comparison often lands on the wrong fourth field. For these three genes only, the fourth field is re-derived from the reads themselves. The three-field lineage from pass 2 is never changed, and no other gene is touched. The step is implemented in `reconsensus_drdq.py`, gated by `reconsensus_drdq` in `config.py`, and runs for PacBio only.
 
-For each gene the pipeline takes the two pass 3 calls, pulls the reads over the gene window from the haplotagged BAM, and rebuilds a consensus for each haplotype against an IPD-IMGT/HLA reference sequence. Each consensus is then re-matched by edit distance against every fourth-field option inside its own three-field group, using the exon plus intron core rather than the full sequence, so that unreliable UTR reconstruction cannot decide the call. Ties go to the lowest fourth field.
+For each gene the pipeline takes the two pass 3 calls, pulls the reads over the gene window from the haplotagged BAM, and rebuilds a consensus for each haplotype against an IPD-IMGT/HLA reference sequence. Each consensus is then re-matched by edit distance against every fourth-field option inside its own three-field group, using the exon plus intron core rather than the full sequence, so that unreliable UTR reconstruction cannot decide the call.
+
+When the core cannot separate two or more fourth-field candidates, the comparison is repeated over the untranslated regions trimmed to the span shared by every tied candidate, so each is scored across an identical interval. Anything still tied goes to the lowest fourth field.
 
 The gene window comes from the span of the gene's filtered VCF plus 3 kb on each side, falling back to the annotated gene coordinates when the VCF is empty.
 

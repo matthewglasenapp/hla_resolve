@@ -11,7 +11,7 @@ The scripts should be run in this order:
 Takes the raw GFF3 files (e.g., `hla_a.gff3`) downloaded from GRCh38.p14 Ensembl and produces two derived files per gene:
 
 - `*_cds_sorted.gff3` — CDS entries sorted by genomic coordinate, low to high, on both strands. This works around a [vcf2fasta bug](https://github.com/santiagosnchez/vcf2fasta/issues/23) where CDS records are concatenated in file order; sorting them ascending puts them in the order vcf2fasta expects before it applies the reverse complement for minus-strand genes.
-- `*_gene.gff3` — Contains only the gene feature record, used for gene boundary extraction. HLA-C is the one exception to a verbatim copy: its gene interval is padded by 1 kb on each side (`GENE_PADDING` in the script), because most IPD-IMGT/HLA reference sequences carry substantially more UTR than the GRCh38 annotation does.
+- `*_gene.gff3` — Contains only the gene feature record, used for gene boundary extraction. Three genes are not verbatim copies. Their intervals are padded by `GENE_PADDING` in the script, because IPD-IMGT/HLA reference sequences for these genes carry substantially more untranslated sequence than the GRCh38 annotation does, which leaves part of each database record with no query sequence to align against. HLA-C is padded by 1 kb at each end. HLA-B and HLA-DPA1 are padded at the 3' end only, by 602 bp and 299 bp respectively. Both are minus-strand genes, so the padding is applied to the low coordinate.
 
 ### 2. `make_coords.py`
 
