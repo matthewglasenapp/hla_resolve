@@ -166,15 +166,15 @@ Intermediate files will be written to the following dirctories. The user can spe
 | `fastq_raw/`              | Raw fastq. Converted from BAM format if input is BAM. Copied from raw file if input is fastq |
 | `fastq_trimmed/`          | Fastq reads with adapters/barcodes trimmed, if specified by user. If no trimming is specified, will be a copy of the reads in `fastq_raw/` |
 | `mapped_bam/`             | Contains BAM files from reference genome alignments                        |
-| `genotype_calls/`         | Contains the raw small variant genotype calls (`.vcf.gz`) from the user-specified genotyping tool |
-| `structural_variant_vcf/` | Contains the SV genotype calls from either Sniffles (ONT) or pbsv (PacBio) |
+| `genotype_calls/`         | Contains the raw small variant genotype calls (`.vcf.gz`). SNVs from bcftools and indels from DeepVariant |
+| `structural_variant_vcf/` | Contains the SV genotype calls from pbsv                                   |
 | `pbtrgt_vcf/`             | Contains the tandem repeat genotypes from TRGT (PacBio-only)               |
 | `phased_vcf/`             | Contains phased genotype calls from joint phasing of small variants, structural variants, and tandem repeat genotypes |
 | `mosdepth/`               | Contains coverage depth output files from mosdepth for the HLA genes        |
-| `haploblocks/`            | Contains a list of fully-phased HLA genes                                  |
+| `haploblocks/`            | Contains the phasing status of each HLA gene, both those fully spanned by a haplotype block and those that were not |
 | `filtered_vcf/`           | Contains the final, filtered VCF of variants to be applied during fasta haplotype reconstruction |
-| `vcf2fasta_out/`          | Contains the raw sequence output from vcf2fasta                            |
-| `hla_fasta_haplotypes/`   | Contains fasta files of full gene and CDS sequences for each HLA gene       |
+| `vcf2fasta_out/`          | Contains the vcf2fasta sequence output. For genes with an internal phasing break, this holds the interval that was rebuilt and used for matching rather than the full-gene first pass |
+| `hla_fasta_haplotypes/`   | Contains fasta files of full gene and CDS sequences for each HLA gene. At HLA-DQA1, HLA-DQB1, and HLA-DRB1 an accepted re-consensus replaces the sequence here |
 | `hla_typing_results/`     | Contains the final results of HLA typing                                   |
 
 ## Validated WGS Libraries
