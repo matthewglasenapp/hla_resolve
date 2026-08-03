@@ -232,18 +232,8 @@ def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail
 		# Skip non-SV variants that overlap a PASS SV on the same haplotype
 		# Only apply haplotype-aware suppression for phased indels ≥30bp
 		# Never suppress SNPs - they are real variants near SV breakpoints
-		# Size and type are taken from the alleles this sample actually carries,
-		# not from rec.alts[0]. DeepVariant frequently emits a multiallelic
-		# record carrying both a SNP alt and an indel alt at one position
-		# (e.g. T -> A,TG). Reading only the first ALT classified such a record
-		# as a SNP with indel_size 0, which exempted it from SV-overlap
-		# suppression altogether and made the >=50 bp proximity rule meaningless
-		# — and which of the two alts came first was arbitrary.
-		#
-		# Splitting multiallelics with `bcftools norm -m-` would make the length
-		# calculation trivial, but norm has to run before phasing, where it
-		# measurably costs allele typing concordance. So the record is left
-		# intact and the genotype is inspected here instead.
+		# Size and type come from the carried alleles, not rec.alts[0]. DeepVariant
+		# emits multiallelic records holding both a SNP and an indel alt (T -> A,TG).
 		ref_len = len(rec.ref)
 		gt_alleles = [rec.alleles[a] for a in gt if a is not None and a < len(rec.alleles)]
 		if not gt_alleles:
@@ -292,15 +282,10 @@ def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail
 
 	# ========== WHITELIST LOGIC (RESTORED) ==========
 	def is_unphased_het(rec):
-		"""True for a heterozygous genotype that HiPhase/LongPhase left unphased.
+		"""True for a heterozygous genotype left unphased by HiPhase/LongPhase.
 
-		Tested on the parsed genotype rather than by matching genotype strings in
-		a bcftools expression. The previous implementation enumerated six literal
-		genotypes ('0/1', '1/0', '1/2', '2/1', '2/3', '3/2'); any other
-		heterozygous combination at a multiallelic site (0/2, 0/3, 1/3, ...) fell
-		through both the keep and the drop expression, so it stayed in the VCF
-		handed to vcf2fasta, which — forced into phased mode — would assign its
-		two alleles to haplotypes arbitrarily.
+		Tested on the parsed genotype so multiallelic hets (0/2, 1/3, ...) are
+		caught, not just the common 0/1 and 1/2 forms.
 		"""
 		sample = list(rec.samples.values())[0]
 		gt = sample.get("GT")
@@ -328,10 +313,8 @@ def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail
 		print(f"{gene}: het={len(het_sites)}, unphased={len(unphased_hets)}")
 	allow_single_unphased = (len(het_sites) == 1 and len(unphased_hets) == 1)
 
-	# Keep every unphased heterozygous genotype when the gene went through CDS
-	# rescue (force_include_unphased), or when the gene's only heterozygous
-	# genotype is that single unphased one — with one het site, which haplotype
-	# receives which allele is arbitrary but the pair is still correct.
+	# Unphased hets are kept for CDS-rescued genes, and for genes whose only het is
+	# that one site, where haplotype assignment is arbitrary but the pair is correct.
 	drop_unphased_hets = not (force_include_unphased or allow_single_unphased)
 
 	if config.VERBOSE:
@@ -456,25 +439,14 @@ def hap_net_indel(vcf_path, haplotype, start, stop):
 
 
 def extract_interval_vcf2fasta(gene, gene_lower, clamped_start, clamped_stop, gff_dir, reference_genome, vcf_path, vcf2fasta_output_dir):
-	"""
-	Reconstruct a genomic sub-interval of a gene's two haplotypes by re-running vcf2fasta
-	on a one-feature GFF for [clamped_start, clamped_stop], instead of indexing into the
-	full-gene reconstruction.
+	"""Rebuild a sub-interval of both haplotypes by re-running vcf2fasta on a
+	one-feature GFF for [clamped_start, clamped_stop].
 
-	This replaces the former clamp_fasta_sequence/compute_indel_offset approach, which
-	indexed into the already-reconstructed (indel-shifted, reverse-complemented) sequence
-	using cumulative per-haplotype offsets. That arithmetic mis-shifted one haplotype's
-	window whenever the gene carried a het indel, and could not represent a boundary landing
-	inside an indel. vcf2fasta extraction is reference-coordinate-anchored per feature, so it
-	avoids both failure modes and is guaranteed consistent with the full-gene reconstruction.
+	Boundaries are snapped out of the REF span of any multi-base record, since a
+	feature edge inside such a span makes vcf2fasta emit the record twice.
 
-	Boundaries are snapped out of the REF span of any multi-base variant record (all records,
-	any genotype) because a feature start or stop that lands inside such a span makes vcf2fasta
-	emit the record twice (a 2x "doubling"). A length guard raises if any residual doubling
-	slips through.
-
-	Returns (allele_1, allele_2), already strand-oriented by vcf2fasta. Returns ("", "") if the
-	snapped interval collapses (caller writes no record).
+	Returns (allele_1, allele_2), strand-oriented by vcf2fasta, or ("", "") if the
+	snapped interval collapses.
 	"""
 	left = min(clamped_start, clamped_stop)
 	right = max(clamped_start, clamped_stop)
@@ -546,16 +518,12 @@ def extract_interval_vcf2fasta(gene, gene_lower, clamped_start, clamped_stop, gf
 
 
 def extract_cds_subset_vcf2fasta(gene, gene_lower, keep_ranges, gff_dir, reference_genome, vcf_path, vcf2fasta_output_dir):
-	"""
-	Reconstruct a SUBSET of a gene's CDS (only the exons/sub-ranges in keep_ranges) by clipping
-	the CDS GFF to keep_ranges and re-running vcf2fasta --feat CDS --blend, instead of index-
-	slicing the reconstructed CDS by a reference coordinate (which is off by the in-CDS indel
-	shift). Reference-anchored per feature, so correct regardless of CDS indels.
+	"""Reconstruct a subset of a gene's CDS by clipping the CDS GFF to keep_ranges
+	and re-running vcf2fasta.
 
-	keep_ranges: unphased trim (cds_hets>1) -> [(haploblock_start, haploblock_end)];
-	ars_only tier -> the ARS CDS exon ranges. Persists into vcf2fasta_out/{gene}_CDS (replacing
-	the full-CDS first-round output). Returns (allele_1, allele_2), or ("","") if nothing kept.
-	A length guard raises if --feat CDS --blend doubles on a clipped boundary.
+	keep_ranges is [(haploblock_start, haploblock_end)] for the unphased trim, or
+	the ARS CDS exon ranges for the ars_only tier. Output replaces the full-CDS
+	first round in vcf2fasta_out/{gene}_CDS. Returns ("", "") if nothing is kept.
 	"""
 	cds_gff = os.path.join(gff_dir, f"{gene_lower}_cds_sorted.gff3")
 	clipped = []  # (start, end, gff_line) for CDS records clipped to keep_ranges
@@ -638,21 +606,15 @@ def run_vcf2fasta(input_vcf, input_gff, reference_genome, output_dir, gene, feat
 
 def extract_cds_padded_and_trim(gene, gene_lower, gff_dir, reference_genome, vcf_path,
 								vcf2fasta_output_dir, stop_codons, pad=5, accept_window=5):
-	"""
-	Repair a full-length CDS that reconstructs WITHOUT a stop codon because the allele
-	carries a small 3'-terminal homopolymer contraction relative to the reference genome.
-	e.g. DPB1*13:01 (and *27:01/*107:01/*135:01) drop 1bp from a poly-A run at the CDS 3'
-	terminus vs GRCh38, so the fixed reference-coordinate CDS window ends one base short of
-	the (now shifted) stop and comes back as 776bp ending ATA instead of 777bp ending TAA.
+	"""Repair a CDS that reconstructs without a stop codon.
 
-	Re-runs vcf2fasta --feat CDS --blend on a CDS GFF whose 3'-terminal exon is extended by
-	`pad` reference bases (strand-aware), then trims each haplotype to the first in-frame
-	stop codon, accepting only if that stop lands within +/-accept_window of the annotated
-	CDS length. Reference-anchored throughout; vcf2fasta stays coordinate-based, the trim is
-	done here. Writes to a temp dir (does not disturb the persisted vcf2fasta_out).
+	Some alleles (DPB1*13:01, *27:01, *107:01, *135:01) drop a base from a poly-A
+	run at the CDS 3' terminus, so the fixed-coordinate window ends one base short
+	of the shifted stop. Re-runs vcf2fasta on a CDS GFF whose 3'-terminal exon is
+	extended by `pad` bases, then trims to the first in-frame stop.
 
-	Returns (hap1, hap2); a haplotype is None if no in-frame stop was recovered inside the
-	accept window, in which case the caller keeps the original (unrepaired) sequence.
+	Returns (hap1, hap2). A haplotype is None if no stop was recovered within
+	accept_window of the annotated CDS length, and the caller keeps the original.
 	"""
 	cds_gff = os.path.join(gff_dir, f"{gene_lower}_cds_sorted.gff3")
 	recs = []

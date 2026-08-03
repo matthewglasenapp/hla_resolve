@@ -9,24 +9,10 @@ import re
 
 gff_dir = os.path.join(os.path.dirname(__file__), "..", "hla_resolve", "data", "hla_gff")
 
-# Some GRCh38 gene models are shorter than the IPD-IMGT/HLA reference sequences
-# they are matched against, so the reconstruction runs out before the reference
-# allele does and the trailing bases have nothing to align to. These genes get
-# their gene interval padded.
-#
-# Values are (low_pad, high_pad) in reference bases: low_pad is added below the
-# start coordinate, high_pad above the end. Padding is asymmetric because the
-# shortfall usually is. For a minus-strand gene the 3' end of the transcript is
-# the LOW coordinate, so a 3' shortfall is corrected with low_pad.
-#
-#   HLA-C    symmetric 1 kb; IPD sequences carry substantially more UTR at both
-#            ends than the Ensembl annotation.
-#   HLA-B    minus strand, systematic ~510 bp gap at the 3' (low) end across 45
-#            haplotypes; padded 602 to clear it.
-#   HLA-DPA1 minus strand, systematic ~250 bp gap at the 3' (low) end across 28
-#            haplotypes; padded 299 to clear it.
-#
-# HLA-A, HLA-DPB1 and HLA-DRB1 show no systematic trailing gap and are unpadded.
+# Gene intervals padded where the GRCh38 model carries less UTR than the
+# IPD-IMGT/HLA reference alleles. Values are (low_pad, high_pad) in reference
+# bases. HLA-B and HLA-DPA1 are minus strand, so their 3' end is the low
+# coordinate. Genes not listed need no padding.
 GENE_PADDING = {
 	"HLA-C":    (1000, 1000),
 	"HLA-B":    (602, 0),

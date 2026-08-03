@@ -45,18 +45,10 @@ IMGT_RELEASE = "3.64.0"
 
 @contextmanager
 def _setup_lock(resource_dir):
-    """Serialize first-run setup for a shared resource directory across processes.
+    """Serialize first-run setup across processes with an flock on .setup.lock.
 
-    All ensure_* functions write into a single install-level data directory
-    (hla_resolve/data/...). When an array job is submitted right after install,
-    dozens of tasks import this module at once, all see the files missing, and
-    would otherwise download/build the same artifacts on top of each other ->
-    redundant multi-GB fetches and corrupted shared files.
-
-    This takes an exclusive flock on a .setup.lock file in `resource_dir`, so
-    only one process performs the work at a time; the rest block here and then
-    typically find the artifact already present and return immediately. Unix-only
-    (fcntl); fine for the Linux/macOS HPC environments this tool targets.
+    Array jobs launched right after install would otherwise download and build the
+    same shared artifacts concurrently. Unix-only (fcntl).
     """
     resource_dir = Path(resource_dir)
     resource_dir.mkdir(parents=True, exist_ok=True)
@@ -136,19 +128,12 @@ def _drb6_is_masked(augmented_file):
         return False
 
 def ensure_reference_genome():
-    """Build augmented_hg38.fa: GRCh38 + HLA-Y/OLI scaffold, with HLA-DRB5 and HLA-DRB6 hard-masked.
+    """Build augmented_hg38.fa: GRCh38 plus the HLA-Y/OLI scaffold, with HLA-DRB5
+    (chr6:32517353-32530287) and HLA-DRB6 (chr6:32552713-32560022) hard-masked so
+    divergent DRB1 alleles do not lose MAPQ to those paralogs. Real DRB5 and DRB6
+    reads are removed downstream by the DRB bait. DRB9 is left intact.
 
-    Single-pass setup. Downloads GRCh38 if absent, concatenates the HLA-Y/OLI
-    scaffold, then hard-masks HLA-DRB5 (chr6:32517353-32530287) and HLA-DRB6
-    (chr6:32552713-32560022, both Ensembl GRCh38.110 GFF3) so reads from divergent
-    DRB1 alleles do not lose MAPQ or coverage to those paralog loci: DRB5 rescues
-    *07/*09, DRB6 rescues divergent DR4 alleles such as DRB1*04:12. Real DRB5/DRB6
-    reads are still removed downstream by the DRB panel bait. The unmasked GRCh38 +
-    HLA-Y intermediate is removed after masking. DRB9 is left intact (masking it
-    alongside DRB6 was net-harmful).
-
-    If an augmented_hg38.fa already exists but its DRB5 or DRB6 region is unmasked
-    (e.g. a v0.1.0 install or a DRB5-only build), it is removed and rebuilt.
+    An existing build with either region unmasked is removed and rebuilt.
     """
     ref_dir = Path(_data_dir) / "reference"
     grch38_file = ref_dir / "GCA_000001405.15_GRCh38_no_alt_analysis_set.fna"

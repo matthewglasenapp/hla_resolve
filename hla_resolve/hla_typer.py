@@ -25,13 +25,8 @@ def get_gene(sample_name, asterisk = True):
     if asterisk: hla_gene = hla_gene + "*"
     return hla_gene
 
-# Anchored locus test for a reference key.
-# `key` is either a G group ("A*01:01:01G") or an allele name
-# ("HLA-A*01:01:01:01", "MICA*008:01"); `hla_gene` is "A*", "DRB1*", etc.
-# An unanchored `hla_gene in key` test also matched other loci that merely
-# contain the token: "A*" matched MICA*, HLA-DMA*, HLA-DOA* and HLA-DRA*,
-# and "B*" matched MICB*, HLA-DMB* and HLA-DOB*, pulling them into the
-# candidate pool for every HLA-A / HLA-B query.
+# Anchored locus test. Anchoring matters: "A*" is a substring of MICA*, HLA-DMA*,
+# HLA-DOA* and HLA-DRA*.
 def locus_matches(hla_gene, key):
     if key.startswith("HLA-"):
         key = key[4:]
@@ -335,11 +330,8 @@ def get_g_group_exons(allele_to_g_groups, sequence_data):
             # Will contain Exon 2 and 3 for type I, Exon 2 for type II
             for entry in sequence_data[allele].get("peptide_binding_domain", []):
 
-                # A G group whose members disagree on the ARS contradicts the
-                # definition of a G group. Skip just that group with a warning
-                # rather than aborting the whole run: every other group is still
-                # usable, and a query whose G group was dropped falls through to
-                # the unrestricted pass 2 search.
+                # Members disagreeing on the ARS contradicts the G group definition.
+                # Skip the group and warn; queries fall through to pass 2.
                 corresponding = [s[1] for s in peptide_domain_sequence if s[0] == entry[0]]
                 if not corresponding or get_distance(entry[1], corresponding[0]) != 0:
                     print(f"WARN: Allele {allele} contains sequence not found in {g_group}; skipping G group")
@@ -348,11 +340,8 @@ def get_g_group_exons(allele_to_g_groups, sequence_data):
             if not consistent:
                 break
 
-        # Register the group OUTSIDE the per-allele loop. Previously this
-        # assignment sat inside `for allele in alleles[1:]`, so a G group whose
-        # only member is its own reference allele was never added and pass 1
-        # could not assign it. 80 of the 675 G groups at the eight typed loci
-        # are singletons (up to 28% at HLA-DQA1).
+        # Registered outside the per-allele loop so singleton G groups, 80 of 675
+        # at the eight typed loci, are included.
         if consistent:
             common_sequence[g_group] = peptide_domain_sequence
         else:
@@ -698,11 +687,8 @@ def dist_to_truth_allele(sample_name, truth_data, sequence_db, sequence, logfile
         logfile.writelines(f"Sample {sample_name} with truth table entry {truth_data[sample_id][gene_with_index]}")
         logfile.writelines(f" (calculated distance to {gene_with_index}: {correct_allele}) had distance {correct_allele_dist} and match length {leng}\n")
 
-# Numeric value of an allele's fourth field, for tie-breaking.
-# Returns a large sentinel when there is no fourth field, so such names sort
-# last. Parsed numerically rather than lexicographically because dictionary
-# order would rank a 3-digit fourth field (":120") ahead of a 2-digit one
-# (":99"). Mirrors _fourth_field_num() in reconsensus_drdq.py.
+# Fourth field as an int, for tie-breaking. Compared numerically so ":120" does
+# not sort ahead of ":99". Alleles with no fourth field sort last.
 _NO_FOURTH_FIELD = 10 ** 9
 
 def fourth_field_num(allele):
@@ -912,22 +898,9 @@ def pass_3_classification(sequence_data, results_dict, samples, truth_data=None,
         result = assign_classification_to_sample_full_seq(allele_sequence_db, samples[sample_name], sample_name,
                                                           logfile=loop_log, eval_metric=metric, tie_metric=tie_metric)
 
-        # Still tied after mismatch identity and match length: prefer the
-        # candidate at the lowest RAW edit distance.
-        #
-        # Neither earlier metric can see an indel. Mismatch identity excludes
-        # insertions and deletions from its denominator by design, and match
-        # length counts matching bases rather than aligned span, so a longer
-        # allele gains insertions rather than matches. Two alleles differing
-        # only by an intronic indel therefore score identically under both:
-        # A*01:01:01:01 and A*01:01:01:21 differ by 5 bases of intron 3, and
-        # against a query carrying the shorter form both score identity
-        # 1.000000 and match length 3503. Raw edit distance separates them
-        # (0 vs 5).
-        #
-        # This runs strictly downstream of both metrics, so it cannot override
-        # them — it only replaces an arbitrary pick with an evidence-based one
-        # where no evidence was being used at all.
+        # Still tied after mismatch identity and match length: take the lowest raw
+        # edit distance. Neither earlier metric sees an indel, so two alleles
+        # differing only by an intronic indel score identically under both.
         remaining_ties = result[-1]
         if len(remaining_ties) > 1:
             raw_dists = {}
@@ -948,10 +921,7 @@ def pass_3_classification(sequence_data, results_dict, samples, truth_data=None,
                     result = (kept, *result[1:-1], closest)
                     remaining_ties = closest
 
-        # Break any remaining tie on the lowest fourth field, explicitly and
-        # numerically. Previously the winner was whichever tied allele the
-        # database dict yielded first, which is alphabetical order — equivalent
-        # only while every fourth field in the group has the same digit count.
+        # Any remaining tie goes to the lowest fourth field, compared numerically.
         if len(remaining_ties) > 1:
             lowest = min(sorted(remaining_ties), key=fourth_field_num)
             if lowest != result[0]:

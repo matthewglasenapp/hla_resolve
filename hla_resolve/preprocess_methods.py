@@ -175,21 +175,12 @@ def _parse_drb_paralog_reads(output_file, drb_paralog_reads_file):
 	print("\n")
 
 def classify_DRB_reads(input_file, output_file, drb_paralog_reads_file, read_group_string, reference_fasta, platform, threads, region=None):
-	"""
-	Identify reads originating from DRB paralogs (DRB3/4/5/6/7/8/9) using competitive
-	mapping against a multi-allele reference containing representative genomic
-	sequences from DRB1, DRB3, DRB4, DRB5, DRB6, DRB7, DRB8, and DRB9.
+	"""Identify reads from DRB paralogs by competitive mapping against a
+	multi-allele DRB reference.
 
-	For each read, rammap picks the best-matching allele as the primary
-	alignment. If the best match is anything other than a DRB1 allele, that
-	read ID is written to drb_paralog_reads_file for downstream removal by
-	filter_reads().
-
-	When `region` is given, `input_file` is treated as a coordinate-sorted,
-	indexed GRCh38 BAM and only the primary reads overlapping that region (the
-	DR cluster) are competitively mapped. This restricts paralog classification
-	to reads already placed in the DR region instead of re-mapping the full read
-	set. When `region` is None the whole `input_file` is mapped.
+	Reads whose primary alignment is anything other than a DRB1 allele are written
+	to drb_paralog_reads_file for removal by filter_reads(). With `region`, only
+	primary reads overlapping that interval are mapped; otherwise the whole file is.
 	"""
 	print("Classifying DRB reads using multi-allele competitive mapping (rammap)!")
 
@@ -787,15 +778,12 @@ def run_mosdepth(input_file, output_dir, sample_ID, regions_file, threads):
 
 def parse_mosdepth(regions_file, thresholds_file, cds_depth_thresh, cds_prop_20x_thresh, cds_prop_30x_thresh,
 					ars_depth_thresh, ars_prop_20x_thresh, ars_prop_30x_thresh):
-	"""Aggregate mosdepth per-interval stats into per-gene full-gene + CDS + ARS gates.
+	"""Aggregate mosdepth per-interval stats into per-gene CDS and ARS gates.
 
-	BED rows are expected to be named `<gene>_CDS_<n>` (one row per coding
-	exon), `<gene>_ARS` (one row per gene), or `<gene>_<other>` (one row per
-	gene for the full-gene interval — e.g. `HLA-A_ENSG00000206503`). CDS rows
-	are pooled by gene using length-weighted sums, so `prop_30x` is the
-	proportion of bases meeting the threshold across concatenated exons — not
-	an average of per-exon proportions. Full-gene rows are reported but not
-	used as a gate.
+	BED rows are named `<gene>_CDS_<n>`, `<gene>_ARS`, or `<gene>_<other>` for the
+	full-gene interval. CDS rows are pooled by length-weighted sum, so prop_30x is
+	over concatenated exons rather than an average of per-exon proportions.
+	Full-gene rows are reported but not gated on.
 	"""
 	# Per-gene accumulators for CDS rows
 	cds_totals = {}       # gene -> {total_len, depth_sum, n_10x, n_20x, n_30x}

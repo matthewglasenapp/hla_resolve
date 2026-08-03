@@ -81,9 +81,7 @@ def _full_sequence(sequence_data, allele):
 
 
 def _utr_parts(sequence_data, allele):
-    # (5' UTR, 3' UTR) of an allele. Returns ("", "") unless the record carries
-    # both, so a partially-annotated entry contributes no UTR to the shared span
-    # rather than an ambiguously-oriented one.
+    # (5' UTR, 3' UTR). Returns ("", "") unless the record carries both.
     feats = sequence_data.get(allele)
     if not feats:
         return "", ""
@@ -355,21 +353,8 @@ def _best_in_lineage(consensus, lineage, gene, sequence_data, core_cache):
     tied = sorted(name for d, name in scored if d == min_dist)
 
     if len(tied) > 1:
-        # The exon+intron core could not separate these candidates. In most
-        # such sets it never can: the tied alleles are byte-identical across
-        # every exon and intron, and the only sequence that distinguishes them
-        # is UTR.
-        #
-        # Comparing full sequences would be unfair, because the tied records
-        # carry different amounts of UTR and an allele could win simply by
-        # having more of it annotated. So each candidate is trimmed to the UTR
-        # span that ALL of them share -- the innermost min(5' UTR) and
-        # min(3' UTR) bases, UTRs extending outward from the coding sequence --
-        # and every candidate is scored over an identical window.
-        #
-        # This runs only on sets the core left tied, so it cannot disturb a
-        # call the core already decided. Where it still cannot separate them,
-        # the lowest fourth field decides as before.
+        # Core tied, so rescore over UTR. Records carry different amounts of UTR,
+        # so trim each to the span all of them share and score over that window.
         utrs = {name: _utr_parts(sequence_data, name) for name in tied}
         keep5 = min(len(utrs[name][0]) for name in tied)
         keep3 = min(len(utrs[name][1]) for name in tied)
@@ -552,18 +537,11 @@ def _refine_one_gene(sample_ID, gene, name1, name2, results, query_seqs,
                     hp = tag_by_slot[slot]
                     if prim[hp] is None:
                         continue
-                    # Force HP: build this slot's consensus from the assigned HP tag's
-                    # reads mapped to the slot's scaffold ALONE. The two-scaffold step
-                    # above only decides which tag pairs with which allele; it must not
-                    # also re-drop reads whose primary lands on the other scaffold over
-                    # regions identical between the two alleles, which starved a slot
-                    # under the competitive consensus and produced runs of N.
-                    #
-                    # Margin gate: before building the consensus, drop only reads whose
-                    # competitive primary decisively prefers the OTHER slot's scaffold
-                    # (MAPQ >= _PHASING_DROP_MAPQ) — mis-phased reads HiPhase tagged to
-                    # the wrong HP. Reads on their own scaffold or ambiguous over
-                    # identical regions (low MAPQ) are retained, so no slot is starved.
+                    # Force HP: build this slot's consensus against its own scaffold
+                    # alone. The two-scaffold step above only assigns HP tags to alleles.
+                    # Margin gate: drop only reads whose competitive primary decisively
+                    # prefers the other scaffold (MAPQ >= _PHASING_DROP_MAPQ). Ambiguous
+                    # reads are kept so neither slot is starved.
                     slot_scaffold_fa = os.path.join(workdir, f"slot{slot}.scaffold.fa")
                     with open(slot_scaffold_fa, "w") as fh:
                         fh.write(f">{slot_contig[slot]}\n{slot_scaffold_seq[slot]}\n")
@@ -593,14 +571,9 @@ def _refine_one_gene(sample_ID, gene, name1, name2, results, query_seqs,
                 allele, _, tie = refined[winner]
                 assign[1] = assign[2] = (allele, cons_of[winner], tie)
             elif same_lineage and len(present) == 2:
-                # Un-pooled same-lineage het: accept the HP split into two
-                # distinct 4th fields only if the two per-haplotype consensuses
-                # explain the reads better (N-penalized) than a single pooled
-                # homozygous consensus. The N penalty stops a blurry pooled blend
-                # from matching an allele for free at the very positions that
-                # distinguish the two 4th fields. On a true homozygote the pooled
-                # consensus (full depth) is cleaner than either half-depth split,
-                # so the split loses and the call stays homozygous.
+                # Un-pooled same-lineage het: accept the HP split only if the two
+                # per-haplotype consensuses beat a single pooled one, N-penalized so a
+                # blurry pooled blend cannot match for free at the distinguishing bases.
                 shared_seq = _full_sequence(
                     sequence_data,
                     best_guess_1 if _num_fields(best_guess_1) >= 4 else best_guess_2)
