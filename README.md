@@ -15,14 +15,11 @@
   <img src="https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white" alt="Python">
   <a href="LICENSE.txt"><img src="https://img.shields.io/badge/license-UCSC%20Noncommercial-green" alt="License"></a>
   <a href="https://doi.org/10.64898/2026.03.27.26349549"><img src="https://img.shields.io/badge/medRxiv-10.64898-b31b1b" alt="Preprint"></a>
-  <img src="https://img.shields.io/badge/1--3%20field%20concordance-100%25-brightgreen" alt="Concordance">
 </p>
 
 HLA-Resolve is a command-line tool for high-resolution HLA typing from high-coverage PacBio HiFi sequencing reads. It reconstructs phased, full-gene sequences for the eight classical HLA loci (HLA-A, -B, -C, -DPA1, -DPB1, -DQA1, -DQB1, -DRB1) and queries the [IPD-IMGT/HLA database](https://www.ebi.ac.uk/ipd/imgt/hla/) to assign HLA allele calls.
 
-Across every validated whole-genome library, HLA-Resolve is 100% concordant with ground truth through three fields, and calls the fourth field correctly in 77 of 80 haplotypes (see [Validated WGS Libraries](#validated-wgs-libraries)).
-
-HLA-Resolve was designed for and fully validated on PacBio hybrid-capture libraries (read N50 ~4 kb). It should also work with PacBio whole-genome (WGS), whole-exome (WES), and amplicon data. WGS support has been validated on high-coverage PacBio HiFi libraries from the GIAB and HPRC benchmarks.
+HLA-Resolve was designed for and fully validated on PacBio hybrid-capture libraries (read N50 ~4 kb). It should also work with PacBio whole-genome (WGS), whole-exome (WES), and amplicon data. WGS support has been validated on high-coverage PacBio HiFi libraries from the GIAB and HPRC benchmarks (see [Validated WGS Libraries](#validated-wgs-libraries)).
 
 > [!IMPORTANT]
 > HLA-Resolve is pre-release software in active development, intended for high-coverage PacBio HiFi reads. ONT support is still in development, and `--platform ont` is rejected at runtime until it lands. The software is for research use only and not for use in diagnostic procedures. The HLA-Resolve [manuscript](https://doi.org/10.64898/2026.03.27.26349549) is under peer review.
@@ -33,8 +30,7 @@ HLA-Resolve was designed for and fully validated on PacBio hybrid-capture librar
 - [Overview](#overview)
 - [Installation](#installation)
 - [Updating](#updating)
-- [Quick Start](#quick-start)
-- [Demo](#demo)
+- [Quick Start and Demo](#quick-start-and-demo)
 - [Validated WGS Libraries](#validated-wgs-libraries)
 - [Workflow and Dependencies](#workflow-and-dependencies)
 - [Technical Reference](#technical-reference)
@@ -69,7 +65,7 @@ HLA-A, HLA-B, HLA-C, HLA-DPA1, HLA-DPB1, HLA-DQA1, HLA-DQB1, HLA-DRB1
 - Reconstructed haplotype nucleotide sequences for each HLA gene in FASTA format
 
 ### Runtime and Required Resources
-Runtime depends heavily on input file size and available compute resources. Targeted HLA capture data typically completes in **<30 minutes** using **6 CPUs and 20 GB RAM**. Runtime increases for high-coverage WGS or WES datasets, as all reads must be mapped to the human reference genome prior to restricting downstream analysis to the HLA region on chromosome 6.
+Runtime depends heavily on input file size and available compute resources. Targeted HLA capture data typically completes in **<15 minutes** using **6 CPUs and 20 GB RAM**. Runtime increases for high-coverage WGS or WES datasets, as all reads must be mapped to the human reference genome prior to restricting downstream analysis to the HLA region on chromosome 6.
 
 Reference genome alignment is the rate-limiting step and is multithreaded, so increasing the thread count with `--threads` (default **6**) provides the largest runtime reduction, particularly for high-coverage WGS or WES inputs.
 
@@ -84,14 +80,14 @@ hla_resolve setup
 ```
 `hla_resolve setup` downloads and builds every required dependency once, up front:
 
-| File | Source |
-|------|--------|
-| GRCh38 reference genome | NCBI |
-| Picard | Broad Institute |
-| LongPhase binary | GitHub |
-| rammap binary | GitHub |
-| hla.xml ([IPD-IMGT/HLA database](https://github.com/ANHIG/IMGTHLA), release 3.64.0) | IMGTHLA |
-| DeepVariant Singularity image | Docker Hub |
+| File | Version | Source |
+|------|---------|--------|
+| GRCh38 reference genome (no-alt analysis set) | GCA_000001405.15 | NCBI |
+| Picard | 2.27.4 | Broad Institute |
+| LongPhase binary | v2.0 | GitHub |
+| rammap binary | v1.0.0 | GitHub |
+| hla.xml ([IPD-IMGT/HLA database](https://github.com/ANHIG/IMGTHLA)) | 3.64.0 | IMGTHLA |
+| DeepVariant Singularity image | 1.6.1 | Docker Hub |
 
 > [!NOTE]
 > These downloads are large. Ensure sufficient disk space is available in the install directory before the first run.
@@ -103,17 +99,23 @@ chmod a+x update.sh
 bash update.sh
 ```
 
-## Quick Start
+## Quick Start and Demo
+
+The repository ships with a demo dataset of PacBio Revio HiFi hybrid-capture sequencing reads from HG002 (Ashkenazi Son), a sample from the GIAB and HPRC benchmarks. Run this from the repository root:
 
 ```bash
 hla_resolve \
-  --input_file reads.bam \
+  --input_file demo/HG002.hifi_reads.fastq.gz \
   --sample_name HG002 \
   --platform pacbio \
   --scheme hybrid_capture \
-  --output_dir out \
-  --threads 10
+  --output_dir test \
+  --trim_adapters \
+  --adapter_file demo/adapters.fasta \
+  --threads 6
 ```
+
+The command will print the final HLA allele calls to STDOUT, along with important logging information, including coverage depth metrics, heterozygous genotypes that could not be phased, and the paths of intermediate files (e.g., BAM, VCF).
 
 <details>
 <summary><b>Full command-line options</b></summary>
@@ -164,24 +166,6 @@ and not for use in diagnostic procedures.
 ```
 
 </details>
-
-## Demo
-
-Input data: PacBio Revio HiFi hybrid-capture sequencing reads from HG002 (Ashkenazi Son), a sample from the GIAB and HPRC benchmarks. Run from the repository root:
-
-```bash
-hla_resolve \
-  --input_file demo/HG002.hifi_reads.fastq.gz \
-  --sample_name HG002 \
-  --platform pacbio \
-  --scheme hybrid_capture \
-  --output_dir test \
-  --trim_adapters \
-  --adapter_file demo/adapters.fasta \
-  --threads 6
-```
-
-The command will print the final HLA allele calls to STDOUT, along with important logging information, including coverage depth metrics, heterozygous genotypes that could not be phased, and the paths of intermediate files (e.g., BAM, VCF).
 
 ### Example Output
 
