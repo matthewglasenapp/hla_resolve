@@ -68,7 +68,7 @@ HLA-A, HLA-B, HLA-C, HLA-DPA1, HLA-DPB1, HLA-DQA1, HLA-DQB1, HLA-DRB1
 **Intermediate Files**
 - Haplotagged, mapped BAMs for chromosome 6 (for visualization in genome browsers such as IGV)
 - Phased VCFs (chromosome 6 and individual gene)
-- Reconstructed haplotype nucleotide sequences for each HLA gene in FASTA format
+- Reconstructed phased nucleotide sequences for each HLA gene in FASTA format
 
 ### Runtime and Required Resources
 Runtime depends heavily on input file size and available compute resources. Targeted HLA capture data typically completes in **<15 minutes** using **6 CPUs and 20 GB RAM**. Runtime increases for high-coverage WGS or WES datasets, as all reads must be mapped to the human reference genome prior to restricting downstream analysis to the HLA region on chromosome 6.
@@ -90,7 +90,6 @@ hla_resolve setup
 |------|---------|--------|
 | GRCh38 reference genome (no-alt analysis set) | GCA_000001405.15 | NCBI |
 | Picard | 2.27.4 | Broad Institute |
-| LongPhase binary | v2.0 | GitHub |
 | rammap binary | v1.0.0 | GitHub |
 | hla.xml ([IPD-IMGT/HLA database](https://github.com/ANHIG/IMGTHLA)) | 3.64.0 | IMGTHLA |
 | DeepVariant Singularity image | 1.6.1 | Docker Hub |
@@ -121,7 +120,7 @@ hla_resolve \
   --threads 6
 ```
 
-The command will print the final HLA allele calls to STDOUT, along with important logging information, including coverage depth metrics, heterozygous genotypes that could not be phased, and the paths of intermediate files (e.g., BAM, VCF).
+The command will print the final HLA allele calls to STDOUT, along with important logging information, including coverage depth metrics and the paths of intermediate files (e.g., BAM, VCF).
 
 <details>
 <summary><b>Full command-line options</b></summary>
