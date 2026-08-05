@@ -229,9 +229,9 @@ def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail
 			continue
 
 		# ========== SV OVERLAP CHECK ==========
-		# Skip non-SV variants that overlap a PASS SV on the same haplotype
-		# Only apply haplotype-aware suppression for phased indels ≥30bp
-		# Never suppress SNPs - they are real variants near SV breakpoints
+		# Skip non-SV variants that overlap a PASS SV on the same haplotype.
+		# Applies to phased or homozygous records only. Never suppress SNPs, which
+		# may be real variants near an SV breakpoint.
 		# Size and type come from the carried alleles, not rec.alts[0]. DeepVariant
 		# emits multiallelic records holding both a SNP and an indel alt (T -> A,TG).
 		ref_len = len(rec.ref)
