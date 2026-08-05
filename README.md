@@ -17,6 +17,12 @@
   <a href="https://doi.org/10.64898/2026.03.27.26349549"><img src="https://img.shields.io/badge/medRxiv-10.64898-b31b1b" alt="Preprint"></a>
 </p>
 
+<p align="center">
+  <a href="https://github.com/matthewglasenapp">Matthew Glasenapp</a> &nbsp;·&nbsp;
+  <a href="https://github.com/FlyingFish800">Alex Symons</a> &nbsp;·&nbsp;
+  <a href="https://github.com/oeco28">Omar Cornejo</a>
+</p>
+
 HLA-Resolve is a command-line tool for high-resolution HLA typing from high-coverage PacBio HiFi sequencing reads. It reconstructs phased, full-gene sequences for the eight classical HLA loci (HLA-A, -B, -C, -DPA1, -DPB1, -DQA1, -DQB1, -DRB1) and queries the [IPD-IMGT/HLA database](https://www.ebi.ac.uk/ipd/imgt/hla/) to assign HLA allele calls.
 
 HLA-Resolve was designed for and fully validated on PacBio hybrid-capture libraries (read N50 ~4 kb). It should also work with PacBio whole-genome (WGS), whole-exome (WES), and amplicon data. WGS support has been validated on high-coverage PacBio HiFi libraries from the GIAB and HPRC benchmarks (see [Validated WGS Libraries](#validated-wgs-libraries)).
@@ -32,10 +38,10 @@ HLA-Resolve was designed for and fully validated on PacBio hybrid-capture librar
 - [Updating](#updating)
 - [Quick Start and Demo](#quick-start-and-demo)
 - [Validated WGS Libraries](#validated-wgs-libraries)
-- [Workflow and Dependencies](#workflow-and-dependencies)
-- [Technical Reference](#technical-reference)
 - [Planned Features (In Development)](#planned-features-in-development)
 - [Citation](#citation)
+- [Workflow and Dependencies](#workflow-and-dependencies)
+- [Technical Reference](#technical-reference)
 - [Support](#support)
 - [License](#license)
 
@@ -255,6 +261,20 @@ The `hla_resolve` command used to analyze these libraries was:
 hla_resolve --input_file <INPUT_uBAM> --sample_name <sample_name> --platform pacbio --scheme WGS --output_dir <output_dir> --threads <threads>
 ```
 
+## Planned Features (In Development)
+
+1. HLA typing at P-group resolution
+2. HLA typing for additional HLA Class I protein-coding genes and pseudogenes
+   (HLA-E, HLA-F, HLA-G; HLA-H, HLA-J, HLA-K, HLA-L, HLA-S, HLA-V, HLA-W)
+3. HLA typing for additional HLA Class II protein-coding genes
+   (HLA-DRB3, HLA-DRB4, HLA-DRB5)
+
+## Citation
+
+If you use HLA-Resolve, please cite:
+
+> Glasenapp, M.R., Yee, M.-C., Symons, A.E., Cornejo, O.E. & Garcia, O.A. HLA-Resolve: High-Resolution HLA Haplotyping Using Long-Read Hybrid Capture. *medRxiv* (2026). https://doi.org/10.64898/2026.03.27.26349549
+
 ## Workflow and Dependencies
 
 HLA-Resolve takes raw PacBio HiFi reads (FASTQ or uBAM) as input and executes the following steps to produce four-field HLA allele assignments.
@@ -342,22 +362,6 @@ For WGS and WES input, the pipeline skips adapter trimming (step 1) and pre-alig
 ## Technical Reference
 
 For detailed documentation on the algorithms, decision logic, and tools used internally by HLA-Resolve, see the [Technical Reference](https://github.com/matthewglasenapp/hla_resolve/blob/main/docs/technical_reference.md).
-
-## Planned Features (In Development)
-
-1. HLA typing at P-group resolution
-2. HLA typing for additional HLA Class I protein-coding genes and pseudogenes
-   (HLA-E, HLA-F, HLA-G; HLA-H, HLA-J, HLA-K, HLA-L, HLA-S, HLA-V, HLA-W)
-3. HLA typing for additional HLA Class II protein-coding genes
-   (HLA-DRB3, HLA-DRB4, HLA-DRB5)
-
-## Citation
-
-**Authors:** [Matthew Glasenapp](https://github.com/matthewglasenapp), [Alex Symons](https://github.com/FlyingFish800), [Omar Cornejo](https://github.com/oeco28)
-
-If you use HLA-Resolve, please cite:
-
-> Glasenapp, M.R., Yee, M.-C., Symons, A.E., Cornejo, O.E. & Garcia, O.A. HLA-Resolve: High-Resolution HLA Haplotyping Using Long-Read Hybrid Capture. *medRxiv* (2026). https://doi.org/10.64898/2026.03.27.26349549
 
 ## Support
 
