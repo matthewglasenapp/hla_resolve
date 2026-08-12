@@ -23,12 +23,12 @@
   <a href="https://github.com/oeco28">Omar Cornejo</a>
 </p>
 
-HLA-Resolve is a command-line tool for high-resolution HLA typing from high-coverage PacBio HiFi sequencing reads. It reconstructs phased, full-gene sequences for the eight classical HLA loci (HLA-A, -B, -C, -DPA1, -DPB1, -DQA1, -DQB1, -DRB1) and queries the [IPD-IMGT/HLA database](https://www.ebi.ac.uk/ipd/imgt/hla/) to assign HLA allele calls.
+HLA-Resolve is a command-line tool for high-resolution HLA typing from high-coverage PacBio sequencing reads. It reconstructs phased, full-gene sequences for the eight classical HLA loci (HLA-A, -B, -C, -DPA1, -DPB1, -DQA1, -DQB1, -DRB1) and queries the [IPD-IMGT/HLA database](https://www.ebi.ac.uk/ipd/imgt/hla/) to assign HLA allele calls.
 
 HLA-Resolve was designed for and fully validated on PacBio hybrid-capture libraries (read N50 ~4 kb). It should also work with PacBio whole-genome (WGS), whole-exome (WES), and amplicon data. WGS support has been validated on high-coverage PacBio HiFi libraries from the GIAB and HPRC benchmarks (see [Validated WGS Libraries](#validated-wgs-libraries)).
 
 > [!IMPORTANT]
-> HLA-Resolve is pre-release software in active development, intended for high-coverage PacBio HiFi reads. ONT support is still in development, and `--platform ont` is rejected at runtime until it lands. The software is for research use only and not for use in diagnostic procedures. The HLA-Resolve [manuscript](https://doi.org/10.64898/2026.03.27.26349549) is under peer review.
+> HLA-Resolve is pre-release software in active development, intended for high-coverage PacBio reads. ONT support is still in development, and `--platform ont` is rejected at runtime until it lands. The software is for research use only and not for use in diagnostic procedures. The HLA-Resolve [manuscript](https://doi.org/10.64898/2026.03.27.26349549) is under peer review.
 
 ## Table of Contents
 
@@ -276,11 +276,11 @@ If you use HLA-Resolve, please cite:
 
 ## Workflow and Dependencies
 
-HLA-Resolve takes raw PacBio HiFi reads (FASTQ or uBAM) as input and executes the following steps to produce four-field HLA allele assignments.
+HLA-Resolve takes raw PacBio reads (FASTQ or uBAM) as input and executes the following steps to produce four-field HLA allele assignments.
 
 ```mermaid
 flowchart TD
-  A[PacBio HiFi reads<br/>FASTQ or uBAM] --> B[Adapter trimming<br/>fastplong / cutadapt]
+  A[PacBio reads<br/>FASTQ or uBAM] --> B[Adapter trimming<br/>fastplong / cutadapt]
   B --> C[PCR duplicate removal<br/>pbmarkdup]
   C --> D[Alignment to modified GRCh38<br/>rammap]
   D --> E[HLA-DRB paralog filtering<br/>multi-allele DRB bait]
