@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 
 # Pass-3 result tuple, as built in hla_typer.pass_3_classification:
 #   (allele, distance, match_length, identity, mismatch_identity, tiebreak_used, equidistant)
-ALLELE, DISTANCE, TIEBREAK, EQUIDISTANT = 0, 1, 5, -1
+ALLELE, TIEBREAK, EQUIDISTANT = 0, 5, -1
 
 
 def gene_and_index(record_name):
@@ -36,7 +36,6 @@ def build(config, classifications, coverage_stats, phased_genes, cds_rescued_gen
 	for gene in config['genes_of_interest']:
 		genes[gene] = {
 			"calls": [None, None],
-			"distance": [None, None],
 			"equidistant": [0, 0],
 			"phasing": "fully_phased" if gene in phased_genes else "partial",
 			"reconstruction": "none",
@@ -54,7 +53,6 @@ def build(config, classifications, coverage_stats, phased_genes, cds_rescued_gen
 			continue
 		slot = int(index) - 1
 		genes[gene]["calls"][slot] = result[ALLELE]
-		genes[gene]["distance"][slot] = result[DISTANCE]
 		equidistant = result[EQUIDISTANT]
 		genes[gene]["equidistant"][slot] = len(equidistant) if equidistant else 1
 		genes[gene]["reconstruction"] = reconstruction_of(gene, cds_rescued_genes)

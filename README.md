@@ -80,7 +80,7 @@ Each has a `_full.csv` companion listing every equidistant candidate as a genoty
 
 **Run Summary**
 
-`<output_dir>/<sample>/summary.json` holds the calls plus per-gene edit distance, number of equidistant candidates, phasing status, reconstruction mode, and coverage, along with the run status and runtime. Use it instead of parsing the terminal output when processing many samples.
+`<output_dir>/<sample>/summary.json` holds the calls plus the number of equidistant candidates, phasing status, reconstruction mode, and coverage, along with the run status and runtime. Use it instead of parsing the terminal output when processing many samples.
 
 **Intermediate Files**
 - Haplotagged, mapped BAMs for chromosome 6 (for visualization in genome browsers such as IGV)
