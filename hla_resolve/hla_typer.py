@@ -22,11 +22,14 @@ def out_path(name):
     return os.path.join(OUTPUT_DIR, name)
 
 
+# Per-pass progress and timing. Diagnostic only, so it stays off unless --verbose.
+# A module-level flag rather than reading config, because test_against_truth.py
+# imports this module as a top-level script, where a relative import fails and
+# importing config would trigger its setup-on-import.
+VERBOSE = False
+
 def info(*args, **kwargs):
-    # Per-pass progress and timing. Diagnostic only, so it is hidden unless
-    # --verbose. The stage headers already show where the run is.
-    from . import config
-    if config.VERBOSE:
+    if VERBOSE:
         print(*args, **kwargs)
 
 NUM_SAMPLES = None
@@ -1200,6 +1203,7 @@ def run_classification(reference_xml_file, samples_file, full_sample_file=None, 
 
 # CLI interface used for testing
 if __name__ == "__main__":
+    VERBOSE = True
     parser = argparse.ArgumentParser(description='Three-Step HLA Allele Identification System')
     parser.add_argument('--hla-xml', required=False, default=None, help='Input hla.xml reference file')
     parser.add_argument('--samples', required=False, default=None, help='Input FASTA file with full sequences')
@@ -1240,7 +1244,10 @@ def main(reference_xml_file, hla_fasta_dir, sample_ID, pass2_metric = "edit_dist
          pass3_metric = "mismatch_identity", ignore_unconfirmed = False,
          ignore_incomplete = True, generate_query_ref_comp=False, reconsensus_ctx=None,
          output_dir=None):
-    global OUTPUT_DIR
+    global OUTPUT_DIR, VERBOSE
+    from . import config
+    VERBOSE = config.VERBOSE
+
     if output_dir:
         OUTPUT_DIR = output_dir
         os.makedirs(OUTPUT_DIR, exist_ok=True)
