@@ -78,11 +78,9 @@ Three files hold the same calls at different resolutions. Use `allele_output.csv
 
 Each has a `_full.csv` companion listing every equidistant candidate as a genotype list string, where the primary file reports only the chosen one.
 
-**Run Summary**
+**Exit Status**
 
-`<output_dir>/<sample>/summary.json` holds the calls plus the number of equidistant candidates, phasing status, reconstruction mode, and coverage, along with the run status and runtime. Use it instead of parsing the terminal output when processing many samples.
-
-HLA-Resolve exits 0 when a sample produces allele calls and 1 when it does not, so a sample that fails is reported as failed by a job scheduler. The `status` field in `summary.json` records which case applied.
+HLA-Resolve exits 0 when a sample produces allele calls and 1 when it does not, so a sample that fails is reported as failed by a job scheduler.
 
 **Intermediate Files**
 - Haplotagged, mapped BAMs for chromosome 6 (for visualization in genome browsers such as IGV)
@@ -224,7 +222,6 @@ HLA-DRB1   04:02:01      10:01:01:03
 
 Note: Allele order within each gene is arbitrary and is not consistent between genes.
 
-Run summary written to test/HG002/summary.json
 Finished HG002 in 9m 18s (status: ok)
 ```
 

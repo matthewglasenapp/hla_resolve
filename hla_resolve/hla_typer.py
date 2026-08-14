@@ -21,6 +21,14 @@ def out_path(name):
     # directory so the standalone CLI behaves as before.
     return os.path.join(OUTPUT_DIR, name)
 
+
+def info(*args, **kwargs):
+    # Per-pass progress and timing. Diagnostic only, so it is hidden unless
+    # --verbose. The stage headers already show where the run is.
+    from . import config
+    if config.VERBOSE:
+        print(*args, **kwargs)
+
 NUM_SAMPLES = None
 
 # Get Gene from sample name
@@ -59,13 +67,13 @@ def print_time_taken(fun):
         seconds = time_taken % 60
         minutes = math.floor(time_taken / 60)
         if NUM_SAMPLES == None:
-            print(f"INFO: {fun.__name__} took {minutes}m {seconds:2.0f}s")
+            info(f"INFO: {fun.__name__} took {minutes}m {seconds:2.0f}s")
         else:
             time_per_sample = time_taken / NUM_SAMPLES
             seconds_per_sample = time_per_sample % 60
             minutes_per_sample = math.floor(time_per_sample / 60)
-            print(f"INFO: {fun.__name__} took {minutes}m {seconds:2.0f}s")
-            print(f"INFO: {fun.__name__} took {minutes_per_sample}m {seconds_per_sample:2.0f}s per sample")
+            info(f"INFO: {fun.__name__} took {minutes}m {seconds:2.0f}s")
+            info(f"INFO: {fun.__name__} took {minutes_per_sample}m {seconds_per_sample:2.0f}s per sample")
         
         # Return result of decorated function
         return result
@@ -98,13 +106,13 @@ def build_g_group_dict_from_web():
 
         # If file is more recent than latest database update, no need to get new file
         if file_modified > db_modified:
-            print("INFO: Cached xml pulled from web is up-to-date")
+            info("INFO: Cached xml pulled from web is up-to-date")
             return
         else:
-            print("INFO: Cached xml pulled from web is not up-to-date. Redownloading...")
+            info("INFO: Cached xml pulled from web is not up-to-date. Redownloading...")
             os.remove("tmp/hla.xml.zip")
     else:
-        print("INFO: No cached xml database. Pulling from web...")
+        info("INFO: No cached xml database. Pulling from web...")
 
     # Get the zip file
     command = "wget -P ./tmp " + db_url
@@ -130,13 +138,13 @@ def build_g_group_dict(xml_file, ignore_unconfirmed=False, ignore_incomplete=Fal
     #     xml_file = "./tmp/hla.xml"
 
     # Parse metadata XML file
-    print("INFO: Parsing metadata XML file")
+    info("INFO: Parsing metadata XML file")
     tree = ET.parse(xml_file)
     root = tree.getroot()
 
     # Handle version specific changes
     version = root.attrib['version']
-    print("INFO: XML version:", version)
+    info("INFO: XML version:", version)
     group_accessor = "name" if version > "3.61.0" else "status"
 
     # Dictionary databases
@@ -312,7 +320,7 @@ def get_g_group_exons(allele_to_g_groups, sequence_data):
     # Create dictionary containing all alleles within a g group
     g_group_to_allele = generate_allele_dict(allele_to_g_groups)
 
-    print("INFO: Finding common g group sequences")
+    info("INFO: Finding common g group sequences")
     common_sequence = dict()
     skipped = 0
     # Check that peptide binding domain is same for every allele in g group
@@ -504,7 +512,7 @@ def assign_classification_to_sample_full_seq(full_sequence, sequence, full_sampl
 
 @print_time_taken
 def pass_1_classification(common_sequenes, samples, g_groups_dict, truth_data = None):
-    print("INFO: Beginning classification pass 1...")
+    info("INFO: Beginning classification pass 1...")
 
     results = {}
     perfect = 0
@@ -515,7 +523,7 @@ def pass_1_classification(common_sequenes, samples, g_groups_dict, truth_data = 
     for sample_name, sample_sequence in samples.items():
         current += 1
         if current % 20 == 0:
-            print(f"INFO: Processing {current}/{len(samples)} ({(current/len(samples))*100:.2f}%)")
+            info(f"INFO: Processing {current}/{len(samples)} ({(current/len(samples))*100:.2f}%)")
 
         result = assign_classification_to_sample(common_sequenes, sample_sequence, sample_name, logfile=pass_1_logfile)
         results[sample_name] = result
@@ -532,7 +540,7 @@ def pass_1_classification(common_sequenes, samples, g_groups_dict, truth_data = 
     if pass_1_logfile != None:
         pass_1_logfile.close()
 
-    print(f"INFO: 0 distance g group assignments: {perfect}/{len(samples)}. See logfile for details")
+    info(f"INFO: 0 distance g group assignments: {perfect}/{len(samples)}. See logfile for details")
     
     return results
 
@@ -731,7 +739,7 @@ def trunc_to_3_fields(allele):
 @print_time_taken
 def pass_2_classification(sequence_data, allele_to_g_groups, results_dict, samples, truth_data=None,
                           exon_only=True, metric="edit_distance"):
-    print("INFO: Beginning classification pass 2...")
+    info("INFO: Beginning classification pass 2...")
 
     # {g_group: allele}
     g_group_to_allele = generate_allele_dict(allele_to_g_groups)
@@ -747,7 +755,7 @@ def pass_2_classification(sequence_data, allele_to_g_groups, results_dict, sampl
     for sample_name, classification in results_dict.items():
         current += 1
         if current % 20 == 0:
-            print(f"INFO: Processing {current}/{len(results_dict)} ({(current/len(results_dict))*100:.2f}%)")
+            info(f"INFO: Processing {current}/{len(results_dict)} ({(current/len(results_dict))*100:.2f}%)")
 
         g_group = classification[0]
 
@@ -799,7 +807,7 @@ def pass_2_classification(sequence_data, allele_to_g_groups, results_dict, sampl
     if pass_2_logfile != None:
         pass_2_logfile.close()
 
-    print(f"INFO: 0 distance 3-field allele assignments: {perfect}/{len(samples)}. See logfile for details")
+    info(f"INFO: 0 distance 3-field allele assignments: {perfect}/{len(samples)}. See logfile for details")
 
     return results
 
@@ -816,7 +824,7 @@ def pass_2_classification(sequence_data, allele_to_g_groups, results_dict, sampl
 def pass_3_classification(sequence_data, results_dict, samples, truth_data=None, metric="identity",
                           generate_query_ref_comp=False, log_assignment_condition=False, tie_metric="match_length",
                           reconsensus_ctx=None):
-    print("INFO: Beginning classification pass 3...")
+    info("INFO: Beginning classification pass 3...")
 
     headers = ["sample", "ref_allele_name", "CIGAR", "alignment_path_start", "alignment_path_stop", "raw_edit", "gc_edit", "prop_mismatch", "match_length"]
     entries = {header:[] for header in headers}
@@ -842,7 +850,7 @@ def pass_3_classification(sequence_data, results_dict, samples, truth_data=None,
     for sample_name, classification in results_dict.items():
         current += 1
         if current % 20 == 0:
-            print(f"INFO: Processing {current}/{len(results_dict)} ({(current/len(results_dict))*100:.2f}%)")
+            info(f"INFO: Processing {current}/{len(results_dict)} ({(current/len(results_dict))*100:.2f}%)")
 
         is_drdq = recon_enabled and ("HLA-" + get_gene(sample_name, asterisk=False)) in recon_genes
         loop_log = None if is_drdq else pass_3_logfile
@@ -984,7 +992,7 @@ def pass_3_classification(sequence_data, results_dict, samples, truth_data=None,
     if pass_3_logfile != None:
         pass_3_logfile.close()
 
-    print(f"INFO: 0 distance 4-field allele assignments: {perfect}/{len(samples)}. See logfile for details")
+    info(f"INFO: 0 distance 4-field allele assignments: {perfect}/{len(samples)}. See logfile for details")
 
     if generate_query_ref_comp:
         pd.DataFrame(entries, columns=headers).to_csv(out_path("sample_ref_comp.csv"), index=False)
@@ -1167,25 +1175,25 @@ def run_classification(reference_xml_file, samples_file, full_sample_file=None, 
             print(f"WARN: Different samples in exon only and full sequence sample files.")
             print(f"{NUM_SAMPLES} samples (in exon only) vs {len(full_sample_file)} samples (in full sequence)")
 
-    print("INFO: Classifying samples to G group")
+    info("INFO: Classifying samples to G group")
     g_group_classifications = pass_1_classification(g_group_common_sequences, samples, g_group_dict, truth_data=truth_data)
 
-    print("INFO: Writing g group results")
+    info("INFO: Writing g group results")
     output_results(g_group_classifications, out_path("g_group_output.csv"), out_path("g_group_output_full.csv") if write_full else None)
 
-    print("INFO: Classifying the samples to an allele")
+    info("INFO: Classifying the samples to an allele")
     allele_classifications = pass_2_classification(sequence_data, g_group_dict, g_group_classifications, samples, truth_data=truth_data, metric=pass2_metric)
 
-    print("INFO: Writing allele results")
+    info("INFO: Writing allele results")
     output_results(allele_classifications, out_path("3_field_allele_output.csv"), out_path("3_field_allele_output_full.csv") if write_full else None, trunc=True)
     
     if full_sample_file == None:
         return None
 
-    print("INFO: Refining allele classifications based on non-coding regions", pass3_metric)
+    info("INFO: Refining allele classifications based on non-coding regions", pass3_metric)
     refined_classifications = pass_3_classification(sequence_data, allele_classifications, full_samples, truth_data=truth_data, metric=pass3_metric, generate_query_ref_comp=generate_query_ref_comp, log_assignment_condition=log_assignment_condition, reconsensus_ctx=reconsensus_ctx)
 
-    print("INFO: Writing refined allele results")
+    info("INFO: Writing refined allele results")
     output_results(refined_classifications, out_path("allele_output.csv"), out_path("allele_output_full.csv") if write_full else None)
 
     return refined_classifications

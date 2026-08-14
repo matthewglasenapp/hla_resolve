@@ -895,5 +895,5 @@ def parse_mosdepth(regions_file, thresholds_file, cds_depth_thresh, cds_prop_20x
 			print(f"Gene {gene} has insufficient {' and '.join(reasons)} coverage for haplotyping and allele calling")
 
 	print("\n")
-	# cds_stats is carried out for summary.json
+	# cds_stats is returned for callers that want the per-gene coverage numbers
 	return sufficient_coverage_genes, cds_stats
