@@ -82,6 +82,8 @@ Each has a `_full.csv` companion listing every equidistant candidate as a genoty
 
 `<output_dir>/<sample>/summary.json` holds the calls plus the number of equidistant candidates, phasing status, reconstruction mode, and coverage, along with the run status and runtime. Use it instead of parsing the terminal output when processing many samples.
 
+HLA-Resolve exits 0 when a sample produces allele calls and 1 when it does not, so a sample that fails is reported as failed by a job scheduler. The `status` field in `summary.json` records which case applied.
+
 **Intermediate Files**
 - Haplotagged, mapped BAMs for chromosome 6 (for visualization in genome browsers such as IGV)
 - Phased VCFs (chromosome 6 and individual gene)
