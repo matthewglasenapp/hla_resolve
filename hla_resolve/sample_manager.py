@@ -350,6 +350,7 @@ def build_workflow_config(sample):
 	config = {
 		# Core sample information
 		'input_file': sample.input_file,
+		'output_dir': sample.output_dir,
 		'sample_ID': sample.sample_ID,
 		'threads': sample.threads,
 		'platform': sample.platform,

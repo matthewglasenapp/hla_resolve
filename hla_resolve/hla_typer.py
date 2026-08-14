@@ -14,6 +14,13 @@ import subprocess
 import argparse
 import os
 
+OUTPUT_DIR = "."
+
+def out_path(name):
+    # Results go under OUTPUT_DIR, set by main(). Defaults to the working
+    # directory so the standalone CLI behaves as before.
+    return os.path.join(OUTPUT_DIR, name)
+
 NUM_SAMPLES = None
 
 # Get Gene from sample name
@@ -503,7 +510,7 @@ def pass_1_classification(common_sequenes, samples, g_groups_dict, truth_data = 
     perfect = 0
     current = 0
 
-    pass_1_logfile = open("g_group_assignment.log", "w")
+    pass_1_logfile = open(out_path("g_group_assignment.log"), "w")
 
     for sample_name, sample_sequence in samples.items():
         current += 1
@@ -732,7 +739,7 @@ def pass_2_classification(sequence_data, allele_to_g_groups, results_dict, sampl
     # Precompute database of all sequences
     all_allele_sequence_db = produce_allele_seq_db(sequence_data, exon_only=exon_only)
 
-    pass_2_logfile = open("3_field_allele_assignment.log", "w")
+    pass_2_logfile = open(out_path("3_field_allele_assignment.log"), "w")
     perfect = 0
     current = 0
 
@@ -817,7 +824,7 @@ def pass_3_classification(sequence_data, results_dict, samples, truth_data=None,
     # Precompute database of all sequences
     all_allele_sequence_db = produce_allele_seq_db(sequence_data, exon_only=False)
 
-    pass_3_logfile = open("allele_assignment.log", "w")
+    pass_3_logfile = open(out_path("allele_assignment.log"), "w")
     perfect = 0
     current = 0
 
@@ -980,7 +987,7 @@ def pass_3_classification(sequence_data, results_dict, samples, truth_data=None,
     print(f"INFO: 0 distance 4-field allele assignments: {perfect}/{len(samples)}. See logfile for details")
 
     if generate_query_ref_comp:
-        pd.DataFrame(entries, columns=headers).to_csv("sample_ref_comp.csv", index=False)
+        pd.DataFrame(entries, columns=headers).to_csv(out_path("sample_ref_comp.csv"), index=False)
 
     if log_assignment_condition:
         print(f"Resolution {'':18} | Count")
@@ -1092,7 +1099,7 @@ def load_truth_data(path, source = "IHW"):
 def write_json(sequence_data, g_group_dict):
     import json
 
-    filename = "database_data.json"
+    filename = out_path("database_data.json")
 
     g_group_to_allele = generate_allele_dict(g_group_dict)
 
@@ -1164,22 +1171,24 @@ def run_classification(reference_xml_file, samples_file, full_sample_file=None, 
     g_group_classifications = pass_1_classification(g_group_common_sequences, samples, g_group_dict, truth_data=truth_data)
 
     print("INFO: Writing g group results")
-    output_results(g_group_classifications, "g_group_output.csv", "g_group_output_full.csv" if write_full else None)
+    output_results(g_group_classifications, out_path("g_group_output.csv"), out_path("g_group_output_full.csv") if write_full else None)
 
     print("INFO: Classifying the samples to an allele")
     allele_classifications = pass_2_classification(sequence_data, g_group_dict, g_group_classifications, samples, truth_data=truth_data, metric=pass2_metric)
 
     print("INFO: Writing allele results")
-    output_results(allele_classifications, "3_field_allele_output.csv", "3_field_allele_output_full.csv" if write_full else None, trunc=True)
+    output_results(allele_classifications, out_path("3_field_allele_output.csv"), out_path("3_field_allele_output_full.csv") if write_full else None, trunc=True)
     
     if full_sample_file == None:
-        exit(0)
+        return None
 
     print("INFO: Refining allele classifications based on non-coding regions", pass3_metric)
     refined_classifications = pass_3_classification(sequence_data, allele_classifications, full_samples, truth_data=truth_data, metric=pass3_metric, generate_query_ref_comp=generate_query_ref_comp, log_assignment_condition=log_assignment_condition, reconsensus_ctx=reconsensus_ctx)
 
     print("INFO: Writing refined allele results")
-    output_results(refined_classifications, "allele_output.csv", "allele_output_full.csv" if write_full else None)
+    output_results(refined_classifications, out_path("allele_output.csv"), out_path("allele_output_full.csv") if write_full else None)
+
+    return refined_classifications
 
 # CLI interface used for testing
 if __name__ == "__main__":
@@ -1221,11 +1230,17 @@ if __name__ == "__main__":
 # Output:   (None) Writes to assignment.log and output.csv files for each stage
 def main(reference_xml_file, hla_fasta_dir, sample_ID, pass2_metric = "edit_distance",
          pass3_metric = "mismatch_identity", ignore_unconfirmed = False,
-         ignore_incomplete = True, generate_query_ref_comp=False, reconsensus_ctx=None):
+         ignore_incomplete = True, generate_query_ref_comp=False, reconsensus_ctx=None,
+         output_dir=None):
+    global OUTPUT_DIR
+    if output_dir:
+        OUTPUT_DIR = output_dir
+        os.makedirs(OUTPUT_DIR, exist_ok=True)
+
     samples_file = os.path.join(hla_fasta_dir, str(sample_ID) + "_HLA_haplotypes_CDS.fasta")
     full_sample_file = os.path.join(hla_fasta_dir, str(sample_ID) + "_HLA_haplotypes_gene.fasta")
 
-    run_classification(reference_xml_file, samples_file, full_sample_file, pass2_metric=pass2_metric,
+    return run_classification(reference_xml_file, samples_file, full_sample_file, pass2_metric=pass2_metric,
                        pass3_metric=pass3_metric, ignore_unconfirmed=ignore_unconfirmed,
                        ignore_incomplete=ignore_incomplete, write_full=True, generate_query_ref_comp=generate_query_ref_comp,
                        reconsensus_ctx=reconsensus_ctx)

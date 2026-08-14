@@ -18,6 +18,26 @@ from contextlib import contextmanager
 # runtime mutation is visible (a `from .config import VERBOSE` import would
 # bind the False value at import time).
 VERBOSE = False
+QUIET = False
+
+# Stage names in run order. Numbering in the terminal comes from this list, so it
+# cannot drift from the workflow described in the README.
+STAGES = [
+    "Adapter trimming",
+    "PCR duplicate removal",
+    "Reference genome alignment",
+    "HLA-DRB paralog filtering",
+    "Read filtering",
+    "Small variant calling",
+    "Structural variant calling",
+    "Tandem repeat genotyping",
+    "Joint phasing",
+    "Coverage assessment",
+    "Haploblock evaluation",
+    "Variant filtering and redundancy removal",
+    "Haplotype reconstruction",
+    "IPD-IMGT/HLA database matching",
+]
 
 # Get the data directory relative to this config file
 _data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")

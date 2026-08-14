@@ -24,9 +24,11 @@ from .preprocess_methods import (
 	merge_hiphase_vcfs
 )
 from .config import min_reads_sample, drb_region
+from .utils import stage
 
 def preprocess_pacbio_sample(config):
 	if config['scheme'] in ("hybrid_capture", "amplicon"):
+		stage("Adapter trimming")
 		trim_adapters(
 			adapters=config['adapters'],
 			input_file=config['raw_fastq'],
@@ -43,6 +45,7 @@ def preprocess_pacbio_sample(config):
 		# identical alignment coordinates that the duplicate caller would
 		# discard as PCR duplicates.
 		if config['scheme'] == "hybrid_capture":
+			stage("PCR duplicate removal")
 			mark_duplicates_pbmarkdup(
 				input_file=config['trimmed_fastq'],
 				output_file=config['trimmed_pbmarkdup_fastq'],
@@ -52,6 +55,7 @@ def preprocess_pacbio_sample(config):
 		else:
 			align_input = config['trimmed_fastq']
 
+		stage("Reference genome alignment")
 		align_to_reference_rammap(
 			input_file=align_input,
 			output_file=config['hg38_bam'],
@@ -61,6 +65,7 @@ def preprocess_pacbio_sample(config):
 			threads=config['threads'],
 		)
 
+		stage("HLA-DRB paralog filtering")
 		classify_DRB_reads(
 			input_file=config['hg38_bam'],
 			output_file=config['hg38_bam_drb'],
@@ -72,6 +77,7 @@ def preprocess_pacbio_sample(config):
 			region=drb_region
 		)
 
+		stage("Read filtering")
 		chr6_read_count = filter_reads(
 			input_file=config['hg38_bam'],
 			output_file=config['hg38_rmdup_chr6_bam'],
@@ -84,6 +90,7 @@ def preprocess_pacbio_sample(config):
 		# the exon-2 ARS instead of soft-clipping them as pbmm2 does, which is
 		# required to recover the second allele at DRB1. uBAM input is streamed to
 		# FASTQ inside align_to_reference_rammap.
+		stage("Reference genome alignment")
 		align_to_reference_rammap(
 			input_file=config['input_file'],
 			output_file=config['hg38_bam'],
@@ -93,6 +100,7 @@ def preprocess_pacbio_sample(config):
 			threads=config['threads'],
 		)
 
+		stage("HLA-DRB paralog filtering")
 		classify_DRB_reads(
 			input_file=config['hg38_bam'],
 			output_file=config['hg38_bam_drb'],
@@ -104,6 +112,7 @@ def preprocess_pacbio_sample(config):
 			region=drb_region
 		)
 
+		stage("Read filtering")
 		chr6_read_count = filter_reads(
 			input_file=config['hg38_bam'],
 			output_file=config['hg38_rmdup_chr6_bam'],
@@ -112,6 +121,7 @@ def preprocess_pacbio_sample(config):
 		)
 
 	if chr6_read_count >= min_reads_sample:
+		stage("Small variant calling")
 		snp_caller = config['snp_caller']
 		indel_caller = config['indel_caller']
 
@@ -260,6 +270,7 @@ def preprocess_pacbio_sample(config):
 				filter_indel_pass=indel_caller in ("deepvariant", "clair3")
 			)
 
+		stage("Structural variant calling")
 		call_structural_variants_pbsv(
 			input_bam=config['hg38_rmdup_chr6_bam'],
 			output_svsig=config['sv_svsig'],
@@ -269,6 +280,7 @@ def preprocess_pacbio_sample(config):
 			reference_fasta=config['reference_genome']
 		)
 
+		stage("Tandem repeat genotyping")
 		genotype_tandem_repeats(
 			input_bam=config['hg38_rmdup_chr6_bam'],
 			output_vcf=config['tr_vcf'],
@@ -280,6 +292,7 @@ def preprocess_pacbio_sample(config):
 			scheme=config['scheme']
 		)
 		
+		stage("Joint phasing")
 		phase_genotypes_hiphase(
 			input_bam=config['hg38_rmdup_chr6_bam'],
 			input_snv=config['snv_vcf'],
@@ -309,3 +322,5 @@ def preprocess_pacbio_sample(config):
 	else:
 		print("Insufficient reads for variant calling")
 		print("Sample {} had {} reads!".format(config['sample_ID'], chr6_read_count))
+
+	return chr6_read_count

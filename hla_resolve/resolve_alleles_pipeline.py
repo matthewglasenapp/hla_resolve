@@ -3,6 +3,7 @@
 #
 # See LICENSE.txt for license details.
 
+import csv
 import os
 import shutil
 from .preprocess_methods import (
@@ -19,6 +20,7 @@ from .reconstruct_fasta_methods import (
 	parse_fastas
 )
 from .hla_typer import main as classify_hla_alleles
+from .utils import stage
 from . import config as hla_config
 
 def convert_gene_name_for_gff(gene_name):
@@ -27,33 +29,67 @@ def convert_gene_name_for_gff(gene_name):
 	"""
 	return gene_name.lower().replace('-', '_')
 
+NOT_TYPED = "not_typed"
+
+def split_result_column(column):
+	# HLA-A_1, or HLA-A_1_incomplete where the reconstruction fell short of the
+	# whole gene. Returns (None, None) for the sample column.
+	name = column[:-len("_incomplete")] if column.endswith("_incomplete") else column
+	gene, sep, index = name.rpartition("_")
+	if not sep or index not in ("1", "2"):
+		return None, None
+	return gene, index
+
+def strip_gene_prefix(call, gene):
+	# The gene is already the row label, so HLA-A*01:01:01:01 prints as 01:01:01:01
+	prefix = f"{gene}*"
+	return call[len(prefix):] if call.startswith(prefix) else call
+
 def print_results(config):
-	"""
-	Print the HLA typing results from the output file.
-	"""
 	results_file = os.path.join(config['hla_typing_dir'], "allele_output.csv")
-	if os.path.exists(results_file):
-		with open(results_file, "r") as f:
-			lines = f.read().splitlines()
-		
-		# Check if file has at least 2 lines (header + data)
-		if len(lines) < 2:
-			print(f"Warning: Results file {results_file} exists but contains insufficient data (only {len(lines)} lines)")
-			return
-		
-		# Check if the data line has enough columns
-		data_line = lines[1]
-		data_parts = data_line.split(",")
-		if len(data_parts) < 2:
-			print(f"Warning: Results file {results_file} data line has insufficient columns: {data_line}")
-			return
-		
-		results = data_parts[1:]
-		print(f"{config['sample_ID']} HLA Allele Calls:")
-		for item in results:
-			print(f"{item}")
-	else:
+	if not os.path.exists(results_file):
 		print(f"Warning: Results file not found at {results_file}")
+		return
+
+	with open(results_file, newline="") as f:
+		rows = list(csv.DictReader(f))
+
+	if not rows:
+		print(f"Warning: Results file {results_file} contains no data rows")
+		return
+
+	row = rows[0]
+
+	# Genes keep the column order of the CSV, which lines up with the deposited
+	# haplotype FASTA records.
+	calls = {}
+	genes = []
+	for column, value in row.items():
+		gene, index = split_result_column(column)
+		if gene is None:
+			continue
+		if gene not in calls:
+			calls[gene] = {}
+			genes.append(gene)
+		call = (value or "").strip()
+		calls[gene][index] = strip_gene_prefix(call, gene) if call else NOT_TYPED
+
+	if not genes:
+		print(f"Warning: Results file {results_file} has no gene columns")
+		return
+
+	gene_width = max(len("gene"), max(len(g) for g in genes))
+	first_width = max(len("_1"), max(len(calls[g].get("1", NOT_TYPED)) for g in genes))
+
+	print(f"Sample: {config['sample_ID']}")
+	print()
+	print(f"{'gene':<{gene_width}}   {'_1':<{first_width}}   _2")
+	for gene in genes:
+		first = calls[gene].get("1", NOT_TYPED)
+		second = calls[gene].get("2", NOT_TYPED)
+		print(f"{gene:<{gene_width}}   {first:<{first_width}}   {second}")
+	print()
+	print("Note: Allele order within each gene is arbitrary and is not consistent between genes.")
 
 def resolve_alleles(config):
 	"""
@@ -63,6 +99,7 @@ def resolve_alleles(config):
 	3. HLA typing
 	4. Print results
 	"""	
+	stage("Coverage assessment")
 	run_mosdepth(
 		input_file=config['hg38_rmdup_chr6_bam'],
 		output_dir=config['mosdepth_dir'],
@@ -71,7 +108,7 @@ def resolve_alleles(config):
 		threads=config['threads']
 	)
 	
-	sufficient_coverage_genes = parse_mosdepth(
+	sufficient_coverage_genes, coverage_stats = parse_mosdepth(
 		regions_file=config['mosdepth_regions'],
 		thresholds_file=config['mosdepth_thresholds'],
 		cds_depth_thresh=config['cds_depth_thresh'],
@@ -82,7 +119,6 @@ def resolve_alleles(config):
 		ars_prop_30x_thresh=config['ars_prop_30x_thresh']
 	)
 	
-	print("Reconstructing FASTA sequences!")
 	if config['platform'] == "PACBIO":
 		phased_vcf = config['hiphase_joint_vcf']
 		haploblock_file = config['phased_blocks']
@@ -99,6 +135,7 @@ def resolve_alleles(config):
 		mhc_stop=config['mhc_stop']
 	)
 
+	stage("Haploblock evaluation")
 	phased_genes, unphased_genes, do_not_type_genes, cds_rescued_genes = evaluate_gene_haploblocks(
 		output_file=config['phased_genes_tsv'],
 		incomplete_file=config['incomplete_genes_csv'],
@@ -138,6 +175,7 @@ def resolve_alleles(config):
 	elif config['platform'] == "ONT":
 		input_vcf = config['longphase_merged_vcf']
 
+	stage("Variant filtering and redundancy removal")
 	# Filter phased VCF by gene region
 	print("Unphased PASS heterozygous variants:")
 	gene_filtered_vcfs = {}
@@ -180,6 +218,7 @@ def resolve_alleles(config):
 		
 		gene_filtered_vcfs[gene] = gene_filtered_vcf
 	
+	stage("Haplotype reconstruction")
 	# Reset vcf2fasta_out_dir for sequential runs 
 	if any(os.scandir(config['vcf2fasta_out_dir'])):
 		shutil.rmtree(config['vcf2fasta_out_dir'])
@@ -239,21 +278,16 @@ def resolve_alleles(config):
 		}
 
 	# Step 3: HLA typing
-	print("Typing HLA alleles with hla_typer.py!")
-	original_dir = os.getcwd()
-	os.chdir(config['hla_typing_dir'])
+	stage("IPD-IMGT/HLA database matching")
+	classifications = classify_hla_alleles(
+		reference_xml_file=config['IMGT_XML'],
+		hla_fasta_dir=config['hla_fasta_dir'],
+		sample_ID=config['sample_ID'],
+		generate_query_ref_comp=True,
+		reconsensus_ctx=reconsensus_ctx,
+		output_dir=config['hla_typing_dir']
+	)
 
-	try:
-		classify_hla_alleles(
-			reference_xml_file=config['IMGT_XML'],
-			hla_fasta_dir=config['hla_fasta_dir'],
-			sample_ID=config['sample_ID'],
-			generate_query_ref_comp=True,
-			reconsensus_ctx=reconsensus_ctx
-		)
-	finally:
-		os.chdir(original_dir)
-	
 	print_results(config)
 	print("\n")
 	print(f"HLA typing result files located in dir: {config['hla_typing_dir']}/")
@@ -275,3 +309,10 @@ def resolve_alleles(config):
 	print("\n")
 
 	print("HLA allele resolution workflow completed!")
+
+	return {
+		"classifications": classifications,
+		"coverage_stats": coverage_stats,
+		"phased_genes": fully_phased,
+		"cds_rescued_genes": cds_rescued_genes,
+	}

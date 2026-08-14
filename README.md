@@ -59,11 +59,28 @@ A raw, single-sample (demultiplexed) PacBio sequencing file in FASTQ or unmapped
 
 **Primary Results**
 
-HLA allele calls for the following genes:
+HLA allele calls for HLA-A, HLA-B, HLA-C, HLA-DPA1, HLA-DPB1, HLA-DQA1, HLA-DQB1, and HLA-DRB1, written to `<output_dir>/<sample>/hla_typing_results/`.
 
 ```
-HLA-A, HLA-B, HLA-C, HLA-DPA1, HLA-DPB1, HLA-DQA1, HLA-DQB1, HLA-DRB1
+sample,HLA-A_1,HLA-A_2,HLA-B_1,HLA-B_2,...
+HG002,HLA-A*01:01:01:01,HLA-A*26:01:01:01,HLA-B*38:01:01:01,HLA-B*35:08:01:01,...
 ```
+
+Allele order within each gene is arbitrary and is not consistent between genes.
+
+Three files hold the same calls at different resolutions. Use `allele_output.csv` unless you have a reason not to.
+
+| File | Resolution | Use it when |
+|------|------------|-------------|
+| `allele_output.csv` | Four field | You want the full call, including noncoding variation |
+| `3_field_allele_output.csv` | Three field | You are comparing against typings that stop at synonymous coding variation |
+| `g_group_output.csv` | G group | You are comparing against ARS-based or serologic typings |
+
+Each has a `_full.csv` companion listing every equidistant candidate as a genotype list string, where the primary file reports only the chosen one.
+
+**Run Summary**
+
+`<output_dir>/<sample>/summary.json` holds the calls plus per-gene edit distance, number of equidistant candidates, phasing status, reconstruction mode, and coverage, along with the run status and runtime. Use it instead of parsing the terminal output when processing many samples.
 
 **Intermediate Files**
 - Haplotagged, mapped BAMs for chromosome 6 (for visualization in genome browsers such as IGV)
@@ -126,38 +143,52 @@ The command will print the final HLA allele calls to STDOUT, along with importan
 <summary><b>Full command-line options</b></summary>
 
 ```
-usage: hla_resolve [-h] [--version] --input_file INPUT_FILE --sample_name SAMPLE_NAME --platform {pacbio,ont} --scheme {WGS,WES,hybrid_capture,amplicon} --output_dir OUTPUT_DIR
-                   [--trim_adapters] [--adapter_file ADAPTER_FILE] [--threads THREADS] [--read_group_string READ_GROUP_STRING] [--clean-up] [--clair3_model CLAIR3_MODEL]
-                   [--verbose]
+usage: hla_resolve [-h] [--version] --input_file INPUT_FILE --sample_name
+                   SAMPLE_NAME --platform {pacbio,ont} --scheme
+                   {WGS,WES,hybrid_capture,amplicon} --output_dir OUTPUT_DIR
+                   [--trim_adapters] [--adapter_file ADAPTER_FILE]
+                   [--threads THREADS] [--read_group_string READ_GROUP_STRING]
+                   [--clean_up] [--clair3_model CLAIR3_MODEL] [--verbose]
+                   [--quiet]
 
 Run HLA-Resolve
 
-options:
+optional arguments:
   -h, --help            show this help message and exit
   --version             show program's version number and exit
   --input_file INPUT_FILE
                         Path to the raw sequencing reads file (default: None)
   --sample_name SAMPLE_NAME
-                        Override the parsed sample name (default: None)
+                        Name for this sample. Used for output filenames and
+                        the read group (default: None)
   --platform {pacbio,ont}
-                        Specify sequencing platform (pacbio, ont) (default: None)
+                        Sequencing platform. Only pacbio is supported; ont is
+                        not yet available (default: None)
   --scheme {WGS,WES,hybrid_capture,amplicon}
                         Sequencing scheme (default: None)
   --output_dir OUTPUT_DIR
-                        Output Directory (default: None)
-  --trim_adapters       Enable adapter trimming before processing (default: False)
+                        Output directory. Results are written to
+                        <output_dir>/<sample_name>/ (default: None)
+  --trim_adapters       Enable adapter trimming before processing (default:
+                        False)
   --adapter_file ADAPTER_FILE
-                        Path to a file with custom adapter sequences (FASTA/FASTQ). If not provided, fastplong
-                        auto-detection will be used. (default: None)
+                        Path to a file with custom adapter sequences
+                        (FASTA/FASTQ). If not provided, fastplong auto-
+                        detection will be used. (default: None)
   --threads THREADS     Number of threads to use (default: 6)
   --read_group_string READ_GROUP_STRING
                         Override the parsed read group string (default: None)
-  --clean-up            Remove intermediate files (default: False)
+  --clean_up            Remove intermediate files (default: False)
   --clair3_model CLAIR3_MODEL
-                        Clair3 model name (bundled in SIF). Defaults to r1041_e82_400bps_sup_v500 for ONT
-                        and hifi_revio for PacBio. (default: None)
-  --verbose             Print detailed per-variant diagnostic output (overlap suppression, RefCall
-                        rescue, unphased het records, CDS sanity check) (default: False)
+                        Clair3 model name (bundled in SIF). Defaults to
+                        r1041_e82_400bps_sup_v500 for ONT and hifi_revio for
+                        PacBio. (default: None)
+  --verbose             Print detailed per-variant diagnostic output (overlap
+                        suppression, RefCall rescue, unphased het records, CDS
+                        sanity check) (default: False)
+  --quiet               Print only stage headers, warnings, and the final
+                        results table. The full log is still written to the
+                        log file (default: False)
 
 One-time setup (downloads references, binaries, and images):
   hla_resolve setup
@@ -167,7 +198,6 @@ Example run:
 
 HLA-Resolve is pre-release software intended for research use only
 and not for use in diagnostic procedures.
-
 ```
 
 </details>
@@ -175,49 +205,32 @@ and not for use in diagnostic procedures.
 ### Example Output
 
 ```
-HG002 HLA Allele Calls:
-HLA-A*01:01:01:01
-HLA-A*26:01:01:01
-HLA-B*38:01:01:01
-HLA-B*35:08:01:01
-HLA-C*04:01:01:06
-HLA-C*12:03:01:01
-HLA-DPA1*01:03:01:02
-HLA-DPA1*01:03:01:04
-HLA-DPB1*04:01:01:01
-HLA-DPB1*04:01:01:03
-HLA-DQA1*03:01:01:01
-HLA-DQA1*01:05:01:01
-HLA-DQB1*05:01:01:05
-HLA-DQB1*03:02:01:01
-HLA-DRB1*04:02:01
-HLA-DRB1*10:01:01:03
+[13/14] Haplotype reconstruction
+[14/14] IPD-IMGT/HLA database matching
 
+Sample: HG002
 
-HLA typing result files located in dir: test/hla_typing_results/
+gene       _1            _2
+HLA-A      01:01:01:01   26:01:01:01
+HLA-B      38:01:01:01   35:08:01:01
+HLA-C      04:01:01:06   12:03:01:01
+HLA-DPA1   01:03:01:02   01:03:01:04
+HLA-DPB1   04:01:01:01   04:01:01:03
+HLA-DQA1   03:01:01:01   01:05:01:01
+HLA-DQB1   05:01:01:05   03:02:01:01
+HLA-DRB1   04:02:01      10:01:01:03
 
-g group results written to: g_group_output.csv
-three field results written to: 3_field_allele_output.csv
-four field results written to: allele_output.csv
+Note: Allele order within each gene is arbitrary and is not consistent between genes.
 
-Results with ambiguties in the format of genotype list strings written to:
-g_group_output_full.csv
-3_field_allele_output_full.csv
-allele_output_full.csv
-
-Debugging files written to:
-g_group_assignment.log
-3_field_allele_assignment.log
-allele_assignment.log
-sample_ref_comp.csv
-
-
-HLA allele resolution workflow completed!
+Run summary written to test/HG002/summary.json
+Finished HG002 in 9m 18s (status: ok)
 ```
+
+Genes that could not be reconstructed are shown as `not_typed`.
 
 ### Intermediate Files
 
-Intermediate files will be written to the following directories. The user can specify the `--clean-up` option if they do not want intermediate files, such as mapped BAM, phased genotypes (VCFs), or fasta haplotype nucleotide sequences for the HLA genes.
+Intermediate files will be written to the following directories. The user can specify the `--clean_up` option if they do not want intermediate files, such as mapped BAM, phased genotypes (VCFs), or fasta haplotype nucleotide sequences for the HLA genes.
 
 | Directory | Description |
 |-----------|-------------|
