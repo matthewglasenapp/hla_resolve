@@ -67,7 +67,7 @@ def main():
     import time
     import os
     from . import config
-    from .sample_manager import Samples, build_workflow_config
+    from .sample_manager import InsufficientReads, Samples, build_workflow_config
     from . import summary
     from .utils import announce, check_required_commands, setup_logging
     from .ont_pipeline import preprocess_ont_sample
@@ -95,7 +95,32 @@ def main():
     
     start_time = time.time()
     
-    sample = Samples(input_file=args.input_file, sample_name=args.sample_name, platform=args.platform, output_dir=args.output_dir, aligner=args.aligner, snp_caller=args.snp_caller, indel_caller=args.indel_caller, trim_adapters=args.trim_adapters, adapter_file=args.adapter_file, threads=args.threads, read_group_string=args.read_group_string, clean_up=args.clean_up, scheme=args.scheme, clair3_model=args.clair3_model, rescue_refcalls=args.rescue_refcalls)
+    # A bad or too-small input is an expected outcome, not a crash. Report it the
+    # same way as a run that fails later: a status, a summary.json, and exit 1.
+    try:
+        sample = Samples(input_file=args.input_file, sample_name=args.sample_name, platform=args.platform, output_dir=args.output_dir, aligner=args.aligner, snp_caller=args.snp_caller, indel_caller=args.indel_caller, trim_adapters=args.trim_adapters, adapter_file=args.adapter_file, threads=args.threads, read_group_string=args.read_group_string, clean_up=args.clean_up, scheme=args.scheme, clair3_model=args.clair3_model, rescue_refcalls=args.rescue_refcalls)
+    except (InsufficientReads, FileNotFoundError, OSError, ValueError) as err:
+        status = "insufficient_reads" if isinstance(err, InsufficientReads) else "input_error"
+        out_dir = os.path.join(args.output_dir, args.sample_name)
+        os.makedirs(out_dir, exist_ok=True)
+        summary_path = os.path.join(out_dir, "summary.json")
+        summary.write(summary_path, summary.build(
+            config={
+                'sample_ID': args.sample_name,
+                'output_dir': out_dir,
+                'platform': args.platform,
+                'scheme': args.scheme,
+                'input_file': os.path.abspath(args.input_file),
+                'genes_of_interest': config.genes_of_interest,
+            },
+            classifications=None, coverage_stats=None, phased_genes=[], cds_rescued_genes={},
+            reads=None, runtime_seconds=round(time.time() - start_time),
+            status=status, version=version('hla_resolve'),
+        ))
+        announce(f"Error: {err}")
+        announce(f"Run summary written to {summary_path}")
+        announce(f"Finished {args.sample_name} (status: {status})")
+        sys.exit(1)
 
     # Build workflow configuration from sample object
     workflow_config = build_workflow_config(sample)
