@@ -22,6 +22,10 @@ from .config import (
 	deepvariant_sif, tandem_repeat_bed, chr6_bed, pbtrgt_repeat_file, picard
 )
 
+class InsufficientReads(ValueError):
+	"""Raised when the input has too few reads to run. An expected outcome, not a bug."""
+
+
 class Samples:
     # Class variables for reference file paths (imported from config.py)
     deepvariant_sif = deepvariant_sif
@@ -171,7 +175,7 @@ class Samples:
             read_count = self.count_bam_reads(input_path)
 
             if read_count < min_reads_sample:
-                raise ValueError(f"Input BAM file {input_path} contains too few reads: {read_count:,}")
+                raise InsufficientReads(f"Input BAM file {input_path} contains too few reads: {read_count:,}")
 
             with pysam.AlignmentFile(input_path, "rb", check_sq=False) as bamfile:
                 header = bamfile.header.to_dict()
@@ -197,7 +201,7 @@ class Samples:
 
             read_count, mean_read_length = self.run_fastplong(input_path)
             if read_count < min_reads_sample:
-                raise ValueError(f"Input fastq file {input_path} contains too few reads: {read_count:,}")
+                raise InsufficientReads(f"Input fastq file {input_path} contains too few reads: {read_count:,}")
             if mean_read_length < min_read_length:
                 raise ValueError(f"Input fastq file {input_path} contains short-read data. Mean read length: {mean_read_length}")
 
