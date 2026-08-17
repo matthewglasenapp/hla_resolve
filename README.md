@@ -25,10 +25,10 @@
 
 HLA-Resolve is a command-line tool for high-resolution HLA typing from high-coverage PacBio sequencing reads. It reconstructs phased, full-gene sequences for the eight classical HLA loci (HLA-A, -B, -C, -DPA1, -DPB1, -DQA1, -DQB1, -DRB1) and queries the [IPD-IMGT/HLA database](https://www.ebi.ac.uk/ipd/imgt/hla/) to assign HLA allele calls.
 
-HLA-Resolve was designed for and fully validated on PacBio hybrid-capture libraries (read N50 ~4 kb). WGS support has been validated on high-coverage PacBio HiFi libraries from the GIAB and HPRC benchmarks (see [Validated WGS Libraries](#validated-wgs-libraries)). HLA-Resolve has not been tested on amplicon sequencing data yet. 
+HLA-Resolve was designed for and fully validated on PacBio hybrid-capture libraries (read N50 ~4 kb). WGS support has been validated on PacBio whole-genome sequencing reads from the GIAB and HPRC benchmarks (see [Validated WGS Libraries](#validated-wgs-libraries)). HLA-Resolve has not been tested on amplicon sequencing data yet. 
 
 > [!IMPORTANT]
-> HLA-Resolve is pre-release software in active development, intended for high-coverage PacBio reads. ONT support is still in development, and `--platform ont` is rejected at runtime until it lands. The software is for research use only and not for use in diagnostic procedures. The HLA-Resolve [manuscript](https://doi.org/10.64898/2026.03.27.26349549) is under peer review.
+> HLA-Resolve is pre-release software in active development. It is intended for high-coverage PacBio reads. A gene is typed only if its peptide-binding domain reaches at least 8× mean coverage depth. ONT support is still in development, and `--platform ont` is rejected at runtime until it lands. The software is for research use only and not for use in diagnostic procedures. The HLA-Resolve [manuscript](https://doi.org/10.64898/2026.03.27.26349549) is under peer review.
 
 ## Table of Contents
 
@@ -123,7 +123,7 @@ bash update.sh
 
 ## Quick Start and Demo
 
-The repository ships with a demo dataset of PacBio Revio HiFi hybrid-capture sequencing reads from HG002 (Ashkenazi Son), a sample from the GIAB and HPRC benchmarks. Run this from the repository root:
+The repository ships with a demo dataset of PacBio hybrid-capture sequencing reads from HG002 (Ashkenazi Son), a sample from the GIAB and HPRC benchmarks. Run this from the repository root:
 
 ```bash
 hla_resolve \
@@ -247,16 +247,16 @@ Intermediate files will be written to the following directories. The user can sp
 
 ## Validated WGS Libraries
 
-HLA-Resolve was run on whole-genome PacBio HiFi data for 39 samples from the HPRC benchmark
-set of Lai et al., at a mean coverage of 35.2× across the eight classical HLA genes.
-Concordance with the reference typings was **100% at one- through three-field resolution**
+HLA-Resolve was run on whole-genome PacBio sequencing reads for 39 samples from the Human
+Pangenome Reference Consortium (HPRC), at a mean coverage of 35.2× across the eight classical
+HLA genes. Concordance with the reference typings of Lai et al. was
+**100% at one- through three-field resolution**
 (610/610 alleles) and **92.8% at four-field** (555/598), with a call rate of
 99.4% (620/624).
 
-> [!TIP]
-> **[Browse the full benchmark →](docs/wgs_validation.md)**
-> Per-sample concordance and coverage for every sample, plus the exact input file(s) behind
-> each run. All inputs are public, so the entire benchmark can be reproduced.
+**[Browse the full benchmark →](docs/wgs_validation.md)** — per-sample concordance and
+coverage for every sample, plus the exact input file(s) behind each run. All inputs are
+public, so the entire benchmark can be reproduced.
 
 ## Planned Features (In Development)
 
