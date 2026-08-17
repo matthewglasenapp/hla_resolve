@@ -16,10 +16,15 @@ def run_quiet(cmd):
     the log file) and CalledProcessError is re-raised. In --verbose mode,
     streams pass through unfiltered so tool output reaches the terminal."""
     from . import config
+    # pipefail, run under bash. /bin/sh returns only the last command's status, so
+    # a process killed mid-pipe (OOM, usually) hands truncated output to the next
+    # stage and the whole command still reports success.
+    cmd = f"set -o pipefail; {cmd}"
     if config.VERBOSE:
-        return subprocess.run(cmd, shell=True, check=True)
+        return subprocess.run(cmd, shell=True, check=True, executable="/bin/bash")
     try:
-        return subprocess.run(cmd, shell=True, check=True, capture_output=True, text=True)
+        return subprocess.run(cmd, shell=True, check=True, capture_output=True, text=True,
+                              executable="/bin/bash")
     except subprocess.CalledProcessError as e:
         if e.stdout:
             print(e.stdout, end="")

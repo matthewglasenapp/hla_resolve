@@ -13,6 +13,25 @@ import tempfile
 from . import config
 from .utils import run_quiet
 
+# samtools sort takes -m per thread and defaults to 768M, so a high --threads
+# silently multiplies its footprint (20 threads reserves 15 GB). Hold the total
+# near this budget instead, whatever the thread count.
+SORT_MEMORY_GB = 8
+
+# Every stage after read filtering works on the chr6 BAM, a few tens of MB. More
+# threads than this buy nothing there and only raise the memory floor. Matches the
+# cap DeepVariant already uses for its shards.
+REGION_STAGE_THREADS = 8
+
+def region_threads(threads):
+	return min(threads, REGION_STAGE_THREADS)
+
+def sort_memory_flag(samtools_threads):
+	# Never above samtools' own 768M default, so this can only lower the footprint
+	# of a configuration that already works.
+	per_thread_mb = SORT_MEMORY_GB * 1024 // max(1, samtools_threads)
+	return f"-m {max(128, min(768, per_thread_mb))}M"
+
 # Convert BAM file of unmapped HiFi (ccs) reads to FASTQ format for marking duplicates and trimming adapters
 def convert_bam_to_fastq(input_file, output_file, platform, threads):
 	if platform == "PACBIO":
@@ -131,14 +150,16 @@ def align_to_reference_rammap(input_file, output_file, read_group_string, refere
 	# rammap (minimap2) only accepts FASTA/FASTQ. PacBio WGS/WES input is an
 	# unmapped BAM, so stream it through samtools fastq and read from stdin ("-")
 	# rather than materializing a whole-genome FASTQ on disk.
+	sort_mem = sort_memory_flag(samtools_threads)
+
 	if input_file.endswith(".bam"):
 		rammap_cmd = (
 			f"samtools fastq -@ {samtools_threads} {input_file} | "
 			f"{config.rammap} -Y -t {rammap_threads} -ax {platform_string} -R {rammap_rg_string} {reference_fasta} - | "
-			f"samtools sort -@ {samtools_threads} -o {output_file}"
+			f"samtools sort {sort_mem} -@ {samtools_threads} -o {output_file}"
 		)
 	else:
-		rammap_cmd = f"{config.rammap} -Y -t {rammap_threads} -ax {platform_string} -R {rammap_rg_string} {reference_fasta} {input_file} | samtools sort -@ {samtools_threads} -o {output_file}"
+		rammap_cmd = f"{config.rammap} -Y -t {rammap_threads} -ax {platform_string} -R {rammap_rg_string} {reference_fasta} {input_file} | samtools sort {sort_mem} -@ {samtools_threads} -o {output_file}"
 	index_bam = f"samtools index {output_file}"
 
 	run_quiet(rammap_cmd)
@@ -202,7 +223,7 @@ def classify_DRB_reads(input_file, output_file, drb_paralog_reads_file, read_gro
 		run_quiet(f"samtools view -b -F 0x900 -@ {samtools_threads} {input_file} {region} | samtools fastq -@ {samtools_threads} - > {map_input}")
 
 	# Map reads against the multi-allele DRB reference (DRB1, DRB3, DRB4 alleles)
-	rammap_cmd = f"{config.rammap} -Y -t {rammap_threads} -ax {platform_string} -R {rammap_rg_string} {reference_fasta} {map_input} | samtools sort -@ {samtools_threads} -o {output_file}"
+	rammap_cmd = f"{config.rammap} -Y -t {rammap_threads} -ax {platform_string} -R {rammap_rg_string} {reference_fasta} {map_input} | samtools sort {sort_memory_flag(samtools_threads)} -@ {samtools_threads} -o {output_file}"
 	index_bam = f"samtools index {output_file}"
 
 	run_quiet(rammap_cmd)
@@ -343,8 +364,10 @@ def call_variants_bcftools(input_file, output_file, reference_fasta, platform, t
 
 	print(f"Bcftools input file: {input_file}")
 	
-	pileup_threads = str(threads // 2)
-	call_threads = str(threads // 2)
+	# Both run at once in the pipe below, so the split has to sum to the budget.
+	budget = region_threads(threads)
+	pileup_threads = str(budget // 2)
+	call_threads = str(budget - budget // 2)
 
 	bcftools_command = (
 		f"bcftools mpileup --config {config} --threads {pileup_threads} "
@@ -536,7 +559,7 @@ def call_structural_variants_pbsv(input_bam, output_svsig, output_vcf, threads, 
 	
 	run_quiet(index_svsig_cmd)
 
-	pbsv_call_cmd = f"pbsv call -j {threads} --min-sv-length 20 --region chr6 --hifi {reference_fasta} {output_svsig} {output_vcf}"
+	pbsv_call_cmd = f"pbsv call -j {region_threads(threads)} --min-sv-length 20 --region chr6 --hifi {reference_fasta} {output_svsig} {output_vcf}"
 	
 	run_quiet(pbsv_call_cmd)
 
@@ -579,7 +602,7 @@ def genotype_tandem_repeats(input_bam, output_vcf, pbtrgt_dir, threads, referenc
 		# cluster genotyper, and targeted flank scoring) suits enriched capture/
 		# amplicon data; WGS/WES use TRGT's default 'wgs' preset.
 		trgt_preset = "targeted" if scheme in ("hybrid_capture", "amplicon") else "wgs"
-		trgt_cmd = f"trgt genotype --threads {threads} --genome {reference_fasta} --reads {input_bam} --repeats {pbtrgt_repeat_file} --output-prefix {output_prefix} --preset {trgt_preset}"
+		trgt_cmd = f"trgt genotype --threads {region_threads(threads)} --genome {reference_fasta} --reads {input_bam} --repeats {pbtrgt_repeat_file} --output-prefix {output_prefix} --preset {trgt_preset}"
 
 		run_quiet(trgt_cmd)
 
@@ -625,7 +648,7 @@ def phase_genotypes_hiphase(input_bam, input_snv, input_SV, input_TR, output_bam
 		print("Skipping HiPhase phasing step.")
 		return
 	
-	hiphase_cmd = f"hiphase --threads {threads} --ignore-read-groups --reference {reference_fasta} --bam {input_bam} --output-bam {output_bam} --vcf {input_snv} --output-vcf {output_snv} --vcf {input_SV} --output-vcf {output_SV} --vcf {input_TR} --output-vcf {output_TR} --stats-file {output_stats_file} --blocks-file {output_blocks_file} --summary-file {output_summary_file}"
+	hiphase_cmd = f"hiphase --threads {region_threads(threads)} --ignore-read-groups --reference {reference_fasta} --bam {input_bam} --output-bam {output_bam} --vcf {input_snv} --output-vcf {output_snv} --vcf {input_SV} --output-vcf {output_SV} --vcf {input_TR} --output-vcf {output_TR} --stats-file {output_stats_file} --blocks-file {output_blocks_file} --summary-file {output_summary_file}"
 	
 	# Log HiPhase in own output file so it doesn't clog up STDOUT
 	hiphase_log = os.path.join(phased_vcf_dir, sample_ID + ".hiphase.log")
@@ -772,7 +795,7 @@ def run_mosdepth(input_file, output_dir, sample_ID, regions_file, threads):
 	prefix = os.path.join(output_dir, sample_ID)
 	
 	# --flag 3328 excludes duplicates and secondary/supplementary alignments
-	mosdepth = f"mosdepth --flag 3328 --by {regions_file} --thresholds 10,20,30 -t {threads} {prefix} {input_file}"
+	mosdepth = f"mosdepth --flag 3328 --by {regions_file} --thresholds 10,20,30 -t {region_threads(threads)} {prefix} {input_file}"
 	
 	run_quiet(mosdepth)
 	

@@ -76,6 +76,7 @@ def main():
     # `hla_resolve` (no args) prints help instantly.
     import time
     import os
+    import subprocess
     from . import config
     from .sample_manager import InsufficientReads, Samples, build_workflow_config
     from .utils import announce, check_required_commands, setup_logging, version_string
@@ -128,20 +129,30 @@ def main():
     # Build workflow configuration from sample object
     workflow_config = build_workflow_config(sample)
     
-    reads = None
-    if workflow_config['platform'] == "PACBIO":
-        reads = preprocess_pacbio_sample(config=workflow_config)
-    elif workflow_config['platform'] == "ONT":
-        preprocess_ont_sample(config=workflow_config)
+    # An external tool that dies takes the whole run with it. Report which command
+    # failed rather than a traceback, and never leave a partial result looking ok.
+    try:
+        reads = None
+        if workflow_config['platform'] == "PACBIO":
+            reads = preprocess_pacbio_sample(config=workflow_config)
+        elif workflow_config['platform'] == "ONT":
+            preprocess_ont_sample(config=workflow_config)
 
-    # Check if variant calling was successful before proceeding to HLA resolution
-    state = None
-    if os.path.exists(workflow_config['snv_vcf']):
-        state = resolve_alleles(config=workflow_config)
-        status = "ok"
-    else:
-        print(f"Skipping HLA allele resolution for {workflow_config['sample_ID']} due to insufficient reads for variant calling")
-        status = "insufficient_reads"
+        # Check if variant calling was successful before proceeding to HLA resolution
+        state = None
+        if os.path.exists(workflow_config['snv_vcf']):
+            state = resolve_alleles(config=workflow_config)
+            status = "ok"
+        else:
+            print(f"Skipping HLA allele resolution for {workflow_config['sample_ID']} due to insufficient reads for variant calling")
+            status = "insufficient_reads"
+    except subprocess.CalledProcessError as err:
+        announce(f"Error: a command exited with code {err.returncode}")
+        if err.returncode in (137, -9):
+            announce("Code 137 means the process was killed. The usual cause is the out-of-memory killer, so raise the job's memory or lower --threads.")
+        announce(f"  {str(err.cmd).replace('set -o pipefail; ', '', 1)}")
+        announce(f"Finished {workflow_config['sample_ID']} (status: tool_failed) [{version_text}]")
+        sys.exit(1)
 
     # Clean up intermediate files if requested
     cleanup_intermediate_files(config=workflow_config)

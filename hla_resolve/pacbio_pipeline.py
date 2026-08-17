@@ -22,11 +22,13 @@ from .preprocess_methods import (
 	phase_genotypes_hiphase,
 	merge_hiphase_vcfs
 )
-from .cleanup import discard_full_genome_bam
+from .cleanup import discard_full_genome_bam, remove_stale_sort_temps
 from .config import min_reads_sample, drb_region
 from .utils import stage
 
 def preprocess_pacbio_sample(config):
+	remove_stale_sort_temps(config)
+
 	if config['scheme'] in ("hybrid_capture", "amplicon"):
 		stage("Adapter trimming")
 		trim_adapters(

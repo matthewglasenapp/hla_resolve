@@ -148,8 +148,8 @@ usage: hla_resolve [-h] [--version] --input_file INPUT_FILE --sample_name
                    {WGS,WES,hybrid_capture,amplicon} --output_dir OUTPUT_DIR
                    [--trim_adapters] [--adapter_file ADAPTER_FILE]
                    [--threads THREADS] [--read_group_string READ_GROUP_STRING]
-                   [--clean_up] [--clair3_model CLAIR3_MODEL] [--verbose]
-                   [--quiet]
+                   [--clean_up] [--keep_full_bam] [--clair3_model CLAIR3_MODEL]
+                   [--verbose] [--quiet]
 
 Run HLA-Resolve
 
@@ -180,6 +180,9 @@ optional arguments:
   --read_group_string READ_GROUP_STRING
                         Override the parsed read group string (default: None)
   --clean_up            Remove intermediate files (default: False)
+  --keep_full_bam       Keep the whole-genome BAM on WGS and WES runs. It is
+                        deleted by default once reads are filtered to
+                        chromosome 6 (default: False)
   --clair3_model CLAIR3_MODEL
                         Clair3 model name (bundled in SIF). Defaults to
                         r1041_e82_400bps_sup_v500 for ONT and hifi_revio for

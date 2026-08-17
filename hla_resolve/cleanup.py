@@ -3,8 +3,32 @@
 #
 # See LICENSE.txt for license details.
 
+import glob
 import os
 import shutil
+
+def remove_stale_sort_temps(config):
+	"""Remove samtools sort spill files left behind by an interrupted run."""
+	# A sort that finishes removes its own temps, and this runs before alignment
+	# starts, so anything matching here is from an earlier job that was killed.
+	stale = []
+	for bam in (config['hg38_bam'], config['hg38_bam_drb']):
+		stale.extend(glob.glob(bam + ".tmp.*.bam"))
+
+	freed = 0
+	removed = 0
+	for path in stale:
+		try:
+			size = os.path.getsize(path)
+			os.remove(path)
+		except OSError:
+			continue
+		freed += size
+		removed += 1
+
+	if removed:
+		print(f"Removed {removed} sort temp file(s) from an interrupted run, freed {freed / 1e9:.1f} GB")
+		print("\n")
 
 def discard_full_genome_bam(config):
 	"""Remove the whole-genome BAM once reads are filtered to chr6."""
