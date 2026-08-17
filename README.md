@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.9.1-blue" alt="Version">
+  <img src="https://img.shields.io/github/v/release/matthewglasenapp/hla_resolve?label=version&color=blue" alt="Version">
   <img src="https://img.shields.io/badge/platform-linux--64-lightgrey" alt="Platform">
   <img src="https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white" alt="Python">
   <a href="LICENSE.txt"><img src="https://img.shields.io/badge/license-UCSC%20Noncommercial-green" alt="License"></a>
