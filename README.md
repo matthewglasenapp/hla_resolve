@@ -250,11 +250,13 @@ Intermediate files will be written to the following directories. The user can sp
 HLA-Resolve was run on whole-genome PacBio HiFi data for 39 samples from the HPRC benchmark
 set of Lai et al., at a mean coverage of 35.2× across the eight classical HLA genes.
 Concordance with the reference typings was **100% at one- through three-field resolution**
-(610/610 alleles at three-field) and **92.8% at four-field** (555/598), with a call rate of
+(610/610 alleles) and **92.8% at four-field** (555/598), with a call rate of
 99.4% (620/624).
 
-Per-sample results, two additional GIAB HG002 runs, and the full input file manifest are in
-**[docs/wgs_validation.md](docs/wgs_validation.md)**.
+> [!TIP]
+> **[Browse the full benchmark →](docs/wgs_validation.md)**
+> Per-sample concordance and coverage for every sample, plus the exact input file(s) behind
+> each run. All inputs are public, so the entire benchmark can be reproduced.
 
 ## Planned Features (In Development)
 
