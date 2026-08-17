@@ -54,6 +54,7 @@ def main():
     parser.add_argument("--threads", type=int, required=False, help="Number of threads to use, lowered to the CPU count when fewer are available", default=min(6, available_cpus))
     parser.add_argument("--read_group_string", required=False, help="Override the parsed read group string", default=None)
     parser.add_argument("--clean_up", action="store_true", help="Remove intermediate files")
+    parser.add_argument("--keep_full_bam", action="store_true", help="Keep the whole-genome BAM on WGS and WES runs. It is deleted by default once reads are filtered to chromosome 6")
     parser.add_argument("--clair3_model", type=str, required=False, default=None, help="Clair3 model name (bundled in SIF). Defaults to r1041_e82_400bps_sup_v500 for ONT and hifi_revio for PacBio.")
     parser.add_argument("--verbose", action="store_true", help="Print detailed per-variant diagnostic output (overlap suppression, RefCall rescue, unphased het records, CDS sanity check)")
     parser.add_argument("--quiet", action="store_true", help="Print only stage headers, warnings, and the final results table. The full log is still written to the log file")
@@ -117,7 +118,7 @@ def main():
     # A bad or too-small input is an expected outcome, not a crash. Report it the
     # same way as a run that fails later: a status line and exit 1.
     try:
-        sample = Samples(input_file=args.input_file, sample_name=args.sample_name, platform=args.platform, output_dir=args.output_dir, aligner=args.aligner, snp_caller=args.snp_caller, indel_caller=args.indel_caller, trim_adapters=args.trim_adapters, adapter_file=args.adapter_file, threads=args.threads, read_group_string=args.read_group_string, clean_up=args.clean_up, scheme=args.scheme, clair3_model=args.clair3_model, rescue_refcalls=args.rescue_refcalls)
+        sample = Samples(input_file=args.input_file, sample_name=args.sample_name, platform=args.platform, output_dir=args.output_dir, aligner=args.aligner, snp_caller=args.snp_caller, indel_caller=args.indel_caller, trim_adapters=args.trim_adapters, adapter_file=args.adapter_file, threads=args.threads, read_group_string=args.read_group_string, clean_up=args.clean_up, scheme=args.scheme, clair3_model=args.clair3_model, rescue_refcalls=args.rescue_refcalls, keep_full_bam=args.keep_full_bam)
     except (InsufficientReads, FileNotFoundError, OSError, ValueError) as err:
         status = "insufficient_reads" if isinstance(err, InsufficientReads) else "input_error"
         announce(f"Error: {err}")

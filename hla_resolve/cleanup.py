@@ -6,6 +6,23 @@
 import os
 import shutil
 
+def discard_full_genome_bam(config):
+	"""Remove the whole-genome BAM once reads are filtered to chr6."""
+	if config['scheme'] not in ("WGS", "WES") or config.get('keep_full_bam', False):
+		return
+
+	bam = config['hg38_bam']
+	freed = 0
+	for path in (bam, bam + ".bai", bam + ".csi"):
+		if os.path.exists(path):
+			freed += os.path.getsize(path)
+			os.remove(path)
+
+	if freed:
+		print(f"Discarded whole-genome BAM, freed {freed / 1e9:.1f} GB: {bam}")
+		print("Pass --keep_full_bam to retain it.")
+		print("\n")
+
 def cleanup_intermediate_files(config):
 	"""
 	Clean up intermediate files and directories after HLA typing is complete.

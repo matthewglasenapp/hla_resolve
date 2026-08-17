@@ -22,6 +22,7 @@ from .preprocess_methods import (
 	phase_genotypes_hiphase,
 	merge_hiphase_vcfs
 )
+from .cleanup import discard_full_genome_bam
 from .config import min_reads_sample, drb_region
 from .utils import stage
 
@@ -118,6 +119,8 @@ def preprocess_pacbio_sample(config):
 			drb_paralog_reads_file=config['drb_paralog_reads_file'],
 			threads=config['threads']
 		)
+
+	discard_full_genome_bam(config)
 
 	if chr6_read_count >= min_reads_sample:
 		stage("Small variant calling")

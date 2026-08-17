@@ -37,7 +37,7 @@ class Samples:
     def __init__(self, input_file, sample_name, platform, output_dir,
                  aligner, snp_caller, indel_caller, trim_adapters=False, adapter_file=None,
                  threads=1, read_group_string=None, clean_up=False, scheme=None,
-                 clair3_model=None, rescue_refcalls=False):
+                 clair3_model=None, rescue_refcalls=False, keep_full_bam=False):
         
         # Original initialization code
         self.ORIGINAL_CWD = os.getcwd()
@@ -98,6 +98,7 @@ class Samples:
         self.indel_caller = indel_caller
         self.rescue_refcalls = rescue_refcalls
         self.clean_up = clean_up
+        self.keep_full_bam = keep_full_bam
         self.clair3_model = clair3_model if clair3_model else (clair3_ont_model if self.platform == "ONT" else clair3_hifi_model)
 
         output_dir_abs = os.path.realpath(os.path.abspath(os.path.join(output_dir, self.sample_ID)))
@@ -387,7 +388,8 @@ def build_workflow_config(sample):
 		'hla_typing_dir': sample.hla_typing_dir,
 		'gff_dir': gff_dir,  # Use global GFF directory from config.py
 		'clean_up': sample.clean_up,
-		
+		'keep_full_bam': sample.keep_full_bam,
+
 		# File paths (pre-constructed to avoid os.path.join() in workflows)
 		'raw_fastq': sample.raw_fastq,
 		'trimmed_fastq': sample.trimmed_fastq,
