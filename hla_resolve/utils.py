@@ -28,6 +28,27 @@ def run_quiet(cmd):
         raise
 
 
+def version_string():
+    # importlib.metadata reports the version recorded at install time, which goes
+    # stale after a bare git pull. Append the commit when the package sits in a
+    # checkout, so the log records the code that actually ran.
+    from importlib.metadata import version
+    text = f"hla_resolve {version('hla_resolve')}"
+    repo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    try:
+        commit = subprocess.run(["git", "-C", repo, "rev-parse", "--short", "HEAD"],
+                                capture_output=True, text=True, timeout=5).stdout.strip()
+        if commit:
+            # Untracked files are excluded, or a stray output file would mark
+            # every run dirty.
+            modified = subprocess.run(["git", "-C", repo, "status", "--porcelain", "-uno"],
+                                      capture_output=True, text=True, timeout=5).stdout.strip()
+            text += f" ({commit}-dirty)" if modified else f" ({commit})"
+    except Exception:
+        pass
+    return text
+
+
 def detect_cpus():
     # Returns (count, confident). Only Slurm's own numbers are trusted enough to
     # warn on. The affinity mask reports the whole node wherever cores are not

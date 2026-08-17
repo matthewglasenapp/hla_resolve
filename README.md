@@ -25,7 +25,7 @@
 
 HLA-Resolve is a command-line tool for high-resolution HLA typing from high-coverage PacBio sequencing reads. It reconstructs phased, full-gene sequences for the eight classical HLA loci (HLA-A, -B, -C, -DPA1, -DPB1, -DQA1, -DQB1, -DRB1) and queries the [IPD-IMGT/HLA database](https://www.ebi.ac.uk/ipd/imgt/hla/) to assign HLA allele calls.
 
-HLA-Resolve was designed for and fully validated on PacBio hybrid-capture libraries (read N50 ~4 kb). It should also work with PacBio whole-genome (WGS), whole-exome (WES), and amplicon data. WGS support has been validated on high-coverage PacBio HiFi libraries from the GIAB and HPRC benchmarks (see [Validated WGS Libraries](#validated-wgs-libraries)).
+HLA-Resolve was designed for and fully validated on PacBio hybrid-capture libraries (read N50 ~4 kb). WGS support has been validated on high-coverage PacBio HiFi libraries from the GIAB and HPRC benchmarks (see [Validated WGS Libraries](#validated-wgs-libraries)). HLA-Resolve has not been tested on amplicon sequencing data yet. 
 
 > [!IMPORTANT]
 > HLA-Resolve is pre-release software in active development, intended for high-coverage PacBio reads. ONT support is still in development, and `--platform ont` is rejected at runtime until it lands. The software is for research use only and not for use in diagnostic procedures. The HLA-Resolve [manuscript](https://doi.org/10.64898/2026.03.27.26349549) is under peer review.
@@ -247,36 +247,14 @@ Intermediate files will be written to the following directories. The user can sp
 
 ## Validated WGS Libraries
 
-HLA-Resolve was run on whole-genome PacBio HiFi data for **40 HPRC samples** at a mean
-coverage of 36.7× across the eight classical HLA genes. Concordance with the reference
-typings of Lai et al. was **100% at three-field** (627/627) and **93.0% at four-field**
-(571/614) resolution among called alleles, with a call rate of 99.4% (636/640).
+HLA-Resolve was run on whole-genome PacBio HiFi data for 39 samples from the HPRC benchmark
+set of Lai et al., at a mean coverage of 35.2× across the eight classical HLA genes.
+Concordance with the reference typings was **100% at one- through three-field resolution**
+(610/610 alleles at three-field) and **92.8% at four-field** (555/598), with a call rate of
+99.4% (620/624).
 
-Per-sample results and the input file manifest are in
+Per-sample results, two additional GIAB HG002 runs, and the full input file manifest are in
 **[docs/wgs_validation.md](docs/wgs_validation.md)**.
-
-The libraries below were validated individually and are retained here as worked examples:
-
-| Sample | Source | Instrument | HLA&nbsp;Coverage | Concordance | File |
-|--------|--------|------------|--------------|-------------|------|
-| HG002 | GIAB | Revio | ~30× | 1–3&nbsp;field:&nbsp;100%<br>4-field:&nbsp;15/16 | `https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/AshkenazimTrio/HG002_NA24385_son/PacBio_HiFi-Revio_20231031/HG002_PacBio-Revio_m84039_231005_222902_s1.hifi_reads.bam` |
-| HG002 | GIAB | Revio | ~30× | 1–3&nbsp;field:&nbsp;100%<br>4-field:&nbsp;100% | `https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/AshkenazimTrio/HG002_NA24385_son/PacBio_HiFi-Revio_20231031/HG002_PacBio-Revio_m84039_230928_213653_s3.hifi_reads.bam` |
-| HG002 | HPRC | Revio | ~33× | 1–3&nbsp;field:&nbsp;100%<br>4-field:&nbsp;100% | `s3://human-pangenomics/working/HPRC_PLUS/HG002/raw_data/PacBio_HiFi/wMods/m84011_220902_175841_s1.hifi_reads.bam` |
-| HG01258 | HPRC | Revio | ~19× | 1–3&nbsp;field:&nbsp;100%<br>4-field:&nbsp;15/16 | `s3://human-pangenomics/working/HPRC/HG01258/raw_data/PacBio_HiFi/m84046_231202_090949_s3.hifi_reads.bc2054.bam` |
-| HG03579 | HPRC | Sequel II | ~15× | 1–3&nbsp;field:&nbsp;100%<br>4-field:&nbsp;15/16 | `s3://human-pangenomics/working/HPRC/HG03579/raw_data/PacBio_HiFi/m64043_200516_230634.ccs.bam` |
-
-HPRC libraries can be downloaded without credentials using the AWS CLI:
-
-`aws s3 cp --no-sign-request <s3-path> .`
-
-> [!NOTE]
-> Concordance was evaluated against ground-truth HLA annotations provided by Lai et al. 2023 ([DOI: 10.1016/j.csbj.2024.03.030](https://doi.org/10.1016/j.csbj.2024.03.030); [Supplementary File 6](docs/Lai_Supplementary-6.xlsx)). All 4-field discordances are single-field miscalls in the fourth field; 1–3 field concordance is 100% across all libraries.
-
-The `hla_resolve` command used to analyze these libraries was:
-
-```bash
-hla_resolve --input_file <INPUT_uBAM> --sample_name <sample_name> --platform pacbio --scheme WGS --output_dir <output_dir> --threads <threads>
-```
 
 ## Planned Features (In Development)
 

@@ -5,6 +5,7 @@
 
 import textwrap
 import argparse
+import shlex
 import sys
 from importlib.metadata import version
 
@@ -76,7 +77,7 @@ def main():
     import os
     from . import config
     from .sample_manager import InsufficientReads, Samples, build_workflow_config
-    from .utils import announce, check_required_commands, setup_logging
+    from .utils import announce, check_required_commands, setup_logging, version_string
     from .ont_pipeline import preprocess_ont_sample
     from .pacbio_pipeline import preprocess_pacbio_sample
     from .resolve_alleles_pipeline import resolve_alleles
@@ -97,6 +98,13 @@ def main():
 
     setup_logging(output_dir=args.output_dir, sample_name=args.sample_name)
 
+    # Provenance header. Repeated on the Finished line so one grep over a cohort
+    # of logs shows the version beside each sample.
+    version_text = version_string()
+    print(version_text)
+    print(f"Command: {shlex.join([os.path.basename(sys.argv[0])] + sys.argv[1:])}")
+    print("\n")
+
     # Oversubscription is the user's call, so warn and continue.
     if cpus_known and args.threads > available_cpus:
         announce(f"Warning: --threads {args.threads} but only {available_cpus} CPUs are allocated. Continuing anyway.")
@@ -113,7 +121,7 @@ def main():
     except (InsufficientReads, FileNotFoundError, OSError, ValueError) as err:
         status = "insufficient_reads" if isinstance(err, InsufficientReads) else "input_error"
         announce(f"Error: {err}")
-        announce(f"Finished {args.sample_name} (status: {status})")
+        announce(f"Finished {args.sample_name} (status: {status}) [{version_text}]")
         sys.exit(1)
 
     # Build workflow configuration from sample object
@@ -140,7 +148,7 @@ def main():
     elapsed_time = time.time() - start_time
 
     minutes, seconds = divmod(elapsed_time, 60)
-    announce(f"Finished {workflow_config['sample_ID']} in {int(minutes)}m {seconds:.0f}s (status: {status})")
+    announce(f"Finished {workflow_config['sample_ID']} in {int(minutes)}m {seconds:.0f}s (status: {status}) [{version_text}]")
 
     if status != "ok":
         sys.exit(1)
