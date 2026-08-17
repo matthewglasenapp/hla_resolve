@@ -218,7 +218,7 @@ def resolve_alleles(config):
 		
 		gene_filtered_vcfs[gene] = gene_filtered_vcf
 	
-	stage("Haplotype reconstruction")
+	stage("Gene sequence reconstruction")
 	# Reset vcf2fasta_out_dir for sequential runs 
 	if any(os.scandir(config['vcf2fasta_out_dir'])):
 		shutil.rmtree(config['vcf2fasta_out_dir'])

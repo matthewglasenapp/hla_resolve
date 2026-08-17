@@ -35,7 +35,7 @@ STAGES = [
     "Coverage assessment",
     "Haploblock evaluation",
     "Variant filtering and redundancy removal",
-    "Haplotype reconstruction",
+    "Gene sequence reconstruction",
     "IPD-IMGT/HLA database matching",
 ]
 

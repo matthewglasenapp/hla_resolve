@@ -291,7 +291,7 @@ flowchart TD
   J --> K[Coverage assessment<br/>mosdepth]
   K --> L[Haploblock evaluation<br/>CDS / ARS rescue]
   L --> M[Variant filtering and<br/>redundancy removal]
-  M --> N[Haplotype reconstruction<br/>vcf2fasta]
+  M --> N[Gene sequence reconstruction<br/>vcf2fasta]
   N --> O[IPD-IMGT/HLA matching<br/>three-pass edlib classification]
   O --> P[DR/DQ re-consensus refinement<br/>HLA-DQA1, -DQB1, -DRB1]
   P --> Q([Four-field HLA allele calls])
@@ -339,7 +339,7 @@ Phased haplotype blocks are evaluated to determine whether each HLA gene is full
 ### 12. Variant Filtering and Redundancy Removal
 Phased genotypes are filtered by gene to remove redundant calls from overlapping variant callers (e.g., DeepVariant indels overlapping pbsv structural variants, or non-TRGT variants within TRGT tandem repeat regions). Symbolic and complex structural variant types (BND, INV, DUP) are excluded.
 
-### 13. Haplotype Reconstruction
+### 13. Gene Sequence Reconstruction
 Phased, filtered genotypes are applied to GRCh38 gene models using [vcf2fasta](https://github.com/santiagosnchez/vcf2fasta) to reconstruct full-gene and coding-sequence haplotype FASTA files for each HLA gene.
 
 A small number of HLA-DPB1 alleles, including DPB1\*13:01, \*27:01, \*107:01, and \*135:01, are one base shorter than GRCh38 in a poly-A run at the very end of the coding sequence. Because vcf2fasta works in reference coordinates, the annotated CDS window ends one base short of the shifted stop codon and the haplotype comes back without a stop. When this happens, HLA-Resolve re-extracts the coding sequence with the final exon extended by a few reference bases and trims each haplotype back to its first in-frame stop. The repair is accepted only if that stop falls within a few bases of the expected CDS length, otherwise the original sequence is kept.
