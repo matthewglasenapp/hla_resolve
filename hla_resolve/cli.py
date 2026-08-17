@@ -149,7 +149,7 @@ def main():
     except subprocess.CalledProcessError as err:
         announce(f"Error: a command exited with code {err.returncode}")
         if err.returncode in (137, -9):
-            announce("Code 137 means the process was killed. The usual cause is the out-of-memory killer, so raise the job's memory or lower --threads.")
+            announce("That code means the process was killed. The usual cause is the out-of-memory killer, so raise the job's memory or lower --threads.")
         announce(f"  {str(err.cmd).replace('set -o pipefail; ', '', 1)}")
         announce(f"Finished {workflow_config['sample_ID']} (status: tool_failed) [{version_text}]")
         sys.exit(1)
