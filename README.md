@@ -205,9 +205,6 @@ and not for use in diagnostic procedures.
 ### Example Output
 
 ```
-[13/14] Haplotype reconstruction
-[14/14] IPD-IMGT/HLA database matching
-
 Sample: HG002
 
 gene       _1            _2
