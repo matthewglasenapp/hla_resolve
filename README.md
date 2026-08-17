@@ -247,16 +247,15 @@ Intermediate files will be written to the following directories. The user can sp
 
 ## Validated WGS Libraries
 
-HLA-Resolve was run on whole-genome PacBio sequencing reads for 39 samples from the Human
-Pangenome Reference Consortium (HPRC), at a mean coverage of 35.2× across the eight classical
-HLA genes. Concordance with the reference typings of Lai et al. was
-**100% at one- through three-field resolution**
-(610/610 alleles) and **92.8% at four-field** (555/598), with a call rate of
-99.4% (620/624).
+HLA-Resolve was run on whole-genome PacBio sequencing reads for 39 samples from the Human Pangenome Reference Consortium (HPRC), at a mean coverage of 35.2× across the eight classical HLA genes. Concordance with the reference typings of Lai et al. was **100% at one- through three-field resolution** (610/610 alleles) and **92.8% at four-field** (555/598), with a call rate of 99.4% (620/624).
 
-**[Browse the full benchmark →](docs/wgs_validation.md)** — per-sample concordance and
-coverage for every sample, plus the exact input file(s) behind each run. All inputs are
-public, so the entire benchmark can be reproduced.
+**[Browse the full benchmark →](docs/wgs_validation.md)**
+
+- Per-sample concordance at one- through four-field resolution
+- Mean HLA coverage depth for every sample
+- The exact PacBio input file(s) used for each sample
+
+All inputs are publicly available, so the benchmark can be reproduced end to end.
 
 ## Planned Features (In Development)
 

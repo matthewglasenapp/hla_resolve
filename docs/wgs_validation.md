@@ -22,13 +22,18 @@ Two PacBio Revio runs of HG002, each typed from a single file.
 
 | Sample | Run | Instrument | HLA&nbsp;coverage | Genes&nbsp;typed | Alleles&nbsp;called | 1-field | 2-field | 3-field | 4-field |
 |---|---|---|---:|---|---|---|---|---|---|
-| HG002 | m84039_231005_222902_s1 | Revio | 26.3× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 14/15 |
-| HG002 | m84039_230928_213653_s3 | Revio | 23.4× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 15/15 |
+| HG002 | 231005_s1 | Revio | 26.3× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 14/15 |
+| HG002 | 230928_s3 | Revio | 23.4× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 15/15 |
 
-Files:
+**231005_s1**
 
 ```
 https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/AshkenazimTrio/HG002_NA24385_son/PacBio_HiFi-Revio_20231031/HG002_PacBio-Revio_m84039_231005_222902_s1.hifi_reads.bam
+```
+
+**230928_s3**
+
+```
 https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/AshkenazimTrio/HG002_NA24385_son/PacBio_HiFi-Revio_20231031/HG002_PacBio-Revio_m84039_230928_213653_s3.hifi_reads.bam
 ```
 
