@@ -23,6 +23,11 @@ def main():
         config.run_setup()
         return
 
+    # Needed before the parser is built so --help shows the real default.
+    # utils imports nothing heavy at module level.
+    from .utils import detect_cpus
+    available_cpus, cpus_known = detect_cpus()
+
     parser = argparse.ArgumentParser(
     description="Run HLA-Resolve",
     formatter_class=_HelpFormatter,
@@ -45,7 +50,7 @@ def main():
     parser.add_argument("--output_dir", required=True, help="Output directory. Results are written to <output_dir>/<sample_name>/")
     parser.add_argument("--trim_adapters", action="store_true", help="Enable adapter trimming before processing")
     parser.add_argument("--adapter_file", type=str, required=False, default=None, help="Path to a file with custom adapter sequences (FASTA/FASTQ). If not provided, fastplong auto-detection will be used.")
-    parser.add_argument("--threads", type=int, required=False, help="Number of threads to use", default=6)
+    parser.add_argument("--threads", type=int, required=False, help="Number of threads to use, lowered to the CPU count when fewer are available", default=min(6, available_cpus))
     parser.add_argument("--read_group_string", required=False, help="Override the parsed read group string", default=None)
     parser.add_argument("--clean_up", action="store_true", help="Remove intermediate files")
     parser.add_argument("--clair3_model", type=str, required=False, default=None, help="Clair3 model name (bundled in SIF). Defaults to r1041_e82_400bps_sup_v500 for ONT and hifi_revio for PacBio.")
@@ -61,6 +66,9 @@ def main():
 
     if args.platform == "ont":
         parser.error("ONT support is not yet available; only --platform pacbio is supported.")
+
+    if args.threads < 1:
+        parser.error("--threads must be at least 1")
 
     # Defer heavy imports until after argument parsing so that
     # `hla_resolve` (no args) prints help instantly.
@@ -88,6 +96,10 @@ def main():
         args.rescue_refcalls = True
 
     setup_logging(output_dir=args.output_dir, sample_name=args.sample_name)
+
+    # Oversubscription is the user's call, so warn and continue.
+    if cpus_known and args.threads > available_cpus:
+        announce(f"Warning: --threads {args.threads} but only {available_cpus} CPUs are allocated. Continuing anyway.")
 
     # Check that all required tools are installed
     check_required_commands()

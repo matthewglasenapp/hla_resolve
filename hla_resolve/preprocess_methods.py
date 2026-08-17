@@ -122,7 +122,9 @@ def align_to_reference_rammap(input_file, output_file, read_group_string, refere
 
 	print(f"rammap input file: {input_file}")
 
-	rammap_threads = int(threads * 2 / 3)
+	# rammap accepts -t 0 but maps serially. Keep one mapping thread and give
+	# samtools the remainder, where -@ 0 means no extra threads.
+	rammap_threads = max(1, int(threads * 2 / 3))
 	samtools_threads = threads - rammap_threads
 	rammap_rg_string = "'{}'".format(read_group_string.replace("\t", "\\t"))
 
@@ -189,7 +191,7 @@ def classify_DRB_reads(input_file, output_file, drb_paralog_reads_file, read_gro
 	elif platform == "ONT":
 		platform_string = "map-ont"
 
-	rammap_threads = int(threads * 2 / 3)
+	rammap_threads = max(1, int(threads * 2 / 3))
 	samtools_threads = threads - rammap_threads
 	rammap_rg_string = "'{}'".format(read_group_string.replace("\t", "\\t"))
 

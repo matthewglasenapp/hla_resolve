@@ -28,6 +28,19 @@ def run_quiet(cmd):
         raise
 
 
+def detect_cpus():
+    # Returns (count, confident). Only Slurm's own numbers are trusted enough to
+    # warn on. The affinity mask reports the whole node wherever cores are not
+    # constrained by cgroups, and cpu_count always does.
+    for variable in ("SLURM_CPUS_PER_TASK", "SLURM_CPUS_ON_NODE"):
+        value = os.environ.get(variable, "")
+        if value.isdigit() and int(value) > 0:
+            return int(value), True
+    if hasattr(os, "sched_getaffinity"):
+        return len(os.sched_getaffinity(0)), False
+    return os.cpu_count() or 1, False
+
+
 class TeeStream:
     def __init__(self, *streams):
         self.streams = streams
