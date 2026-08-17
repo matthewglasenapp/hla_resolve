@@ -61,26 +61,21 @@ A raw, single-sample (demultiplexed) PacBio sequencing file in FASTQ or unmapped
 
 HLA allele calls for HLA-A, HLA-B, HLA-C, HLA-DPA1, HLA-DPB1, HLA-DQA1, HLA-DQB1, and HLA-DRB1, written to `<output_dir>/<sample>/hla_typing_results/`.
 
-```
-sample,HLA-A_1,HLA-A_2,HLA-B_1,HLA-B_2,...
-HG002,HLA-A*01:01:01:01,HLA-A*26:01:01:01,HLA-B*38:01:01:01,HLA-B*35:08:01:01,...
-```
+| sample | HLA-A_1 | HLA-A_2 | HLA-B_1 | HLA-B_2 | ... |
+|---|---|---|---|---|---|
+| HG002 | HLA-A*01:01:01:01 | HLA-A*26:01:01:01 | HLA-B*38:01:01:01 | HLA-B*35:08:01:01 | ... |
 
 Allele order within each gene is arbitrary and is not consistent between genes.
 
 Three files hold the same calls at different resolutions. Use `allele_output.csv` unless you have a reason not to.
 
-| File | Resolution | Use it when |
-|------|------------|-------------|
-| `allele_output.csv` | Four field | You want the full call, including noncoding variation |
-| `3_field_allele_output.csv` | Three field | You are comparing against typings that stop at synonymous coding variation |
-| `g_group_output.csv` | G group | You are comparing against ARS-based or serologic typings |
+| File | Resolution |
+|------|------------|
+| `allele_output.csv` | Four field |
+| `3_field_allele_output.csv` | Three field |
+| `g_group_output.csv` | G group |
 
 Each has a `_full.csv` companion listing every equidistant candidate as a genotype list string, where the primary file reports only the chosen one.
-
-**Exit Status**
-
-HLA-Resolve exits 0 when a sample produces allele calls and 1 when it does not, so a sample that fails is reported as failed by a job scheduler.
 
 **Intermediate Files**
 - Haplotagged, mapped BAMs for chromosome 6 (for visualization in genome browsers such as IGV)
@@ -90,7 +85,7 @@ HLA-Resolve exits 0 when a sample produces allele calls and 1 when it does not, 
 ### Runtime and Required Resources
 Runtime depends heavily on input file size and available compute resources. Targeted HLA capture data typically completes in **<15 minutes** using **6 CPUs and 20 GB RAM**. Runtime increases for high-coverage WGS datasets, as all reads must be mapped to the human reference genome prior to restricting downstream analysis to the HLA region on chromosome 6.
 
-Reference genome alignment is the rate-limiting step and is multithreaded, so increasing the thread count with `--threads` provides the largest runtime reduction, particularly for high-coverage WGS inputs. The default is **6**, or the number of CPUs available if fewer, read from the Slurm allocation where there is one. `--threads` sets the thread count for the tools HLA-Resolve calls directly. DeepVariant also parallelizes internally, so on a cluster its CPU use is bounded by the job allocation and not by this flag.
+Reference genome alignment is the rate-limiting step and is multithreaded, so increasing the thread count with `--threads` provides the largest runtime reduction, particularly for high-coverage WGS inputs. The default is **6**, or the number of CPUs available if fewer, read from the Slurm allocation where there is one. Memory requirements rise with the thread count, so raise the job's memory alongside `--threads`. `--threads` sets the thread count for the tools HLA-Resolve calls directly. DeepVariant also parallelizes internally, so on a cluster its CPU use is bounded by the job allocation and not by this flag.
 
 ## Installation
 ```bash
