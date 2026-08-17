@@ -36,7 +36,7 @@ def main():
           hla_resolve setup
 
         Example run:
-          hla_resolve --input_file reads.bam --sample_name HG002 --platform pacbio --scheme hybrid_capture --output_dir out --threads 10
+          hla_resolve --input_file reads.bam --sample_name HG002 --platform pacbio --scheme hybrid_capture --output_dir out
 
         HLA-Resolve is pre-release software intended for research use only
         and not for use in diagnostic procedures.

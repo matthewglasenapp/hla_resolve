@@ -88,9 +88,9 @@ HLA-Resolve exits 0 when a sample produces allele calls and 1 when it does not, 
 - Reconstructed phased nucleotide sequences for each HLA gene in FASTA format
 
 ### Runtime and Required Resources
-Runtime depends heavily on input file size and available compute resources. Targeted HLA capture data typically completes in **<15 minutes** using **6 CPUs and 20 GB RAM**. Runtime increases for high-coverage WGS or WES datasets, as all reads must be mapped to the human reference genome prior to restricting downstream analysis to the HLA region on chromosome 6.
+Runtime depends heavily on input file size and available compute resources. Targeted HLA capture data typically completes in **<15 minutes** using **6 CPUs and 20 GB RAM**. Runtime increases for high-coverage WGS datasets, as all reads must be mapped to the human reference genome prior to restricting downstream analysis to the HLA region on chromosome 6.
 
-Reference genome alignment is the rate-limiting step and is multithreaded, so increasing the thread count with `--threads` (default **6**) provides the largest runtime reduction, particularly for high-coverage WGS or WES inputs.
+Reference genome alignment is the rate-limiting step and is multithreaded, so increasing the thread count with `--threads` provides the largest runtime reduction, particularly for high-coverage WGS inputs. The default is **6**, or the number of CPUs available if fewer, read from the Slurm allocation where there is one. `--threads` sets the thread count for the tools HLA-Resolve calls directly. DeepVariant also parallelizes internally, so on a cluster its CPU use is bounded by the job allocation and not by this flag.
 
 ## Installation
 ```bash
@@ -175,7 +175,8 @@ optional arguments:
                         Path to a file with custom adapter sequences
                         (FASTA/FASTQ). If not provided, fastplong auto-
                         detection will be used. (default: None)
-  --threads THREADS     Number of threads to use (default: 6)
+  --threads THREADS     Number of threads to use, lowered to the CPU count
+                        when fewer are available (default: 6)
   --read_group_string READ_GROUP_STRING
                         Override the parsed read group string (default: None)
   --clean_up            Remove intermediate files (default: False)
@@ -194,7 +195,7 @@ One-time setup (downloads references, binaries, and images):
   hla_resolve setup
 
 Example run:
-  hla_resolve --input_file reads.bam --sample_name HG002 --platform pacbio --scheme hybrid_capture --output_dir out --threads 10
+  hla_resolve --input_file reads.bam --sample_name HG002 --platform pacbio --scheme hybrid_capture --output_dir out
 
 HLA-Resolve is pre-release software intended for research use only
 and not for use in diagnostic procedures.
@@ -246,7 +247,15 @@ Intermediate files will be written to the following directories. The user can sp
 
 ## Validated WGS Libraries
 
-HLA-Resolve has produced high-quality calls for the following whole-genome (WGS) PacBio HiFi libraries:
+HLA-Resolve was run on whole-genome PacBio HiFi data for **40 HPRC samples** at a mean
+coverage of 36.7× across the eight classical HLA genes. Concordance with the reference
+typings of Lai et al. was **100% at three-field** (627/627) and **93.0% at four-field**
+(571/614) resolution among called alleles, with a call rate of 99.4% (636/640).
+
+Per-sample results and the input file manifest are in
+**[docs/wgs_validation.md](docs/wgs_validation.md)**.
+
+The libraries below were validated individually and are retained here as worked examples:
 
 | Sample | Source | Instrument | HLA&nbsp;Coverage | Concordance | File |
 |--------|--------|------------|--------------|-------------|------|

@@ -9,7 +9,6 @@ from .preprocess_methods import (
 	trim_adapters,
 	mark_duplicates_pbmarkdup,
 	align_to_reference_rammap,
-	mark_duplicates_picard,
 	filter_reads,
 	classify_DRB_reads,
 	call_variants_bcftools,
