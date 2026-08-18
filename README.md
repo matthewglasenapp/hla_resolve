@@ -20,15 +20,15 @@
 <br/>
 
 <p align="center">
-  <a href="#installation"><img src="https://img.shields.io/badge/Installation-1F2937?style=for-the-badge&logo=anaconda&logoColor=white" alt="Installation"></a>
+  <a href="#installation"><picture><source media="(prefers-color-scheme: dark)" srcset="https://img.shields.io/badge/Installation-1F2937?style=for-the-badge&logo=anaconda&logoColor=white"><img src="https://img.shields.io/badge/Installation-E5E7EB?style=for-the-badge&logo=anaconda&logoColor=1F2937" alt="Installation"></picture></a>
   &nbsp;&nbsp;&nbsp;&nbsp;
-  <a href="#quick-start-and-demo"><img src="https://img.shields.io/badge/Quick_Start-1F2937?style=for-the-badge&logo=gnubash&logoColor=white" alt="Quick Start"></a>
+  <a href="#quick-start-and-demo"><picture><source media="(prefers-color-scheme: dark)" srcset="https://img.shields.io/badge/Quick_Start-1F2937?style=for-the-badge&logo=gnubash&logoColor=white"><img src="https://img.shields.io/badge/Quick_Start-E5E7EB?style=for-the-badge&logo=gnubash&logoColor=1F2937" alt="Quick Start"></picture></a>
   &nbsp;&nbsp;&nbsp;&nbsp;
-  <a href="#technical-reference"><img src="https://img.shields.io/badge/Technical_Reference-1F2937?style=for-the-badge&logo=readthedocs&logoColor=white" alt="Technical Reference"></a>
+  <a href="#technical-reference"><picture><source media="(prefers-color-scheme: dark)" srcset="https://img.shields.io/badge/Technical_Reference-1F2937?style=for-the-badge&logo=readthedocs&logoColor=white"><img src="https://img.shields.io/badge/Technical_Reference-E5E7EB?style=for-the-badge&logo=readthedocs&logoColor=1F2937" alt="Technical Reference"></picture></a>
   &nbsp;&nbsp;&nbsp;&nbsp;
-  <a href="#validated-wgs-libraries"><img src="https://img.shields.io/badge/Benchmark-1F2937?style=for-the-badge&logo=databricks&logoColor=white" alt="Benchmark"></a>
+  <a href="#validated-wgs-libraries"><picture><source media="(prefers-color-scheme: dark)" srcset="https://img.shields.io/badge/Benchmark-1F2937?style=for-the-badge&logo=databricks&logoColor=white"><img src="https://img.shields.io/badge/Benchmark-E5E7EB?style=for-the-badge&logo=databricks&logoColor=1F2937" alt="Benchmark"></picture></a>
   &nbsp;&nbsp;&nbsp;&nbsp;
-  <a href="#citation"><img src="https://img.shields.io/badge/Citation-1F2937?style=for-the-badge&logo=googlescholar&logoColor=white" alt="Citation"></a>
+  <a href="#citation"><picture><source media="(prefers-color-scheme: dark)" srcset="https://img.shields.io/badge/Citation-1F2937?style=for-the-badge&logo=googlescholar&logoColor=white"><img src="https://img.shields.io/badge/Citation-E5E7EB?style=for-the-badge&logo=googlescholar&logoColor=1F2937" alt="Citation"></picture></a>
 </p>
 
 <h4 align="center">
