@@ -31,13 +31,11 @@
   <a href="#citation"><img src="https://img.shields.io/badge/Citation-1F2937?style=for-the-badge&logo=googlescholar&logoColor=white" alt="Citation"></a>
 </p>
 
-<br/>
-
-<h3 align="center">
+<h4 align="center">
   <a href="https://github.com/matthewglasenapp">Matthew Glasenapp</a> &nbsp;·&nbsp;
   <a href="https://github.com/FlyingFish800">Alex Symons</a> &nbsp;·&nbsp;
   <a href="https://github.com/oeco28">Omar Cornejo</a>
-</h3>
+</h4>
 
 <br/>
 
@@ -252,6 +250,8 @@ Finished HG002 in 9m 18s (status: ok)
 </table>
 
 The command will print the final HLA allele calls to STDOUT, along with important logging information, including coverage depth metrics and the paths of intermediate files (e.g., BAM, VCF). Genes that could not be reconstructed are shown as `not_typed`.
+
+The same calls are written to `test/HG002/hla_typing_results/`, the primary results directory for this run. It holds the six result files described in [Primary Results](#primary-results), with `allele_output.csv` giving the four-field calls shown above.
 
 <details>
 <summary><b>Full command-line options</b></summary>
