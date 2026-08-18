@@ -32,31 +32,31 @@ HLA-Resolve was designed for and fully validated on PacBio hybrid-capture librar
 
 ## Table of Contents
 
-- [Requirements](#requirements)
 - [Overview](#overview)
+  - [Input](#input)
+  - [Output(s)](#outputs)
+  - [Runtime and Required Resources](#runtime-and-required-resources)
+- [Requirements](#requirements)
 - [Installation](#installation)
 - [Updating](#updating)
 - [Quick Start and Demo](#quick-start-and-demo)
+  - [Example Output](#example-output)
+- [Technical Reference](#technical-reference)
 - [Validated WGS Libraries](#validated-wgs-libraries)
 - [Planned Features (In Development)](#planned-features-in-development)
 - [Citation](#citation)
-- [Technical Reference](#technical-reference)
 - [Support](#support)
 - [License](#license)
-
-## Requirements
-
-- **Linux (x86_64)** — Several dependencies (pbmarkdup, hiphase, trgt, pbsv) are distributed as precompiled Linux binaries via Bioconda and are not available for macOS.
-- **Conda** and **pip** — Used to install all dependencies (see [Installation](#installation)).
 
 ## Overview
 
 ### Input
+
 A raw, single-sample (demultiplexed) PacBio sequencing file in FASTQ or unmapped BAM format (compressed or uncompressed). The tool is compatible with WGS, WES, hybrid-capture, and amplicon sequencing schemes.
 
 ### Output(s)
 
-**Primary Results**
+#### Primary Results
 
 HLA allele calls for HLA-A, HLA-B, HLA-C, HLA-DPA1, HLA-DPB1, HLA-DQA1, HLA-DQB1, and HLA-DRB1, written to `<output_dir>/<sample>/hla_typing_results/`.
 
@@ -76,17 +76,25 @@ Three files hold the same calls at different levels of resolution.
 
 Each file above forces a single best guess for every allele, and has a `_full.csv` companion file that reports ambiguities as genotype list strings where alleles could not be distinguished at the sequence level.
 
-**Intermediate Files**
+#### Intermediate Files
+
 - Haplotagged, mapped BAMs for chromosome 6 (for visualization in genome browsers such as IGV)
 - Phased VCFs (chromosome 6 and individual gene)
 - Reconstructed phased nucleotide sequences for each HLA gene in FASTA format
 
 ### Runtime and Required Resources
+
 Runtime depends heavily on input file size and available compute resources. Target capture data typically completes in **<15 minutes** using **6 CPUs and 20 GB RAM**. Runtime increases for high-coverage WGS datasets, as all reads must be mapped to the human reference genome prior to restricting downstream analysis to the HLA region on chromosome 6.
 
 Reference genome alignment is the rate-limiting step and is multithreaded, so increasing the thread count with `--threads` provides the largest runtime reduction, especially for high-coverage WGS inputs. The default is **6**, or the number of CPUs available if fewer, read from the Slurm allocation where there is one. Memory requirements rise with the thread count, so raise the job's memory alongside `--threads`. `--threads` sets the thread count for the tools HLA-Resolve calls directly. DeepVariant also parallelizes internally, so on a cluster its CPU use is bounded by the job allocation and not by this flag.
 
+## Requirements
+
+- **Linux (x86_64)** — Several dependencies (pbmarkdup, hiphase, trgt, pbsv) are distributed as precompiled Linux binaries via Bioconda and are not available for macOS.
+- **Conda** and **pip** — Used to install all dependencies (see [Installation](#installation)).
+
 ## Installation
+
 ```bash
 git clone https://github.com/matthewglasenapp/hla_resolve
 cd hla_resolve        # the repository directory created by the clone above
@@ -109,6 +117,7 @@ hla_resolve setup
 > These downloads are large. Ensure sufficient disk space is available in the install directory before the first run.
 
 ## Updating
+
 Please ensure you are running the latest version. To update an existing installation to the latest version, run `update.sh` from the root of your cloned `hla_resolve` repository:
 ```bash
 chmod a+x update.sh
@@ -132,6 +141,28 @@ hla_resolve \
 ```
 
 The command will print the final HLA allele calls to STDOUT, along with important logging information, including coverage depth metrics and the paths of intermediate files (e.g., BAM, VCF).
+
+### Example Output
+
+```
+Sample: HG002
+
+gene       _1            _2
+HLA-A      01:01:01:01   26:01:01:01
+HLA-B      38:01:01:01   35:08:01:01
+HLA-C      04:01:01:06   12:03:01:01
+HLA-DPA1   01:03:01:02   01:03:01:04
+HLA-DPB1   04:01:01:01   04:01:01:03
+HLA-DQA1   03:01:01:01   01:05:01:01
+HLA-DQB1   05:01:01:05   03:02:01:01
+HLA-DRB1   04:02:01      10:01:01:03
+
+Note: Allele order within each gene is arbitrary and is not consistent between genes.
+
+Finished HG002 in 9m 18s (status: ok)
+```
+
+Genes that could not be reconstructed are shown as `not_typed`.
 
 <details>
 <summary><b>Full command-line options</b></summary>
@@ -200,29 +231,8 @@ and not for use in diagnostic procedures.
 
 </details>
 
-### Example Output
-
-```
-Sample: HG002
-
-gene       _1            _2
-HLA-A      01:01:01:01   26:01:01:01
-HLA-B      38:01:01:01   35:08:01:01
-HLA-C      04:01:01:06   12:03:01:01
-HLA-DPA1   01:03:01:02   01:03:01:04
-HLA-DPB1   04:01:01:01   04:01:01:03
-HLA-DQA1   03:01:01:01   01:05:01:01
-HLA-DQB1   05:01:01:05   03:02:01:01
-HLA-DRB1   04:02:01      10:01:01:03
-
-Note: Allele order within each gene is arbitrary and is not consistent between genes.
-
-Finished HG002 in 9m 18s (status: ok)
-```
-
-Genes that could not be reconstructed are shown as `not_typed`.
-
-### Intermediate Files
+<details>
+<summary><b>Intermediate Files</b></summary>
 
 Intermediate files will be written to the following directories. The user can specify the `--clean_up` option if they do not want intermediate files, such as mapped BAM, phased genotypes (VCFs), or fasta haplotype nucleotide sequences for the HLA genes.
 
@@ -241,6 +251,12 @@ Intermediate files will be written to the following directories. The user can sp
 | `vcf2fasta_out/`          | Contains the vcf2fasta sequence output. For genes with an internal phasing break, this holds the interval that was rebuilt and used for matching rather than the full-gene first pass |
 | `hla_fasta_haplotypes/`   | Contains fasta files of full gene and CDS sequences for each HLA gene. At HLA-DQA1, HLA-DQB1, and HLA-DRB1 an accepted re-consensus replaces the sequence here |
 | `hla_typing_results/`     | Contains the final results of HLA typing |
+
+</details>
+
+## Technical Reference
+
+The [Technical Reference](https://github.com/matthewglasenapp/hla_resolve/blob/main/docs/technical_reference.md) gives the full workflow, the dependencies used at each step, and detailed documentation on the algorithms and decision logic used internally by HLA-Resolve.
 
 ## Validated WGS Libraries
 
@@ -267,10 +283,6 @@ All inputs are publicly available, so the benchmark can be reproduced end to end
 If you use HLA-Resolve, please cite:
 
 > Glasenapp, M.R., Yee, M.-C., Symons, A.E., Cornejo, O.E. & Garcia, O.A. HLA-Resolve: High-Resolution HLA Haplotyping Using Long-Read Hybrid Capture. *medRxiv* (2026). https://doi.org/10.64898/2026.03.27.26349549
-
-## Technical Reference
-
-The [Technical Reference](https://github.com/matthewglasenapp/hla_resolve/blob/main/docs/technical_reference.md) gives the full workflow, the dependencies used at each step, and detailed documentation on the algorithms and decision logic used internally by HLA-Resolve.
 
 ## Support
 
