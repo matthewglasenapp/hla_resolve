@@ -3,7 +3,7 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="images/hla_resolve.png">
-    <img src="images/hla_resolve_light.png" alt="HLA-RESOLVE Logo" width="340"/>
+    <img src="images/hla_resolve_light_trimmed.png" alt="HLA-RESOLVE Logo" width="340"/>
   </picture>
   <br/>
   <b>HLA Typing from PacBio Reads</b>
