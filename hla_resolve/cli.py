@@ -56,8 +56,8 @@ def main():
     parser.add_argument("--clean_up", action="store_true", help="Remove intermediate files")
     parser.add_argument("--keep_full_bam", action="store_true", help="Keep the whole-genome BAM on WGS and WES runs. It is deleted by default once reads are filtered to chromosome 6")
     parser.add_argument("--clair3_model", type=str, required=False, default=None, help="Clair3 model name (bundled in SIF). Defaults to r1041_e82_400bps_sup_v500 for ONT and hifi_revio for PacBio.")
-    parser.add_argument("--verbose", action="store_true", help="Print detailed per-variant diagnostic output (overlap suppression, RefCall rescue, unphased het records, CDS sanity check)")
-    parser.add_argument("--quiet", action="store_true", help="Print only stage headers, warnings, and the final results table. The full log is still written to the log file")
+    parser.add_argument("--verbose", action="store_true", help="Print intermediate file paths and detailed per-variant diagnostic output (overlap suppression, RefCall rescue, unphased het records, CDS sanity check)")
+    parser.add_argument("--quiet", action="store_true", help="Print only stage headers, warnings, the final results tables, and the output file paths. The full log is still written to the log file")
 
     # Show help and exit if no arguments were provided
     if len(sys.argv) == 1:

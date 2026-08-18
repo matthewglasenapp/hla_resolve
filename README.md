@@ -232,6 +232,18 @@ hla_resolve \
 ```text
 Sample: HG002
 
+G-group resolution
+test/HG002/hla_typing_results/g_group_output.csv
+gene       _1            _2
+...
+
+Three-field resolution
+test/HG002/hla_typing_results/3_field_allele_output.csv
+gene       _1            _2
+...
+
+Four-field resolution
+test/HG002/hla_typing_results/allele_output.csv
 gene       _1            _2
 HLA-A      01:01:01:01   26:01:01:01
 HLA-B      38:01:01:01   35:08:01:01
@@ -246,6 +258,13 @@ Note: Allele order within each gene is
 arbitrary and is not consistent
 between genes.
 
+Output files:
+  Haplotagged BAM:   test/HG002/...
+  Phased VCF:        test/HG002/...
+  Single-gene VCFs:  test/HG002/...
+  Gene FASTA:        test/HG002/...
+  CDS FASTA:         test/HG002/...
+
 Finished HG002 in 9m 18s (status: ok)
 ```
 
@@ -253,7 +272,7 @@ Finished HG002 in 9m 18s (status: ok)
 </tr>
 </table>
 
-The command will print the final HLA allele calls to STDOUT, along with important logging information, including coverage depth metrics and the paths of intermediate files (e.g., BAM, VCF). Genes that could not be reconstructed are shown as `not_typed`.
+The command prints the HLA allele calls at all three resolutions to STDOUT, together with the paths of the main result files and logging information such as coverage depth metrics. Genes that could not be reconstructed are shown as `not_typed`. The paths of intermediate files go to the log file only. Pass `--verbose` to see them on screen as well.
 
 The same HLA allele calls are written to `test/HG002/hla_typing_results/`, the primary results directory for this run. It holds the six result files described in [Primary Results](#primary-results), with `allele_output.csv` giving the four-field calls shown above.
 
@@ -307,12 +326,13 @@ optional arguments:
                         Clair3 model name (bundled in SIF). Defaults to
                         r1041_e82_400bps_sup_v500 for ONT and hifi_revio for
                         PacBio. (default: None)
-  --verbose             Print detailed per-variant diagnostic output (overlap
-                        suppression, RefCall rescue, unphased het records, CDS
-                        sanity check) (default: False)
-  --quiet               Print only stage headers, warnings, and the final
-                        results table. The full log is still written to the
-                        log file (default: False)
+  --verbose             Print intermediate file paths and detailed per-variant
+                        diagnostic output (overlap suppression, RefCall rescue,
+                        unphased het records, CDS sanity check) (default:
+                        False)
+  --quiet               Print only stage headers, warnings, the final results
+                        tables, and the output file paths. The full log is
+                        still written to the log file (default: False)
 
 One-time setup (downloads references, binaries, and images):
   hla_resolve setup

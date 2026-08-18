@@ -11,7 +11,7 @@ import gzip
 import shutil
 import tempfile
 from . import config
-from .utils import run_quiet
+from .utils import detail, run_quiet
 
 # samtools sort takes -m per thread and defaults to 768M, so a high --threads
 # silently multiplies its footprint (20 threads reserves 15 GB). Hold the total
@@ -36,7 +36,7 @@ def sort_memory_flag(samtools_threads):
 def convert_bam_to_fastq(input_file, output_file, platform, threads):
 	if platform == "PACBIO":
 		print("Converting HiFi ccs reads to fastq format using pbtk bam2fastq!")
-		print(f"bam2fastq input file: {input_file}")
+		detail(f"bam2fastq input file: {input_file}")
 
 		pbi_file = input_file + ".pbi"
 		if not os.path.exists(pbi_file):
@@ -51,14 +51,14 @@ def convert_bam_to_fastq(input_file, output_file, platform, threads):
 
 	elif platform == "ONT":
 		print("Converting ONT raw reads to fastq format using samtools fastq!")
-		print(f"Samtools fastq input file: {input_file}")
+		detail(f"Samtools fastq input file: {input_file}")
 		samtools_threads = int(threads * 2 / 3)
 		pigz_threads = threads - samtools_threads
 		samtools_fq_cmd = f"samtools fastq -@ {samtools_threads} {input_file} | pigz -p {pigz_threads} > {output_file}"
 		
 		run_quiet(samtools_fq_cmd)
 	
-	print(f"Raw fastq reads written to: {output_file}")
+	detail(f"Raw fastq reads written to: {output_file}")
 	print("\n")
 
 def trim_adapters(adapters, input_file, output_file, sample_ID, threads, adapter_file = None, five_prime_adapter = None, three_prime_adapter = None, revcomp = False):
@@ -66,7 +66,7 @@ def trim_adapters(adapters, input_file, output_file, sample_ID, threads, adapter
 
 		if adapter_file:
 			print("Trimming adapter sequences with cutadapt!")
-			print(f"cutadapt input file: {input_file}")
+			detail(f"cutadapt input file: {input_file}")
 
 			# Build cutadapt adapter flags from whichever ends the user supplied
 			adapter_flags = []
@@ -87,12 +87,12 @@ def trim_adapters(adapters, input_file, output_file, sample_ID, threads, adapter
 
 			run_quiet(cutadapt_cmd)
 
-			print(f"Trimmed reads written to: {output_file}")
+			detail(f"Trimmed reads written to: {output_file}")
 			print("\n")
 
 		else:
 			print("Trimming adapter sequences with fastplong in AUTO mode!")
-			print(f"fastplong input file: {input_file}")
+			detail(f"fastplong input file: {input_file}")
 
 			output_dir = os.path.dirname(output_file)
 			html_path = os.path.join(output_dir, sample_ID + ".fastplong.html")
@@ -102,19 +102,19 @@ def trim_adapters(adapters, input_file, output_file, sample_ID, threads, adapter
 
 			subprocess.run(fastplong_cmd, shell=True, check=False)
 
-			print(f"Trimmed reads written to: {output_file}")
+			detail(f"Trimmed reads written to: {output_file}")
 			print("\n")
 
 	else:
 		print("Users specified no adapters present")
-		print(f"Skipping adapter trimming and transfering raw fastq file {input_file} to {output_file}")
+		detail(f"Skipping adapter trimming and transfering raw fastq file {input_file} to {output_file}")
 		shutil.copy(input_file, output_file)
 
 # Mark PCR duplicates with pbmarkdup
 def mark_duplicates_pbmarkdup(input_file, output_file, threads):
 	print("Removing PCR duplicates using pbmarkdup!")
 
-	print(f"pbmarkdup input file: {input_file}")
+	detail(f"pbmarkdup input file: {input_file}")
 
 	pbmarkdup_cmd = f"pbmarkdup -j {threads} --rmdup --clobber {input_file} {output_file}"
 
@@ -127,7 +127,7 @@ def mark_duplicates_pbmarkdup(input_file, output_file, threads):
 	gzip_cmd = f"pigz -f -p {threads} {output_file}"
 	run_quiet(gzip_cmd)
 	
-	print(f"De-duplicated reads written to: {output_file}.gz")
+	detail(f"De-duplicated reads written to: {output_file}.gz")
 	print("\n")
 
 # Align to GRCh38 reference genome with rammap
@@ -139,7 +139,7 @@ def align_to_reference_rammap(input_file, output_file, read_group_string, refere
 	elif platform == "ONT":
 		platform_string = "map-ont"
 
-	print(f"rammap input file: {input_file}")
+	detail(f"rammap input file: {input_file}")
 
 	# rammap accepts -t 0 but maps serially. Keep one mapping thread and give
 	# samtools the remainder, where -@ 0 means no extra threads.
@@ -165,7 +165,7 @@ def align_to_reference_rammap(input_file, output_file, read_group_string, refere
 	run_quiet(rammap_cmd)
 	run_quiet(index_bam)
 
-	print(f"Mapped bam written to: {output_file}")
+	detail(f"Mapped bam written to: {output_file}")
 	print("\n")
 
 def _parse_drb_paralog_reads(output_file, drb_paralog_reads_file):
@@ -247,7 +247,7 @@ def mark_duplicates_picard(input_file, output_file, metrics_file, temp_dir, pica
 def filter_reads(input_file, output_file, drb_paralog_reads_file, threads):
 	print("Excluding BAM records that don't map to chromosome 6!")
 
-	print(f"Samtools input file: {input_file}")
+	detail(f"Samtools input file: {input_file}")
 
 	# Exclude DRB paralog reads (DRB3/4/5/6/7/8/9, identified by competitive mapping),
 	# restrict to the chr6 MHC window, and drop secondary/supplementary records.
@@ -262,7 +262,7 @@ def filter_reads(input_file, output_file, drb_paralog_reads_file, threads):
 
 	read_count = int(subprocess.check_output(count_reads_cmd, shell=True).strip())
 
-	print(f"Filtered BAM records written to: {output_file}")
+	detail(f"Filtered BAM records written to: {output_file}")
 	print("\n")
 
 	return read_count
@@ -275,7 +275,7 @@ def call_variants_deepvariant(input_bam, output_vcf, platform, deepvariant_sif, 
 		model_type = "ONT_R104"
 	
 	print("Calling SNVs and small indels with DeepVariant!")
-	print(f"DeepVariant input file: {input_bam}")
+	detail(f"DeepVariant input file: {input_bam}")
 	
 	bind_paths = [
 		f"{genotypes_dir}:/data",
@@ -299,12 +299,12 @@ def call_variants_deepvariant(input_bam, output_vcf, platform, deepvariant_sif, 
 
 	# Log DeepVariant in own output file so it doesn't clog up STDOUT
 	deepvariant_log = os.path.join(genotypes_dir, sample_ID + ".deepvariant.log")
-	print(f"Writing stdout to {deepvariant_log}")
+	detail(f"Writing stdout to {deepvariant_log}")
 
 	with open(deepvariant_log, "w") as log_file:
 		subprocess.run(deepvariant_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
 
-	print(f"VCF written to: {output_vcf}")
+	detail(f"VCF written to: {output_vcf}")
 	print("\n")
 
 def call_variants_clair3(input_bam, output_vcf, platform, clair3_sif, reference_fasta, threads, genotypes_dir, mapped_bam_dir, sample_ID, clair3_model):
@@ -314,8 +314,8 @@ def call_variants_clair3(input_bam, output_vcf, platform, clair3_sif, reference_
 		platform_type = "hifi"
 
 	print("Calling SNVs and small indels with Clair3!")
-	print(f"Clair3 input file: {input_bam}")
-	print(f"Clair3 model: {clair3_model}")
+	detail(f"Clair3 input file: {input_bam}")
+	detail(f"Clair3 model: {clair3_model}")
 
 	output_dir = os.path.join(genotypes_dir, sample_ID)
 	os.makedirs(output_dir, exist_ok=True)
@@ -341,7 +341,7 @@ def call_variants_clair3(input_bam, output_vcf, platform, clair3_sif, reference_
 		"""
 
 	clair3_log = os.path.join(genotypes_dir, sample_ID + ".clair3.log")
-	print(f"Writing stdout to {clair3_log}")
+	detail(f"Writing stdout to {clair3_log}")
 
 	with open(clair3_log, "w") as log_file:
 		subprocess.run(clair3_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
@@ -350,7 +350,7 @@ def call_variants_clair3(input_bam, output_vcf, platform, clair3_sif, reference_
 	shutil.copy(raw_genotypes_file, output_vcf)
 	run_quiet(f"tabix -p vcf {output_vcf}")
 
-	print(f"VCF written to: {output_vcf}")
+	detail(f"VCF written to: {output_vcf}")
 	print("\n")
 
 # Call SNV with bcftools
@@ -362,7 +362,7 @@ def call_variants_bcftools(input_file, output_file, reference_fasta, platform, t
 
 	print("Calling SNVs and small indels with bcftools!")
 
-	print(f"Bcftools input file: {input_file}")
+	detail(f"Bcftools input file: {input_file}")
 	
 	# Both run at once in the pipe below, so the split has to sum to the budget.
 	budget = region_threads(threads)
@@ -380,13 +380,13 @@ def call_variants_bcftools(input_file, output_file, reference_fasta, platform, t
 	run_quiet(bcftools_command)
 	run_quiet(f"tabix -p vcf {output_file}")
 
-	print(f"VCF written to: {output_file}")
+	detail(f"VCF written to: {output_file}")
 	print("\n")
 
 # Call SNVs and small indels with FreeBayes
 def call_variants_freebayes(input_bam, output_vcf, reference_fasta):
 	print("Calling SNVs and small indels with FreeBayes!")
-	print(f"FreeBayes input file: {input_bam}")
+	detail(f"FreeBayes input file: {input_bam}")
 
 	freebayes_cmd = (
 		f"freebayes "
@@ -401,7 +401,7 @@ def call_variants_freebayes(input_bam, output_vcf, reference_fasta):
 	run_quiet(freebayes_cmd)
 	run_quiet(f"tabix -p vcf {output_vcf}")
 
-	print(f"VCF written to: {output_vcf}")
+	detail(f"VCF written to: {output_vcf}")
 	print("\n")
 
 # Rescue high-confidence variants from DeepVariant RefCall filter
@@ -412,7 +412,7 @@ def call_variants_freebayes(input_bam, output_vcf, reference_fasta):
 def rescue_refcalls(input_vcf, output_vcf, indels_only=False):
 	mode_label = "indels" if indels_only else "SNPs and indels"
 	print(f"Rescuing high-confidence RefCall {mode_label} from DeepVariant output!")
-	print(f"Input VCF: {input_vcf}")
+	detail(f"Input VCF: {input_vcf}")
 
 	vcf_in = pysam.VariantFile(input_vcf)
 
@@ -497,7 +497,7 @@ def rescue_refcalls(input_vcf, output_vcf, indels_only=False):
 	run_quiet(f"tabix -p vcf {output_vcf}")
 
 	print(f"Rescued {rescued}/{total_refcalls} RefCall {mode_label}")
-	print(f"Output VCF: {output_vcf}")
+	detail(f"Output VCF: {output_vcf}")
 	print("\n")
 
 # Extract SNPs from snp_caller output and indels from indel_caller output, merge into a single VCF
@@ -529,7 +529,7 @@ def merge_hybrid_vcfs(snp_vcf, indel_vcf, indel_only_vcf, merged_vcf, snp_caller
 	run_quiet(merge_cmd)
 	run_quiet(f"tabix -p vcf {merged_vcf}")
 
-	print(f"Merged VCF written to: {merged_vcf}")
+	detail(f"Merged VCF written to: {merged_vcf}")
 	print("\n")
 
 # Run pbsv to call structural variants (SV)
@@ -547,7 +547,7 @@ def call_structural_variants_pbsv(input_bam, output_svsig, output_vcf, threads, 
 	run_quiet(f"samtools index {sa_stripped_bam}")
 	input_bam = sa_stripped_bam
 
-	print(f"pbsv input file: {input_bam}")
+	detail(f"pbsv input file: {input_bam}")
 	
 	# -a Don't downsample
 	# -q Don't filter by MapQ
@@ -569,7 +569,7 @@ def call_structural_variants_pbsv(input_bam, output_svsig, output_vcf, threads, 
 	run_quiet(compress_cmd)
 	run_quiet(index_vcf_cmd)
 
-	print(f"pbsv SV VCF written to: {output_vcf}")
+	detail(f"pbsv SV VCF written to: {output_vcf}")
 	print("\n")
 
 def call_structural_variants_sniffles(input_bam, output_vcf, threads, reference_fasta, chr6_bed, tandem_repeat_bed):
@@ -579,14 +579,14 @@ def call_structural_variants_sniffles(input_bam, output_vcf, threads, reference_
 
 	run_quiet(sniffles_cmd)
 
-	print(f"Sniffles2 SV VCF written to: {output_vcf}")
+	detail(f"Sniffles2 SV VCF written to: {output_vcf}")
 	print("\n")
 
 # Genotype tandem repeats with pbtrgt
 def genotype_tandem_repeats(input_bam, output_vcf, pbtrgt_dir, threads, reference_fasta, pbtrgt_repeat_file, original_cwd, scheme):
 	print("Genotyping tandem repeats with TRGT!")
 
-	print(f"TRGT input file: {input_bam}")
+	detail(f"TRGT input file: {input_bam}")
 	
 	# Extract the base name without any extensions
 	output_prefix = os.path.basename(output_vcf)
@@ -616,7 +616,7 @@ def genotype_tandem_repeats(input_bam, output_vcf, pbtrgt_dir, threads, referenc
 
 		run_quiet(index_cmd)
 
-		print(f"TR VCF written to: {output_vcf}")
+		detail(f"TR VCF written to: {output_vcf}")
 		print("\n")
 	finally:
 		os.chdir(original_cwd)
@@ -625,10 +625,10 @@ def genotype_tandem_repeats(input_bam, output_vcf, pbtrgt_dir, threads, referenc
 def phase_genotypes_hiphase(input_bam, input_snv, input_SV, input_TR, output_bam, output_snv, output_SV, output_TR, output_summary_file, output_blocks_file, output_stats_file, threads, reference_fasta, phased_vcf_dir, sample_ID):
 	print("Phasing genotypes with HiPhase!")
 
-	print(f"Input BAM: {input_bam}")
-	print(f"Input SNV: {input_snv}")
-	print(f"Input SV: {input_SV}")
-	print(f"Input TR: {input_TR}")
+	detail(f"Input BAM: {input_bam}")
+	detail(f"Input SNV: {input_snv}")
+	detail(f"Input SV: {input_SV}")
+	detail(f"Input TR: {input_TR}")
 	
 	# Check if input files exist
 	missing_files = []
@@ -652,27 +652,27 @@ def phase_genotypes_hiphase(input_bam, input_snv, input_SV, input_TR, output_bam
 	
 	# Log HiPhase in own output file so it doesn't clog up STDOUT
 	hiphase_log = os.path.join(phased_vcf_dir, sample_ID + ".hiphase.log")
-	print(f"Writing stdout to {hiphase_log}")
+	detail(f"Writing stdout to {hiphase_log}")
 
 	with open(hiphase_log, "w") as log_file:
 		subprocess.run(hiphase_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
 
-	print(f"HiPhase phased SNV VCF: {output_snv}")
-	print(f"HiPhase phased SV VCF: {output_SV}")
-	print(f"HiPhase phased TR VCF: {output_TR}")
-	print(f"HiPhase haplotagged BAM written to: {output_bam}")
-	print(f"HiPhase phasing summary written to: {output_summary_file}")
-	print(f"HiPhase phasing stats written to: {output_stats_file}")
-	print(f"HiPhase phase blocks written to: {output_blocks_file}")
+	detail(f"HiPhase phased SNV VCF: {output_snv}")
+	detail(f"HiPhase phased SV VCF: {output_SV}")
+	detail(f"HiPhase phased TR VCF: {output_TR}")
+	detail(f"HiPhase haplotagged BAM written to: {output_bam}")
+	detail(f"HiPhase phasing summary written to: {output_summary_file}")
+	detail(f"HiPhase phasing stats written to: {output_stats_file}")
+	detail(f"HiPhase phase blocks written to: {output_blocks_file}")
 	print("\n")
 
 # Merge phased SNV (DeepVariant), tandem repeat (TRGT), and structural variant (pbsv) VCFs with bcftools concat
 def merge_hiphase_vcfs(input_snv, input_SV, input_TR, output_vcf, reference_fasta):
 	print("Merging phased small variant, pbsv, and TRGT VCF files!")
 
-	print(f"Small variant input file: {input_snv}")
-	print(f"pbsv input file: {input_SV}")
-	print(f"TRGT input file: {input_TR}")
+	detail(f"Small variant input file: {input_snv}")
+	detail(f"pbsv input file: {input_SV}")
+	detail(f"TRGT input file: {input_TR}")
 
 	# Merge SNV + SV with bcftools norm (normalizes indels, removes dups).
 	# TR records are concatenated WITHOUT norm to preserve explicit allele sequences
@@ -702,15 +702,15 @@ def merge_hiphase_vcfs(input_snv, input_SV, input_TR, output_vcf, reference_fast
 		if os.path.exists(tmp):
 			os.remove(tmp)
 
-	print(f"Merged VCF written to: {output_vcf}")
+	detail(f"Merged VCF written to: {output_vcf}")
 	print("\n")
 
 def phase_genotypes_longphase(input_bam, input_SNV_vcf, input_SV_vcf, output_blocks_file, output_gtf_file, phased_vcf, phased_SV_vcf, haplotagged_bam, longphase, reference_fasta, threads, phased_vcf_dir, sample_ID):
 	print("Phasing genotypes with LongPhase!")
 
-	print(f"Input BAM: {input_bam}")
-	print(f"Input SNV VCF: {input_SNV_vcf}")
-	print(f"Input SV VCF: {input_SV_vcf}")
+	detail(f"Input BAM: {input_bam}")
+	detail(f"Input SNV VCF: {input_SNV_vcf}")
+	detail(f"Input SV VCF: {input_SV_vcf}")
 
 	phased_vcf_prefix = phased_vcf.split(".vcf.gz")[0]
 	longphase_phase_cmd = f"{longphase} phase -s {input_SNV_vcf} --sv-file {input_SV_vcf} -b {input_bam} -r {reference_fasta} -t {threads} -o {phased_vcf_prefix} --ont --indels"
@@ -748,10 +748,10 @@ def phase_genotypes_longphase(input_bam, input_SNV_vcf, input_SV_vcf, output_blo
 		log_file.write("\n==== Running WhatsHap Stats ====\n")
 		subprocess.run(whatshap_stats_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
 
-	print(f"LongPhase phased VCF written to: {phased_vcf}")
-	print(f"LongPhase haplotagged BAM written to: {haplotagged_bam}")
-	print(f"LongPhase phase block gtf written to: {output_gtf_file}")
-	print(f"LongPhase phase blocks written to: {output_blocks_file}")
+	detail(f"LongPhase phased VCF written to: {phased_vcf}")
+	detail(f"LongPhase haplotagged BAM written to: {haplotagged_bam}")
+	detail(f"LongPhase phase block gtf written to: {output_gtf_file}")
+	detail(f"LongPhase phase blocks written to: {output_blocks_file}")
 	print("\n")
 
 def merge_longphase_vcfs(phased_vcf, phased_SV_vcf, merged_vcf, reference_fasta, phased_vcf_dir, sample_ID):
@@ -786,11 +786,11 @@ def merge_longphase_vcfs(phased_vcf, phased_SV_vcf, merged_vcf, reference_fasta,
 		log_file.write("\n==== Indexing Merged VCF ====\n")
 		subprocess.run(index_merged_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
 
-	print(f" Merged VCF written to: {merged_vcf}")
+	detail(f" Merged VCF written to: {merged_vcf}")
 	print("\n")
 
 def run_mosdepth(input_file, output_dir, sample_ID, regions_file, threads):
-	print(f"Running mosdepth on {input_file}")
+	detail(f"Running mosdepth on {input_file}")
 	
 	prefix = os.path.join(output_dir, sample_ID)
 	
@@ -870,7 +870,7 @@ def parse_mosdepth(regions_file, thresholds_file, cds_depth_thresh, cds_prop_20x
 		}
 
 	# Human-readable per-gene report (gene, CDS aggregated, ARS as-is)
-	print("Region, Mean Depth, % Bases 10X, % Bases 20X, % Bases 30X")
+	print("Gene, Region, Mean Depth, % Bases 10X, % Bases 20X, % Bases 30X")
 	for gene in sorted(set(list(cds_stats.keys()) + list(ars_stats.keys()) + list(gene_stats.keys()))):
 		g = gene_stats.get(gene)
 		if g is not None:

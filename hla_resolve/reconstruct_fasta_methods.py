@@ -13,7 +13,7 @@ from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio import SeqIO
 from . import config
-from .utils import run_quiet
+from .utils import detail, run_quiet
 
 def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail_vcf, sv_overlap_vcf, pass_unphased, filtered_vcf, platform, genotyper, force_include_unphased=False):
 	# Extract region
@@ -344,7 +344,9 @@ def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail
 
 	# ========== UNPHASED PASS SUMMARY ==========
 	if unphased_hets:
-		print(f"{gene}: {len(unphased_hets)} unphased PASS het(s) → {pass_unphased}\n")
+		print(f"{gene}: {len(unphased_hets)} unphased PASS het(s)")
+		detail(f"  written to: {pass_unphased}")
+		print()
 
 	if config.VERBOSE:
 		if force_include_unphased and unphased_hets:
@@ -1001,7 +1003,9 @@ def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA
 
 	print("FASTA output:")
 	SeqIO.write(gene_records, outfile_gene, "fasta")
-	print(f"  {len(gene_records)} records written to: {outfile_gene}")
+	print(f"  {len(gene_records)} gene records")
+	detail(f"    written to: {outfile_gene}")
 	SeqIO.write(cds_records, outfile_CDS, "fasta")
-	print(f"  {len(cds_records)} records written to: {outfile_CDS}")
+	print(f"  {len(cds_records)} CDS records")
+	detail(f"    written to: {outfile_CDS}")
 	print("\n")

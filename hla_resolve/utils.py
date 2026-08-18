@@ -102,6 +102,20 @@ def announce(*args, **kwargs):
         print(*args, **kwargs, file=sys._hla_resolve_stdout)
 
 
+def detail(*args, **kwargs):
+    # Plumbing that belongs in the log but not on a user's terminal: paths of
+    # intermediate files, tool input arguments. --verbose puts it back on screen.
+    from . import config
+    if config.VERBOSE:
+        print(*args, **kwargs)
+        return
+    log_file = getattr(sys, "_hla_resolve_log_file", None)
+    if log_file is not None:
+        print(*args, **kwargs, file=log_file)
+    elif not config.QUIET:
+        print(*args, **kwargs)
+
+
 def stage(name):
     # Numbered from config.STAGES so the count matches the documented workflow.
     from . import config

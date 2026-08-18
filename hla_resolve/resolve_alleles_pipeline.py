@@ -20,7 +20,7 @@ from .reconstruct_fasta_methods import (
 	parse_fastas
 )
 from .hla_typer import main as classify_hla_alleles
-from .utils import stage
+from .utils import announce, detail, stage
 from . import config as hla_config
 
 def convert_gene_name_for_gff(gene_name):
@@ -45,18 +45,25 @@ def strip_gene_prefix(call, gene):
 	prefix = f"{gene}*"
 	return call[len(prefix):] if call.startswith(prefix) else call
 
-def print_results(config):
-	results_file = os.path.join(config['hla_typing_dir'], "allele_output.csv")
+# Every classification pass writes the same CSV shape, so one reader serves all
+# three resolutions.
+RESULT_TABLES = (
+	("G-group resolution", "g_group_output.csv"),
+	("Three-field resolution", "3_field_allele_output.csv"),
+	("Four-field resolution", "allele_output.csv"),
+)
+
+def read_calls(results_file):
+	"""Read one result CSV into (gene order, {gene: {"1": call, "2": call}}).
+	Returns (None, None) when the file is missing, empty, or has no gene columns."""
 	if not os.path.exists(results_file):
-		print(f"Warning: Results file not found at {results_file}")
-		return
+		return None, None
 
 	with open(results_file, newline="") as f:
 		rows = list(csv.DictReader(f))
 
 	if not rows:
-		print(f"Warning: Results file {results_file} contains no data rows")
-		return
+		return None, None
 
 	row = rows[0]
 
@@ -75,21 +82,62 @@ def print_results(config):
 		calls[gene][index] = strip_gene_prefix(call, gene) if call else NOT_TYPED
 
 	if not genes:
-		print(f"Warning: Results file {results_file} has no gene columns")
+		return None, None
+
+	return genes, calls
+
+def print_results(config):
+	tables = []
+	genes = []
+	for label, filename in RESULT_TABLES:
+		results_file = os.path.join(config['hla_typing_dir'], filename)
+		table_genes, calls = read_calls(results_file)
+		if calls is None:
+			announce(f"Warning: no {label} calls found in {filename}")
+			continue
+		tables.append((label, results_file, calls))
+		# A gene can reach one resolution and not another, so take the union.
+		for gene in table_genes:
+			if gene not in genes:
+				genes.append(gene)
+
+	if not tables:
 		return
 
-	gene_width = max(len("gene"), max(len(g) for g in genes))
-	first_width = max(len("_1"), max(len(calls[g].get("1", NOT_TYPED)) for g in genes))
+	# One set of widths across all three blocks, so they line up under each other.
+	gene_width = max([len("gene")] + [len(gene) for gene in genes])
+	first_width = max([len("_1")] + [len(calls.get(gene, {}).get("1", NOT_TYPED))
+	                                 for _, _, calls in tables for gene in genes])
 
-	print(f"Sample: {config['sample_ID']}")
-	print()
-	print(f"{'gene':<{gene_width}}   {'_1':<{first_width}}   _2")
-	for gene in genes:
-		first = calls[gene].get("1", NOT_TYPED)
-		second = calls[gene].get("2", NOT_TYPED)
-		print(f"{gene:<{gene_width}}   {first:<{first_width}}   {second}")
-	print()
-	print("Note: Allele order within each gene is arbitrary and is not consistent between genes.")
+	announce(f"Sample: {config['sample_ID']}")
+	for label, results_file, calls in tables:
+		announce()
+		announce(label)
+		announce(results_file)
+		announce(f"{'gene':<{gene_width}}   {'_1':<{first_width}}   _2")
+		for gene in genes:
+			first = calls.get(gene, {}).get("1", NOT_TYPED)
+			second = calls.get(gene, {}).get("2", NOT_TYPED)
+			announce(f"{gene:<{gene_width}}   {first:<{first_width}}   {second}")
+
+	announce()
+	announce("Note: Allele order within each gene is arbitrary and is not consistent between genes.")
+
+def print_output_files(config, phased_vcf):
+	gene_vcf_pattern = os.path.join(config['filtered_vcf_dir'],
+	                                f"{config['sample_ID']}_<gene>_PASS_phased.vcf.gz")
+	entries = [
+		("Haplotagged BAM", config['hg38_rmdup_chr6_haplotag_bam']),
+		("Phased VCF", phased_vcf),
+		("Single-gene VCFs", gene_vcf_pattern),
+		("Gene FASTA", config['hla_gene_fasta']),
+		("CDS FASTA", config['hla_cds_fasta']),
+	]
+	label_width = max(len(label) for label, _ in entries) + 1
+
+	announce("Output files:")
+	for label, path in entries:
+		announce(f"  {label + ':':<{label_width}}  {path}")
 
 def resolve_alleles(config):
 	"""
@@ -290,22 +338,26 @@ def resolve_alleles(config):
 
 	print_results(config)
 	print("\n")
-	print(f"HLA typing result files located in dir: {config['hla_typing_dir']}/")
-	print()
-	print("g group results written to: g_group_output.csv")
-	print("three field results written to: 3_field_allele_output.csv")
-	print("four field results written to: allele_output.csv")
-	print()
-	print("Results with ambiguties in the format of genotype list strings written to:")
-	print("g_group_output_full.csv")
-	print("3_field_allele_output_full.csv")
-	print("allele_output_full.csv")
-	print()
-	print("Debugging files written to:")
-	print("g_group_assignment.log")
-	print("3_field_allele_assignment.log")
-	print("allele_assignment.log")
-	print("sample_ref_comp.csv")
+
+	detail(f"HLA typing result files located in dir: {config['hla_typing_dir']}/")
+	detail("")
+	detail("g group results written to: g_group_output.csv")
+	detail("three field results written to: 3_field_allele_output.csv")
+	detail("four field results written to: allele_output.csv")
+	detail("")
+	detail("Results with ambiguities in the format of genotype list strings written to:")
+	detail("g_group_output_full.csv")
+	detail("3_field_allele_output_full.csv")
+	detail("allele_output_full.csv")
+	detail("")
+	detail("Debugging files written to:")
+	detail("g_group_assignment.log")
+	detail("3_field_allele_assignment.log")
+	detail("allele_assignment.log")
+	detail("sample_ref_comp.csv")
+	detail("\n")
+
+	print_output_files(config, input_vcf)
 	print("\n")
 
 	print("HLA allele resolution workflow completed!")
