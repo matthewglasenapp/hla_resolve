@@ -33,29 +33,32 @@
 
 <br/>
 
-<p align="center">
+<h3 align="center">
   <a href="https://github.com/matthewglasenapp">Matthew Glasenapp</a> &nbsp;·&nbsp;
   <a href="https://github.com/FlyingFish800">Alex Symons</a> &nbsp;·&nbsp;
   <a href="https://github.com/oeco28">Omar Cornejo</a>
-</p>
+</h3>
 
 <br/>
 
----
-
-<br/>
+## Introduction
 
 HLA-Resolve is a command-line tool for high-resolution HLA typing from high-coverage PacBio sequencing reads. It reconstructs phased, full-gene sequences for the eight classical HLA loci (HLA-A, -B, -C, -DPA1, -DPB1, -DQA1, -DQB1, -DRB1) and queries the [IPD-IMGT/HLA database](https://www.ebi.ac.uk/ipd/imgt/hla/) to assign HLA allele calls.
 
 HLA-Resolve was designed for and fully validated on PacBio hybrid-capture libraries (read N50 ~4 kb). WGS support has been validated on PacBio whole-genome sequencing reads from the GIAB and HPRC benchmarks (see [Validated WGS Libraries](#validated-wgs-libraries)). HLA-Resolve has not been tested on amplicon sequencing data yet. 
 
 > [!IMPORTANT]
-> HLA-Resolve is pre-release software in active development. It is intended for high-coverage PacBio reads. A gene is typed only if its peptide-binding domain reaches at least 8× mean coverage depth. ONT support is still in development, and `--platform ont` is rejected at runtime until it lands. The software is for research use only and not for use in diagnostic procedures. The HLA-Resolve [manuscript](https://doi.org/10.64898/2026.03.27.26349549) is under peer review.
+> HLA-Resolve is pre-release software in active development. It is intended for high-coverage PacBio reads. A gene is typed only if its peptide-binding domain reaches at least 8× mean coverage depth.
+>
+> ONT support is still in development, and `--platform ont` is rejected at runtime until it lands.
+>
+> The software is for research use only and not for use in diagnostic procedures. The HLA-Resolve [manuscript](https://doi.org/10.64898/2026.03.27.26349549) is under peer review.
 
 <details>
 <summary><b>Table of Contents</b></summary>
 
-- [Overview](#overview)
+- [Introduction](#introduction)
+- [Tool Overview](#tool-overview)
   - [Input](#input)
   - [Output(s)](#outputs)
   - [Runtime and Required Resources](#runtime-and-required-resources)
@@ -74,11 +77,14 @@ HLA-Resolve was designed for and fully validated on PacBio hybrid-capture librar
 
 ---
 
-## Overview
+## Tool Overview
 
 ### Input
 
-A raw, single-sample (demultiplexed) PacBio sequencing file in FASTQ or unmapped BAM format (compressed or uncompressed). The tool is compatible with WGS, WES, hybrid-capture, and amplicon sequencing schemes.
+**Reads** &nbsp;&nbsp; A raw, single-sample (demultiplexed) PacBio sequencing file  
+**Format** &nbsp;&nbsp; FASTQ or unmapped BAM (compressed or uncompressed)
+
+The tool is compatible with WGS, WES, hybrid-capture, and amplicon sequencing schemes.
 
 ### Output(s)
 
@@ -90,15 +96,16 @@ HLA allele calls for HLA-A, HLA-B, HLA-C, HLA-DPA1, HLA-DPB1, HLA-DQA1, HLA-DQB1
 |---|---|---|---|---|---|
 | HG002 | HLA-A*01:01:01:01 | HLA-A*26:01:01:01 | HLA-B*38:01:01:01 | HLA-B*35:08:01:01 | ... |
 
-Allele order within each gene is arbitrary and is not consistent between genes.
+> [!NOTE]
+> Allele order within each gene is arbitrary and is not consistent between genes.
 
 Three files hold the same calls at different levels of resolution.
 
-| File | Resolution |
-|------|------------|
-| `allele_output.csv` | Four field |
-| `3_field_allele_output.csv` | Three field |
-| `g_group_output.csv` | G group |
+| Resolution | Best Guess | Ambiguities Reported |
+|------------|------------|----------------------|
+| Four field | `allele_output.csv` | `allele_output_full.csv` |
+| Three field | `3_field_allele_output.csv` | `3_field_allele_output_full.csv` |
+| G group | `g_group_output.csv` | `g_group_output_full.csv` |
 
 Each file above forces a single best guess for every allele, and has a `_full.csv` companion file that reports ambiguities as genotype list strings where alleles could not be distinguished at the sequence level.
 
