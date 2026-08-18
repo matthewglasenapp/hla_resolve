@@ -92,33 +92,33 @@ HLA-Resolve was designed for and fully validated on PacBio hybrid-capture librar
 
 #### Primary Results
 
-Every run types the same eight genes.
+HLA allele calls for the following eight genes:
 
 <table>
-<tr><td><b>Class I</b></td><td><img src="https://img.shields.io/badge/HLA--A-4F46E5?style=flat-square" alt="HLA-A"> <img src="https://img.shields.io/badge/HLA--B-4F46E5?style=flat-square" alt="HLA-B"> <img src="https://img.shields.io/badge/HLA--C-4F46E5?style=flat-square" alt="HLA-C"></td></tr>
-<tr><td><b>Class II</b></td><td><img src="https://img.shields.io/badge/HLA--DPA1-0D9488?style=flat-square" alt="HLA-DPA1"> <img src="https://img.shields.io/badge/HLA--DPB1-0D9488?style=flat-square" alt="HLA-DPB1"> <img src="https://img.shields.io/badge/HLA--DQA1-0D9488?style=flat-square" alt="HLA-DQA1"> <img src="https://img.shields.io/badge/HLA--DQB1-0D9488?style=flat-square" alt="HLA-DQB1"> <img src="https://img.shields.io/badge/HLA--DRB1-0D9488?style=flat-square" alt="HLA-DRB1"></td></tr>
+<tr><td><b>Class I</b></td><td>HLA-A &nbsp; HLA-B &nbsp; HLA-C</td></tr>
+<tr><td><b>Class II</b></td><td>HLA-DPA1 &nbsp; HLA-DPB1 &nbsp; HLA-DQA1 &nbsp; HLA-DQB1 &nbsp; HLA-DRB1</td></tr>
 </table>
 
 The calls are written to `<output_dir>/<sample>/hla_typing_results/`, one row per sample.
 
-**Example output**
+**Example Output**
 
 <table>
 <tr>
-<th><sub>sample</sub></th>
-<th><sub>HLA-A_1</sub></th>
-<th><sub>HLA-A_2</sub></th>
-<th><sub>HLA-B_1</sub></th>
-<th><sub>HLA-B_2</sub></th>
-<th><sub>...</sub></th>
+<th>sample</th>
+<th>HLA-A_1</th>
+<th>HLA-A_2</th>
+<th>HLA-B_1</th>
+<th>HLA-B_2</th>
+<th>...</th>
 </tr>
 <tr>
-<td><sub>HG002</sub></td>
-<td><sub>HLA-A&#42;01:01:01:01</sub></td>
-<td><sub>HLA-A&#42;26:01:01:01</sub></td>
-<td><sub>HLA-B&#42;38:01:01:01</sub></td>
-<td><sub>HLA-B&#42;35:08:01:01</sub></td>
-<td><sub>...</sub></td>
+<td>HG002</td>
+<td>HLA-A&#42;01:01:01:01</td>
+<td>HLA-A&#42;26:01:01:01</td>
+<td>HLA-B&#42;38:01:01:01</td>
+<td>HLA-B&#42;35:08:01:01</td>
+<td>...</td>
 </tr>
 </table>
 
