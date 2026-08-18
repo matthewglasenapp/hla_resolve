@@ -12,7 +12,6 @@
 <p align="center">
   <picture><source media="(prefers-color-scheme: dark)" srcset="https://img.shields.io/github/v/release/matthewglasenapp/hla_resolve?label=version&color=lightgrey"><img src="https://img.shields.io/github/v/release/matthewglasenapp/hla_resolve?label=version&color=E5E7EB" alt="Version"></picture>
   <picture><source media="(prefers-color-scheme: dark)" srcset="https://img.shields.io/badge/platform-linux--64-lightgrey"><img src="https://img.shields.io/badge/platform-linux--64-E5E7EB" alt="Platform"></picture>
-  <picture><source media="(prefers-color-scheme: dark)" srcset="https://img.shields.io/badge/python-3.12-lightgrey?logo=python&logoColor=white"><img src="https://img.shields.io/badge/python-3.12-E5E7EB?logo=python&logoColor=white" alt="Python"></picture>
   <a href="LICENSE.txt"><picture><source media="(prefers-color-scheme: dark)" srcset="https://img.shields.io/badge/license-UCSC%20Noncommercial-lightgrey"><img src="https://img.shields.io/badge/license-UCSC%20Noncommercial-E5E7EB" alt="License"></picture></a>
   <a href="https://doi.org/10.64898/2026.03.27.26349549"><picture><source media="(prefers-color-scheme: dark)" srcset="https://img.shields.io/badge/medRxiv-10.64898-lightgrey"><img src="https://img.shields.io/badge/medRxiv-10.64898-E5E7EB" alt="Preprint"></picture></a>
 </p>
