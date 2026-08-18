@@ -3,18 +3,30 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="images/hla_resolve.png">
-    <img src="images/hla_resolve_light.png" alt="HLA-RESOLVE Logo" width="340"/>
+    <img src="images/hla_resolve_light.png" alt="HLA-RESOLVE Logo" width="420"/>
   </picture>
-  <br/>
-  <b>HLA Typing from PacBio Reads</b>
+</p>
+
+<h3 align="center">HLA Typing from PacBio Reads</h3>
+
+<p align="center">
+  <img src="https://img.shields.io/github/v/release/matthewglasenapp/hla_resolve?label=version&style=for-the-badge&color=4F46E5&labelColor=1F2937&logo=github&logoColor=white" alt="Version">
+  <img src="https://img.shields.io/badge/platform-linux--64-4F46E5?style=for-the-badge&labelColor=1F2937&logo=linux&logoColor=white" alt="Platform">
+  <img src="https://img.shields.io/badge/python-3.12-4F46E5?style=for-the-badge&labelColor=1F2937&logo=python&logoColor=white" alt="Python">
+  <a href="LICENSE.txt"><img src="https://img.shields.io/badge/license-UCSC%20Noncommercial-4F46E5?style=for-the-badge&labelColor=1F2937" alt="License"></a>
+  <a href="https://doi.org/10.64898/2026.03.27.26349549"><img src="https://img.shields.io/badge/medRxiv-10.64898-4F46E5?style=for-the-badge&labelColor=1F2937" alt="Preprint"></a>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/github/v/release/matthewglasenapp/hla_resolve?label=version&color=blue" alt="Version">
-  <img src="https://img.shields.io/badge/platform-linux--64-lightgrey" alt="Platform">
-  <img src="https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white" alt="Python">
-  <a href="LICENSE.txt"><img src="https://img.shields.io/badge/license-UCSC%20Noncommercial-green" alt="License"></a>
-  <a href="https://doi.org/10.64898/2026.03.27.26349549"><img src="https://img.shields.io/badge/medRxiv-10.64898-b31b1b" alt="Preprint"></a>
+  <a href="#installation"><img src="https://img.shields.io/badge/Installation-1F2937?style=for-the-badge&logo=anaconda&logoColor=white" alt="Installation"></a>
+  &nbsp;
+  <a href="#quick-start-and-demo"><img src="https://img.shields.io/badge/Quick_Start-1F2937?style=for-the-badge&logo=gnubash&logoColor=white" alt="Quick Start"></a>
+  &nbsp;
+  <a href="#technical-reference"><img src="https://img.shields.io/badge/Technical_Reference-1F2937?style=for-the-badge&logo=readthedocs&logoColor=white" alt="Technical Reference"></a>
+  &nbsp;
+  <a href="#validated-wgs-libraries"><img src="https://img.shields.io/badge/Benchmark-1F2937?style=for-the-badge&logo=databricks&logoColor=white" alt="Benchmark"></a>
+  &nbsp;
+  <a href="#citation"><img src="https://img.shields.io/badge/Citation-1F2937?style=for-the-badge&logo=googlescholar&logoColor=white" alt="Citation"></a>
 </p>
 
 <p align="center">
@@ -23,6 +35,23 @@
   <a href="https://github.com/oeco28">Omar Cornejo</a>
 </p>
 
+<table align="center">
+<tr>
+<td align="center" width="180"><h3>100%</h3></td>
+<td align="center" width="180"><h3>92.8%</h3></td>
+<td align="center" width="180"><h3>&lt;15 min</h3></td>
+<td align="center" width="180"><h3>8</h3></td>
+</tr>
+<tr>
+<td align="center">one- through three-field resolution</td>
+<td align="center">four-field resolution</td>
+<td align="center">target capture data</td>
+<td align="center">classical HLA loci</td>
+</tr>
+</table>
+
+<br/>
+
 HLA-Resolve is a command-line tool for high-resolution HLA typing from high-coverage PacBio sequencing reads. It reconstructs phased, full-gene sequences for the eight classical HLA loci (HLA-A, -B, -C, -DPA1, -DPB1, -DQA1, -DQB1, -DRB1) and queries the [IPD-IMGT/HLA database](https://www.ebi.ac.uk/ipd/imgt/hla/) to assign HLA allele calls.
 
 HLA-Resolve was designed for and fully validated on PacBio hybrid-capture libraries (read N50 ~4 kb). WGS support has been validated on PacBio whole-genome sequencing reads from the GIAB and HPRC benchmarks (see [Validated WGS Libraries](#validated-wgs-libraries)). HLA-Resolve has not been tested on amplicon sequencing data yet. 
@@ -30,7 +59,8 @@ HLA-Resolve was designed for and fully validated on PacBio hybrid-capture librar
 > [!IMPORTANT]
 > HLA-Resolve is pre-release software in active development. It is intended for high-coverage PacBio reads. A gene is typed only if its peptide-binding domain reaches at least 8× mean coverage depth. ONT support is still in development, and `--platform ont` is rejected at runtime until it lands. The software is for research use only and not for use in diagnostic procedures. The HLA-Resolve [manuscript](https://doi.org/10.64898/2026.03.27.26349549) is under peer review.
 
-## Table of Contents
+<details>
+<summary><b>Table of Contents</b></summary>
 
 - [Overview](#overview)
   - [Input](#input)
@@ -47,6 +77,10 @@ HLA-Resolve was designed for and fully validated on PacBio hybrid-capture librar
 - [Citation](#citation)
 - [Support](#support)
 - [License](#license)
+
+</details>
+
+---
 
 ## Overview
 
@@ -88,10 +122,14 @@ Runtime depends heavily on input file size and available compute resources. Targ
 
 Reference genome alignment is the rate-limiting step and is multithreaded, so increasing the thread count with `--threads` provides the largest runtime reduction, especially for high-coverage WGS inputs. The default is **6**, or the number of CPUs available if fewer, read from the Slurm allocation where there is one. Memory requirements rise with the thread count, so raise the job's memory alongside `--threads`. `--threads` sets the thread count for the tools HLA-Resolve calls directly. DeepVariant also parallelizes internally, so on a cluster its CPU use is bounded by the job allocation and not by this flag.
 
+---
+
 ## Requirements
 
 - **Linux (x86_64)** — Several dependencies (pbmarkdup, hiphase, trgt, pbsv) are distributed as precompiled Linux binaries via Bioconda and are not available for macOS.
 - **Conda** and **pip** — Used to install all dependencies (see [Installation](#installation)).
+
+---
 
 ## Installation
 
@@ -116,6 +154,8 @@ hla_resolve setup
 > [!NOTE]
 > These downloads are large. Ensure sufficient disk space is available in the install directory before the first run.
 
+---
+
 ## Updating
 
 Please ensure you are running the latest version. To update an existing installation to the latest version, run `update.sh` from the root of your cloned `hla_resolve` repository:
@@ -124,9 +164,19 @@ chmod a+x update.sh
 bash update.sh
 ```
 
+---
+
 ## Quick Start and Demo
 
 The repository includes a demo dataset of PacBio HLA hybrid capture sequencing reads from HG002 (Ashkenazi Son), a sample from the GIAB and HPRC benchmarks. Run this from the repository root:
+
+<table>
+<tr>
+<th align="left">Command</th>
+<th align="left">Example Output</th>
+</tr>
+<tr>
+<td valign="top">
 
 ```bash
 hla_resolve \
@@ -140,11 +190,10 @@ hla_resolve \
   --threads 6
 ```
 
-The command will print the final HLA allele calls to STDOUT, along with important logging information, including coverage depth metrics and the paths of intermediate files (e.g., BAM, VCF).
+</td>
+<td valign="top">
 
-### Example Output
-
-```
+```text
 Sample: HG002
 
 gene       _1            _2
@@ -161,6 +210,14 @@ Note: Allele order within each gene is arbitrary and is not consistent between g
 
 Finished HG002 in 9m 18s (status: ok)
 ```
+
+</td>
+</tr>
+</table>
+
+The command will print the final HLA allele calls to STDOUT, along with important logging information, including coverage depth metrics and the paths of intermediate files (e.g., BAM, VCF).
+
+### Example Output
 
 Genes that could not be reconstructed are shown as `not_typed`.
 
@@ -254,9 +311,13 @@ Intermediate files will be written to the following directories. The user can sp
 
 </details>
 
+---
+
 ## Technical Reference
 
 The [Technical Reference](https://github.com/matthewglasenapp/hla_resolve/blob/main/docs/technical_reference.md) gives the full workflow, the dependencies used at each step, and detailed documentation on the algorithms and decision logic used internally by HLA-Resolve.
+
+---
 
 ## Validated WGS Libraries
 
@@ -270,13 +331,17 @@ HLA-Resolve was run on whole-genome PacBio sequencing reads for 39 samples from 
 
 All inputs are publicly available, so the benchmark can be reproduced end to end.
 
+---
+
 ## Planned Features (In Development)
 
-1. HLA typing at P-group resolution
-2. HLA typing for additional HLA Class I protein-coding genes and pseudogenes
-   (HLA-E, HLA-F, HLA-G; HLA-H, HLA-J, HLA-K, HLA-L, HLA-S, HLA-V, HLA-W)
-3. HLA typing for additional HLA Class II protein-coding genes
-   (HLA-DRB3, HLA-DRB4, HLA-DRB5)
+| | Feature | Status |
+|---|---------|--------|
+| 1 | HLA typing at P-group resolution | ![In Development](https://img.shields.io/badge/in_development-F59E0B?style=flat-square&labelColor=1F2937) |
+| 2 | HLA typing for additional HLA Class I protein-coding genes and pseudogenes (HLA-E, HLA-F, HLA-G; HLA-H, HLA-J, HLA-K, HLA-L, HLA-S, HLA-V, HLA-W) | ![In Development](https://img.shields.io/badge/in_development-F59E0B?style=flat-square&labelColor=1F2937) |
+| 3 | HLA typing for additional HLA Class II protein-coding genes (HLA-DRB3, HLA-DRB4, HLA-DRB5) | ![In Development](https://img.shields.io/badge/in_development-F59E0B?style=flat-square&labelColor=1F2937) |
+
+---
 
 ## Citation
 
@@ -284,9 +349,13 @@ If you use HLA-Resolve, please cite:
 
 > Glasenapp, M.R., Yee, M.-C., Symons, A.E., Cornejo, O.E. & Garcia, O.A. HLA-Resolve: High-Resolution HLA Haplotyping Using Long-Read Hybrid Capture. *medRxiv* (2026). https://doi.org/10.64898/2026.03.27.26349549
 
+---
+
 ## Support
 
 Questions, bug reports, and feature requests are welcome. Please [open an issue](https://github.com/matthewglasenapp/hla_resolve/issues) on GitHub.
+
+---
 
 ## License
 
