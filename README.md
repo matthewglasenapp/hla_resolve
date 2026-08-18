@@ -94,12 +94,8 @@ HLA-Resolve was designed for and fully validated on PacBio hybrid-capture librar
 
 HLA allele calls for the following eight genes:
 
-<table>
-<tr><td><b>Class I</b></td><td>HLA-A &nbsp; HLA-B &nbsp; HLA-C</td></tr>
-<tr><td><b>Class II</b></td><td>HLA-DPA1 &nbsp; HLA-DPB1 &nbsp; HLA-DQA1 &nbsp; HLA-DQB1 &nbsp; HLA-DRB1</td></tr>
-</table>
-
-The calls are written to `<output_dir>/<sample>/hla_typing_results/`, one row per sample.
+**Class I** &nbsp; HLA-A, HLA-B, HLA-C  
+**Class II** &nbsp; HLA-DPA1, HLA-DPB1, HLA-DQA1, HLA-DQB1, HLA-DRB1
 
 **Example Output**
 
@@ -121,6 +117,8 @@ The calls are written to `<output_dir>/<sample>/hla_typing_results/`, one row pe
 <td>...</td>
 </tr>
 </table>
+
+The calls are written to `<output_dir>/<sample>/hla_typing_results/`, one row per sample.
 
 > [!NOTE]
 > Allele order within each gene is arbitrary and is not consistent between genes.
