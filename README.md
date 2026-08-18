@@ -54,6 +54,8 @@ HLA-Resolve was designed for and fully validated on PacBio hybrid-capture librar
 >
 > The software is for research use only and not for use in diagnostic procedures. The HLA-Resolve [manuscript](https://doi.org/10.64898/2026.03.27.26349549) is under peer review.
 
+<br/>
+
 <details>
 <summary><b>Table of Contents</b></summary>
 
@@ -66,6 +68,7 @@ HLA-Resolve was designed for and fully validated on PacBio hybrid-capture librar
 - [Installation](#installation)
 - [Updating](#updating)
 - [Quick Start and Demo](#quick-start-and-demo)
+  - [Minimal Command](#minimal-command)
   - [Demo](#demo)
 - [Technical Reference](#technical-reference)
 - [Validated WGS Libraries](#validated-wgs-libraries)
@@ -91,13 +94,30 @@ HLA-Resolve was designed for and fully validated on PacBio hybrid-capture librar
 
 #### Primary Results
 
-HLA allele calls, written to `<output_dir>/<sample>/hla_typing_results/`, for these eight genes.
+HLA allele calls for eight genes:
 
 `HLA-A` &nbsp; `HLA-B` &nbsp; `HLA-C` &nbsp; `HLA-DPA1` &nbsp; `HLA-DPB1` &nbsp; `HLA-DQA1` &nbsp; `HLA-DQB1` &nbsp; `HLA-DRB1`
 
-| sample | HLA-A_1 | HLA-A_2 | HLA-B_1 | HLA-B_2 | ... |
-|---|---|---|---|---|---|
-| HG002 | HLA-A*01:01:01:01 | HLA-A*26:01:01:01 | HLA-B*38:01:01:01 | HLA-B*35:08:01:01 | ... |
+**Example output**, written to `<output_dir>/<sample>/hla_typing_results/`
+
+<table>
+<tr>
+<th><sub>sample</sub></th>
+<th><sub>HLA-A_1</sub></th>
+<th><sub>HLA-A_2</sub></th>
+<th><sub>HLA-B_1</sub></th>
+<th><sub>HLA-B_2</sub></th>
+<th><sub>...</sub></th>
+</tr>
+<tr>
+<td><sub>HG002</sub></td>
+<td><sub>HLA-A&#42;01:01:01:01</sub></td>
+<td><sub>HLA-A&#42;26:01:01:01</sub></td>
+<td><sub>HLA-B&#42;38:01:01:01</sub></td>
+<td><sub>HLA-B&#42;35:08:01:01</sub></td>
+<td><sub>...</sub></td>
+</tr>
+</table>
 
 > [!NOTE]
 > Allele order within each gene is arbitrary and is not consistent between genes.
@@ -169,7 +189,7 @@ bash update.sh
 
 ## Quick Start and Demo
 
-Every run needs these five arguments.
+### Minimal Command
 
 ```bash
 hla_resolve \
