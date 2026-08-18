@@ -10,24 +10,28 @@
 <h3 align="center">HLA Typing from PacBio Reads</h3>
 
 <p align="center">
-  <img src="https://img.shields.io/github/v/release/matthewglasenapp/hla_resolve?label=version&style=for-the-badge&color=4F46E5&labelColor=1F2937&logo=github&logoColor=white" alt="Version">
-  <img src="https://img.shields.io/badge/platform-linux--64-4F46E5?style=for-the-badge&labelColor=1F2937&logo=linux&logoColor=white" alt="Platform">
-  <img src="https://img.shields.io/badge/python-3.12-4F46E5?style=for-the-badge&labelColor=1F2937&logo=python&logoColor=white" alt="Python">
-  <a href="LICENSE.txt"><img src="https://img.shields.io/badge/license-UCSC%20Noncommercial-4F46E5?style=for-the-badge&labelColor=1F2937" alt="License"></a>
-  <a href="https://doi.org/10.64898/2026.03.27.26349549"><img src="https://img.shields.io/badge/medRxiv-10.64898-4F46E5?style=for-the-badge&labelColor=1F2937" alt="Preprint"></a>
+  <img src="https://img.shields.io/github/v/release/matthewglasenapp/hla_resolve?label=version&color=blue" alt="Version">
+  <img src="https://img.shields.io/badge/platform-linux--64-lightgrey" alt="Platform">
+  <img src="https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white" alt="Python">
+  <a href="LICENSE.txt"><img src="https://img.shields.io/badge/license-UCSC%20Noncommercial-green" alt="License"></a>
+  <a href="https://doi.org/10.64898/2026.03.27.26349549"><img src="https://img.shields.io/badge/medRxiv-10.64898-b31b1b" alt="Preprint"></a>
 </p>
+
+<br/>
 
 <p align="center">
   <a href="#installation"><img src="https://img.shields.io/badge/Installation-1F2937?style=for-the-badge&logo=anaconda&logoColor=white" alt="Installation"></a>
-  &nbsp;
+  &nbsp;&nbsp;&nbsp;&nbsp;
   <a href="#quick-start-and-demo"><img src="https://img.shields.io/badge/Quick_Start-1F2937?style=for-the-badge&logo=gnubash&logoColor=white" alt="Quick Start"></a>
-  &nbsp;
+  &nbsp;&nbsp;&nbsp;&nbsp;
   <a href="#technical-reference"><img src="https://img.shields.io/badge/Technical_Reference-1F2937?style=for-the-badge&logo=readthedocs&logoColor=white" alt="Technical Reference"></a>
-  &nbsp;
+  &nbsp;&nbsp;&nbsp;&nbsp;
   <a href="#validated-wgs-libraries"><img src="https://img.shields.io/badge/Benchmark-1F2937?style=for-the-badge&logo=databricks&logoColor=white" alt="Benchmark"></a>
-  &nbsp;
+  &nbsp;&nbsp;&nbsp;&nbsp;
   <a href="#citation"><img src="https://img.shields.io/badge/Citation-1F2937?style=for-the-badge&logo=googlescholar&logoColor=white" alt="Citation"></a>
 </p>
+
+<br/>
 
 <p align="center">
   <a href="https://github.com/matthewglasenapp">Matthew Glasenapp</a> &nbsp;·&nbsp;
@@ -35,22 +39,6 @@
   <a href="https://github.com/oeco28">Omar Cornejo</a>
 </p>
 
-<table align="center">
-<tr>
-<td align="center" width="180"><h3>100%</h3></td>
-<td align="center" width="180"><h3>92.8%</h3></td>
-<td align="center" width="180"><h3>&lt;15 min</h3></td>
-<td align="center" width="180"><h3>8</h3></td>
-</tr>
-<tr>
-<td align="center">one- through three-field resolution</td>
-<td align="center">four-field resolution</td>
-<td align="center">target capture data</td>
-<td align="center">classical HLA loci</td>
-</tr>
-</table>
-
-<br/>
 
 HLA-Resolve is a command-line tool for high-resolution HLA typing from high-coverage PacBio sequencing reads. It reconstructs phased, full-gene sequences for the eight classical HLA loci (HLA-A, -B, -C, -DPA1, -DPB1, -DQA1, -DQB1, -DRB1) and queries the [IPD-IMGT/HLA database](https://www.ebi.ac.uk/ipd/imgt/hla/) to assign HLA allele calls.
 
@@ -70,7 +58,6 @@ HLA-Resolve was designed for and fully validated on PacBio hybrid-capture librar
 - [Installation](#installation)
 - [Updating](#updating)
 - [Quick Start and Demo](#quick-start-and-demo)
-  - [Example Output](#example-output)
 - [Technical Reference](#technical-reference)
 - [Validated WGS Libraries](#validated-wgs-libraries)
 - [Planned Features (In Development)](#planned-features-in-development)
@@ -206,7 +193,9 @@ HLA-DQA1   03:01:01:01   01:05:01:01
 HLA-DQB1   05:01:01:05   03:02:01:01
 HLA-DRB1   04:02:01      10:01:01:03
 
-Note: Allele order within each gene is arbitrary and is not consistent between genes.
+Note: Allele order within each gene is
+arbitrary and is not consistent
+between genes.
 
 Finished HG002 in 9m 18s (status: ok)
 ```
@@ -215,11 +204,7 @@ Finished HG002 in 9m 18s (status: ok)
 </tr>
 </table>
 
-The command will print the final HLA allele calls to STDOUT, along with important logging information, including coverage depth metrics and the paths of intermediate files (e.g., BAM, VCF).
-
-### Example Output
-
-Genes that could not be reconstructed are shown as `not_typed`.
+The command will print the final HLA allele calls to STDOUT, along with important logging information, including coverage depth metrics and the paths of intermediate files (e.g., BAM, VCF). Genes that could not be reconstructed are shown as `not_typed`.
 
 <details>
 <summary><b>Full command-line options</b></summary>
@@ -335,11 +320,11 @@ All inputs are publicly available, so the benchmark can be reproduced end to end
 
 ## Planned Features (In Development)
 
-| | Feature | Status |
-|---|---------|--------|
-| 1 | HLA typing at P-group resolution | ![In Development](https://img.shields.io/badge/in_development-F59E0B?style=flat-square&labelColor=1F2937) |
-| 2 | HLA typing for additional HLA Class I protein-coding genes and pseudogenes (HLA-E, HLA-F, HLA-G; HLA-H, HLA-J, HLA-K, HLA-L, HLA-S, HLA-V, HLA-W) | ![In Development](https://img.shields.io/badge/in_development-F59E0B?style=flat-square&labelColor=1F2937) |
-| 3 | HLA typing for additional HLA Class II protein-coding genes (HLA-DRB3, HLA-DRB4, HLA-DRB5) | ![In Development](https://img.shields.io/badge/in_development-F59E0B?style=flat-square&labelColor=1F2937) |
+| | Feature |
+|---|---------|
+| 1 | HLA typing at P-group resolution |
+| 2 | HLA typing for additional HLA Class I protein-coding genes and pseudogenes (HLA-E, HLA-F, HLA-G; HLA-H, HLA-J, HLA-K, HLA-L, HLA-S, HLA-V, HLA-W) |
+| 3 | HLA typing for additional HLA Class II protein-coding genes (HLA-DRB3, HLA-DRB4, HLA-DRB5) |
 
 ---
 
