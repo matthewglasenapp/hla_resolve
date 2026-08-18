@@ -67,7 +67,7 @@ HLA allele calls for HLA-A, HLA-B, HLA-C, HLA-DPA1, HLA-DPB1, HLA-DQA1, HLA-DQB1
 
 Allele order within each gene is arbitrary and is not consistent between genes.
 
-Three files hold the same calls at different resolutions.
+Three files hold the same calls at different levels of resolution.
 
 | File | Resolution |
 |------|------------|
@@ -75,7 +75,7 @@ Three files hold the same calls at different resolutions.
 | `3_field_allele_output.csv` | Three field |
 | `g_group_output.csv` | G group |
 
-Each has a `_full.csv` companion listing every equidistant candidate as a genotype list string, where the primary file reports only the chosen one.
+Each file above forces a single best guess for every allele, and has a `_full.csv` companion file that reports ambiguities as genotype list strings where alleles could not be distinguished at the sequence level.
 
 **Intermediate Files**
 - Haplotagged, mapped BAMs for chromosome 6 (for visualization in genome browsers such as IGV)

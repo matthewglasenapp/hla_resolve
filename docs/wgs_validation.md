@@ -13,25 +13,25 @@ hla_resolve --input_file <MERGED_uBAM> --sample_name <SAMPLE> \
 ```
 
 
-Concordance is reported among alleles called. An allele was evaluated at a given field resolution only if the reference specified it to that resolution, which is why the denominator differs between resolutions.
+Concordance is reported among alleles called. An allele was evaluated at a given field resolution only if the reference specified it to that resolution.
 
 
 ## Genome in a Bottle
 
-Two PacBio Revio runs of HG002, each typed from a single file.
+Two HG002 PacBio Revio
 
 | Sample | Run | Instrument | HLA&nbsp;coverage | Genes&nbsp;typed | Alleles&nbsp;called | 1-field | 2-field | 3-field | 4-field |
 |---|---|---|---:|---|---|---|---|---|---|
 | HG002 | 231005_s1 | Revio | 26.3× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 14/15 |
 | HG002 | 230928_s3 | Revio | 23.4× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 15/15 |
 
-**231005_s1**
+**231005_s1 raw reads**
 
 ```
 https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/AshkenazimTrio/HG002_NA24385_son/PacBio_HiFi-Revio_20231031/HG002_PacBio-Revio_m84039_231005_222902_s1.hifi_reads.bam
 ```
 
-**230928_s3**
+**230928_s3 raw reads**
 
 ```
 https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/AshkenazimTrio/HG002_NA24385_son/PacBio_HiFi-Revio_20231031/HG002_PacBio-Revio_m84039_230928_213653_s3.hifi_reads.bam
@@ -46,7 +46,7 @@ Empirical coverage across the eight classical HLA genes was 35.2x (median 37.0x,
 
 | Metric | Value |
 |---|---:|
-| Total possible allele calls (39 samples × 16) | 624 |
+| Total possible allele calls | 624 |
 | Alleles called | 620 |
 | Call rate | 99.4% |
 
