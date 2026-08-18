@@ -67,7 +67,7 @@ HLA allele calls for HLA-A, HLA-B, HLA-C, HLA-DPA1, HLA-DPB1, HLA-DQA1, HLA-DQB1
 
 Allele order within each gene is arbitrary and is not consistent between genes.
 
-Three files hold the same calls at different resolutions. Use `allele_output.csv` unless you have a reason not to.
+Three files hold the same calls at different resolutions.
 
 | File | Resolution |
 |------|------------|
