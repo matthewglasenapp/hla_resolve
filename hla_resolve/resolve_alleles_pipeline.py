@@ -20,7 +20,7 @@ from .reconstruct_fasta_methods import (
 	parse_fastas
 )
 from .hla_typer import main as classify_hla_alleles
-from .utils import announce, detail, stage
+from .utils import announce, detail, finish_stage, stage
 from . import config as hla_config
 
 def convert_gene_name_for_gff(gene_name):
@@ -40,18 +40,18 @@ def split_result_column(column):
 		return None, None
 	return gene, index
 
-def strip_gene_prefix(call, gene):
-	# The gene is already the row label, so HLA-A*01:01:01:01 prints as 01:01:01:01
-	prefix = f"{gene}*"
-	return call[len(prefix):] if call.startswith(prefix) else call
+def strip_hla_prefix(call):
+	# The gene is already the row label, so HLA-A*01:01:01:01 prints as A*01:01:01:01.
+	# G group names arrive from the IPD XML already in that short form.
+	return call[len("HLA-"):] if call.startswith("HLA-") else call
 
 # Every classification pass writes the same CSV shape, so one reader serves all
 # three resolutions.
-# (table heading, output-files label, filename)
+# (table heading, short label, best-guess file, genotype list string file)
 RESULT_TABLES = (
-	("G-group resolution", "G-group calls", "g_group_output.csv"),
-	("Three-field resolution", "Three-field calls", "3_field_allele_output.csv"),
-	("Four-field resolution", "Four-field calls", "allele_output.csv"),
+	("G-group resolution", "G-group", "g_group_output.csv", "g_group_output_full.csv"),
+	("Three-field resolution", "Three-field", "3_field_allele_output.csv", "3_field_allele_output_full.csv"),
+	("Four-field resolution", "Four-field", "allele_output.csv", "allele_output_full.csv"),
 )
 
 def read_calls(results_file):
@@ -80,7 +80,7 @@ def read_calls(results_file):
 			calls[gene] = {}
 			genes.append(gene)
 		call = (value or "").strip()
-		calls[gene][index] = strip_gene_prefix(call, gene) if call else NOT_TYPED
+		calls[gene][index] = strip_hla_prefix(call) if call else NOT_TYPED
 
 	if not genes:
 		return None, None
@@ -90,10 +90,10 @@ def read_calls(results_file):
 def print_results(config):
 	tables = []
 	genes = []
-	for label, _, filename in RESULT_TABLES:
+	for label, _, filename, _full in RESULT_TABLES:
 		table_genes, calls = read_calls(os.path.join(config['hla_typing_dir'], filename))
 		if calls is None:
-			announce(f"Warning: no {label} calls found in {filename}")
+			announce(f"WARNING: no {label} calls found in {filename}")
 			continue
 		tables.append((label, calls))
 		# A gene can reach one resolution and not another, so take the union.
@@ -121,19 +121,18 @@ def print_results(config):
 
 	announce()
 	announce("Note: Allele order within each gene is arbitrary and is not consistent between genes.")
+	announce("Note: Ambiguous calls are written as genotype list strings to the ambiguities files below.")
 
 def print_output_files(config, phased_vcf):
-	gene_vcf_pattern = os.path.join(config['filtered_vcf_dir'],
-	                                f"{config['sample_ID']}_<gene>_PASS_phased.vcf.gz")
 	entries = [
 		("Haplotagged BAM", config['hg38_rmdup_chr6_haplotag_bam']),
 		("Phased VCF", phased_vcf),
-		("Single-gene VCFs", gene_vcf_pattern),
 		("Gene FASTA", config['hla_gene_fasta']),
 		("CDS FASTA", config['hla_cds_fasta']),
 	]
-	for _, label, filename in RESULT_TABLES:
-		entries.append((label, os.path.join(config['hla_typing_dir'], filename)))
+	for _, label, filename, ambiguities in RESULT_TABLES:
+		entries.append((f"{label} calls", os.path.join(config['hla_typing_dir'], filename)))
+		entries.append((f"{label} ambiguities", os.path.join(config['hla_typing_dir'], ambiguities)))
 	label_width = max(len(label) for label, _ in entries) + 1
 
 	announce("Output files:")
@@ -339,6 +338,9 @@ def resolve_alleles(config):
 		reconsensus_ctx=reconsensus_ctx,
 		output_dir=config['hla_typing_dir']
 	)
+
+	finish_stage()
+	print()
 
 	print_results(config)
 	print()

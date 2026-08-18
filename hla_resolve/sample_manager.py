@@ -160,8 +160,15 @@ class Samples:
         else:
             self.read_group_string = parsed_rg
 
+        # The stored string carries escaped tabs because rammap takes it on a
+        # command line. Show it readably first, then verbatim.
+        readable_rg = self.read_group_string.replace("\\t", "\t").replace("\t", " ")
+        if readable_rg.startswith("@RG "):
+            readable_rg = readable_rg[len("@RG "):]
+
         print(f"Sample ID: {self.sample_ID}")
-        print(f"Read Group: {self.read_group_string}")
+        print(f"Read Group: {readable_rg}")
+        print(f"Read Group string: {self.read_group_string}")
         print()
 
         # WGS/WES PacBio aligns the uBAM directly with rammap (streamed to FASTQ

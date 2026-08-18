@@ -798,8 +798,6 @@ def run_mosdepth(input_file, output_dir, sample_ID, regions_file, threads):
 	mosdepth = f"mosdepth --flag 3328 --by {regions_file} --thresholds 10,20,30 -t {region_threads(threads)} {prefix} {input_file}"
 	
 	run_quiet(mosdepth)
-	
-	print()
 
 def parse_mosdepth(regions_file, thresholds_file, cds_depth_thresh, cds_prop_20x_thresh, cds_prop_30x_thresh,
 					ars_depth_thresh, ars_prop_20x_thresh, ars_prop_30x_thresh):
@@ -870,20 +868,26 @@ def parse_mosdepth(regions_file, thresholds_file, cds_depth_thresh, cds_prop_20x
 		}
 
 	# Human-readable per-gene report (gene, CDS aggregated, ARS as-is)
-	print("Gene, Region, Mean Depth, % Bases 10X, % Bases 20X, % Bases 30X")
+	rows = []
 	for gene in sorted(set(list(cds_stats.keys()) + list(ars_stats.keys()) + list(gene_stats.keys()))):
-		g = gene_stats.get(gene)
-		if g is not None:
-			print(f"{gene} gene", f"{g['depth']:.1f}",
-				  f"{g['prop_10x']*100:.1f}%", f"{g['prop_20x']*100:.1f}%", f"{g['prop_30x']*100:.1f}%")
-		c = cds_stats.get(gene)
-		if c is not None:
-			print(f"{gene} CDS", f"{c['depth']:.1f}",
-				  f"{c['prop_10x']*100:.1f}%", f"{c['prop_20x']*100:.1f}%", f"{c['prop_30x']*100:.1f}%")
-		a = ars_stats.get(gene)
-		if a is not None:
-			print(f"{gene} ARS", f"{a['depth']:.1f}",
-				  f"{a['prop_10x']*100:.1f}%", f"{a['prop_20x']*100:.1f}%", f"{a['prop_30x']*100:.1f}%")
+		for region, stats in (("gene", gene_stats.get(gene)), ("CDS", cds_stats.get(gene)), ("ARS", ars_stats.get(gene))):
+			if stats is None:
+				continue
+			rows.append((gene, region, f"{stats['depth']:.1f}",
+						 f"{stats['prop_10x']*100:.1f}%", f"{stats['prop_20x']*100:.1f}%",
+						 f"{stats['prop_30x']*100:.1f}%"))
+
+	headers = ("Gene", "Region", "Mean Depth", "% Bases 10X", "% Bases 20X", "% Bases 30X")
+	widths = [max([len(head)] + [len(row[i]) for row in rows]) for i, head in enumerate(headers)]
+	# Labels left, numbers right, so the decimal points line up down each column.
+	def format_row(values):
+		cells = [values[i].ljust(widths[i]) if i < 2 else values[i].rjust(widths[i])
+				 for i in range(len(headers))]
+		return "  ".join(cells).rstrip()
+
+	print(format_row(headers))
+	for row in rows:
+		print(format_row(row))
 
 	# Apply gates
 	cds_pass = {

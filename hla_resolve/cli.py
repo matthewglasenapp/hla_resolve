@@ -87,6 +87,7 @@ def main():
 
     config.VERBOSE = args.verbose
     config.QUIET = args.quiet and not args.verbose
+    config.ACTIVE_STAGES = config.active_stages(args.scheme)
 
     args.aligner = "rammap"
     if args.platform == "ont":
@@ -109,7 +110,7 @@ def main():
 
     # Oversubscription is the user's call, so warn and continue.
     if cpus_known and args.threads > available_cpus:
-        announce(f"Warning: --threads {args.threads} but only {available_cpus} CPUs are allocated. Continuing anyway.")
+        announce(f"WARNING: --threads {args.threads} but only {available_cpus} CPUs are allocated. Continuing anyway.")
 
     # Check that all required tools are installed
     check_required_commands()
@@ -122,7 +123,7 @@ def main():
         sample = Samples(input_file=args.input_file, sample_name=args.sample_name, platform=args.platform, output_dir=args.output_dir, aligner=args.aligner, snp_caller=args.snp_caller, indel_caller=args.indel_caller, trim_adapters=args.trim_adapters, adapter_file=args.adapter_file, threads=args.threads, read_group_string=args.read_group_string, clean_up=args.clean_up, scheme=args.scheme, clair3_model=args.clair3_model, rescue_refcalls=args.rescue_refcalls, keep_full_bam=args.keep_full_bam)
     except (InsufficientReads, FileNotFoundError, OSError, ValueError) as err:
         status = "insufficient_reads" if isinstance(err, InsufficientReads) else "input_error"
-        announce(f"Error: {err}")
+        announce(f"ERROR: {err}")
         announce(f"Finished {args.sample_name} (status: {status}) [{version_text}]")
         sys.exit(1)
 
@@ -147,7 +148,7 @@ def main():
             print(f"Skipping HLA allele resolution for {workflow_config['sample_ID']} due to insufficient reads for variant calling")
             status = "insufficient_reads"
     except subprocess.CalledProcessError as err:
-        announce(f"Error: a command exited with code {err.returncode}")
+        announce(f"ERROR: a command exited with code {err.returncode}")
         if err.returncode in (137, -9):
             announce("That code means the process was killed. The usual cause is the out-of-memory killer, so raise the job's memory or lower --threads.")
         announce(f"  {str(err.cmd).replace('set -o pipefail; ', '', 1)}")

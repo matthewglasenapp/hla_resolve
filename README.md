@@ -46,9 +46,7 @@ HLA-Resolve was designed for and fully validated on PacBio hybrid-capture librar
 
 > [!IMPORTANT]
 > 1. HLA-Resolve is pre-release software in active development. It is intended for high-coverage PacBio reads. A gene is typed only if its peptide-binding domain reaches at least 8× mean coverage depth.
->
 > 2. ONT support is still in development, and `--platform ont` is rejected at runtime until it lands.
->
 > 3. The software is for research use only and not for use in diagnostic procedures. The HLA-Resolve [manuscript](https://doi.org/10.64898/2026.03.27.26349549) is under peer review.
 
 <br/>
@@ -233,37 +231,42 @@ hla_resolve \
 Sample: HG002
 
 G-group resolution
-gene       _1            _2
+gene       _1                 _2
 ...
 
 Three-field resolution
-gene       _1            _2
+gene       _1                 _2
 ...
 
 Four-field resolution
-gene       _1            _2
-HLA-A      01:01:01:01   26:01:01:01
-HLA-B      38:01:01:01   35:08:01:01
-HLA-C      04:01:01:06   12:03:01:01
-HLA-DPA1   01:03:01:02   01:03:01:04
-HLA-DPB1   04:01:01:01   04:01:01:03
-HLA-DQA1   03:01:01:01   01:05:01:01
-HLA-DQB1   05:01:01:05   03:02:01:01
-HLA-DRB1   04:02:01      10:01:01:03
+gene       _1                 _2
+HLA-A      A*01:01:01:01      A*26:01:01:01
+HLA-B      B*38:01:01:01      B*35:08:01:01
+HLA-C      C*04:01:01:06      C*12:03:01:01
+HLA-DPA1   DPA1*01:03:01:02   DPA1*01:03:01:04
+HLA-DPB1   DPB1*04:01:01:01   DPB1*04:01:01:03
+HLA-DQA1   DQA1*03:01:01:01   DQA1*01:05:01:01
+HLA-DQB1   DQB1*05:01:01:05   DQB1*03:02:01:01
+HLA-DRB1   DRB1*04:02:01      DRB1*10:01:01:03
 
 Note: Allele order within each gene is
 arbitrary and is not consistent
 between genes.
+Note: Ambiguous calls are written as
+genotype list strings to the
+ambiguities files below.
 
 Output files:
-  Haplotagged BAM:    test/HG002/...
-  Phased VCF:         test/HG002/...
-  Single-gene VCFs:   test/HG002/...
-  Gene FASTA:         test/HG002/...
-  CDS FASTA:          test/HG002/...
-  G-group calls:      test/HG002/...
-  Three-field calls:  test/HG002/...
-  Four-field calls:   test/HG002/...
+  Haplotagged BAM:          test/...
+  Phased VCF:               test/...
+  Gene FASTA:               test/...
+  CDS FASTA:                test/...
+  G-group calls:            test/...
+  G-group ambiguities:      test/...
+  Three-field calls:        test/...
+  Three-field ambiguities:  test/...
+  Four-field calls:         test/...
+  Four-field ambiguities:   test/...
 
 Finished HG002 in 9m 18s (status: ok)
 ```

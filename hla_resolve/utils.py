@@ -7,6 +7,7 @@ import os
 import shutil
 import subprocess
 import sys
+import time
 
 
 def run_quiet(cmd):
@@ -116,12 +117,32 @@ def detail(*args, **kwargs):
         print(*args, **kwargs)
 
 
+_stage_start = None
+
+
 def stage(name):
-    # Numbered from config.STAGES so the count matches the documented workflow.
+    # Numbered from config.ACTIVE_STAGES so the count matches the stages this run
+    # performs. A scheme that skips one gets a shorter list, never a gap.
     from . import config
-    total = len(config.STAGES)
-    number = config.STAGES.index(name) + 1
+    finish_stage()
+    stages = config.ACTIVE_STAGES or config.STAGES
+    total = len(stages)
+    number = stages.index(name) + 1 if name in stages else config.STAGES.index(name) + 1
     announce(f"\n[{number}/{total}] {name}")
+    global _stage_start
+    _stage_start = time.time()
+
+
+def finish_stage():
+    """Report how long the running stage took. Called when the next stage starts,
+    and once by the pipeline when the last stage ends."""
+    global _stage_start
+    if _stage_start is None:
+        return
+    elapsed = time.time() - _stage_start
+    _stage_start = None
+    minutes, seconds = divmod(elapsed, 60)
+    announce(f"Finished in {int(minutes)}m {seconds:.0f}s" if minutes else f"Finished in {seconds:.1f}s")
 
 
 def setup_logging(output_dir, sample_name=None):
@@ -185,7 +206,7 @@ def check_required_commands():
             missing_commands.append(command)
     
     if len(missing_commands) != 0:
-        print(f"Error: Missing the following commands: {', '.join(missing_commands)}")
+        print(f"ERROR: Missing the following commands: {', '.join(missing_commands)}")
         print("Run `hla_resolve setup` to download and build the external dependencies.")
         print("If setup has already been run and tools are still missing, check that the")
         print("hla_resolve conda environment is active, then open an issue at")

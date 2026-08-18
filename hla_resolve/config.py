@@ -39,6 +39,20 @@ STAGES = [
     "IPD-IMGT/HLA database matching",
 ]
 
+# The stages this run performs. cli.py narrows STAGES to the ones the scheme
+# reaches, so the [N/M] counter never skips a number.
+ACTIVE_STAGES = list(STAGES)
+
+def active_stages(scheme):
+    stages = list(STAGES)
+    # Adapters are trimmed on captured and amplified libraries only.
+    if scheme not in ("hybrid_capture", "amplicon"):
+        stages.remove("Adapter trimming")
+    # Amplicons share PCR primer ends, so duplicate marking would discard real reads.
+    if scheme != "hybrid_capture":
+        stages.remove("PCR duplicate removal")
+    return stages
+
 # Get the data directory relative to this config file
 _data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 
