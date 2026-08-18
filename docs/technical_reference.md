@@ -2,9 +2,111 @@
 
 Detailed documentation on the algorithms, decision logic, and tools used by HLA-Resolve.
 
+## Contents
+
+1. [Workflow and Dependencies](#1-workflow-and-dependencies)
+2. [Small Variant Calling and Preparing the Phased VCF for vcf2fasta](#2-small-variant-calling-and-preparing-the-phased-vcf-for-vcf2fasta)
+3. [HLA-DRB Paralog Handling](#3-hla-drb-paralog-handling)
+4. [Notes on the Use of vcf2fasta](#4-notes-on-the-use-of-vcf2fasta)
+5. [Phasing Decision Tree](#5-phasing-decision-tree)
+6. [Allele Classification Methodology (`hla_typer.py`)](#6-allele-classification-methodology-hla_typerpy)
+7. [DR/DQ Read Re-consensus](#7-drdq-read-re-consensus)
+
 ---
 
-## 1. Small Variant Calling and Preparing the Phased VCF for vcf2fasta
+## 1. Workflow and Dependencies
+
+HLA-Resolve takes raw PacBio reads (FASTQ or uBAM) as input and executes the following steps to produce four-field HLA allele assignments.
+
+```mermaid
+flowchart TD
+  A[PacBio reads<br/>FASTQ or uBAM] --> B[Adapter trimming<br/>fastplong / cutadapt]
+  B --> C[PCR duplicate removal<br/>pbmarkdup]
+  C --> D[Alignment to modified GRCh38<br/>rammap]
+  D --> E[HLA-DRB paralog filtering<br/>multi-allele DRB bait]
+  E --> F[Read filtering<br/>MHC window, primary alignments]
+  F --> G[Small variants<br/>bcftools + DeepVariant]
+  F --> H[Structural variants<br/>pbsv]
+  F --> I[Tandem repeats<br/>TRGT]
+  G --> J[Joint phasing<br/>HiPhase]
+  H --> J
+  I --> J
+  J --> K[Coverage assessment<br/>mosdepth]
+  K --> L[Haploblock evaluation<br/>CDS / ARS rescue]
+  L --> M[Variant filtering and<br/>redundancy removal]
+  M --> N[Gene sequence reconstruction<br/>vcf2fasta]
+  N --> O[IPD-IMGT/HLA matching<br/>three-pass edlib classification]
+  O --> P[DR/DQ re-consensus refinement<br/>HLA-DQA1, -DQB1, -DRB1]
+  P --> Q([Four-field HLA allele calls])
+```
+
+### 1.1 Adapter Trimming
+HLA-Resolve expects demultiplexed reads, with SMRTbell adapters and sample barcodes removed. PacBio's `lima` is the standard tool for this.
+
+Adapter trimming with `--trim_adapters` is an optional step for residual library preparation adapters that demultiplexing leaves behind, such as transposase mosaic ends or amplicon primers. It is off by default. Reads that are already clean can skip it.
+
+With `--trim_adapters` and no `--adapter_file`, [fastplong](https://doi.org/10.1002/imt2.107) auto-detects and removes adapters. With `--adapter_file`, [cutadapt](https://doi.org/10.14806/ej.17.1.200) trims the sequences you provide. A file with one record uses that sequence as the 5' adapter. A file with two records uses them as the 5' and 3' adapters.
+
+When two adapters are given, HLA-Resolve checks whether the 3' adapter is the reverse complement of the 5' adapter. When it is, the adapters are symmetric, such as Tn5 mosaic ends, and a read shows the same two sequences in either orientation, so scanning the forward strand trims both ends. When the adapters are not symmetric, such as amplicon primers, a reverse-oriented read would go untrimmed, so cutadapt also scans the reverse complement with `--revcomp`.
+
+### 1.2 PCR Duplicate Removal
+PCR duplicates are identified and removed from the trimmed reads using [pbmarkdup](https://github.com/PacificBiosciences/pbmarkdup).
+
+### 1.3 Reference Genome Alignment
+Deduplicated reads are aligned to a modified GRCh38 reference genome (no-alt analysis set) using [rammap](https://doi.org/10.64898/2026.05.26.726289) (Wang and Li, 2026), a memory-safe Rust reimplementation of [minimap2](https://doi.org/10.1093/bioinformatics/bty191) that produces identical alignments. The modified reference includes an additional scaffold containing the HLA-Y/HLA-OLI insertion to prevent mismapping of HLA-Y reads to HLA-A.
+
+### 1.4 HLA-DRB Paralog Filtering
+A separate alignment step maps reads against a multi-allele HLA-DRB bait (`DRB_reference.fa`) of 33 sequences. These are 13 HLA-DRB1, 3 HLA-DRB3, and 1 HLA-DRB4 allele from IPD-IMGT/HLA, the HLA-DRB5, -DRB6, and -DRB9 sequences from GRCh38, HLA-DRB7 and -DRB8 from the SSTO haplotype, one element from CM089004.1, and 10 paralog and intergenic blocks lifted from HPRC assemblies, most with their own HLA-DRB1 copy masked so that they compete only for paralog reads. Reads whose primary alignment lands on anything other than an HLA-DRB1 allele are flagged for removal. On every PacBio scheme the bait is applied to the reads already placed in the DR cluster (chr6:32439878-32589848) by the GRCh38 alignment, not to the whole read set. The aim is to reclassify reads that mapped into the DR region, not to rehome unmapped reads, and the restriction keeps genome-wide homology noise out of the kill list. Because a read is selected whenever it overlaps that window, every read capable of contributing to HLA-DRB1 variant calling is classified.
+
+### 1.5 Read Filtering
+Aligned reads are filtered to the MHC window on chromosome 6 (chr6:28000000-34000000), keeping only primary alignments. Reads flagged as HLA-DRB1 paralogs in step 4 are removed.
+
+### 1.6 Small Variant Calling
+SNVs are called with [bcftools](https://doi.org/10.1093/bioinformatics/btr509) and indels are called with [DeepVariant](https://doi.org/10.1038/nbt.4235). DeepVariant is run over chr6:29900000-33150000 rather than all of chromosome 6. The window spans all eight typed genes with margin. Because DeepVariant supplies only the indels, RefCall rescue is applied to indel records: they are rescued at DP ≥ 30 with alt allele depth ≥ 10, and reclassified as heterozygous at VAF 0.3 to 0.7 or homozygous ALT above 0.7.
+
+### 1.7 Structural Variant Calling
+Structural variants are called from the aligned reads using [pbsv](https://github.com/PacificBiosciences/pbsv).
+
+### 1.8 Tandem Repeat Genotyping
+Tandem repeats within the HLA region are genotyped using [TRGT](https://doi.org/10.1038/s41587-023-02057-3).
+
+### 1.9 Joint Phasing
+Small variants, structural variants, and tandem repeat genotypes are jointly phased with [HiPhase](https://doi.org/10.1093/bioinformatics/btae042), producing haplotagged BAMs, phased VCFs, and haplotype block coordinates.
+
+### 1.10 Coverage Assessment
+Per-gene coverage depth and breadth are calculated with [mosdepth](https://doi.org/10.1093/bioinformatics/btx699). Genes failing minimum coverage thresholds are excluded from HLA typing.
+
+### 1.11 Haploblock Evaluation
+Phased haplotype blocks are evaluated to determine whether each HLA gene is fully spanned by a single phase set. Genes with internal phasing breaks enter a rescue pipeline that attempts to recover coding sequence or antigen recognition sequence (ARS) haplotypes.
+
+### 1.12 Variant Filtering and Redundancy Removal
+Phased genotypes are filtered by gene to remove redundant calls from overlapping variant callers (e.g., DeepVariant indels overlapping pbsv structural variants, or non-TRGT variants within TRGT tandem repeat regions). Symbolic and complex structural variant types (BND, INV, DUP) are excluded.
+
+### 1.13 Gene Sequence Reconstruction
+Phased, filtered genotypes are applied to GRCh38 gene models using [vcf2fasta](https://github.com/santiagosnchez/vcf2fasta) to reconstruct full-gene and coding-sequence haplotype FASTA files for each HLA gene.
+
+A small number of HLA-DPB1 alleles, including DPB1\*13:01, \*27:01, \*107:01, and \*135:01, are one base shorter than GRCh38 in a poly-A run at the very end of the coding sequence. Because vcf2fasta works in reference coordinates, the annotated CDS window ends one base short of the shifted stop codon and the haplotype comes back without a stop. When this happens, HLA-Resolve re-extracts the coding sequence with the final exon extended by a few reference bases and trims each haplotype back to its first in-frame stop. The repair is accepted only if that stop falls within a few bases of the expected CDS length, otherwise the original sequence is kept.
+
+### 1.14 IPD-IMGT/HLA Database Matching
+Reconstructed haplotypes are compared against alleles in the [IPD-IMGT/HLA database](https://doi.org/10.1093/nar/gkac1011) with a three-pass hierarchical classification algorithm using [edlib](https://doi.org/10.1093/bioinformatics/btw753):
+
+   1. **G-group assignment** — The antigen recognition sequence (ARS exons) is matched to G-group reference sequences by edit distance. An exact match is required.
+   2. **Three-field allele assignment** — The full concatenated exon sequence is compared against alleles within the assigned G group, ranked by edit distance.
+   3. **Four-field refinement** — The full-gene haplotype (including introns and UTRs) is compared against candidate alleles, ranked by mismatch identity (the proportion of matching bases at 1:1-aligned positions), which avoids penalizing insertions and deletions from unreliable intronic reconstruction. Ties are broken by match length, then by raw edit distance, then by lowest fourth-field value, with each tier applied only to the candidates the previous tier could not separate.
+   4. **DR/DQ re-consensus refinement** — HLA-DQA1, HLA-DQB1, and HLA-DRB1 reconstruct poorly in their noncoding sequence, which makes the fourth field from pass 3 unreliable. For these three genes the fourth field is re-derived from the reads themselves. The reads over each gene are re-mapped to the best-guess allele, a consensus is rebuilt for each haplotype, and that consensus is re-matched against the fourth-field options within the same three-field group. The re-match scores the exon and intron sequence only, and any tie it cannot resolve is broken over the untranslated regions trimmed to the span shared by all tied candidates, so no allele can win merely by having a longer database record. The three-field call never changes and no other gene is affected. Accepted haplotypes also have their reconstructed FASTA sequence replaced by the re-consensus sequence. See [Section 7](#7-drdq-read-re-consensus) for details.
+
+### Note
+For WGS and WES input, the pipeline skips adapter trimming (step 1.1) and pre-alignment duplicate removal (step 1.2).
+
+---
+
+# Additional Workflow Details
+
+The sections below expand on the steps in the workflow above.
+
+---
+
+## 2. Small Variant Calling and Preparing the Phased VCF for vcf2fasta
 
 ### Small variant calling
 
@@ -39,7 +141,7 @@ Following phasing with HiPhase or longphase, the SNV and SV VCFs are merged and 
 
 ---
 
-## 2. HLA-DRB Paralog Handling
+## 3. HLA-DRB Paralog Handling
 
 The HLA Class II regions contains a cluster of HLA-DRB paralogs with high sequence identity to HLA-DRB1. HLA-Resolve applies specialized handling to prevent sequencing reads from paralogs of HLA-DRB1 from contaminating HLA-DRB1 variant calling and phasing. 
 
@@ -55,7 +157,7 @@ The HLA Class II regions contains a cluster of HLA-DRB paralogs with high sequen
 
 ---
 
-## 3. Notes on the Use of vcf2fasta
+## 4. Notes on the Use of vcf2fasta
 
 HLA-Resolve uses a forked version of vcf2fasta, originally written by Santiago Sanchez-Ramirez (https://github.com/santiagosnchez/vcf2fasta, MIT license). The fork is maintained at https://github.com/matthewglasenapp/vcf2fasta and is installed as a pip dependency via `environment.yml`. The fork includes several bug fixes described below.
 
@@ -177,7 +279,7 @@ The repair is scoped to HLA-DPB1 and runs only when a haplotype does not already
 
 ---
 
-## 4. Phasing Decision Tree
+## 5. Phasing Decision Tree
 
 ### Overview
 
@@ -243,7 +345,7 @@ This section describes the decision tree used to classify genes by phasing statu
 
 ---
 
-## 5. Allele Classification Methodology (`hla_typer.py`)
+## 6. Allele Classification Methodology (`hla_typer.py`)
 
 This section describes the allele classification algorithm implemented in `hla_typer.py`, which performs HLA allele assignment after haplotype reconstruction from phased FASTA sequences.
 
@@ -251,7 +353,7 @@ The typing workflow operates downstream of variant calling, phasing, and FASTA r
 
 ---
 
-### 5.1 Reference Data
+### 6.1 Reference Data
 
 Reference data are derived from the [IPD-IMGT/HLA](https://www.ebi.ac.uk/ipd/imgt/hla/) database, pinned to release 3.64.0 so that calls are reproducible across installs.
 
@@ -270,7 +372,7 @@ This metadata is used to:
 
 ---
 
-### 5.2 Inputs to the Typing Algorithm
+### 6.2 Inputs to the Typing Algorithm
 
 The typing script consumes three primary inputs, all generated by upstream stages of the HLA-Resolve pipeline:
 
@@ -292,7 +394,7 @@ The pipeline will run successfully with exon-only FASTA input, but accurate four
 
 ---
 
-### 5.3 Typing Outputs
+### 6.3 Typing Outputs
 
 The typing program produces both CSV result files and detailed log files documenting classification decisions.
 
@@ -342,7 +444,7 @@ Each of the three files has a companion `_full.csv` (`g_group_output_full.csv`, 
 
 ---
 
-### 5.4 Hierarchical Classification Strategy
+### 6.4 Hierarchical Classification Strategy
 
 The typing algorithm employs a **three-pass hierarchical approach**:
 
@@ -366,11 +468,11 @@ The typing algorithm employs a **three-pass hierarchical approach**:
 #### Pass 4: DR/DQ Re-consensus Refinement
 - Applied to HLA-DQA1, HLA-DQB1, and HLA-DRB1
 - Re-maps the reads underlying each call to the best-guess allele, rebuilds a consensus, and re-matches to the fourth-field options within the same three-field group
-- Described in full in [Section 6](#6-drdq-read-re-consensus)
+- Described in full in [Section 7](#7-drdq-read-re-consensus)
 
 ---
 
-### 5.5 Assignment Metrics
+### 6.5 Assignment Metrics
 
 #### Edit Distance
 Similarity in passes 1 and 2 is evaluated with Levenshtein edit distance computed by [edlib](https://github.com/Martinsos/edlib) in infix mode (free end gaps), so the shorter sequence is located within the longer one and end gaps are not penalized.
@@ -386,7 +488,7 @@ Ties are broken first by match length, then by raw edit distance, then by the lo
 
 ---
 
-### 5.6 Reference Sequence Reconstruction
+### 6.6 Reference Sequence Reconstruction
 
 Reference exon and full-gene sequences are reconstructed dynamically using annotation metadata from `hla.xml`.
 
@@ -399,7 +501,7 @@ Sanity checks ensure consistency between G-group definitions and peptide-binding
 
 ---
 
-## 6. DR/DQ Read Re-consensus
+## 7. DR/DQ Read Re-consensus
 
 HLA-DQA1, HLA-DQB1, and HLA-DRB1 reconstruct poorly enough in their intronic and UTR sequence that the pass 3 full-gene comparison often lands on the wrong fourth field. For these three genes only, the fourth field is re-derived from the reads themselves. The three-field lineage from pass 2 is never changed, and no other gene is touched. The step is implemented in `reconsensus_drdq.py`, gated by `reconsensus_drdq` in `config.py`, and runs for PacBio only.
 
