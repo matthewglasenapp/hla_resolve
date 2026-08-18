@@ -83,9 +83,9 @@ Each has a `_full.csv` companion listing every equidistant candidate as a genoty
 - Reconstructed phased nucleotide sequences for each HLA gene in FASTA format
 
 ### Runtime and Required Resources
-Runtime depends heavily on input file size and available compute resources. Targeted HLA capture data typically completes in **<15 minutes** using **6 CPUs and 20 GB RAM**. Runtime increases for high-coverage WGS datasets, as all reads must be mapped to the human reference genome prior to restricting downstream analysis to the HLA region on chromosome 6.
+Runtime depends heavily on input file size and available compute resources. Target capture data typically completes in **<15 minutes** using **6 CPUs and 20 GB RAM**. Runtime increases for high-coverage WGS datasets, as all reads must be mapped to the human reference genome prior to restricting downstream analysis to the HLA region on chromosome 6.
 
-Reference genome alignment is the rate-limiting step and is multithreaded, so increasing the thread count with `--threads` provides the largest runtime reduction, particularly for high-coverage WGS inputs. The default is **6**, or the number of CPUs available if fewer, read from the Slurm allocation where there is one. Memory requirements rise with the thread count, so raise the job's memory alongside `--threads`. `--threads` sets the thread count for the tools HLA-Resolve calls directly. DeepVariant also parallelizes internally, so on a cluster its CPU use is bounded by the job allocation and not by this flag.
+Reference genome alignment is the rate-limiting step and is multithreaded, so increasing the thread count with `--threads` provides the largest runtime reduction, especially for high-coverage WGS inputs. The default is **6**, or the number of CPUs available if fewer, read from the Slurm allocation where there is one. Memory requirements rise with the thread count, so raise the job's memory alongside `--threads`. `--threads` sets the thread count for the tools HLA-Resolve calls directly. DeepVariant also parallelizes internally, so on a cluster its CPU use is bounded by the job allocation and not by this flag.
 
 ## Installation
 ```bash
@@ -118,7 +118,7 @@ bash update.sh
 
 ## Quick Start and Demo
 
-The repository ships with a demo dataset of PacBio hybrid-capture sequencing reads from HG002 (Ashkenazi Son), a sample from the GIAB and HPRC benchmarks. Run this from the repository root:
+The repository includes a demo dataset of PacBio HLA hybrid capture sequencing reads from HG002 (Ashkenazi Son), a sample from the GIAB and HPRC benchmarks. Run this from the repository root:
 
 ```bash
 hla_resolve \
@@ -245,13 +245,13 @@ Intermediate files will be written to the following directories. The user can sp
 
 ## Validated WGS Libraries
 
-HLA-Resolve was run on whole-genome PacBio sequencing reads for 39 samples from the Human Pangenome Reference Consortium (HPRC), at a mean coverage of 35.2× across the eight classical HLA genes. Concordance with the reference typings of Lai et al. was **100% at one- through three-field resolution** (610/610 alleles) and **92.8% at four-field** (555/598), with a call rate of 99.4% (620/624).
+HLA-Resolve was run on whole-genome PacBio sequencing reads for 39 samples from the Human Pangenome Reference Consortium (HPRC), at a mean coverage of 35.2× across the eight classical HLA genes. Concordance with the reference typings of Lai et al. was **100% at one- through three-field resolution** (610/610 alleles) and **92.8% at four-field resolution** (555/598), with a call rate of 99.4% (620/624).
 
 **[Browse the full benchmark →](docs/wgs_validation.md)**
 
-- Per-sample concordance at one- through four-field resolution
-- Mean HLA coverage depth for every sample
-- The exact PacBio input file(s) used for each sample
+- Per-sample concordance by field of resolution
+- Mean HLA coverage depth by sample
+- The raw PacBio input file(s) used for each sample
 
 All inputs are publicly available, so the benchmark can be reproduced end to end.
 
