@@ -3,11 +3,11 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="images/hla_resolve.png">
-    <img src="images/hla_resolve_light.png" alt="HLA-RESOLVE Logo" width="420"/>
+    <img src="images/hla_resolve_light.png" alt="HLA-RESOLVE Logo" width="340"/>
   </picture>
+  <br/>
+  <b>HLA Typing from PacBio Reads</b>
 </p>
-
-<h3 align="center">HLA Typing from PacBio Reads</h3>
 
 <p align="center">
   <img src="https://img.shields.io/github/v/release/matthewglasenapp/hla_resolve?label=version&color=blue" alt="Version">
@@ -39,6 +39,11 @@
   <a href="https://github.com/oeco28">Omar Cornejo</a>
 </p>
 
+<br/>
+
+---
+
+<br/>
 
 HLA-Resolve is a command-line tool for high-resolution HLA typing from high-coverage PacBio sequencing reads. It reconstructs phased, full-gene sequences for the eight classical HLA loci (HLA-A, -B, -C, -DPA1, -DPB1, -DQA1, -DQB1, -DRB1) and queries the [IPD-IMGT/HLA database](https://www.ebi.ac.uk/ipd/imgt/hla/) to assign HLA allele calls.
 
@@ -323,8 +328,8 @@ All inputs are publicly available, so the benchmark can be reproduced end to end
 | | Feature |
 |---|---------|
 | 1 | HLA typing at P-group resolution |
-| 2 | HLA typing for additional HLA Class I protein-coding genes and pseudogenes (HLA-E, HLA-F, HLA-G; HLA-H, HLA-J, HLA-K, HLA-L, HLA-S, HLA-V, HLA-W) |
-| 3 | HLA typing for additional HLA Class II protein-coding genes (HLA-DRB3, HLA-DRB4, HLA-DRB5) |
+| 2 | HLA typing for additional HLA Class I protein-coding genes and pseudogenes<br>(HLA-E, HLA-F, HLA-G; HLA-H, HLA-J, HLA-K, HLA-L, HLA-S, HLA-V, HLA-W) |
+| 3 | HLA typing for additional HLA Class II protein-coding genes<br>(HLA-DRB3, HLA-DRB4, HLA-DRB5) |
 
 ---
 
