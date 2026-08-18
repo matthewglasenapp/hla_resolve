@@ -10,10 +10,10 @@
 </p>
 
 <p align="center">
-  <picture><source media="(prefers-color-scheme: dark)" srcset="https://img.shields.io/github/v/release/matthewglasenapp/hla_resolve?label=version&color=lightgrey"><img src="https://img.shields.io/github/v/release/matthewglasenapp/hla_resolve?label=version&color=E5E7EB" alt="Version"></picture>
-  <picture><source media="(prefers-color-scheme: dark)" srcset="https://img.shields.io/badge/platform-linux--64-lightgrey"><img src="https://img.shields.io/badge/platform-linux--64-E5E7EB" alt="Platform"></picture>
-  <a href="LICENSE.txt"><picture><source media="(prefers-color-scheme: dark)" srcset="https://img.shields.io/badge/license-UCSC%20Noncommercial-lightgrey"><img src="https://img.shields.io/badge/license-UCSC%20Noncommercial-E5E7EB" alt="License"></picture></a>
-  <a href="https://doi.org/10.64898/2026.03.27.26349549"><picture><source media="(prefers-color-scheme: dark)" srcset="https://img.shields.io/badge/medRxiv-10.64898-lightgrey"><img src="https://img.shields.io/badge/medRxiv-10.64898-E5E7EB" alt="Preprint"></picture></a>
+  <picture><source media="(prefers-color-scheme: dark)" srcset="https://img.shields.io/github/v/release/matthewglasenapp/hla_resolve?label=version&color=blue"><img src="https://img.shields.io/github/v/release/matthewglasenapp/hla_resolve?label=version&color=F1F5F9&labelColor=CBD5E1" alt="Version"></picture>
+  <picture><source media="(prefers-color-scheme: dark)" srcset="https://img.shields.io/badge/platform-linux--64-lightgrey"><img src="https://img.shields.io/badge/platform-linux--64-F1F5F9?labelColor=CBD5E1" alt="Platform"></picture>
+  <a href="LICENSE.txt"><picture><source media="(prefers-color-scheme: dark)" srcset="https://img.shields.io/badge/license-UCSC%20Noncommercial-green"><img src="https://img.shields.io/badge/license-UCSC%20Noncommercial-F1F5F9?labelColor=CBD5E1" alt="License"></picture></a>
+  <a href="https://doi.org/10.64898/2026.03.27.26349549"><picture><source media="(prefers-color-scheme: dark)" srcset="https://img.shields.io/badge/medRxiv-10.64898-b31b1b"><img src="https://img.shields.io/badge/medRxiv-10.64898-F1F5F9?labelColor=CBD5E1" alt="Preprint"></picture></a>
 </p>
 
 <br/>
