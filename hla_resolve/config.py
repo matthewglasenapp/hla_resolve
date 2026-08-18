@@ -301,7 +301,7 @@ def ensure_longphase():
             # Clean up the tarball and temp extraction dir
             tar_file.unlink()
             subprocess.run(["rm", "-rf", str(extract_tmp)], check=True)
-            print("Longphase download complete!")
+            print("Longphase download complete")
 
     return str(longphase_bin)
 
@@ -321,7 +321,7 @@ def ensure_rammap():
                 rammap_bin,
                 executable=True,
             )
-            print("Rammap download complete!")
+            print("Rammap download complete")
 
     return str(rammap_bin)
 
@@ -340,7 +340,7 @@ def ensure_picard():
                 f"https://github.com/broadinstitute/picard/releases/download/{PICARD_VERSION}/picard.jar",
                 picard_jar,
             )
-            print("Picard download complete!")
+            print("Picard download complete")
 
     return str(picard_jar)
 
@@ -368,7 +368,7 @@ def ensure_deepvariant_sif():
                 f"docker://google/deepvariant@{DEEPVARIANT_DIGEST}"
             ], check=True)
             os.replace(tmp_sif, sif_file)
-            print("DeepVariant SIF download complete!")
+            print("DeepVariant SIF download complete")
 
     return str(sif_file)
 
@@ -390,7 +390,7 @@ def ensure_clair3_sif():
                 f"docker://hkubal/clair3:{CLAIR3_VERSION}"
             ], check=True)
             os.replace(tmp_sif, sif_file)
-            print("Clair3 SIF download complete!")
+            print("Clair3 SIF download complete")
 
     return str(sif_file)
 

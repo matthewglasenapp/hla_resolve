@@ -28,7 +28,7 @@ def remove_stale_sort_temps(config):
 
 	if removed:
 		print(f"Removed {removed} sort temp file(s) from an interrupted run, freed {freed / 1e9:.1f} GB")
-		print("\n")
+		print()
 
 def discard_full_genome_bam(config):
 	"""Remove the whole-genome BAM once reads are filtered to chr6."""
@@ -45,7 +45,7 @@ def discard_full_genome_bam(config):
 	if freed:
 		print(f"Discarded whole-genome BAM, freed {freed / 1e9:.1f} GB: {bam}")
 		print("Pass --keep_full_bam to retain it.")
-		print("\n")
+		print()
 
 def cleanup_intermediate_files(config):
 	"""
@@ -76,4 +76,4 @@ def cleanup_intermediate_files(config):
 			print(f"Removing: {directory}")
 			shutil.rmtree(directory)
 	
-	print("Cleanup completed!")
+	print("Cleanup completed")

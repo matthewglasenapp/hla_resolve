@@ -325,6 +325,6 @@ def preprocess_pacbio_sample(config):
 	
 	else:
 		print("Insufficient reads for variant calling")
-		print("Sample {} had {} reads!".format(config['sample_ID'], chr6_read_count))
+		print("Sample {} had {} reads".format(config['sample_ID'], chr6_read_count))
 
 	return chr6_read_count

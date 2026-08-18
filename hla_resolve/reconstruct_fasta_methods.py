@@ -344,16 +344,14 @@ def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail
 
 	# ========== UNPHASED PASS SUMMARY ==========
 	if unphased_hets:
-		print(f"{gene}: {len(unphased_hets)} unphased PASS het(s)")
-		detail(f"  written to: {pass_unphased}")
-		print()
+		detail(f"{gene}: {len(unphased_hets)} unphased PASS het(s) written to {pass_unphased}")
 
 	if config.VERBOSE:
 		if force_include_unphased and unphased_hets:
 			print(f"\nUnphased PASS variants in {gene}:\n")
 			for rec in unphased_hets:
 				print(str(rec).strip())
-			print("\n")
+			print()
 		else:
 			unph = pysam.VariantFile(pass_unphased)
 			records = [rec for rec in unph]
@@ -362,7 +360,9 @@ def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail
 				print(f"\nUnphased PASS variants in {gene}:\n")
 				for rec in records:
 					print(str(rec).strip())
-				print("\n")
+				print()
+
+	return len(unphased_hets)
 
 def read_gene_gff_cols(gff_dir, gene_lower):
 	"""Return the 9 tab-separated columns of the 'gene' feature line from
@@ -932,10 +932,10 @@ def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA
 			continue
 			
 		if not set(allele_1).issubset(DNA_bases):
-			print(f"{file} has invalid characters!")
+			print(f"{file} has invalid characters")
 
 		if not set(allele_2).issubset(DNA_bases):
-			print(f"{file} has invalid characters!")
+			print(f"{file} has invalid characters")
 
 		# DPB1 3'-terminal homopolymer-contraction repair. A fully-phased DPB1 CDS can
 		# reconstruct full-length but WITHOUT a stop because the allele (e.g. DPB1*13:01,
@@ -961,10 +961,10 @@ def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA
 
 		if feat == "CDS":
 			if allele_1[0:3] != "ATG" or allele_2[0:3] != "ATG":
-				print(f"{sample_ID} {gene} CDS sequence does not begin with start codon!\n")
+				print(f"{sample_ID} {gene} CDS sequence does not begin with a start codon\n")
 
 			if not allele_1[-3:] in stop_codons or not allele_2[-3:] in stop_codons:
-				print(f"{sample_ID} {gene} CDS sequence does not end with stop codon!\n")
+				print(f"{sample_ID} {gene} CDS sequence does not end with a stop codon\n")
 		
 		if feat not in fasta_dict:
 			fasta_dict[feat] = {}
@@ -975,11 +975,11 @@ def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA
 		fasta_dict[feat][gene].append(allele_2)
 
 	if config.VERBOSE:
-		print("\n")
+		print()
 		print("Sanity check of partially phased genes")
 		for string in logging_strings:
 			print(string)
-		print("\n")
+		print()
 
 	gene_records = []
 	cds_records = []
@@ -1001,11 +1001,9 @@ def parse_fastas(sample_ID, vcf2fasta_output_dir, outfile_gene, outfile_CDS, DNA
 				cds_records.append(SeqRecord(Seq(hap1_seq), id=hap1_name, description = ""))
 				cds_records.append(SeqRecord(Seq(hap2_seq), id=hap2_name, description = ""))
 
-	print("FASTA output:")
 	SeqIO.write(gene_records, outfile_gene, "fasta")
-	print(f"  {len(gene_records)} gene records")
-	detail(f"    written to: {outfile_gene}")
 	SeqIO.write(cds_records, outfile_CDS, "fasta")
-	print(f"  {len(cds_records)} CDS records")
-	detail(f"    written to: {outfile_CDS}")
-	print("\n")
+	detail(f"{len(gene_records)} gene records written to: {outfile_gene}")
+	detail(f"{len(cds_records)} CDS records written to: {outfile_CDS}")
+	print(f"FASTA output written to: {os.path.dirname(outfile_gene)}/")
+	print()

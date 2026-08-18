@@ -105,7 +105,7 @@ def main():
     version_text = version_string()
     print(version_text)
     print(f"Command: {shlex.join([os.path.basename(sys.argv[0])] + sys.argv[1:])}")
-    print("\n")
+    print()
 
     # Oversubscription is the user's call, so warn and continue.
     if cpus_known and args.threads > available_cpus:

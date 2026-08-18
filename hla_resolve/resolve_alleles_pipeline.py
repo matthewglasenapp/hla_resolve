@@ -47,10 +47,11 @@ def strip_gene_prefix(call, gene):
 
 # Every classification pass writes the same CSV shape, so one reader serves all
 # three resolutions.
+# (table heading, output-files label, filename)
 RESULT_TABLES = (
-	("G-group resolution", "g_group_output.csv"),
-	("Three-field resolution", "3_field_allele_output.csv"),
-	("Four-field resolution", "allele_output.csv"),
+	("G-group resolution", "G-group calls", "g_group_output.csv"),
+	("Three-field resolution", "Three-field calls", "3_field_allele_output.csv"),
+	("Four-field resolution", "Four-field calls", "allele_output.csv"),
 )
 
 def read_calls(results_file):
@@ -89,13 +90,12 @@ def read_calls(results_file):
 def print_results(config):
 	tables = []
 	genes = []
-	for label, filename in RESULT_TABLES:
-		results_file = os.path.join(config['hla_typing_dir'], filename)
-		table_genes, calls = read_calls(results_file)
+	for label, _, filename in RESULT_TABLES:
+		table_genes, calls = read_calls(os.path.join(config['hla_typing_dir'], filename))
 		if calls is None:
 			announce(f"Warning: no {label} calls found in {filename}")
 			continue
-		tables.append((label, results_file, calls))
+		tables.append((label, calls))
 		# A gene can reach one resolution and not another, so take the union.
 		for gene in table_genes:
 			if gene not in genes:
@@ -107,13 +107,12 @@ def print_results(config):
 	# One set of widths across all three blocks, so they line up under each other.
 	gene_width = max([len("gene")] + [len(gene) for gene in genes])
 	first_width = max([len("_1")] + [len(calls.get(gene, {}).get("1", NOT_TYPED))
-	                                 for _, _, calls in tables for gene in genes])
+	                                 for _, calls in tables for gene in genes])
 
 	announce(f"Sample: {config['sample_ID']}")
-	for label, results_file, calls in tables:
+	for label, calls in tables:
 		announce()
 		announce(label)
-		announce(results_file)
 		announce(f"{'gene':<{gene_width}}   {'_1':<{first_width}}   _2")
 		for gene in genes:
 			first = calls.get(gene, {}).get("1", NOT_TYPED)
@@ -133,6 +132,8 @@ def print_output_files(config, phased_vcf):
 		("Gene FASTA", config['hla_gene_fasta']),
 		("CDS FASTA", config['hla_cds_fasta']),
 	]
+	for _, label, filename in RESULT_TABLES:
+		entries.append((label, os.path.join(config['hla_typing_dir'], filename)))
 	label_width = max(len(label) for label, _ in entries) + 1
 
 	announce("Output files:")
@@ -198,25 +199,17 @@ def resolve_alleles(config):
 	# Print which genes were successfully phased (skip empty sections)
 	fully_phased = [g for g in config['genes_of_interest'] if g in phased_genes]
 	if fully_phased:
-		print("Fully Phased Genes:")
-		for gene in fully_phased:
-			print(f"  {gene}")
-		print("\n")
+		print(f"Fully phased genes: {', '.join(fully_phased)}")
 
 	partially_phased = [g for g in config['genes_of_interest'] if g in unphased_genes]
 	if partially_phased:
-		print("Partially Phased Genes:")
-		for gene in partially_phased:
-			print(f"  {gene}")
-		print("\n")
+		print(f"Partially phased genes: {', '.join(partially_phased)}")
 
 	rescued = [g for g in config['genes_of_interest'] if g in cds_rescued_genes]
 	if rescued:
-		print("CDS-Rescued Genes:")
-		for gene in rescued:
-			tier = cds_rescued_genes[gene]["tier"]
-			print(f"  {gene} (tier: {tier})")
-		print("\n")
+		tiers = [f"{gene} (tier: {cds_rescued_genes[gene]['tier']})" for gene in rescued]
+		print(f"CDS-rescued genes: {', '.join(tiers)}")
+	print()
 	
 	if config['platform'] == "PACBIO":
 		input_vcf = config['hiphase_joint_vcf']
@@ -225,8 +218,8 @@ def resolve_alleles(config):
 
 	stage("Variant filtering and redundancy removal")
 	# Filter phased VCF by gene region
-	print("Unphased PASS heterozygous variants:")
 	gene_filtered_vcfs = {}
+	unphased_het_counts = {}
 	for gene in config['genes_of_interest']:
 		gff_gene_name = convert_gene_name_for_gff(gene)
 		gff_file = os.path.join(config['gff_dir'], gff_gene_name + "_gene.gff3")
@@ -249,7 +242,7 @@ def resolve_alleles(config):
 		else:
 			genotyper = "hybrid"
 
-		filter_vcf_gene(
+		unphased_hets = filter_vcf_gene(
 			input_vcf=input_vcf,
 			gene=gene,
 			filter_region=filter_region,
@@ -265,7 +258,18 @@ def resolve_alleles(config):
 		)
 		
 		gene_filtered_vcfs[gene] = gene_filtered_vcf
-	
+		if unphased_hets:
+			unphased_het_counts[gene] = unphased_hets
+
+	if unphased_het_counts:
+		counts = ", ".join(f"{gene} ({count})" for gene, count in unphased_het_counts.items())
+		print(f"Unphased PASS heterozygous variants: {counts}")
+		print("Written to: " + os.path.join(config['filtered_vcf_dir'],
+												 f"{config['sample_ID']}_<gene>_PASS_UNPHASED.vcf.gz"))
+	else:
+		print("Unphased PASS heterozygous variants: none")
+	print()
+
 	stage("Gene sequence reconstruction")
 	# Reset vcf2fasta_out_dir for sequential runs 
 	if any(os.scandir(config['vcf2fasta_out_dir'])):
@@ -337,7 +341,7 @@ def resolve_alleles(config):
 	)
 
 	print_results(config)
-	print("\n")
+	print()
 
 	detail(f"HLA typing result files located in dir: {config['hla_typing_dir']}/")
 	detail("")
@@ -358,9 +362,9 @@ def resolve_alleles(config):
 	detail("\n")
 
 	print_output_files(config, input_vcf)
-	print("\n")
+	print()
 
-	print("HLA allele resolution workflow completed!")
+	print("HLA allele resolution workflow completed")
 
 	return {
 		"classifications": classifications,

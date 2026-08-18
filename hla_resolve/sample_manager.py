@@ -162,7 +162,7 @@ class Samples:
 
         print(f"Sample ID: {self.sample_ID}")
         print(f"Read Group: {self.read_group_string}")
-        print("\n")
+        print()
 
         # WGS/WES PacBio aligns the uBAM directly with rammap (streamed to FASTQ
         # internally) — no separate up-front FASTQ conversion needed
@@ -184,7 +184,7 @@ class Samples:
                 if not rg_list:
                     raise ValueError(f"No @RG entry found in BAM header for {input_path}")
                 if len(rg_list) > 1:
-                    print(f"WARNING: Multiple read groups present! Consider splitting input file {input_path} by read group!")
+                    print(f"WARNING: Multiple read groups present. Consider splitting input file {input_path} by read group.")
                     for rg in rg_list:
                         print(f"  @RG ID:{rg.get('ID', 'N/A')} SM:{rg.get('SM', 'N/A')} LB:{rg.get('LB', 'N/A')} PU:{rg.get('PU', 'N/A')}")
 
@@ -229,7 +229,7 @@ class Samples:
         count_cmd = f"samtools view -@ {self.threads} -c {bam_path}"
         result = subprocess.run(count_cmd, shell=True, capture_output=True, text=True, check=True)
         count = int(result.stdout.strip())
-        print(f"Total BAM records in {bam_path}: {count:,}")
+        print(f"Found {count:,} total BAM records in {bam_path}")
         return count
 
     def run_fastplong(self, fq_path):
@@ -249,7 +249,7 @@ class Samples:
             data = json.load(f)
         total_reads = data["summary"]["after_filtering"]["total_reads"]
         mean_read_length = int(data["summary"]["after_filtering"]["read_mean_length"])
-        print(f"Total FASTQ records in {fq_path}: {total_reads:,}")
+        print(f"Found {total_reads:,} total FASTQ records in {fq_path}")
         return total_reads, mean_read_length
 
     def prepare_raw_fastq(self):

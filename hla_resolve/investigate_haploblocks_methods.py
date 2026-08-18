@@ -89,10 +89,10 @@ def evaluate_gene_haploblocks(output_file, incomplete_file, sample_ID, genes_bed
 			if gene in genes_of_interest:
 				if len(gene_het_sites) == 0:
 					print(f"{sample_ID} {gene} has 0 QC-Pass heterozygous genotypes")
-					print(f"Treating as fully phased" + "\n\n")
+					print(f"Treating as fully phased" + "\n")
 				elif len(gene_het_sites) == 1:
 					print(f"{sample_ID} {gene} has 1 QC-Pass heterozygous genotype")
-					print(f"Treating as fully phased" + "\n\n")
+					print(f"Treating as fully phased" + "\n")
 			continue
 
 		# If the gene is completely spanned by a single haploblock, it is fully phased 
@@ -126,9 +126,9 @@ def evaluate_gene_haploblocks(output_file, incomplete_file, sample_ID, genes_bed
 
 		if not fully_phased and gene in genes_of_interest:
 			print(f"{sample_ID} {gene} is not fully phased")
-			print(f"Entering haplotype rescue mode for {gene}!")
+			print(f"Entering haplotype rescue mode for {gene}...")
 			if config.VERBOSE:
-				print(f"Searching for the largest CDS-overlapped haplotype block!")
+				print("Searching for the largest CDS-overlapped haplotype block...")
 			overlapping_haploblocks = []
 			upstream_block = None
 			downstream_block = None
@@ -240,7 +240,7 @@ def evaluate_gene_haploblocks(output_file, incomplete_file, sample_ID, genes_bed
 						}
 					else:
 						# Branch 3b-ii-B: ARS CDS hets > 1 — no typing
-						print(f"{sample_ID} {gene} typing will not be performed (ARS CDS hets > 1)" + "\n\n")
+						print(f"{sample_ID} {gene} typing will not be performed (ARS CDS hets > 1)" + "\n")
 						do_not_type_genes.append(gene)
 
 					# Fall back to largest overlap for incomplete_data reporting
@@ -264,7 +264,7 @@ def evaluate_gene_haploblocks(output_file, incomplete_file, sample_ID, genes_bed
 
 			incomplete_data.append([sample_ID, gene, num_raw_haploblocks, largest_overlap_string])
 			if largest_ars_spanning_block:
-				print(f"Proportion of gene contained in largest ARS-spanning haploblock: {largest_overlap_string}" + "\n\n")
+				print(f"Proportion of gene contained in largest ARS-spanning haploblock: {largest_overlap_string}" + "\n")
 
 	with open(output_file, "w", newline="") as csv_file:
 		writer = csv.writer(csv_file, delimiter="\t")

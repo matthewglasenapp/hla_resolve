@@ -151,12 +151,12 @@ def setup_logging(output_dir, sample_name=None):
     sys._hla_resolve_log_file = log_file
 
     print(f"Logging to {log_path}")
-    print("\n")
+    print()
     return log_path
 
 def check_required_commands():    
     """Check that all required bioinformatics tools are installed and executable"""
-    print("Checking the installation status of the required bioinformatics tools!")
+    print("Checking for the required bioinformatics tools...")
 
     required_commands = [
         "bam2fastq",
@@ -192,5 +192,5 @@ def check_required_commands():
         print("https://github.com/matthewglasenapp/hla_resolve/issues")
         sys.exit(1)
     else:
-        print("All tools required are installed!")
-        print("\n")
+        print("All required tools are installed")
+        print()
