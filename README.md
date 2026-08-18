@@ -66,6 +66,7 @@ HLA-Resolve was designed for and fully validated on PacBio hybrid-capture librar
 - [Installation](#installation)
 - [Updating](#updating)
 - [Quick Start and Demo](#quick-start-and-demo)
+  - [Demo](#demo)
 - [Technical Reference](#technical-reference)
 - [Validated WGS Libraries](#validated-wgs-libraries)
 - [Planned Features (In Development)](#planned-features-in-development)
@@ -81,16 +82,18 @@ HLA-Resolve was designed for and fully validated on PacBio hybrid-capture librar
 
 ### Input
 
-**Reads** &nbsp;&nbsp; A raw, single-sample (demultiplexed) PacBio sequencing file  
-**Format** &nbsp;&nbsp; FASTQ or unmapped BAM (compressed or uncompressed)
-
-The tool is compatible with WGS, WES, hybrid-capture, and amplicon sequencing schemes.
+<table>
+<tr><td><b>Reads</b></td><td>A raw, single-sample (demultiplexed) PacBio sequencing file</td></tr>
+<tr><td><b>Format</b></td><td>FASTQ or unmapped BAM, compressed or uncompressed</td></tr>
+</table>
 
 ### Output(s)
 
 #### Primary Results
 
-HLA allele calls for HLA-A, HLA-B, HLA-C, HLA-DPA1, HLA-DPB1, HLA-DQA1, HLA-DQB1, and HLA-DRB1, written to `<output_dir>/<sample>/hla_typing_results/`.
+HLA allele calls, written to `<output_dir>/<sample>/hla_typing_results/`, for these eight genes.
+
+`HLA-A` &nbsp; `HLA-B` &nbsp; `HLA-C` &nbsp; `HLA-DPA1` &nbsp; `HLA-DPB1` &nbsp; `HLA-DQA1` &nbsp; `HLA-DQB1` &nbsp; `HLA-DRB1`
 
 | sample | HLA-A_1 | HLA-A_2 | HLA-B_1 | HLA-B_2 | ... |
 |---|---|---|---|---|---|
@@ -103,17 +106,17 @@ Three files hold the same calls at different levels of resolution.
 
 | Resolution | Best Guess | Ambiguities Reported |
 |------------|------------|----------------------|
-| Four field | `allele_output.csv` | `allele_output_full.csv` |
-| Three field | `3_field_allele_output.csv` | `3_field_allele_output_full.csv` |
 | G group | `g_group_output.csv` | `g_group_output_full.csv` |
+| Three field | `3_field_allele_output.csv` | `3_field_allele_output_full.csv` |
+| Four field | `allele_output.csv` | `allele_output_full.csv` |
 
-Each file above forces a single best guess for every allele, and has a `_full.csv` companion file that reports ambiguities as genotype list strings where alleles could not be distinguished at the sequence level.
+The Best Guess file forces a single best guess for every allele. The Ambiguities Reported file gives the calls as genotype list strings when multiple candidate alleles cannot be distinguished at the sequence level.
 
 #### Intermediate Files
 
-- Haplotagged, mapped BAMs for chromosome 6 (for visualization in genome browsers such as IGV)
+- Haplotagged, mapped BAMs for chromosome 6
 - Phased VCFs (chromosome 6 and individual gene)
-- Reconstructed phased nucleotide sequences for each HLA gene in FASTA format
+- Nucleotide sequences (FASTA) for each HLA gene
 
 ### Runtime and Required Resources
 
@@ -145,7 +148,6 @@ hla_resolve setup
 | File | Version | Source |
 |------|---------|--------|
 | GRCh38 reference genome (no-alt analysis set) | GCA_000001405.15 | NCBI |
-| Picard | 2.27.4 | Broad Institute |
 | rammap binary | v1.0.0 | GitHub |
 | hla.xml ([IPD-IMGT/HLA database](https://github.com/ANHIG/IMGTHLA)) | 3.64.0 | IMGTHLA |
 | DeepVariant Singularity image | 1.6.1 | Docker Hub |
@@ -166,6 +168,19 @@ bash update.sh
 ---
 
 ## Quick Start and Demo
+
+Every run needs these five arguments.
+
+```bash
+hla_resolve \
+  --input_file <reads.fastq.gz | reads.bam> \
+  --sample_name <sample_name> \
+  --platform pacbio \
+  --scheme <WGS | WES | hybrid_capture | amplicon> \
+  --output_dir <output_dir>
+```
+
+### Demo
 
 The repository includes a demo dataset of PacBio HLA hybrid capture sequencing reads from HG002 (Ashkenazi Son), a sample from the GIAB and HPRC benchmarks. Run this from the repository root:
 
