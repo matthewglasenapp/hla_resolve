@@ -10,11 +10,11 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/github/v/release/matthewglasenapp/hla_resolve?label=version&color=blue" alt="Version">
-  <img src="https://img.shields.io/badge/platform-linux--64-lightgrey" alt="Platform">
-  <img src="https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white" alt="Python">
-  <a href="LICENSE.txt"><img src="https://img.shields.io/badge/license-UCSC%20Noncommercial-green" alt="License"></a>
-  <a href="https://doi.org/10.64898/2026.03.27.26349549"><img src="https://img.shields.io/badge/medRxiv-10.64898-b31b1b" alt="Preprint"></a>
+  <picture><source media="(prefers-color-scheme: dark)" srcset="https://img.shields.io/github/v/release/matthewglasenapp/hla_resolve?label=version&color=blue"><img src="https://img.shields.io/github/v/release/matthewglasenapp/hla_resolve?label=version&color=1D4ED8" alt="Version"></picture>
+  <picture><source media="(prefers-color-scheme: dark)" srcset="https://img.shields.io/badge/platform-linux--64-lightgrey"><img src="https://img.shields.io/badge/platform-linux--64-4B5563" alt="Platform"></picture>
+  <picture><source media="(prefers-color-scheme: dark)" srcset="https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white"><img src="https://img.shields.io/badge/python-3.12-2563EB?logo=python&logoColor=white" alt="Python"></picture>
+  <a href="LICENSE.txt"><picture><source media="(prefers-color-scheme: dark)" srcset="https://img.shields.io/badge/license-UCSC%20Noncommercial-green"><img src="https://img.shields.io/badge/license-UCSC%20Noncommercial-15803D" alt="License"></picture></a>
+  <a href="https://doi.org/10.64898/2026.03.27.26349549"><picture><source media="(prefers-color-scheme: dark)" srcset="https://img.shields.io/badge/medRxiv-10.64898-b31b1b"><img src="https://img.shields.io/badge/medRxiv-10.64898-B91C1C" alt="Preprint"></picture></a>
 </p>
 
 <br/>
