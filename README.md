@@ -92,11 +92,16 @@ HLA-Resolve was designed for and fully validated on PacBio hybrid-capture librar
 
 #### Primary Results
 
-HLA allele calls for eight genes:
+Every run types the same eight genes.
 
-`HLA-A` &nbsp; `HLA-B` &nbsp; `HLA-C` &nbsp; `HLA-DPA1` &nbsp; `HLA-DPB1` &nbsp; `HLA-DQA1` &nbsp; `HLA-DQB1` &nbsp; `HLA-DRB1`
+<table>
+<tr><td><b>Class I</b></td><td><img src="https://img.shields.io/badge/HLA--A-4F46E5?style=flat-square" alt="HLA-A"> <img src="https://img.shields.io/badge/HLA--B-4F46E5?style=flat-square" alt="HLA-B"> <img src="https://img.shields.io/badge/HLA--C-4F46E5?style=flat-square" alt="HLA-C"></td></tr>
+<tr><td><b>Class II</b></td><td><img src="https://img.shields.io/badge/HLA--DPA1-0D9488?style=flat-square" alt="HLA-DPA1"> <img src="https://img.shields.io/badge/HLA--DPB1-0D9488?style=flat-square" alt="HLA-DPB1"> <img src="https://img.shields.io/badge/HLA--DQA1-0D9488?style=flat-square" alt="HLA-DQA1"> <img src="https://img.shields.io/badge/HLA--DQB1-0D9488?style=flat-square" alt="HLA-DQB1"> <img src="https://img.shields.io/badge/HLA--DRB1-0D9488?style=flat-square" alt="HLA-DRB1"></td></tr>
+</table>
 
-**Example output**, written to `<output_dir>/<sample>/hla_typing_results/`
+The calls are written to `<output_dir>/<sample>/hla_typing_results/`, one row per sample.
+
+**Example output**
 
 <table>
 <tr>
@@ -120,7 +125,7 @@ HLA allele calls for eight genes:
 > [!NOTE]
 > Allele order within each gene is arbitrary and is not consistent between genes.
 
-Three files hold the same calls at different levels of resolution.
+Three output files hold the same calls at different levels of resolution.
 
 | Resolution | Best Guess | Ambiguities Reported |
 |------------|------------|----------------------|
@@ -140,7 +145,7 @@ The Best Guess file forces a single best guess for every allele. The Ambiguities
 
 Runtime depends heavily on input file size and available compute resources. Target capture data typically completes in **<15 minutes** using **6 CPUs and 20 GB RAM**. Runtime increases for high-coverage WGS datasets, as all reads must be mapped to the human reference genome prior to restricting downstream analysis to the HLA region on chromosome 6.
 
-Reference genome alignment is the rate-limiting step and is multithreaded, so increasing the thread count with `--threads` provides the largest runtime reduction, especially for high-coverage WGS inputs. The default is **6**, or the number of CPUs available if fewer, read from the Slurm allocation where there is one. Memory requirements rise with the thread count, so raise the job's memory alongside `--threads`. `--threads` sets the thread count for the tools HLA-Resolve calls directly. DeepVariant also parallelizes internally, so on a cluster its CPU use is bounded by the job allocation and not by this flag.
+Reference genome alignment is the rate-limiting step and is multithreaded, so increasing the thread count with `--threads` provides the largest runtime reduction, especially for high-coverage WGS inputs. The default number of threads is **6**, or the number of CPUs available if fewer, read from the Slurm allocation where there is one. Memory requirements rise with the thread count, so raise the job's memory alongside `--threads`. `--threads` sets the thread count for the tools HLA-Resolve calls directly. DeepVariant also parallelizes internally, so on a cluster its CPU use is bounded by the job allocation and not by this flag.
 
 ---
 
@@ -251,7 +256,9 @@ Finished HG002 in 9m 18s (status: ok)
 
 The command will print the final HLA allele calls to STDOUT, along with important logging information, including coverage depth metrics and the paths of intermediate files (e.g., BAM, VCF). Genes that could not be reconstructed are shown as `not_typed`.
 
-The same calls are written to `test/HG002/hla_typing_results/`, the primary results directory for this run. It holds the six result files described in [Primary Results](#primary-results), with `allele_output.csv` giving the four-field calls shown above.
+The same HLA allele calls are written to `test/HG002/hla_typing_results/`, the primary results directory for this run. It holds the six result files described in [Primary Results](#primary-results), with `allele_output.csv` giving the four-field calls shown above.
+
+The reconstructed sequences that produced those calls are in `test/HG002/hla_fasta_haplotypes/`. `HG002_HLA_haplotypes_gene.fasta` holds the full gene sequences and `HG002_HLA_haplotypes_CDS.fasta` holds the coding sequences (CDS), two records per gene, one for each haplotype.
 
 <details>
 <summary><b>Full command-line options</b></summary>
