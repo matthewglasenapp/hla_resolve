@@ -94,8 +94,10 @@ HLA-Resolve was designed for and fully validated on PacBio hybrid-capture librar
 
 HLA allele calls for the following eight genes:
 
-**Class I** &nbsp; HLA-A, HLA-B, HLA-C  
-**Class II** &nbsp; HLA-DPA1, HLA-DPB1, HLA-DQA1, HLA-DQB1, HLA-DRB1
+<table>
+<tr><td><b>Class I</b></td><td>HLA-A, HLA-B, HLA-C</td></tr>
+<tr><td><b>Class II</b></td><td>HLA-DPA1, HLA-DPB1, HLA-DQA1, HLA-DQB1, HLA-DRB1</td></tr>
+</table>
 
 **Example Output**
 
