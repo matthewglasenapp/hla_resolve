@@ -370,10 +370,10 @@ HLA-Resolve was run on PacBio hybrid capture reads for 31 samples, at a mean cov
 
 | Resolution | IHWG | HPRC | Combined |
 |------------|------|------|----------|
-| One field | 227/230 (98.7%) | 192/192 (100%) | 419/422 (99.3%) |
-| Two field | 219/222 (98.6%) | 192/192 (100%) | 411/414 (99.3%) |
-| Three field | 196/198 (99.0%) | 190/190 (100%) | 386/388 (99.5%) |
-| Four field | 135/162 (83.3%) | 180/186 (96.8%) | 315/348 (90.5%) |
+| One field | 98.7% (227/230) | 100% (192/192) | 99.3% (419/422) |
+| Two field | 98.6% (219/222) | 100% (192/192) | 99.3% (411/414) |
+| Three field | 99.0% (196/198) | 100% (190/190) | 99.5% (386/388) |
+| Four field | 83.3% (135/162) | 96.8% (180/186) | 90.5% (315/348) |
 
 **[Browse the full benchmark →](docs/capture_validation.md)**
 
