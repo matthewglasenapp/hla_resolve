@@ -18,6 +18,11 @@ import os
 
 OUTPUT_DIR = "."
 
+# {allele: bases at the head of exon 2 that finish a codon begun in exon 1}.
+# Kept out of sequence_data because several functions walk that dict generically
+# and concatenate whatever they find, so a non-sequence entry breaks them.
+ARS_CODON_OFFSET = {}
+
 def out_path(name):
     # Results go under OUTPUT_DIR, set by main(). Defaults to the working
     # directory so the standalone CLI behaves as before.
@@ -213,14 +218,14 @@ def build_g_group_dict(xml_file, ignore_unconfirmed=False, ignore_incomplete=Fal
             if feature.attrib["name"] == "Exon 2":
                 sequence_data[name]["peptide_binding_domain"] = [(2, cut_sequence)]
 
-                # Bases at the head of exon 2 that finish a codon begun in exon 1.
                 # P groups exclude codons split across an exon border, so the
-                # protein window starts after them. Taken from the cDNA start
-                # because most records are partial and have no exon 1 to measure.
+                # protein window starts after the bases that finish exon 1's last
+                # codon. Taken from the cDNA start because most records are
+                # partial and have no exon 1 to measure.
                 cdna = feature.find(tag('cDNACoordinates'))
                 if cdna != None:
                     cdna_start = int(cdna.attrib["start"])
-                    sequence_data[name]["ars_codon_offset"] = (3 - ((cdna_start - 1) % 3)) % 3
+                    ARS_CODON_OFFSET[name] = (3 - ((cdna_start - 1) % 3)) % 3
 
             if feature.attrib["name"] == "Exon 3" and class_type == "I":
                 # Case where class 1 entry doesn't have Exon 2? Just HLA-E*01:04
@@ -574,9 +579,8 @@ def produce_allele_seq_db(sequence_data, selected_alleles = None, exon_only = Tr
         # Start building up the full sequence for this alleles
         segments = []
         for feature, seq in sequences.items():
-            # Skip derived entries: the Exon 2/3 copy used in first pass, and
-            # the P group codon offset, neither of which is sequence.
-            if feature in ("peptide_binding_domain", "ars_codon_offset"):
+            # Skip duplicate entries for Exon 2/3 used in first pass
+            if feature == "peptide_binding_domain":
                 continue
 
             # Skip non-exons if we are classifying concatenated exon data
@@ -1032,12 +1036,12 @@ def pass_3_classification(sequence_data, results_dict, samples, truth_data=None,
 # the bases finishing exon 1's last codon and is trimmed to whole codons. That
 # offset is (3 - len(exon 1) % 3) % 3, which reproduces IPD's own cDNA start for
 # every gene, so nothing is hardcoded per locus.
-def ars_protein(feats):
+def ars_protein(allele, feats):
     domain = feats.get("peptide_binding_domain")
     if not domain:
         return None
 
-    offset = feats.get("ars_codon_offset")
+    offset = ARS_CODON_OFFSET.get(allele)
     if offset is None:
         return None
 
@@ -1059,7 +1063,7 @@ def build_p_group_proteins(p_group_dict, sequence_data):
         feats = sequence_data.get(allele)
         if not feats:
             continue
-        protein = ars_protein(feats)
+        protein = ars_protein(allele, feats)
         if protein is None:
             continue
         gene = allele.split("*")[0]
