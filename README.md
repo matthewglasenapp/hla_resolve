@@ -57,7 +57,7 @@ HLA-Resolve was designed for and fully validated on PacBio hybrid-capture librar
 - [Introduction](#introduction)
 - [Tool Overview](#tool-overview)
   - [Input](#input)
-  - [Output(s)](#outputs)
+  - [Outputs](#outputs)
   - [Runtime and Required Resources](#runtime-and-required-resources)
 - [Installation](#installation)
 - [Quick Start and Demo](#quick-start-and-demo)
@@ -85,7 +85,7 @@ HLA-Resolve was designed for and fully validated on PacBio hybrid-capture librar
 <tr><td><b>Format</b></td><td>FASTQ or unmapped BAM, compressed or uncompressed</td></tr>
 </table>
 
-### Output(s)
+### Outputs
 
 #### Primary Results
 
