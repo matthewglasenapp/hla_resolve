@@ -4,6 +4,8 @@
 # See LICENSE.txt for license details.
 
 from Bio import SeqIO
+from Bio.Seq import Seq
+from collections import Counter
 import xml.etree.ElementTree as ET
 import pandas as pd
 import edlib
@@ -210,6 +212,15 @@ def build_g_group_dict(xml_file, ignore_unconfirmed=False, ignore_incomplete=Fal
             # Add sequences relevant to determining G group here too
             if feature.attrib["name"] == "Exon 2":
                 sequence_data[name]["peptide_binding_domain"] = [(2, cut_sequence)]
+
+                # Bases at the head of exon 2 that finish a codon begun in exon 1.
+                # P groups exclude codons split across an exon border, so the
+                # protein window starts after them. Taken from the cDNA start
+                # because most records are partial and have no exon 1 to measure.
+                cdna = feature.find(tag('cDNACoordinates'))
+                if cdna != None:
+                    cdna_start = int(cdna.attrib["start"])
+                    sequence_data[name]["ars_codon_offset"] = (3 - ((cdna_start - 1) % 3)) % 3
 
             if feature.attrib["name"] == "Exon 3" and class_type == "I":
                 # Case where class 1 entry doesn't have Exon 2? Just HLA-E*01:04
@@ -563,8 +574,9 @@ def produce_allele_seq_db(sequence_data, selected_alleles = None, exon_only = Tr
         # Start building up the full sequence for this alleles
         segments = []
         for feature, seq in sequences.items():
-            # Skip duplicate entries for Exon 2/3 used in first pass
-            if feature == "peptide_binding_domain":
+            # Skip derived entries: the Exon 2/3 copy used in first pass, and
+            # the P group codon offset, neither of which is sequence.
+            if feature in ("peptide_binding_domain", "ars_codon_offset"):
                 continue
 
             # Skip non-exons if we are classifying concatenated exon data
@@ -1015,6 +1027,146 @@ def pass_3_classification(sequence_data, results_dict, samples, truth_data=None,
 #        equidistant_file_path: Path to file which should contain all equidistant options
 # Output: None
 @print_time_taken
+# A P group is identity of the protein encoded by exon 2, plus exon 3 for class
+# I. IPD excludes codons split across an exon border, so the window starts after
+# the bases finishing exon 1's last codon and is trimmed to whole codons. That
+# offset is (3 - len(exon 1) % 3) % 3, which reproduces IPD's own cDNA start for
+# every gene, so nothing is hardcoded per locus.
+def ars_protein(feats):
+    domain = feats.get("peptide_binding_domain")
+    if not domain:
+        return None
+
+    offset = feats.get("ars_codon_offset")
+    if offset is None:
+        return None
+
+    window = "".join(seq for _, seq in sorted(domain))
+    window = window[offset:]
+    window = window[:len(window) - len(window) % 3]
+    if not window or set(window) - set("ACGT"):
+        return None
+    return str(Seq(window).translate())
+
+# Inputs:  p_group_dict: {allele: p_group}, sequence_data: {allele: {feature: seq}}
+# Outputs: {gene: {p_group: protein}}, {gene: canonical residue count}
+def build_p_group_proteins(p_group_dict, sequence_data):
+    raw = {}
+    for allele, p_group in p_group_dict.items():
+        # The XML writes the string "None" for an allele in no P group.
+        if not p_group or p_group == "None":
+            continue
+        feats = sequence_data.get(allele)
+        if not feats:
+            continue
+        protein = ars_protein(feats)
+        if protein is None:
+            continue
+        gene = allele.split("*")[0]
+        raw.setdefault(gene, {}).setdefault(p_group, []).append(protein)
+
+    proteins, canonical = {}, {}
+    for gene, groups in raw.items():
+        # One allele carrying an in-frame insertion (DPB1*1486:01Q) runs long.
+        # Truncating to the gene's usual length restores IPD's own grouping.
+        lengths = Counter(len(p) for entries in groups.values() for p in entries)
+        size = lengths.most_common(1)[0][0]
+        canonical[gene] = size
+        proteins[gene] = {}
+        for p_group, entries in groups.items():
+            # A partial exon 2 yields a short window and can outnumber the
+            # complete records, so take the longest length the group shows rather
+            # than the most common, capped at the gene's. Capping at the gene's
+            # length alone would discard DQA1's genuinely 81-residue lineages.
+            usable = [p for p in entries if len(p) <= size] or [p[:size] for p in entries]
+            longest = max(len(p) for p in usable)
+            trimmed = [p for p in usable if len(p) == longest]
+            proteins[gene][p_group] = Counter(trimmed).most_common(1)[0][0]
+    return proteins, canonical
+
+# Pass 1 assigns a G group only on a perfect ARS match, so an unassigned entry
+# means no group was observed rather than that the nearest one should be named.
+# The three-field call stands in, the same way the P group pass falls back, and a
+# name ending in G or P keeps the two kinds of value apart.
+def fill_with_three_field(classifications, allele_classifications):
+    filled = {}
+    for name, entry in classifications.items():
+        if entry[0]:
+            filled[name] = entry
+            continue
+        call = allele_classifications.get(name)
+        fallback = trunc_to_3_fields(call[0]) if call and call[0] else None
+        filled[name] = ((fallback,) + tuple(entry[1:-1]) + ([fallback],)
+                        if fallback else entry)
+    return filled
+
+# Is needle an infix of haystack, with X in haystack matching any residue?
+def wildcard_infix(needle, haystack):
+    span = len(needle)
+    if span > len(haystack):
+        return False
+    for offset in range(len(haystack) - span + 1):
+        for i in range(span):
+            residue = haystack[offset + i]
+            if residue != "X" and residue != needle[i]:
+                break
+        else:
+            return True
+    return False
+
+# The P group of a query is observed, not inferred from its allele call: the
+# query CDS is translated and each P group protein is searched inside it, the
+# same way pass 1 searches a G group's ARS inside the query's exon sequence.
+# Falls back to the three-field call when no single P group is observed, so the
+# column always carries the most specific designation available. A value ending
+# in "P" is a P group, anything else is an allele.
+def pass_p_group_classification(p_group_proteins, samples, allele_classifications):
+    logfile = open(out_path("p_group_assignment.log"), "w")
+    results = {}
+
+    for name, cds in samples.items():
+        gene = "HLA-" + get_gene(name, asterisk=False)
+        groups = p_group_proteins.get(gene, {})
+
+        sequence = str(cds).upper().replace("-", "")
+        sequence = sequence[:len(sequence) - len(sequence) % 3]
+        protein = str(Seq(sequence).translate()) if sequence else ""
+
+        hits = sorted(pg for pg, ref in groups.items() if ref and ref in protein)
+        widened = False
+        if not hits and "X" in protein:
+            hits = sorted(pg for pg, ref in groups.items()
+                          if ref and wildcard_infix(ref, protein))
+            widened = bool(hits)
+
+        call = allele_classifications.get(name)
+        fallback = trunc_to_3_fields(call[0]) if call else ""
+
+        if len(hits) == 1:
+            value, reason = hits[0], "wildcard" if widened else "exact"
+        elif len(hits) > 1:
+            value = fallback
+            reason = f"ambiguous, {len(hits)} groups compatible, fell back to the three-field call"
+        elif fallback:
+            value = fallback
+            reason = "no P group observed, fell back to the three-field call"
+        else:
+            value = ""
+            reason = "no P group observed and no three-field call"
+
+        marks = []
+        if "X" in protein:
+            marks.append(f"X={protein.count('X')}")
+        if "*" in protein[:-1]:
+            marks.append("internal stop")
+        detail = f" ({', '.join(marks)})" if marks else ""
+        logfile.writelines(f"{name}: {value or 'none'} [{reason}]{detail}\n")
+
+        results[name] = (value, hits if hits else [value])
+
+    logfile.close()
+    return results
+
 def output_results(results, file_path, equidistant_file_path=None, trunc=False):
     # Helper functions to get allele
     def get_allele (x):
@@ -1181,14 +1333,25 @@ def run_classification(reference_xml_file, samples_file, full_sample_file=None, 
     info("INFO: Classifying samples to G group")
     g_group_classifications = pass_1_classification(g_group_common_sequences, samples, g_group_dict, truth_data=truth_data)
 
-    info("INFO: Writing g group results")
-    output_results(g_group_classifications, out_path("g_group_output.csv"), out_path("g_group_output_full.csv") if write_full else None)
-
     info("INFO: Classifying the samples to an allele")
     allele_classifications = pass_2_classification(sequence_data, g_group_dict, g_group_classifications, samples, truth_data=truth_data, metric=pass2_metric)
 
     info("INFO: Writing allele results")
     output_results(allele_classifications, out_path("3_field_allele_output.csv"), out_path("3_field_allele_output_full.csv") if write_full else None, trunc=True)
+
+    # Written after pass 2 because an unassigned G group falls back to the
+    # three-field call. Pass 2 itself gets the unfilled classifications, since a
+    # three-field call is not a G group and must not restrict its search.
+    info("INFO: Writing g group results")
+    output_results(fill_with_three_field(g_group_classifications, allele_classifications),
+                   out_path("g_group_output.csv"), out_path("g_group_output_full.csv") if write_full else None)
+
+    info("INFO: Classifying samples to P group")
+    p_group_proteins, p_group_lengths = build_p_group_proteins(p_group_dict, sequence_data)
+    p_group_classifications = pass_p_group_classification(p_group_proteins, samples, allele_classifications)
+
+    info("INFO: Writing p group results")
+    output_results(p_group_classifications, out_path("p_group_output.csv"), out_path("p_group_output_full.csv") if write_full else None)
     
     if full_sample_file == None:
         return None

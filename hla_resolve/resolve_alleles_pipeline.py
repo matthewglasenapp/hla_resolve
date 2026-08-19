@@ -46,9 +46,10 @@ def strip_hla_prefix(call):
 	return call[len("HLA-"):] if call.startswith("HLA-") else call
 
 # Every classification pass writes the same CSV shape, so one reader serves all
-# three resolutions.
+# four resolutions.
 # (table heading, short label, best-guess file, genotype list string file)
 RESULT_TABLES = (
+	("P-group resolution", "P-group", "p_group_output.csv", "p_group_output_full.csv"),
 	("G-group resolution", "G-group", "g_group_output.csv", "g_group_output_full.csv"),
 	("Three-field resolution", "Three-field", "3_field_allele_output.csv", "3_field_allele_output_full.csv"),
 	("Four-field resolution", "Four-field", "allele_output.csv", "allele_output_full.csv"),
@@ -104,25 +105,7 @@ def print_results(config):
 	if not tables:
 		return
 
-	# Pass 1 assigns a G group only on a perfect ARS match, so a blank means the
-	# G group was never directly observed, either because the allele belongs to
-	# none or because the reconstruction differs by a base or two. Reporting the
-	# nearest group would assert a match that was not seen, so the three-field
-	# call stands in. A G group name ends in G, so the two stay distinguishable.
-	substituted = False
-	by_label = dict(tables)
-	g_calls = by_label.get("G-group resolution")
-	three_calls = by_label.get("Three-field resolution")
-	if g_calls is not None and three_calls is not None:
-		for gene, haplotypes in three_calls.items():
-			for index, call in haplotypes.items():
-				if call == NOT_TYPED:
-					continue
-				if g_calls.setdefault(gene, {}).get(index, NOT_TYPED) == NOT_TYPED:
-					g_calls[gene][index] = call
-					substituted = True
-
-	# One set of widths across all three blocks, so they line up under each other.
+	# One set of widths across all four blocks, so they line up under each other.
 	gene_width = max([len("gene")] + [len(gene) for gene in genes])
 	first_width = max([len("_1")] + [len(calls.get(gene, {}).get("1", NOT_TYPED))
 	                                 for _, calls in tables for gene in genes])
@@ -140,8 +123,7 @@ def print_results(config):
 	announce()
 	announce("Note: Allele order within each gene is arbitrary and is not consistent between genes.")
 	announce("Note: Ambiguous calls are written as genotype list strings to the ambiguities files below.")
-	if substituted:
-		announce("Note: Where no perfect G group match was found, the three-field call is shown.")
+	announce("Note: Where no P or G group was observed, the three-field call is shown. Group names end in P or G.")
 
 def print_output_files(config, phased_vcf):
 	entries = [

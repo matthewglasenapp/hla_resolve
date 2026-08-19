@@ -122,15 +122,18 @@ The calls are written to `<output_dir>/<sample>/hla_typing_results/`, one row pe
 > [!NOTE]
 > Allele order within each gene is arbitrary and is not consistent between genes.
 
-Three output files hold the same calls at different levels of resolution.
+Four output files hold the same calls at different levels of resolution.
 
 | Resolution | Best Guess | Ambiguities Reported |
 |------------|------------|----------------------|
+| P group | `p_group_output.csv` | `p_group_output_full.csv` |
 | G group | `g_group_output.csv` | `g_group_output_full.csv` |
 | Three field | `3_field_allele_output.csv` | `3_field_allele_output_full.csv` |
 | Four field | `allele_output.csv` | `allele_output_full.csv` |
 
 The Best Guess file forces a single best guess for every allele. The Ambiguities Reported file gives the calls as genotype list strings when multiple candidate alleles cannot be distinguished at the sequence level.
+
+P and G groups are read from the reconstructed sequence rather than looked up from the allele call. A P group is identity of the protein encoded by the peptide-binding domain, exon 2 for class II and exons 2 and 3 for class I, excluding the codons split across an exon border. A G group is identity of the same region at the nucleotide level. Where neither is observed, the three-field call is reported instead, so a name ending in P or G is a group and anything else is an allele.
 
 #### Intermediate Files
 
