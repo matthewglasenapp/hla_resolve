@@ -173,7 +173,7 @@ hla_resolve setup
 | DeepVariant Singularity image | 1.6.1 | Docker Hub |
 
 > [!NOTE]
-> Setup writes about **9 GB** into the install directory and pulls about **0.9 GB** into the Singularity image cache in your home directory. Allow about **12 GB** free in the install directory while setup runs, because the reference genome is briefly held in three copies as it is built. On a cluster where your home directory has a tighter quota than your working filesystem, set `SINGULARITY_CACHEDIR` to somewhere with room before the first run.
+> Setup needs about **9 GB** free in the install directory while it runs, and leaves about **6 GB** in place once it finishes. The DeepVariant image is pulled with the Singularity cache disabled, so nothing accumulates in your home directory, but the pull still needs temporary space while it converts the image. If `/tmp` is small on your compute nodes, point `SINGULARITY_TMPDIR` somewhere with more room before the first run.
 
 <details>
 <summary><b>Updating an existing installation</b></summary>
@@ -366,7 +366,7 @@ The [Technical Reference](https://github.com/matthewglasenapp/hla_resolve/blob/m
 
 ### Hybrid Capture
 
-HLA-Resolve was run on PacBio hybrid capture reads for 31 samples, at a mean coverage of 365× across the eight classical HLA genes. Every gene in every sample was typed (496/496 alleles). Concordance was measured for the 27 samples that carry a reference typing, 15 from the International HLA and Immunogenetics Workshop (IHWG) and 12 from the HPRC.
+HLA-Resolve was run on PacBio hybrid capture reads for 31 samples, at a mean coverage of 365× across the eight classical HLA genes. Every gene in every sample was typed (496/496 alleles). Concordance was measured for the 27 samples that carry a reference typing, 15 from the International Histocompatibility Working Group (IHWG) and 12 from the Human Pangenome Reference Consortium (HPRC). The HPRC reference typings are from [Lai et al. 2024](https://doi.org/10.1016/j.csbj.2024.03.030).
 
 | Resolution | IHWG | HPRC | Combined |
 |------------|------|------|----------|
@@ -385,7 +385,7 @@ Raw reads are available under BioProject [PRJNA1417783](https://www.ncbi.nlm.nih
 
 ### Whole Genome Sequencing
 
-HLA-Resolve was run on whole-genome PacBio sequencing reads for 39 samples from the Human Pangenome Reference Consortium (HPRC), at a mean coverage of 35.2× across the eight classical HLA genes. Concordance with the reference typings of Lai et al. was **100% at one- through three-field resolution** (610/610 alleles) and **92.8% at four-field resolution** (555/598), with a call rate of 99.4% (620/624).
+HLA-Resolve was run on whole-genome PacBio sequencing reads for 39 HPRC samples, at a mean coverage of 35.2× across the eight classical HLA genes. Concordance with the reference typings of Lai et al. was **100% at one- through three-field resolution** (610/610 alleles) and **92.8% at four-field resolution** (555/598), with a call rate of 99.4% (620/624).
 
 **[Browse the full benchmark →](docs/wgs_validation.md)**
 

@@ -2,7 +2,7 @@
 
 HLA-Resolve was run on PacBio hybrid capture reads for 31 samples, using IPD-IMGT/HLA release v3.64.0. Every gene in every sample was typed, giving 496 of 496 possible alleles. Mean coverage across the eight classical HLA genes was 365×, ranging from 43× to 822×.
 
-HLA allele concordance was measured for the 27 samples that carry a reference typing. Fifteen come from the International HLA and Immunogenetics Workshop (IHWG) and twelve from the Human Pangenome Reference Consortium (HPRC), scored against the reference typings of Lai et al. 2024 ([DOI: 10.1016/j.csbj.2024.03.030](https://doi.org/10.1016/j.csbj.2024.03.030); [Supplementary File 6](Lai_Supplementary-6.xlsx)). The two truth sets share no samples and are reported separately. Four samples have no reference typing and are typed but not scored.
+HLA allele concordance was measured for the 27 samples that carry a reference typing. Fifteen come from the International Histocompatibility Working Group (IHWG) and twelve from the Human Pangenome Reference Consortium (HPRC). The HPRC reference typings are from Lai et al. 2024 ([DOI: 10.1016/j.csbj.2024.03.030](https://doi.org/10.1016/j.csbj.2024.03.030); [Supplementary File 6](Lai_Supplementary-6.xlsx)). The two truth sets share no samples and are reported separately. Four samples have no reference typing and are typed but not scored.
 
 The following command was used for each sample:
 

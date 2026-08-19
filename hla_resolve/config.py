@@ -225,6 +225,9 @@ def ensure_reference_genome():
             # Download base GRCh38 if missing. Download+decompress to temp names
             # and atomically rename, so an interrupted fetch never leaves a
             # partial .fna that a later run would mistake for complete.
+            # The download is the build input only. It is removed once the
+            # augmented copy has been concatenated from it, so the 3 GB is not
+            # carried for the life of the install. A later rebuild refetches it.
             if not grch38_file.exists():
                 print("Downloading GRCh38 reference genome...")
                 tmp_gz = ref_dir / "grch38.tmp.fna.gz"
@@ -236,7 +239,6 @@ def ensure_reference_genome():
                 ], check=True)
                 subprocess.run(["gunzip", str(tmp_gz)], check=True)
                 os.replace(tmp_fna, grch38_file)
-                subprocess.run(["samtools", "faidx", str(grch38_file)], check=True)
 
             if not hla_y_file.exists():
                 raise FileNotFoundError(f"HLA-Y/OLI scaffold not found: {hla_y_file}")
@@ -245,6 +247,11 @@ def ensure_reference_genome():
             unmasked = ref_dir / "augmented_hg38.unmasked.tmp.fa"
             print("Augmenting GRCh38 with HLA-Y/OLI scaffold...")
             subprocess.run(["bash", "-c", f"cat {grch38_file} {hla_y_file} > {unmasked}"], check=True)
+
+            # Nothing reads the plain GRCh38 past this point, and dropping it here
+            # keeps the peak at two full genomes rather than three.
+            grch38_file.unlink(missing_ok=True)
+            Path(str(grch38_file) + ".fai").unlink(missing_ok=True)
 
             # Hard-mask HLA-DRB5 and HLA-DRB6.
             # GFF3 is 1-based inclusive; BED is 0-based half-open -> start-1, end unchanged.
