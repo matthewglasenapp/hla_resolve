@@ -25,7 +25,7 @@
   &nbsp;&nbsp;&nbsp;&nbsp;
   <a href="#technical-reference"><picture><source media="(prefers-color-scheme: dark)" srcset="https://img.shields.io/badge/Technical_Reference-1F2937?style=for-the-badge&logo=readthedocs&logoColor=white"><img src="https://img.shields.io/badge/Technical_Reference-E5E7EB?style=for-the-badge&logo=readthedocs&logoColor=1F2937" alt="Technical Reference"></picture></a>
   &nbsp;&nbsp;&nbsp;&nbsp;
-  <a href="#validated-wgs-libraries"><picture><source media="(prefers-color-scheme: dark)" srcset="https://img.shields.io/badge/Benchmark-1F2937?style=for-the-badge&logo=databricks&logoColor=white"><img src="https://img.shields.io/badge/Benchmark-E5E7EB?style=for-the-badge&logo=databricks&logoColor=1F2937" alt="Benchmark"></picture></a>
+  <a href="#benchmarks"><picture><source media="(prefers-color-scheme: dark)" srcset="https://img.shields.io/badge/Benchmark-1F2937?style=for-the-badge&logo=databricks&logoColor=white"><img src="https://img.shields.io/badge/Benchmark-E5E7EB?style=for-the-badge&logo=databricks&logoColor=1F2937" alt="Benchmark"></picture></a>
   &nbsp;&nbsp;&nbsp;&nbsp;
   <a href="#citation"><picture><source media="(prefers-color-scheme: dark)" srcset="https://img.shields.io/badge/Citation-1F2937?style=for-the-badge&logo=googlescholar&logoColor=white"><img src="https://img.shields.io/badge/Citation-E5E7EB?style=for-the-badge&logo=googlescholar&logoColor=1F2937" alt="Citation"></picture></a>
 </p>
@@ -42,7 +42,7 @@
 
 HLA-Resolve is a command-line tool for high-resolution HLA typing from high-coverage PacBio sequencing reads. It reconstructs phased, full-gene sequences for the eight classical HLA loci (HLA-A, -B, -C, -DPA1, -DPB1, -DQA1, -DQB1, -DRB1) and queries the [IPD-IMGT/HLA database](https://www.ebi.ac.uk/ipd/imgt/hla/) to assign HLA allele calls.
 
-HLA-Resolve was designed for and fully validated on PacBio hybrid-capture libraries (read N50 ~4 kb). WGS support has been validated on PacBio whole-genome sequencing reads from the GIAB and HPRC benchmarks (see [Validated WGS Libraries](#validated-wgs-libraries)). HLA-Resolve has not been tested on amplicon sequencing data yet. 
+HLA-Resolve was designed for and fully validated on PacBio hybrid-capture libraries (read N50 ~4 kb). WGS support has been validated against the reference typings of Lai et al. for 39 HPRC samples, with 100% concordance through three fields (see [Benchmarks](#benchmarks)). HLA-Resolve has not been tested on amplicon sequencing data yet. 
 
 > [!IMPORTANT]
 > 1. HLA-Resolve is pre-release software in active development. It is intended for high-coverage PacBio reads. A gene is typed only if its peptide-binding domain reaches at least 8× mean coverage depth.
@@ -59,14 +59,14 @@ HLA-Resolve was designed for and fully validated on PacBio hybrid-capture librar
   - [Input](#input)
   - [Output(s)](#outputs)
   - [Runtime and Required Resources](#runtime-and-required-resources)
-- [Requirements](#requirements)
 - [Installation](#installation)
-- [Updating](#updating)
 - [Quick Start and Demo](#quick-start-and-demo)
   - [Minimal Command](#minimal-command)
   - [Demo](#demo)
 - [Technical Reference](#technical-reference)
-- [Validated WGS Libraries](#validated-wgs-libraries)
+- [Benchmarks](#benchmarks)
+  - [Hybrid Capture](#hybrid-capture)
+  - [Whole Genome Sequencing](#whole-genome-sequencing)
 - [Planned Features (In Development)](#planned-features-in-development)
 - [Citation](#citation)
 - [Support](#support)
@@ -146,14 +146,14 @@ Reference genome alignment is the rate-limiting step and is multithreaded, so in
 
 ---
 
-## Requirements
+## Installation
+
+**Requirements**
 
 - **Linux (x86_64)** — Several dependencies (pbmarkdup, hiphase, trgt, pbsv) are distributed as precompiled Linux binaries via Bioconda and are not available for macOS.
-- **Conda** and **pip** — Used to install all dependencies (see [Installation](#installation)).
+- **Conda** and **pip** — Used to install all dependencies.
 
----
-
-## Installation
+**Install**
 
 ```bash
 git clone https://github.com/matthewglasenapp/hla_resolve
@@ -173,17 +173,19 @@ hla_resolve setup
 | DeepVariant Singularity image | 1.6.1 | Docker Hub |
 
 > [!NOTE]
-> These downloads are large. Ensure sufficient disk space is available in the install directory before the first run.
+> Setup writes about **9 GB** into the install directory and pulls about **0.9 GB** into the Singularity image cache in your home directory. Allow about **12 GB** free in the install directory while setup runs, because the reference genome is briefly held in three copies as it is built. On a cluster where your home directory has a tighter quota than your working filesystem, set `SINGULARITY_CACHEDIR` to somewhere with room before the first run.
 
----
+<details>
+<summary><b>Updating an existing installation</b></summary>
 
-## Updating
+Please ensure you are running the latest version. To update, run `update.sh` from the root of your cloned `hla_resolve` repository:
 
-Please ensure you are running the latest version. To update an existing installation to the latest version, run `update.sh` from the root of your cloned `hla_resolve` repository:
 ```bash
 chmod a+x update.sh
 bash update.sh
 ```
+
+</details>
 
 ---
 
@@ -360,7 +362,28 @@ The [Technical Reference](https://github.com/matthewglasenapp/hla_resolve/blob/m
 
 ---
 
-## Validated WGS Libraries
+## Benchmarks
+
+### Hybrid Capture
+
+HLA-Resolve was run on PacBio hybrid capture reads for 31 samples, at a mean coverage of 365× across the eight classical HLA genes. Every gene in every sample was typed (496/496 alleles). Concordance was measured for the 27 samples that carry a reference typing, 15 from the International HLA and Immunogenetics Workshop (IHWG) and 12 from the HPRC.
+
+| Resolution | IHWG | HPRC | Combined |
+|------------|------|------|----------|
+| One field | 227/230 (98.7%) | 192/192 (100%) | 419/422 (99.3%) |
+| Two field | 219/222 (98.6%) | 192/192 (100%) | 411/414 (99.3%) |
+| Three field | 196/198 (99.0%) | 190/190 (100%) | 386/388 (99.5%) |
+| Four field | 135/162 (83.3%) | 180/186 (96.8%) | 315/348 (90.5%) |
+
+**[Browse the full benchmark →](docs/capture_validation.md)**
+
+- Per-gene concordance by field of resolution for each truth set
+- Mean HLA coverage depth by sample
+- The SRA run accession for each sample
+
+Raw reads are available under BioProject [PRJNA1417783](https://www.ncbi.nlm.nih.gov/bioproject/PRJNA1417783).
+
+### Whole Genome Sequencing
 
 HLA-Resolve was run on whole-genome PacBio sequencing reads for 39 samples from the Human Pangenome Reference Consortium (HPRC), at a mean coverage of 35.2× across the eight classical HLA genes. Concordance with the reference typings of Lai et al. was **100% at one- through three-field resolution** (610/610 alleles) and **92.8% at four-field resolution** (555/598), with a call rate of 99.4% (620/624).
 

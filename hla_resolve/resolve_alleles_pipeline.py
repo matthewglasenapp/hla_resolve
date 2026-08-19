@@ -340,6 +340,7 @@ def resolve_alleles(config):
 		output_dir=config['hla_typing_dir']
 	)
 
+	print()
 	finish_stage()
 	print()
 
