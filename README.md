@@ -175,8 +175,7 @@ hla_resolve setup
 > [!NOTE]
 > Setup needs about **9 GB** free in the install directory while it runs, and leaves about **6 GB** in place once it finishes. The Singularity image pull also needs temporary space, so set `SINGULARITY_TMPDIR` if `/tmp` is small on your nodes.
 
-<details>
-<summary><b>Updating an existing installation</b></summary>
+**Updating an existing installation**
 
 Please ensure you are running the latest version. To update, run `update.sh` from the root of your cloned `hla_resolve` repository:
 
@@ -184,8 +183,6 @@ Please ensure you are running the latest version. To update, run `update.sh` fro
 chmod a+x update.sh
 bash update.sh
 ```
-
-</details>
 
 ---
 
@@ -220,7 +217,7 @@ hla_resolve \
   --sample_name HG002 \
   --platform pacbio \
   --scheme hybrid_capture \
-  --output_dir test \
+  --output_dir demo_out \
   --trim_adapters \
   --adapter_file demo/adapters.fasta \
   --threads 6
@@ -259,9 +256,9 @@ Finished HG002 in 9m 18s (status: ok)
 
 The command prints the HLA allele calls at all three resolutions to STDOUT, together with the paths of the main result files and logging information such as coverage depth metrics. Genes that could not be reconstructed are shown as `not_typed`. The paths of intermediate files go to the log file only. Pass `--verbose` to see them on screen as well.
 
-The same HLA allele calls are written to `test/HG002/hla_typing_results/`, the primary results directory for this run. It holds the six result files described in [Primary Results](#primary-results), with `allele_output.csv` giving the four-field calls shown above.
+The same HLA allele calls are written to `demo_out/HG002/hla_typing_results/`, the primary results directory for this run. It holds the six result files described in [Primary Results](#primary-results), with `allele_output.csv` giving the four-field calls shown above.
 
-The reconstructed sequences that produced those calls are in `test/HG002/hla_fasta_haplotypes/`. `HG002_HLA_haplotypes_gene.fasta` holds the full gene sequences and `HG002_HLA_haplotypes_CDS.fasta` holds the coding sequences (CDS), two records per gene, one for each haplotype.
+The reconstructed sequences that produced those calls are in `demo_out/HG002/hla_fasta_haplotypes/`. `HG002_HLA_haplotypes_gene.fasta` holds the full gene sequences and `HG002_HLA_haplotypes_CDS.fasta` holds the coding sequences (CDS), two records per gene, one for each haplotype.
 
 <details>
 <summary><b>Full command-line options</b></summary>
@@ -377,9 +374,9 @@ HLA-Resolve was run on PacBio hybrid capture reads for 31 samples, at a mean cov
 
 **[Browse the full benchmark →](docs/capture_validation.md)**
 
-- Per-gene concordance by field of resolution for each truth set
+- Concordance by gene and field of resolution
 - Mean HLA coverage depth by sample
-- The SRA run accession for each sample
+- The SRA accession for each sample
 
 Raw reads are available under BioProject [PRJNA1417783](https://www.ncbi.nlm.nih.gov/bioproject/PRJNA1417783).
 
