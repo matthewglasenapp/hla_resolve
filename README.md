@@ -42,7 +42,7 @@
 
 HLA-Resolve is a command-line tool for high-resolution HLA typing from high-coverage PacBio sequencing reads. It reconstructs phased, full-gene sequences for the eight classical HLA loci (HLA-A, -B, -C, -DPA1, -DPB1, -DQA1, -DQB1, -DRB1) and queries the [IPD-IMGT/HLA database](https://www.ebi.ac.uk/ipd/imgt/hla/) to assign HLA allele calls.
 
-HLA-Resolve was designed for and fully validated on PacBio hybrid-capture libraries (read N50 ~4 kb). WGS support has been validated against the reference typings of Lai et al. for 39 HPRC samples, with 100% concordance through three fields (see [Benchmarks](#benchmarks)). HLA-Resolve has not been tested on amplicon sequencing data yet. 
+HLA-Resolve was designed for and fully validated on PacBio hybrid-capture libraries (read N50 ~4 kb). WGS support has been validated on PacBio whole-genome sequencing reads from the GIAB and HPRC benchmarks (see [Benchmarks](#benchmarks)). HLA-Resolve has not been tested on amplicon sequencing data yet. 
 
 > [!IMPORTANT]
 > 1. HLA-Resolve is pre-release software in active development. It is intended for high-coverage PacBio reads. A gene is typed only if its peptide-binding domain reaches at least 8× mean coverage depth.
@@ -173,7 +173,7 @@ hla_resolve setup
 | DeepVariant Singularity image | 1.6.1 | Docker Hub |
 
 > [!NOTE]
-> Setup needs about **9 GB** free in the install directory while it runs, and leaves about **6 GB** in place once it finishes. The DeepVariant image is pulled with the Singularity cache disabled, so nothing accumulates in your home directory, but the pull still needs temporary space while it converts the image. If `/tmp` is small on your compute nodes, point `SINGULARITY_TMPDIR` somewhere with more room before the first run.
+> Setup needs about **9 GB** free in the install directory while it runs, and leaves about **6 GB** in place once it finishes. The Singularity image pull also needs temporary space, so set `SINGULARITY_TMPDIR` if `/tmp` is small on your nodes.
 
 <details>
 <summary><b>Updating an existing installation</b></summary>
