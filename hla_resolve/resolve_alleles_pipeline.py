@@ -362,10 +362,10 @@ def resolve_alleles(config):
 
 	print()
 	finish_stage()
-	print()
+	announce()
 
 	print_results(config)
-	print()
+	announce()
 
 	detail(f"HLA typing result files located in dir: {config['hla_typing_dir']}/")
 	detail("")
@@ -386,7 +386,7 @@ def resolve_alleles(config):
 	detail("\n")
 
 	print_output_files(config, input_vcf)
-	print()
+	announce()
 
 	print("HLA allele resolution workflow completed")
 
