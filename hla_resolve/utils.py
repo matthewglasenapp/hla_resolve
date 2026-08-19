@@ -142,7 +142,13 @@ def finish_stage():
     elapsed = time.time() - _stage_start
     _stage_start = None
     minutes, seconds = divmod(elapsed, 60)
-    announce(f"Finished in {int(minutes)}m {seconds:.0f}s" if minutes else f"Finished in {seconds:.1f}s")
+    if minutes:
+        announce(f"Finished in {int(minutes)}m {seconds:.0f}s")
+    elif seconds < 0.1:
+        # Rounding a fast stage to 0.0s reads as a stopped clock.
+        announce("Finished in <0.1s")
+    else:
+        announce(f"Finished in {seconds:.1f}s")
 
 
 def setup_logging(output_dir, sample_name=None):

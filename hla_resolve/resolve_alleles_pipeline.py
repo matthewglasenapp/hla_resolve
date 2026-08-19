@@ -263,7 +263,7 @@ def resolve_alleles(config):
 	if unphased_het_counts:
 		counts = ", ".join(f"{gene} ({count})" for gene, count in unphased_het_counts.items())
 		print(f"Unphased PASS heterozygous variants: {counts}")
-		print("Written to: " + os.path.join(config['filtered_vcf_dir'],
+		print("Unphased variants written to: " + os.path.join(config['filtered_vcf_dir'],
 												 f"{config['sample_ID']}_<gene>_PASS_UNPHASED.vcf.gz"))
 	else:
 		print("Unphased PASS heterozygous variants: none")
@@ -330,6 +330,7 @@ def resolve_alleles(config):
 
 	# Step 3: HLA typing
 	stage("IPD-IMGT/HLA database matching")
+	print("Matching reconstructed sequences against the IPD-IMGT/HLA database...")
 	classifications = classify_hla_alleles(
 		reference_xml_file=config['IMGT_XML'],
 		hla_fasta_dir=config['hla_fasta_dir'],
