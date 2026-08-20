@@ -117,15 +117,17 @@ def _full_with_exon_intervals(sequence_data, allele):
 def _project_cds(consensus, allele, sequence_data):
     # Extract the CDS (exon concatenation) of the re-consensus sequence by
     # aligning the consensus to the chosen allele's full sequence and copying the
-    # consensus bases spanning each exon.
+    # consensus bases spanning each exon. Returns (cds, notes), where notes
+    # record signs that the projection is an artifact. Notes never change the
+    # sequence, because a real frameshift must reach the deposited CDS.
     full, intervals = _full_with_exon_intervals(sequence_data, allele)
     if not consensus or not full or not intervals:
-        return ""
+        return "", ["no consensus or no exon annotation for " + allele]
     result = edlib.align(consensus, full, mode="NW", task="path",
                          additionalEqualities=_WILDCARD_EQUALITIES)
     cigar = result.get("cigar") or ""
     if not cigar:
-        return ""
+        return "", ["consensus did not align to " + allele]
     # ref_q[r] = consensus index aligned at full-sequence position r
     ref_q = [0] * (len(full) + 1)
     r = q = 0
@@ -148,14 +150,22 @@ def _project_cds(consensus, allele, sequence_data):
     # deletions carry through unchanged. samtools consensus is run with -a, so a
     # position no read reached is an N in the consensus rather than absent, and a
     # gap here means a deletion the reads actually support.
-    cds = "".join(consensus[ref_q[s]:ref_q[e]] for s, e in intervals)
+    pieces = [consensus[ref_q[s]:ref_q[e]] for s, e in intervals]
+    cds = "".join(pieces)
 
-    # If it still cannot be read in frame, the consensus is not good enough to
-    # deposit. Returning empty leaves vcf2fasta output in place for this
-    # haplotype, the same as a declined refinement.
+    # Report the two signs of a bad projection without acting on either. Exon 1
+    # is the only CDS content 5' of exon 2, so a short exon 1 is the one failure
+    # that silently reads the P group window out of frame. A CDS that is not a
+    # multiple of 3 is weaker evidence, because a frameshift after exon 2 is
+    # genuine biology in a null allele and leaves the P group window intact.
+    notes = []
+    ref_exon1 = intervals[0][1] - intervals[0][0]
+    if len(pieces[0]) != ref_exon1:
+        notes.append(f"exon 1 projected {len(pieces[0])} bp against "
+                     f"{ref_exon1} bp in {allele}")
     if len(cds) % 3:
-        return ""
-    return cds
+        notes.append(f"CDS {len(cds)} bp is not a multiple of 3")
+    return cds, notes
 
 
 def _iter_fasta_records(path):
@@ -474,6 +484,12 @@ def _refine_one_gene(sample_ID, gene, name1, name2, results, query_seqs,
         try:
             refined = {}
             cons_of = {}
+            # The allele each slot's consensus was built on. The consensus is a
+            # per-base overlay of that record, so its exon boundaries are the
+            # only ones that line up with it. IPD records of two alleles in the
+            # same 3-field group can differ by hundreds of bases of UTR, so
+            # cutting the CDS against the called allele instead lands off target.
+            scaffold_of = {}
             if pooled:
                 reads_fq = os.path.join(workdir, "pooled.fq")
                 if not _extract_reads_fastq(bam, region, reads_fq):
@@ -489,6 +505,7 @@ def _refine_one_gene(sample_ID, gene, name1, name2, results, query_seqs,
                 for slot, guess, lineage in ((1, best_guess_1, lineage_1), (2, best_guess_2, lineage_2)):
                     if _num_fields(guess) >= 4:
                         cons_of[slot] = cons
+                        scaffold_of[slot] = scaffold_allele
                         refined[slot] = _best_in_lineage(cons, lineage, gene, sequence_data, core_cache)
             elif mode == "self_sort":
                 reads_fq = os.path.join(workdir, "all.fq")
@@ -502,10 +519,12 @@ def _refine_one_gene(sample_ID, gene, name1, name2, results, query_seqs,
                 for slot, guess, lineage, cons in ((1, best_guess_1, lineage_1, cons1), (2, best_guess_2, lineage_2, cons2)):
                     if _num_fields(guess) >= 4:
                         cons_of[slot] = cons
+                        scaffold_of[slot] = guess
                         refined[slot] = _best_in_lineage(cons, lineage, gene, sequence_data, core_cache)
             else:
                 # hp_tag: assign each HP tag to a scaffold by primary-alignment fraction,
                 # then consensus each tag on its assigned scaffold for the 4th-field call.
+                scaffold_allele_1, scaffold_allele_2 = best_guess_1, best_guess_2
                 scaffold_seq_1 = _full_sequence(sequence_data, best_guess_1)
                 scaffold_seq_2 = _full_sequence(sequence_data, best_guess_2)
                 if same_lineage:
@@ -515,8 +534,11 @@ def _refine_one_gene(sample_ID, gene, name1, name2, results, query_seqs,
                     # decide the 4th field). The competitive two-scaffold step
                     # below then drops nothing (identical contigs), so the split
                     # is purely by HP tag.
-                    shared = scaffold_seq_1 if _num_fields(best_guess_1) >= 4 else scaffold_seq_2
+                    take_1 = _num_fields(best_guess_1) >= 4
+                    shared = scaffold_seq_1 if take_1 else scaffold_seq_2
                     scaffold_seq_1 = scaffold_seq_2 = shared
+                    shared_allele = best_guess_1 if take_1 else best_guess_2
+                    scaffold_allele_1 = scaffold_allele_2 = shared_allele
                 if not scaffold_seq_1 or not scaffold_seq_2:
                     return
                 ref_fa = os.path.join(workdir, "two_scaffold.fa")
@@ -543,6 +565,7 @@ def _refine_one_gene(sample_ID, gene, name1, name2, results, query_seqs,
                 slot_lineage = {1: lineage_1, 2: lineage_2}
                 slot_guess = {1: best_guess_1, 2: best_guess_2}
                 slot_scaffold_seq = {1: scaffold_seq_1, 2: scaffold_seq_2}
+                slot_scaffold_allele = {1: scaffold_allele_1, 2: scaffold_allele_2}
                 for slot in (1, 2):
                     if _num_fields(slot_guess[slot]) < 4:
                         continue
@@ -564,6 +587,7 @@ def _refine_one_gene(sample_ID, gene, name1, name2, results, query_seqs,
                         reads_fq = os.path.join(workdir, f"hp{hp}.fq")
                     cons = _consensus_on_scaffold(slot_scaffold_fa, reads_fq, workdir, f"slot{slot}")
                     cons_of[slot] = cons
+                    scaffold_of[slot] = slot_scaffold_allele[slot]
                     refined[slot] = _best_in_lineage(cons, slot_lineage[slot], gene, sequence_data, core_cache)
 
             present = [i for i in (1, 2) if refined.get(i)]
@@ -573,7 +597,9 @@ def _refine_one_gene(sample_ID, gene, name1, name2, results, query_seqs,
             name_by_idx = {1: name1, 2: name2}
             guess_by_idx = {1: best_guess_1, 2: best_guess_2}
 
-            # assign[slot] = (allele, consensus, tie_set) for the slots to overwrite
+            # assign[slot] = (allele, consensus, tie_set, scaffold) for the slots to
+            # overwrite. The scaffold travels with its own consensus so the CDS is
+            # always cut against the record the consensus was built on.
             assign = {}
             refined_q = sum(refined[i][1] for i in present)
             if pooled and same_lineage:
@@ -581,14 +607,14 @@ def _refine_one_gene(sample_ID, gene, name1, name2, results, query_seqs,
                 # consensus assigned to both slots.
                 winner = min(present, key=lambda i: refined[i][1])
                 allele, _, tie = refined[winner]
-                assign[1] = assign[2] = (allele, cons_of[winner], tie)
+                assign[1] = assign[2] = (allele, cons_of[winner], tie, scaffold_of.get(winner))
             elif same_lineage and len(present) == 2:
                 # Un-pooled same-lineage het: accept the HP split only if the two
                 # per-haplotype consensuses beat a single pooled one, N-penalized so a
                 # blurry pooled blend cannot match for free at the distinguishing bases.
-                shared_seq = _full_sequence(
-                    sequence_data,
-                    best_guess_1 if _num_fields(best_guess_1) >= 4 else best_guess_2)
+                shared_allele = (best_guess_1 if _num_fields(best_guess_1) >= 4
+                                 else best_guess_2)
+                shared_seq = _full_sequence(sequence_data, shared_allele)
                 pooled_cons, pooled_ref = _pooled_alternative(
                     bam, region, shared_seq, lineage_1, gene, sequence_data,
                     core_cache, workdir)
@@ -599,14 +625,16 @@ def _refine_one_gene(sample_ID, gene, name1, name2, results, query_seqs,
                               if pooled_ref and pooled_cons else _BIG)
                 if split_pen < pooled_pen:
                     for i in present:
-                        assign[i] = (refined[i][0], cons_of[i], refined[i][2])
+                        assign[i] = (refined[i][0], cons_of[i], refined[i][2],
+                                     scaffold_of.get(i))
                     if logfile is not None:
                         logfile.writelines(
                             f"For {sample_ID} {gene}, un-pooled het accepted: split "
                             f"residual {split_pen} < pooled {pooled_pen}\n")
                 else:
                     allele, _, tie = pooled_ref
-                    assign[1] = assign[2] = (allele, pooled_cons, tie)
+                    # pooled_cons was built on shared_seq, not on either slot scaffold.
+                    assign[1] = assign[2] = (allele, pooled_cons, tie, shared_allele)
                     refined_q = 2 * pooled_ref[1]
                     if logfile is not None:
                         logfile.writelines(
@@ -614,7 +642,8 @@ def _refine_one_gene(sample_ID, gene, name1, name2, results, query_seqs,
                             f"homozygous): split residual {split_pen} >= pooled {pooled_pen}\n")
             else:
                 for i in present:
-                    assign[i] = (refined[i][0], cons_of[i], refined[i][2])
+                    assign[i] = (refined[i][0], cons_of[i], refined[i][2],
+                                 scaffold_of.get(i))
 
             original_q = 0
             for i in present:
@@ -623,7 +652,7 @@ def _refine_one_gene(sample_ID, gene, name1, name2, results, query_seqs,
                 original_q += _edit_distance(query, _core_sequence(sequence_data, guess_by_idx[i]))
 
             if refined_q <= original_q:
-                for i, (allele, cons, tie) in assign.items():
+                for i, (allele, cons, tie, scaffold) in assign.items():
                     dist, mlen, _, seq_id, mm_id = _match_metrics(cons, _core_sequence(sequence_data, allele))
                     used_tb = len(tie) > 1
                     name = name_by_idx[i]
@@ -631,11 +660,20 @@ def _refine_one_gene(sample_ID, gene, name1, name2, results, query_seqs,
                     changed.add(name)
                     # Override the deposited haplotype with the re-consensus
                     # sequence: full gene = consensus, CDS = exon projection.
+                    # Cut against the scaffold, not the refined call. Refinement
+                    # usually lands on a different 4th field, whose IPD record can
+                    # carry hundreds of bases more UTR, and exon 1 starts right
+                    # after the UTR so that is where the cut goes wrong.
+                    # The refinement was accepted for typing, so the CDS is
+                    # deposited as projected and any concern about it is logged
+                    # rather than repaired.
                     if overrides is not None and cons:
-                        overrides[name] = {
-                            "gene": cons,
-                            "cds": _project_cds(cons, allele, sequence_data),
-                        }
+                        cds, cds_notes = _project_cds(cons, scaffold or allele, sequence_data)
+                        overrides[name] = {"gene": cons, "cds": cds}
+                        if cds_notes and logfile is not None:
+                            logfile.writelines(
+                                f"For {name}, re-consensus CDS deposited with "
+                                f"{', '.join(cds_notes)}\n")
                         if query_seqs is not None:
                             query_seqs[name] = cons
         finally:
