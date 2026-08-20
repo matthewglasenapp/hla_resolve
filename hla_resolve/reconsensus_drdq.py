@@ -116,8 +116,8 @@ def _full_with_exon_intervals(sequence_data, allele):
 
 def _project_cds(consensus, allele, sequence_data):
     # Extract the CDS (exon concatenation) of the re-consensus sequence by
-    # aligning the consensus to the chosen allele's full sequence and taking one
-    # base per exon position of that allele.
+    # aligning the consensus to the chosen allele's full sequence and copying the
+    # consensus bases spanning each exon.
     full, intervals = _full_with_exon_intervals(sequence_data, allele)
     if not consensus or not full or not intervals:
         return ""
@@ -126,25 +126,36 @@ def _project_cds(consensus, allele, sequence_data):
     cigar = result.get("cigar") or ""
     if not cigar:
         return ""
-    # One base per reference position, so every exon keeps its reference length
-    # and the concatenated CDS stays in frame. A reference base the consensus
-    # lacks becomes N rather than being dropped: the consensus is ragged over
-    # exon 1, and dropping there shifted the frame for every exon after it.
-    per_ref = []
-    q = 0
+    # ref_q[r] = consensus index aligned at full-sequence position r
+    ref_q = [0] * (len(full) + 1)
+    r = q = 0
     for count, op in re.findall(r"(\d+)([=XID])", cigar):
         count = int(count)
         if op in ("=", "X"):
-            per_ref.append(consensus[q:q + count])
+            for _ in range(count):
+                ref_q[r] = q
+                r += 1
+                q += 1
+        elif op == "D":  # base in full only (gap in consensus)
+            for _ in range(count):
+                ref_q[r] = q
+                r += 1
+        else:            # "I": base in consensus only
             q += count
-        elif op == "D":  # base in full only, no consensus support
-            per_ref.append("N" * count)
-        else:            # "I": base in consensus only, outside reference space
-            q += count
-    projected = "".join(per_ref)
-    if len(projected) != len(full):
+    ref_q[len(full)] = q
+
+    # Copy the consensus between each exon's boundaries, so real insertions and
+    # deletions carry through unchanged. samtools consensus is run with -a, so a
+    # position no read reached is an N in the consensus rather than absent, and a
+    # gap here means a deletion the reads actually support.
+    cds = "".join(consensus[ref_q[s]:ref_q[e]] for s, e in intervals)
+
+    # If it still cannot be read in frame, the consensus is not good enough to
+    # deposit. Returning empty leaves vcf2fasta output in place for this
+    # haplotype, the same as a declined refinement.
+    if len(cds) % 3:
         return ""
-    return "".join(projected[s:e] for s, e in intervals)
+    return cds
 
 
 def _iter_fasta_records(path):
@@ -282,7 +293,7 @@ def _consensus_on_scaffold(scaffold_fa, reads_fq, workdir, tag):
     cons = os.path.join(workdir, f"{tag}.cons.fa")
     _run(f"{config.rammap} -a -x map-hifi {scaffold_fa} {reads_fq} | "
          f"samtools sort -o {aln} - && samtools index {aln}")
-    _run(f"samtools consensus -f fasta {aln} > {cons}")
+    _run(f"samtools consensus -a -f fasta {aln} > {cons}")
     return _read_fasta_seq(cons)
 
 
@@ -297,8 +308,8 @@ def _consensus_self_sort(scaffold_seq_1, scaffold_seq_2, reads_fq, workdir):
     _run(f"samtools view -b -F 0x900 {aln} > {prim} && samtools index {prim}")
     cons1 = os.path.join(workdir, "sort.cons1.fa")
     cons2 = os.path.join(workdir, "sort.cons2.fa")
-    _run(f"samtools consensus -f fasta -r sc1 {prim} > {cons1}")
-    _run(f"samtools consensus -f fasta -r sc2 {prim} > {cons2}")
+    _run(f"samtools consensus -a -f fasta -r sc1 {prim} > {cons1}")
+    _run(f"samtools consensus -a -f fasta -r sc2 {prim} > {cons2}")
     return _read_fasta_seq(cons1), _read_fasta_seq(cons2)
 
 
@@ -331,7 +342,7 @@ def _retained_reads_fastq(prim_bam, own_contig, out_fq, min_mapq=_PHASING_DROP_M
 
 def _consensus_region(prim_bam, contig, workdir, tag):
     cons = os.path.join(workdir, f"{tag}.cons.fa")
-    _run(f"samtools consensus -f fasta -r {contig} {prim_bam} > {cons}")
+    _run(f"samtools consensus -a -f fasta -r {contig} {prim_bam} > {cons}")
     return _read_fasta_seq(cons)
 
 
