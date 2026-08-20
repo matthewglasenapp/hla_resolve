@@ -842,7 +842,7 @@ def pass_2_classification(sequence_data, allele_to_g_groups, results_dict, sampl
 @print_time_taken
 def pass_3_classification(sequence_data, results_dict, samples, truth_data=None, metric="identity",
                           generate_query_ref_comp=False, log_assignment_condition=False, tie_metric="match_length",
-                          reconsensus_ctx=None):
+                          reconsensus_ctx=None, cds_out=None):
     info("INFO: Beginning classification pass 3...")
 
     headers = ["sample", "ref_allele_name", "CIGAR", "alignment_path_start", "alignment_path_stop", "raw_edit", "gc_edit", "prop_mismatch", "match_length"]
@@ -1006,7 +1006,8 @@ def pass_3_classification(sequence_data, results_dict, samples, truth_data=None,
     # Read re-consensus 4th-field refinement for HLA-DRB1/DQA1/DQB1 only.
     if recon_enabled:
         from .reconsensus_drdq import refine_drdq
-        refine_drdq(results, samples, sequence_data, reconsensus_ctx, logfile=pass_3_logfile)
+        refine_drdq(results, samples, sequence_data, reconsensus_ctx, logfile=pass_3_logfile,
+                    cds_out=cds_out)
 
     if pass_3_logfile != None:
         pass_3_logfile.close()
@@ -1343,28 +1344,46 @@ def run_classification(reference_xml_file, samples_file, full_sample_file=None, 
     info("INFO: Writing allele results")
     output_results(allele_classifications, out_path("3_field_allele_output.csv"), out_path("3_field_allele_output_full.csv") if write_full else None, trunc=True)
 
-    # Written after pass 2 because an unassigned G group falls back to the
-    # three-field call. Pass 2 itself gets the unfilled classifications, since a
-    # three-field call is not a G group and must not restrict its search.
+    refined_classifications = None
+    cds_overrides = {}
+    if full_sample_file != None:
+        info("INFO: Refining allele classifications based on non-coding regions", pass3_metric)
+        refined_classifications = pass_3_classification(sequence_data, allele_classifications, full_samples, truth_data=truth_data, metric=pass3_metric, generate_query_ref_comp=generate_query_ref_comp, log_assignment_condition=log_assignment_condition, reconsensus_ctx=reconsensus_ctx, cds_out=cds_overrides)
+
+        info("INFO: Writing refined allele results")
+        output_results(refined_classifications, out_path("allele_output.csv"), out_path("allele_output_full.csv") if write_full else None)
+
+    # The DR/DQ re-consensus replaces the query CDS for the haplotypes it
+    # refines. The G group and the P group are both observed from that CDS, so
+    # re-observe the G group here rather than keep the pass 1 answer, which was
+    # read from a sequence the run has since discarded. Pass 1 also restricts the
+    # pass 2 search, and that already happened, so this corrects the reported
+    # group and never the typing.
+    if cds_overrides:
+        samples.update(cds_overrides)
+        with open(out_path("g_group_assignment.log"), "a") as pass_1_logfile:
+            pass_1_logfile.writelines(
+                "Re-observed below, after the DR/DQ re-consensus replaced the query CDS\n")
+            for name in sorted(cds_overrides):
+                g_group_classifications[name] = assign_classification_to_sample(
+                    g_group_common_sequences, samples[name], name, logfile=pass_1_logfile)
+
+    # Both group columns are written after pass 3 so they describe the haplotype
+    # the run reports. An unassigned group falls back to the three-field call,
+    # taken from the refined call for the same reason. Pass 2 itself gets the
+    # unfilled classifications, since a three-field call is not a G group and
+    # must not restrict its search.
     info("INFO: Writing g group results")
-    output_results(fill_with_three_field(g_group_classifications, allele_classifications),
+    output_results(fill_with_three_field(g_group_classifications, refined_classifications or allele_classifications),
                    out_path("g_group_output.csv"), out_path("g_group_output_full.csv") if write_full else None)
 
     info("INFO: Classifying samples to P group")
     p_group_proteins, p_group_lengths = build_p_group_proteins(p_group_dict, sequence_data)
-    p_group_classifications = pass_p_group_classification(p_group_proteins, samples, allele_classifications)
+    p_group_classifications = pass_p_group_classification(
+        p_group_proteins, samples, refined_classifications or allele_classifications)
 
     info("INFO: Writing p group results")
     output_results(p_group_classifications, out_path("p_group_output.csv"), out_path("p_group_output_full.csv") if write_full else None)
-    
-    if full_sample_file == None:
-        return None
-
-    info("INFO: Refining allele classifications based on non-coding regions", pass3_metric)
-    refined_classifications = pass_3_classification(sequence_data, allele_classifications, full_samples, truth_data=truth_data, metric=pass3_metric, generate_query_ref_comp=generate_query_ref_comp, log_assignment_condition=log_assignment_condition, reconsensus_ctx=reconsensus_ctx)
-
-    info("INFO: Writing refined allele results")
-    output_results(refined_classifications, out_path("allele_output.csv"), out_path("allele_output_full.csv") if write_full else None)
 
     return refined_classifications
 

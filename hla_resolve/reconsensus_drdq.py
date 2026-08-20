@@ -683,7 +683,7 @@ def _refine_one_gene(sample_ID, gene, name1, name2, results, query_seqs,
         _log_hap(logfile, name2, results.get(name2), name2 in changed)
 
 
-def refine_drdq(results, query_seqs, sequence_data, ctx, logfile=None):
+def refine_drdq(results, query_seqs, sequence_data, ctx, logfile=None, cds_out=None):
     # Refine the DRDQ result tuples (allele + metrics + tie set) in place.
     if not ctx or not ctx.get("bam") or not os.path.isfile(ctx["bam"]):
         return
@@ -715,5 +715,10 @@ def refine_drdq(results, query_seqs, sequence_data, ctx, logfile=None):
     if overrides:
         gene_reps = {name: ov["gene"] for name, ov in overrides.items() if ov.get("gene")}
         cds_reps = {name: ov["cds"] for name, ov in overrides.items() if ov.get("cds")}
+        # Report the replaced CDS to the caller. The G group and the P group are
+        # both observed from the query CDS, so they have to read the CDS this run
+        # deposits, not the vcf2fasta one the refinement replaced.
+        if cds_out is not None:
+            cds_out.update(cds_reps)
         _rewrite_fasta(ctx.get("gene_fasta"), gene_reps)
         _rewrite_fasta(ctx.get("cds_fasta"), cds_reps)
