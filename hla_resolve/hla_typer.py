@@ -735,6 +735,13 @@ def fourth_field_num(allele):
     return int(match.group(1)) if match else _NO_FOURTH_FIELD
 
 # Truncates an allele name to 3 fields
+# The three-field call that stands in when no P or G group is observed. IPD
+# writes group names without the locus prefix, so drop it here too and keep one
+# naming convention per column.
+def group_fallback(allele):
+    name = trunc_to_3_fields(allele)
+    return name[4:] if name.startswith("HLA-") else name
+
 # Inputs: allele: str
 # Output: allele_3_fields: str
 def trunc_to_3_fields(allele):
@@ -1100,7 +1107,7 @@ def fill_with_three_field(classifications, allele_classifications):
             filled[name] = entry
             continue
         call = allele_classifications.get(name)
-        fallback = trunc_to_3_fields(call[0]) if call and call[0] else None
+        fallback = group_fallback(call[0]) if call and call[0] else None
         filled[name] = ((fallback,) + tuple(entry[1:-1]) + ([fallback],)
                         if fallback else entry)
     return filled
@@ -1145,7 +1152,7 @@ def pass_p_group_classification(p_group_proteins, samples, allele_classification
             widened = bool(hits)
 
         call = allele_classifications.get(name)
-        fallback = trunc_to_3_fields(call[0]) if call else ""
+        fallback = group_fallback(call[0]) if call else ""
 
         if len(hits) == 1:
             value, reason = hits[0], "wildcard" if widened else "exact"

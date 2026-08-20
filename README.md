@@ -257,9 +257,9 @@ Finished HG002 in 9m 18s (status: ok)
 </tr>
 </table>
 
-The command prints the HLA allele calls at all three resolutions to STDOUT, together with the paths of the main result files and logging information such as coverage depth metrics. Genes that could not be reconstructed are shown as `not_typed`. The paths of intermediate files go to the log file only. Pass `--verbose` to see them on screen as well.
+The command prints the HLA allele calls at all four resolutions to STDOUT, together with the paths of the main result files and logging information such as coverage depth metrics. Genes that could not be reconstructed are shown as `not_typed`. The paths of intermediate files go to the log file only. Pass `--verbose` to see them on screen as well.
 
-The same HLA allele calls are written to `demo_out/HG002/hla_typing_results/`, the primary results directory for this run. It holds the six result files described in [Primary Results](#primary-results), with `allele_output.csv` giving the four-field calls shown above.
+The same HLA allele calls are written to `demo_out/HG002/hla_typing_results/`, the primary results directory for this run. It holds the eight result files described in [Primary Results](#primary-results), with `allele_output.csv` giving the four-field calls shown above.
 
 The reconstructed sequences that produced those calls are in `demo_out/HG002/hla_fasta_haplotypes/`. `HG002_HLA_haplotypes_gene.fasta` holds the full gene sequences and `HG002_HLA_haplotypes_CDS.fasta` holds the coding sequences (CDS), two records per gene, one for each haplotype.
 
