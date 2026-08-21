@@ -541,6 +541,10 @@ def merge_hybrid_vcfs(snp_vcf, indel_vcf, indel_only_vcf, merged_vcf, snp_caller
 	run_quiet(merge_cmd)
 	run_quiet(f"tabix -p vcf {merged_vcf}")
 
+	# The SNP-only extract exists only to be concatenated. The merged VCF carries
+	# the same records.
+	discard_temp(snp_only_vcf)
+
 	detail(f"Merged VCF written to: {merged_vcf}")
 	print()
 
