@@ -22,16 +22,18 @@ from .preprocess_methods import (
 	phase_genotypes_hiphase,
 	merge_hiphase_vcfs
 )
-from .cleanup import discard_full_genome_bam, remove_stale_sort_temps
+from .cleanup import discard, discard_full_genome_bam, remove_stale_sort_temps
 from .config import min_reads_sample, drb_region
 from .utils import stage
 
 def preprocess_pacbio_sample(config):
 	remove_stale_sort_temps(config)
 
+	trimmed_reads = None
+
 	if config['scheme'] in ("hybrid_capture", "amplicon"):
 		stage("Adapter trimming")
-		trim_adapters(
+		trimmed_reads = trim_adapters(
 			adapters=config['adapters'],
 			input_file=config['raw_fastq'],
 			output_file=config['trimmed_fastq'],
@@ -43,19 +45,25 @@ def preprocess_pacbio_sample(config):
 			revcomp=config['revcomp']
 		)
 
+		# Trimming wrote a second copy of the reads, so the first one can go now
+		# rather than after alignment. Nothing between here and then reads it.
+		if trimmed_reads != config['raw_fastq']:
+			discard([config['raw_fastq']], "the untrimmed reads")
+
 		# Skip pbmarkdup for amplicon: shared PCR primer ends produce
 		# identical alignment coordinates that the duplicate caller would
 		# discard as PCR duplicates.
 		if config['scheme'] == "hybrid_capture":
 			stage("PCR duplicate removal")
-			mark_duplicates_pbmarkdup(
-				input_file=config['trimmed_fastq'],
+			align_input = mark_duplicates_pbmarkdup(
+				input_file=trimmed_reads,
 				output_file=config['trimmed_pbmarkdup_fastq'],
 				threads=config['threads']
 			)
-			align_input = config['trimmed_pbmarkdup_fastq_gz']
+			# pbmarkdup wrote its own copy of the reads, so this one is done.
+			discard([trimmed_reads], "the trimmed reads")
 		else:
-			align_input = config['trimmed_fastq']
+			align_input = trimmed_reads
 
 		stage("Reference genome alignment")
 		align_to_reference_rammap(
@@ -92,9 +100,11 @@ def preprocess_pacbio_sample(config):
 		# the exon-2 ARS instead of soft-clipping them as pbmm2 does, which is
 		# required to recover the second allele at DRB1. uBAM input is streamed to
 		# FASTQ inside align_to_reference_rammap.
+		align_input = config['input_file']
+
 		stage("Reference genome alignment")
 		align_to_reference_rammap(
-			input_file=config['input_file'],
+			input_file=align_input,
 			output_file=config['hg38_bam'],
 			read_group_string=config['read_group_string'],
 			reference_fasta=config['reference_genome'],
@@ -122,7 +132,14 @@ def preprocess_pacbio_sample(config):
 			threads=config['threads']
 		)
 
+	# Every stage from here works on the MHC BAM. The reads that produced it, in
+	# whatever form they reached alignment, are dead weight. The user's own input
+	# file is protected and is never among them.
 	discard_full_genome_bam(config)
+	discard(
+		[config['raw_fastq'], trimmed_reads, align_input, config['hg38_bam_drb']],
+		"the read files superseded by the MHC BAM"
+	)
 
 	if chr6_read_count >= min_reads_sample:
 		stage("Small variant calling")
@@ -274,6 +291,13 @@ def preprocess_pacbio_sample(config):
 				filter_indel_pass=indel_caller in ("deepvariant", "clair3")
 			)
 
+		# The per-caller VCFs exist only to be merged into snv_vcf.
+		discard(
+			[config['bcftools_snp_vcf'], config['dv_full_vcf'], config['dv_rescued_vcf'],
+			 config['dv_indel_vcf'], config['clair3_full_vcf'], config['hybrid_indel_vcf']],
+			"the per-caller variant call intermediates"
+		)
+
 		stage("Structural variant calling")
 		call_structural_variants_pbsv(
 			input_bam=config['hg38_rmdup_chr6_bam'],
@@ -322,6 +346,18 @@ def preprocess_pacbio_sample(config):
 			output_vcf=config['hiphase_joint_vcf'],
 			reference_fasta=config['reference_genome']
 		)
+
+		# HiPhase wrote every read back out with its haplotype tag. That BAM
+		# serves coverage, re-consensus, and the user, so the untagged copy goes.
+		if os.path.exists(config['hg38_rmdup_chr6_haplotag_bam']):
+			discard([config['hg38_rmdup_chr6_bam']], "the untagged MHC BAM")
+
+		# Everything downstream reads the merged VCF, so the three per-class
+		# phased VCFs that went into it go. The merge drops BND, INV, and DUP
+		# structural variants, none of which reach an HLA allele call.
+		if os.path.exists(config['hiphase_joint_vcf']):
+			discard([config['hiphase_snv_vcf'], config['hiphase_sv_vcf'], config['hiphase_tr_vcf']],
+			        "the per-class phased VCFs")
 	
 	else:
 		print("Insufficient reads for variant calling")

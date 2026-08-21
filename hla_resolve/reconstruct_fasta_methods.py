@@ -13,6 +13,7 @@ from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio import SeqIO
 from . import config
+from .cleanup import discard_temp
 from .utils import detail, run_quiet
 
 def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail_vcf, sv_overlap_vcf, pass_unphased, filtered_vcf, platform, genotyper, force_include_unphased=False):
@@ -20,6 +21,12 @@ def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail
 	base = os.path.basename(filtered_vcf)
 	prefix = base.replace("_PASS_phased.vcf.gz", "")
 	region_vcf = os.path.join(os.path.dirname(filtered_vcf), f"{prefix}.vcf.gz")
+
+	# A rerun would otherwise find last run's copy of this pair. bcftools rewrites
+	# both, but on a filesystem with coarse timestamps the refreshed index can
+	# still read as older than its data, which is where the hts_idx_load3 warnings
+	# come from. Removing the pair first means there is never a stale one to load.
+	discard_temp(region_vcf)
 
 	cmd = f"bcftools view -r {filter_region} {input_vcf} -Oz -o {region_vcf}"
 	run_quiet(cmd)
@@ -361,6 +368,9 @@ def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail
 				for rec in records:
 					print(str(rec).strip())
 				print()
+
+	# The region extract has served every pass above. Nothing downstream reads it.
+	discard_temp(region_vcf)
 
 	return len(unphased_hets)
 

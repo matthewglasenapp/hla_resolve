@@ -21,10 +21,11 @@ from .preprocess_methods import (
 	phase_genotypes_longphase,
 	merge_longphase_vcfs
 )
+from .cleanup import discard, discard_full_genome_bam
 from .config import min_reads_sample
 
 def preprocess_ont_sample(config):
-	trim_adapters(
+	trimmed_reads = trim_adapters(
 		adapters=config['adapters'],
 		input_file=config['raw_fastq'],
 		output_file=config['trimmed_fastq'],
@@ -37,7 +38,7 @@ def preprocess_ont_sample(config):
 	)
 	
 	align_to_reference_rammap(
-		input_file=config['trimmed_fastq'],
+		input_file=trimmed_reads,
 		output_file=config['hg38_bam'],
 		read_group_string=config['read_group_string'],
 		reference_fasta=config['reference_genome'],
@@ -46,7 +47,7 @@ def preprocess_ont_sample(config):
 	)
 
 	classify_DRB_reads(
-		input_file=config['trimmed_fastq'],
+		input_file=trimmed_reads,
 		output_file=config['hg38_bam_drb'],
 		drb_paralog_reads_file=config['drb_paralog_reads_file'],
 		read_group_string=config['read_group_string'],
@@ -68,6 +69,13 @@ def preprocess_ont_sample(config):
 		metrics_file=config['hg38_mrkdup_metrics'],
 		temp_dir=os.path.join(config['mapped_bam_dir'], "mark_duplicates"),
 		picard=config['picard']
+	)
+
+	# Every stage from here works on the de-duplicated MHC BAM.
+	discard_full_genome_bam(config)
+	discard(
+		[config['raw_fastq'], trimmed_reads, config['hg38_bam_drb'], config['hg38_chr6_bam']],
+		"the read files superseded by the MHC BAM"
 	)
 
 	chr6_read_count = int(subprocess.check_output(f"samtools view -c {config['hg38_rmdup_chr6_bam']}", shell=True).strip())
@@ -251,6 +259,10 @@ def preprocess_ont_sample(config):
 			phased_vcf_dir=config['phased_vcf_dir'],
 			sample_ID=config['sample_ID']
 		)
+
+		# The haplotagged BAM carries the same reads and serves every later stage.
+		if os.path.exists(config['hg38_rmdup_chr6_haplotag_bam']):
+			discard([config['hg38_rmdup_chr6_bam']], "the untagged MHC BAM")
 	
 	else:
 		print("Insufficient reads for variant calling")

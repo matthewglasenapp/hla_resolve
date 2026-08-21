@@ -19,6 +19,7 @@ from .reconstruct_fasta_methods import (
 	run_vcf2fasta,
 	parse_fastas
 )
+from .cleanup import discard
 from .hla_typer import main as classify_hla_alleles
 from .utils import announce, detail, finish_stage, stage
 from . import config as hla_config
@@ -126,15 +127,27 @@ def print_results(config):
 	announce("Note: Where no P or G group was observed, the three-field call is shown. Group names end in P or G.")
 
 def print_output_files(config, phased_vcf):
-	entries = [
-		("Haplotagged BAM", config['hg38_rmdup_chr6_haplotag_bam']),
-		("Phased VCF", phased_vcf),
-		("Gene FASTA", config['hla_gene_fasta']),
-		("CDS FASTA", config['hla_cds_fasta']),
-	]
+	# --clean_up removes everything but the typing results, so listing the BAM,
+	# the VCF, or the FASTA would name files that are gone by the time the user
+	# reads this.
+	if config.get('clean_up', False):
+		entries = []
+	else:
+		entries = [
+			("Haplotagged BAM", config['hg38_rmdup_chr6_haplotag_bam']),
+			("Phased VCF", phased_vcf),
+			("Gene FASTA", config['hla_gene_fasta']),
+			("CDS FASTA", config['hla_cds_fasta']),
+		]
 	for _, label, filename, ambiguities in RESULT_TABLES:
 		entries.append((f"{label} calls", os.path.join(config['hla_typing_dir'], filename)))
 		entries.append((f"{label} ambiguities", os.path.join(config['hla_typing_dir'], ambiguities)))
+
+	# A path is worth printing only if the file is still there.
+	entries = [(label, path) for label, path in entries if os.path.exists(path)]
+	if not entries:
+		return
+
 	label_width = max(len(label) for label, _ in entries) + 1
 
 	announce("Output files:")
@@ -150,14 +163,22 @@ def resolve_alleles(config):
 	4. Print results
 	"""	
 	stage("Coverage assessment")
+	# HiPhase writes every input record back out with an HP tag, so the two BAMs
+	# hold the same reads and give the same depth. Measuring on the haplotagged
+	# one lets the untagged copy go as soon as phasing finishes. A run where
+	# phasing produced nothing falls back to the untagged BAM.
+	coverage_bam = config['hg38_rmdup_chr6_haplotag_bam']
+	if not os.path.exists(coverage_bam):
+		coverage_bam = config['hg38_rmdup_chr6_bam']
+
 	run_mosdepth(
-		input_file=config['hg38_rmdup_chr6_bam'],
+		input_file=coverage_bam,
 		output_dir=config['mosdepth_dir'],
 		sample_ID=config['sample_ID'],
 		regions_file=config['hla_genes_regions_file'],
 		threads=config['threads']
 	)
-	
+
 	sufficient_coverage_genes, coverage_stats = parse_mosdepth(
 		regions_file=config['mosdepth_regions'],
 		thresholds_file=config['mosdepth_thresholds'],
@@ -168,7 +189,15 @@ def resolve_alleles(config):
 		ars_prop_20x_thresh=config['ars_prop_20x_thresh'],
 		ars_prop_30x_thresh=config['ars_prop_30x_thresh']
 	)
-	
+
+	# The coverage gate has been applied. Every depth number worth keeping is in
+	# the run log by now.
+	discard([config['mosdepth_regions'], config['mosdepth_thresholds'],
+	         os.path.join(config['mosdepth_dir'], config['sample_ID'] + ".mosdepth.global.dist.txt"),
+	         os.path.join(config['mosdepth_dir'], config['sample_ID'] + ".mosdepth.region.dist.txt"),
+	         os.path.join(config['mosdepth_dir'], config['sample_ID'] + ".mosdepth.summary.txt")],
+	        "the mosdepth coverage output")
+
 	if config['platform'] == "PACBIO":
 		phased_vcf = config['hiphase_joint_vcf']
 		haploblock_file = config['phased_blocks']
@@ -176,6 +205,12 @@ def resolve_alleles(config):
 		phased_vcf = config['longphase_vcf']
 		haploblock_file = config['phased_haploblocks']
 	
+	# The unphased calls that went into phasing are carried, record for record,
+	# by the phased VCFs that came out. Drop them once the phased set is on disk.
+	if os.path.exists(phased_vcf):
+		discard([config['snv_vcf'], config['sv_vcf'], config['tr_vcf']],
+		        "the unphased variant calls")
+
 	heterozygous_sites, haploblock_list = parse_haploblocks(
 		input_vcf=phased_vcf,
 		input_haploblock_file=haploblock_file,
@@ -197,6 +232,9 @@ def resolve_alleles(config):
 		ARS_dict=config.get('ARS_dict', None),
 		CDS_dict=config.get('CDS_dict', None))
 	
+	discard([config['phased_genes_tsv'], config['incomplete_genes_csv']],
+	        "the haploblock tables")
+
 	# Print which genes were successfully phased (skip empty sections)
 	fully_phased = [g for g in config['genes_of_interest'] if g in phased_genes]
 	if fully_phased:
@@ -258,6 +296,12 @@ def resolve_alleles(config):
 			force_include_unphased=(gene in cds_rescued_genes)
 		)
 		
+		# filter_vcf_gene splits the gene interval four ways to reach its answer.
+		# The phased PASS set feeds reconstruction and the unphased set is reported
+		# to the user. The rest is working detail that the log already carries.
+		discard([gene_symbolic_vcf, gene_pass_vcf, gene_fail_vcf, gene_sv_overlap_vcf],
+		        f"the {gene} variant filtering intermediates")
+
 		gene_filtered_vcfs[gene] = gene_filtered_vcf
 		if unphased_hets:
 			unphased_het_counts[gene] = unphased_hets
@@ -316,6 +360,11 @@ def resolve_alleles(config):
 		reference_genome=config['reference_genome']
 	)
 	
+	# parse_fastas has folded the per-gene vcf2fasta records into the two sample
+	# FASTA files. A rerun rebuilds this directory from scratch either way.
+	if not config.get('keep_all_intermediates', False):
+		shutil.rmtree(config['vcf2fasta_out_dir'], ignore_errors=True)
+
 	# DR/DQ read re-consensus context (PacBio only; gated by config flag).
 	from .reconsensus_drdq import DRDQ_GENES
 	reconsensus_ctx = None

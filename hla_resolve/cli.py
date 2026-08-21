@@ -53,8 +53,9 @@ def main():
     parser.add_argument("--adapter_file", type=str, required=False, default=None, help="Path to a file with custom adapter sequences (FASTA/FASTQ). If not provided, fastplong auto-detection will be used.")
     parser.add_argument("--threads", type=int, required=False, help="Number of threads to use, lowered to the CPU count when fewer are available", default=min(6, available_cpus))
     parser.add_argument("--read_group_string", required=False, help="Override the parsed read group string", default=None)
-    parser.add_argument("--clean_up", action="store_true", help="Remove intermediate files")
-    parser.add_argument("--keep_full_bam", action="store_true", help="Keep the whole-genome BAM on WGS and WES runs. It is deleted by default once reads are filtered to chromosome 6")
+    parser.add_argument("--clean_up", action="store_true", help="Keep only the HLA typing results and the run log. Everything else HLA-Resolve wrote, including the haplotagged BAM, the VCFs, and the FASTA haplotypes, is removed at the end of the run. Files it did not write are reported and left in place")
+    parser.add_argument("--keep_all_intermediates", action="store_true", help="Retain every intermediate file, including the read copies and superseded BAMs that are otherwise removed as soon as a stage finishes with them. For debugging. Uses several times the storage of a default run, so it is a poor choice for a large cohort")
+    parser.add_argument("--keep_full_bam", action="store_true", help="Keep the reference-genome BAM. It is deleted by default once reads are filtered to the MHC")
     parser.add_argument("--clair3_model", type=str, required=False, default=None, help="Clair3 model name (bundled in SIF). Defaults to r1041_e82_400bps_sup_v500 for ONT and hifi_revio for PacBio.")
     parser.add_argument("--verbose", action="store_true", help="Print intermediate file paths and detailed per-variant diagnostic output (overlap suppression, RefCall rescue, unphased het records, CDS sanity check)")
     parser.add_argument("--quiet", action="store_true", help="Print only stage headers, warnings, the final results tables, and the output file paths. The full log is still written to the log file")
@@ -72,6 +73,9 @@ def main():
     if args.threads < 1:
         parser.error("--threads must be at least 1")
 
+    if args.clean_up and args.keep_all_intermediates:
+        parser.error("--clean_up and --keep_all_intermediates ask for opposite things. Pass one or neither.")
+
     # Defer heavy imports until after argument parsing so that
     # `hla_resolve` (no args) prints help instantly.
     import time
@@ -83,7 +87,7 @@ def main():
     from .ont_pipeline import preprocess_ont_sample
     from .pacbio_pipeline import preprocess_pacbio_sample
     from .resolve_alleles_pipeline import resolve_alleles
-    from .cleanup import cleanup_intermediate_files
+    from .cleanup import cleanup_intermediate_files, prune_empty_dirs, report_discarded, set_policy
 
     config.VERBOSE = args.verbose
     config.QUIET = args.quiet and not args.verbose
@@ -114,13 +118,19 @@ def main():
 
     # Check that all required tools are installed
     check_required_commands()
+
+    # Set the retention policy before anything writes. Several stages read the
+    # user's input file in place rather than copying it, so it is marked
+    # protected and no discard can reach it.
+    set_policy(keep_all_intermediates=args.keep_all_intermediates,
+               protected_paths=[args.input_file])
     
     start_time = time.time()
     
     # A bad or too-small input is an expected outcome, not a crash. Report it the
     # same way as a run that fails later: a status line and exit 1.
     try:
-        sample = Samples(input_file=args.input_file, sample_name=args.sample_name, platform=args.platform, output_dir=args.output_dir, aligner=args.aligner, snp_caller=args.snp_caller, indel_caller=args.indel_caller, trim_adapters=args.trim_adapters, adapter_file=args.adapter_file, threads=args.threads, read_group_string=args.read_group_string, clean_up=args.clean_up, scheme=args.scheme, clair3_model=args.clair3_model, rescue_refcalls=args.rescue_refcalls, keep_full_bam=args.keep_full_bam)
+        sample = Samples(input_file=args.input_file, sample_name=args.sample_name, platform=args.platform, output_dir=args.output_dir, aligner=args.aligner, snp_caller=args.snp_caller, indel_caller=args.indel_caller, trim_adapters=args.trim_adapters, adapter_file=args.adapter_file, threads=args.threads, read_group_string=args.read_group_string, clean_up=args.clean_up, scheme=args.scheme, clair3_model=args.clair3_model, rescue_refcalls=args.rescue_refcalls, keep_full_bam=args.keep_full_bam, keep_all_intermediates=args.keep_all_intermediates)
     except (InsufficientReads, FileNotFoundError, OSError, ValueError) as err:
         status = "insufficient_reads" if isinstance(err, InsufficientReads) else "input_error"
         announce(f"ERROR: {err}")
@@ -155,7 +165,11 @@ def main():
         announce(f"Finished {workflow_config['sample_ID']} (status: tool_failed) [{version_text}]")
         sys.exit(1)
 
-    # Clean up intermediate files if requested
+    # Directories emptied by the incremental discards above serve no purpose.
+    prune_empty_dirs(config=workflow_config)
+    report_discarded()
+
+    # --clean_up: keep the typing results and nothing else
     cleanup_intermediate_files(config=workflow_config)
 
     elapsed_time = time.time() - start_time
