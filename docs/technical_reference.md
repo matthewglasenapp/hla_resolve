@@ -442,6 +442,9 @@ Each of the three files has a companion `_full.csv` (`g_group_output_full.csv`, 
   - Feature-level sequence data
   - G-group membership tables
 
+  Written only under `--keep_all_intermediates`. The file is about 150 MB and is
+  the same for every sample, so a cohort would otherwise pay for a copy per sample.
+
 ---
 
 ### 6.4 Hierarchical Classification Strategy

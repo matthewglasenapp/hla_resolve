@@ -1331,7 +1331,12 @@ def run_classification(reference_xml_file, samples_file, full_sample_file=None, 
     if g_group_common_sequences == None:
         exit(1)
 
-    write_json(sequence_data, g_group_dict)
+    # Serialized reference data for debugging. It is ~150 MB, byte-identical for
+    # every sample, and nothing reads it back, so a cohort would pay for it once
+    # per sample for nothing. Produced only when the run asks to keep everything.
+    from .cleanup import keep_all
+    if keep_all():
+        write_json(sequence_data, g_group_dict)
         
     samples = load_test_data(samples_file)
     NUM_SAMPLES = len(samples)

@@ -56,6 +56,15 @@ def _human(size):
 	return f"{size / 1e3:.0f} KB"
 
 
+def keep_all():
+	"""True when the run was asked to retain every intermediate.
+
+	Lets a stage skip producing a debug-only artifact rather than writing it and
+	deleting it again.
+	"""
+	return _KEEP_ALL
+
+
 def is_protected(path):
 	return bool(path) and os.path.realpath(path) in _PROTECTED
 
