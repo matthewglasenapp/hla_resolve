@@ -141,8 +141,6 @@ P and G groups are read from the reconstructed sequence rather than looked up fr
 - Phased VCFs, both chromosome 6 and per gene
 - Nucleotide sequences (FASTA) for each HLA gene
 
-A run keeps these and removes everything else. Working copies of the reads and superseded alignments go as soon as the stage that needed them finishes, so peak storage stays near the size of the input file rather than several times it. Use `--keep_all_intermediates` to retain them for debugging, or `--clean_up` to keep only the allele calls and the run log.
-
 ### Runtime and Required Resources
 
 Runtime depends heavily on input file size and available compute resources. Target capture data typically completes in **<15 minutes** using **6 CPUs and 20 GB RAM**. Runtime increases for high-coverage WGS datasets, as all reads must be mapped to the human reference genome prior to restricting downstream analysis to the HLA region on chromosome 6.
@@ -311,13 +309,11 @@ optional arguments:
                         removed at the end of the run. Files it did not write
                         are reported and left in place (default: False)
   --keep_all_intermediates
-                        Retain every intermediate file, including the read
-                        copies and superseded BAMs that are otherwise removed
-                        as soon as a stage finishes with them. For debugging.
-                        Uses several times the storage of a default run, so it
-                        is a poor choice for a large cohort (default: False)
-  --keep_full_bam       Keep the mapped BAM. It is deleted by default once
-                        reads are filtered to the MHC (default: False)
+                        Retain all intermediate files. Only use for debugging
+                        (default: False)
+  --keep_full_bam       Keep the genome-wide mapped BAM. It is deleted by
+                        default once reads are filtered to the MHC (default:
+                        False)
   --clair3_model CLAIR3_MODEL
                         Clair3 model name (bundled in SIF). Defaults to
                         r1041_e82_400bps_sup_v500 for ONT and hifi_revio for
@@ -345,23 +341,17 @@ and not for use in diagnostic procedures.
 <details>
 <summary><b>Output Directories</b></summary>
 
-A run writes to the directories below. The ones marked as removed hold working files that a later stage supersedes, and they are deleted as the run goes rather than at the end. `--keep_all_intermediates` retains all of them.
+A run keeps the directories below. Working files that a later stage supersedes are removed as the run goes. `--keep_all_intermediates` retains them.
 
-| Directory | Description | Kept |
-|-----------|-------------|------|
-| `fastq_raw/`              | Reads converted to fastq, when the input is a BAM that a later tool cannot read directly. A fastq input is read where it sits and is never copied | Removed after alignment |
-| `fastq_trimmed/`          | Reads with adapters and barcodes trimmed, when `--trim_adapters` is set, and the de-duplicated reads from pbmarkdup | Removed after alignment |
-| `mapped_bam/`             | The haplotagged BAM of reads mapped to the MHC region. The reference-genome alignment and the DRB competitive-mapping alignment are written here first | Haplotagged BAM only |
-| `genotype_calls/`         | Where the unphased small variant calls are written, SNVs from bcftools and indels from DeepVariant, merged into one VCF. The phased VCF carries the same records | Caller logs only |
-| `structural_variant_vcf/` | Where pbsv writes the unphased SV calls and its signature file | Removed after phasing |
-| `pbtrgt_vcf/`             | Where TRGT writes the unphased tandem repeat calls and its spanning reads BAM (PacBio-only) | Removed after phasing |
-| `phased_vcf/`             | The merged VCF of small variants, structural variants, and tandem repeat genotypes after joint phasing, plus the phase block report. This is the chromosome 6 VCF a user wants. The per-class phased VCFs that feed the merge are written here first | Merged VCF and reports |
-| `mosdepth/`               | Where mosdepth writes the per-gene coverage depth that the typing threshold is applied to. The depth numbers themselves are in the run log | Removed after the coverage gate |
-| `haploblocks/`            | Where the phasing status of each HLA gene is tabulated. The same information is in the run log | Removed after haploblock evaluation |
-| `filtered_vcf/`           | The per-gene phased VCF applied during fasta haplotype reconstruction, and the unphased heterozygous variants that were held back. The intermediate splits that produce them are written here first | Phased and unphased VCFs only |
-| `vcf2fasta_out/`          | Where vcf2fasta writes the per-gene sequence records. For genes with an internal phasing break this holds the interval that was rebuilt and used for matching rather than the full-gene first pass | Removed after the FASTA haplotypes are assembled |
-| `hla_fasta_haplotypes/`   | Contains fasta files of full gene and CDS sequences for each HLA gene. At HLA-DQA1, HLA-DQB1, and HLA-DRB1 an accepted re-consensus replaces the sequence here | Yes |
-| `hla_typing_results/`     | Contains the final results of HLA typing | Yes |
+| Directory | Description |
+|-----------|-------------|
+| `fastq_raw/`            | Read quality reports from fastplong. Written for a fastq input |
+| `mapped_bam/`           | The haplotagged BAM of reads mapped to the MHC region, and the list of HLA-DRB paralog reads removed before variant calling |
+| `genotype_calls/`       | Logs from the small variant callers |
+| `phased_vcf/`           | The merged VCF of small variants, structural variants, and tandem repeat genotypes after joint phasing, plus the phase block report. This is the chromosome 6 VCF |
+| `filtered_vcf/`         | The per-gene phased VCF applied during fasta haplotype reconstruction, and the unphased heterozygous variants that were held back |
+| `hla_fasta_haplotypes/` | Fasta files of full gene and CDS sequences for each HLA gene. At HLA-DQA1, HLA-DQB1, and HLA-DRB1 an accepted re-consensus replaces the sequence here |
+| `hla_typing_results/`   | The final results of HLA typing |
 
 </details>
 

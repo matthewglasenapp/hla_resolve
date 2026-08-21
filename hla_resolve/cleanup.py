@@ -241,7 +241,7 @@ def discard_mapped_bam(config):
 	freed = discard_temp(bam)
 
 	if freed:
-		announce(f"Discarded the mapped BAM, freed {_human(freed)}")
+		announce(f"Discarded the genome-wide mapped BAM, freed {_human(freed)}")
 		detail(f"  {bam}")
 		detail("Pass --keep_full_bam to retain it.")
 
