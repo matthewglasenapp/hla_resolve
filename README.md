@@ -347,10 +347,9 @@ A run keeps the directories below. Working files that a later stage supersedes a
 |-----------|-------------|
 | `fastq_raw/`            | Read quality reports from fastplong. Written for a fastq input |
 | `mapped_bam/`           | The haplotagged BAM of reads mapped to the MHC region, and the list of HLA-DRB paralog reads removed before variant calling |
-| `genotype_calls/`       | Logs from the small variant callers |
-| `phased_vcf/`           | The merged VCF of small variants, structural variants, and tandem repeat genotypes after joint phasing, plus the phase block report. This is the chromosome 6 VCF |
-| `filtered_vcf/`         | The per-gene phased VCF applied during fasta haplotype reconstruction, and the unphased heterozygous variants that were held back |
-| `hla_fasta_haplotypes/` | Fasta files of full gene and CDS sequences for each HLA gene. At HLA-DQA1, HLA-DQB1, and HLA-DRB1 an accepted re-consensus replaces the sequence here |
+| `phased_vcf/`           | The merged VCF of small variants, structural variants, and tandem repeat genotypes following joint phasing, including the phase block report |
+| `filtered_vcf/`         | The single-gene phased VCFs used in gene sequence reconstruction, and any unphased heterozygous variants that could not be applied |
+| `hla_fasta_haplotypes/` | Fasta files of full gene and CDS sequences for each HLA gene |
 | `hla_typing_results/`   | The final results of HLA typing |
 
 </details>

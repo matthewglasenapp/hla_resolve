@@ -291,10 +291,18 @@ def preprocess_pacbio_sample(config):
 				filter_indel_pass=indel_caller in ("deepvariant", "clair3")
 			)
 
-		# The per-caller VCFs exist only to be merged into snv_vcf.
+		# The per-caller VCFs exist only to be merged into snv_vcf. The caller logs
+		# and DeepVariant's report are diagnostic. A stage that fails aborts the run
+		# before this line, so a failed run keeps its log.
+		sample_ID = config['sample_ID']
+		genotypes_dir = config['genotypes_dir']
 		discard(
 			[config['bcftools_snp_vcf'], config['dv_full_vcf'], config['dv_rescued_vcf'],
-			 config['dv_indel_vcf'], config['clair3_full_vcf'], config['hybrid_indel_vcf']],
+			 config['dv_indel_vcf'], config['clair3_full_vcf'], config['hybrid_indel_vcf'],
+			 os.path.join(genotypes_dir, sample_ID + ".deepvariant.log"),
+			 os.path.join(genotypes_dir, sample_ID + ".clair3.log"),
+			 os.path.join(genotypes_dir, sample_ID + ".dv.visual_report.html"),
+			 os.path.join(genotypes_dir, sample_ID + ".visual_report.html")],
 			"the per-caller variant call intermediates"
 		)
 
@@ -356,7 +364,8 @@ def preprocess_pacbio_sample(config):
 		# phased VCFs that went into it go. The merge drops BND, INV, and DUP
 		# structural variants, none of which reach an HLA allele call.
 		if os.path.exists(config['hiphase_joint_vcf']):
-			discard([config['hiphase_snv_vcf'], config['hiphase_sv_vcf'], config['hiphase_tr_vcf']],
+			discard([config['hiphase_snv_vcf'], config['hiphase_sv_vcf'], config['hiphase_tr_vcf'],
+			         os.path.join(config['phased_vcf_dir'], sample_ID + ".hiphase.log")],
 			        "the per-class phased VCFs")
 	
 	else:
