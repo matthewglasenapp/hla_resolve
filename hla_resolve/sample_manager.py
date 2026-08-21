@@ -4,14 +4,12 @@
 # See LICENSE.txt for license details.
 
 import os
-import shutil
 import subprocess
 import json
 import pysam
 from Bio import SeqIO
 from Bio.Seq import Seq
 from .preprocess_methods import convert_bam_to_fastq
-from .utils import run_quiet
 from .config import (
 	min_reads_sample, min_read_length,
 	longphase, clair3_sif, clair3_ont_model, clair3_hifi_model,
@@ -37,7 +35,8 @@ class Samples:
     def __init__(self, input_file, sample_name, platform, output_dir,
                  aligner, snp_caller, indel_caller, trim_adapters=False, adapter_file=None,
                  threads=1, read_group_string=None, clean_up=False, scheme=None,
-                 clair3_model=None, rescue_refcalls=False, keep_full_bam=False):
+                 clair3_model=None, rescue_refcalls=False, keep_full_bam=False,
+                 keep_all_intermediates=False):
         
         # Original initialization code
         self.ORIGINAL_CWD = os.getcwd()
@@ -99,6 +98,7 @@ class Samples:
         self.rescue_refcalls = rescue_refcalls
         self.clean_up = clean_up
         self.keep_full_bam = keep_full_bam
+        self.keep_all_intermediates = keep_all_intermediates
         self.clair3_model = clair3_model if clair3_model else (clair3_ont_model if self.platform == "ONT" else clair3_hifi_model)
 
         output_dir_abs = os.path.realpath(os.path.abspath(os.path.join(output_dir, self.sample_ID)))
@@ -260,24 +260,17 @@ class Samples:
         return total_reads, mean_read_length
 
     def prepare_raw_fastq(self):
+        # A BAM has to become FASTQ before cutadapt, fastplong, or pbmarkdup can
+        # read it. A FASTQ is read where it sits. Every tool downstream accepts it
+        # compressed or not and none of them write to it, so a copy would only
+        # duplicate the input on disk once per sample. cleanup.set_policy() marks
+        # the input as protected so no later discard can touch it.
         if self.format == "BAM":
             output_file = os.path.join(self.fastq_raw_dir, self.sample_ID + ".fastq.gz")
             convert_bam_to_fastq(self.input_file, output_file, self.platform, self.threads)
-        elif self.format == "FASTQ":
-            new_fq = os.path.join(self.fastq_raw_dir, self.sample_ID + ".fastq")
-            shutil.copy(self.input_file, new_fq)
-            pigz_cmd = f"pigz -f -p {self.threads} {new_fq}"
-            run_quiet(pigz_cmd)
-            expected_output = os.path.join(self.fastq_raw_dir, self.sample_ID + ".fastq.gz")
-            if not os.path.exists(expected_output):
-                raise RuntimeError(f"Compression failed: {expected_output} not found")
-
-        elif self.format == "FASTQ.GZ":
-            new_fq = os.path.join(self.fastq_raw_dir, self.sample_ID + ".fastq.gz")
-            shutil.copy(self.input_file, new_fq)
-            expected_output = os.path.join(self.fastq_raw_dir, self.sample_ID + ".fastq.gz")
-            if not os.path.exists(expected_output):
-                raise RuntimeError(f"Compression failed: {expected_output} not found")
+            self.raw_fastq = output_file
+        else:
+            self.raw_fastq = self.input_file
 
     def _define_file_paths(self):
         """Define all file paths as properties to avoid path construction in workflow functions"""
@@ -396,6 +389,7 @@ def build_workflow_config(sample):
 		'gff_dir': gff_dir,  # Use global GFF directory from config.py
 		'clean_up': sample.clean_up,
 		'keep_full_bam': sample.keep_full_bam,
+		'keep_all_intermediates': sample.keep_all_intermediates,
 
 		# File paths (pre-constructed to avoid os.path.join() in workflows)
 		'raw_fastq': sample.raw_fastq,

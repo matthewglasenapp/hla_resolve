@@ -12,6 +12,7 @@ import shutil
 import tempfile
 from . import config
 from .utils import detail, run_quiet
+from .cleanup import discard_temp
 
 # samtools sort takes -m per thread and defaults to 768M, so a high --threads
 # silently multiplies its footprint (20 threads reserves 15 GB). Hold the total
@@ -106,9 +107,13 @@ def trim_adapters(adapters, input_file, output_file, sample_ID, threads, adapter
 			print()
 
 	else:
+		# No trimming means no new file. Hand the next stage the reads it already
+		# has rather than copying them under a "trimmed" name.
 		print("Users specified no adapters present")
-		detail(f"Skipping adapter trimming and transfering raw fastq file {input_file} to {output_file}")
-		shutil.copy(input_file, output_file)
+		detail(f"Skipping adapter trimming, reading {input_file} in place")
+		return input_file
+
+	return output_file
 
 # Mark PCR duplicates with pbmarkdup
 def mark_duplicates_pbmarkdup(input_file, output_file, threads):
@@ -129,6 +134,8 @@ def mark_duplicates_pbmarkdup(input_file, output_file, threads):
 	
 	detail(f"De-duplicated reads written to: {output_file}.gz")
 	print()
+
+	return output_file + ".gz"
 
 # Align to GRCh38 reference genome with rammap
 def align_to_reference_rammap(input_file, output_file, read_group_string, reference_fasta, platform, threads):
@@ -226,8 +233,13 @@ def classify_DRB_reads(input_file, output_file, drb_paralog_reads_file, read_gro
 	rammap_cmd = f"{config.rammap} -Y -t {rammap_threads} -ax {platform_string} -R {rammap_rg_string} {reference_fasta} {map_input} | samtools sort {sort_memory_flag(samtools_threads)} -@ {samtools_threads} -o {output_file}"
 	index_bam = f"samtools index {output_file}"
 
-	run_quiet(rammap_cmd)
-	run_quiet(index_bam)
+	try:
+		run_quiet(rammap_cmd)
+		run_quiet(index_bam)
+	finally:
+		# The extracted DR-region reads exist only to be mapped competitively.
+		if map_input is not input_file:
+			discard_temp(map_input)
 
 	_parse_drb_paralog_reads(output_file, drb_paralog_reads_file)
 
@@ -552,24 +564,30 @@ def call_structural_variants_pbsv(input_bam, output_svsig, output_vcf, threads, 
 	# -a Don't downsample
 	# -q Don't filter by MapQ
 	pbsv_discover_cmd = f"pbsv discover -a 0 -q 0 --region chr6 --tandem-repeats {tandem_repeat_bed} {input_bam} {output_svsig}"
-	
-	run_quiet(pbsv_discover_cmd)
 
-	index_svsig_cmd = f"tabix -c '#' -s 3 -b 4 -e 4 {output_svsig}"
-	
-	run_quiet(index_svsig_cmd)
+	try:
+		run_quiet(pbsv_discover_cmd)
 
-	pbsv_call_cmd = f"pbsv call -j {region_threads(threads)} --min-sv-length 20 --region chr6 --hifi {reference_fasta} {output_svsig} {output_vcf}"
-	
-	run_quiet(pbsv_call_cmd)
+		index_svsig_cmd = f"tabix -c '#' -s 3 -b 4 -e 4 {output_svsig}"
 
-	compress_cmd = f"bgzip -c {output_vcf} > {output_vcf}.gz"
-	index_vcf_cmd = f"tabix -p vcf {output_vcf}.gz"
-	
-	run_quiet(compress_cmd)
-	run_quiet(index_vcf_cmd)
+		run_quiet(index_svsig_cmd)
 
-	detail(f"pbsv SV VCF written to: {output_vcf}")
+		pbsv_call_cmd = f"pbsv call -j {region_threads(threads)} --min-sv-length 20 --region chr6 --hifi {reference_fasta} {output_svsig} {output_vcf}"
+
+		run_quiet(pbsv_call_cmd)
+
+		compress_cmd = f"bgzip -c {output_vcf} > {output_vcf}.gz"
+		index_vcf_cmd = f"tabix -p vcf {output_vcf}.gz"
+
+		run_quiet(compress_cmd)
+		run_quiet(index_vcf_cmd)
+	finally:
+		# The stripped copy of the MHC BAM is pbsv's input and nothing else reads
+		# it. The signature file and the uncompressed VCF are both superseded by
+		# the bgzipped VCF that HiPhase takes.
+		discard_temp(sa_stripped_bam, output_svsig, output_vcf)
+
+	detail(f"pbsv SV VCF written to: {output_vcf}.gz")
 	print()
 
 def call_structural_variants_sniffles(input_bam, output_vcf, threads, reference_fasta, chr6_bed, tandem_repeat_bed):
@@ -615,6 +633,10 @@ def genotype_tandem_repeats(input_bam, output_vcf, pbtrgt_dir, threads, referenc
 		index_cmd = f"tabix -p vcf {output_prefix + '.vcf.gz'}"
 
 		run_quiet(index_cmd)
+
+		# TRGT also emits the spanning reads at each repeat locus. HiPhase takes
+		# the VCF only, so the BAM is a second copy of reads already in the MHC BAM.
+		discard_temp(output_prefix + ".spanning.bam", output_prefix + ".spanning.sorted.bam")
 
 		detail(f"TR VCF written to: {output_vcf}")
 		print()
@@ -794,8 +816,11 @@ def run_mosdepth(input_file, output_dir, sample_ID, regions_file, threads):
 	
 	prefix = os.path.join(output_dir, sample_ID)
 	
-	# --flag 3328 excludes duplicates and secondary/supplementary alignments
-	mosdepth = f"mosdepth --flag 3328 --by {regions_file} --thresholds 10,20,30 -t {region_threads(threads)} {prefix} {input_file}"
+	# --flag 3328 excludes duplicates and secondary/supplementary alignments.
+	# -n drops the per-base depth track, which is the largest file mosdepth writes
+	# and which nothing here reads. The per-region and threshold outputs that the
+	# coverage gate needs are unaffected.
+	mosdepth = f"mosdepth -n --flag 3328 --by {regions_file} --thresholds 10,20,30 -t {region_threads(threads)} {prefix} {input_file}"
 	
 	run_quiet(mosdepth)
 
