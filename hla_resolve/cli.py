@@ -53,7 +53,7 @@ def main():
     parser.add_argument("--adapter_file", type=str, required=False, default=None, help="Path to a file with custom adapter sequences (FASTA/FASTQ). If not provided, fastplong auto-detection will be used.")
     parser.add_argument("--threads", type=int, required=False, help="Number of threads to use, lowered to the CPU count when fewer are available", default=min(6, available_cpus))
     parser.add_argument("--read_group_string", required=False, help="Override the parsed read group string", default=None)
-    parser.add_argument("--clean_up", action="store_true", help="Keep only the HLA typing results and the run log. Everything else, including the haplotagged BAM, the VCFs, and the FASTA haplotypes, is removed at the end of the run")
+    parser.add_argument("--clean_up", action="store_true", help="Keep only the HLA typing results and the run log. Everything else HLA-Resolve wrote, including the haplotagged BAM, the VCFs, and the FASTA haplotypes, is removed at the end of the run. Files it did not write are reported and left in place")
     parser.add_argument("--keep_all_intermediates", action="store_true", help="Retain every intermediate file, including the read copies and superseded BAMs that are otherwise removed as soon as a stage finishes with them. For debugging. Uses several times the storage of a default run, so it is a poor choice for a large cohort")
     parser.add_argument("--keep_full_bam", action="store_true", help="Keep the reference-genome BAM. It is deleted by default once reads are filtered to the MHC")
     parser.add_argument("--clair3_model", type=str, required=False, default=None, help="Clair3 model name (bundled in SIF). Defaults to r1041_e82_400bps_sup_v500 for ONT and hifi_revio for PacBio.")

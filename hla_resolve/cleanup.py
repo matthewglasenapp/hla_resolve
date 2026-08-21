@@ -29,8 +29,20 @@ from .utils import announce, detail
 # names the BAM or VCF and these go with it.
 SIDECAR_SUFFIXES = (".bai", ".csi", ".crai", ".tbi", ".pbi", ".fai")
 
+# Every directory hla_resolve creates under the sample directory, minus the
+# typing results, which --clean_up keeps. A recursive delete should only ever
+# reach what this tool wrote, so anything else found there is reported and left
+# alone. A directory added in a future version has to be added here too; the
+# warning makes that visible rather than silently deleting a user's data.
+ARTIFACT_DIR_KEYS = (
+	'fastq_raw_dir', 'fastq_trimmed_dir', 'mapped_bam_dir', 'parsed_haploblock_dir',
+	'genotypes_dir', 'sv_dir', 'filtered_vcf_dir', 'vcf2fasta_out_dir',
+	'hla_fasta_dir', 'mosdepth_dir', 'phased_vcf_dir', 'pbtrgt_dir',
+)
+
 _KEEP_ALL = False
-_PROTECTED = set()
+_PROTECTED = set()       # realpaths
+_PROTECTED_IDS = set()   # (st_dev, st_ino), so a hard link cannot slip past
 _FREED_BYTES = 0
 
 
@@ -42,9 +54,21 @@ def set_policy(keep_all_intermediates=False, protected_paths=()):
 	input in place instead of copying it, so an unguarded discard of "the reads
 	this stage consumed" could otherwise delete it.
 	"""
-	global _KEEP_ALL, _PROTECTED, _FREED_BYTES
+	global _KEEP_ALL, _PROTECTED, _PROTECTED_IDS, _FREED_BYTES
 	_KEEP_ALL = bool(keep_all_intermediates)
 	_PROTECTED = {os.path.realpath(path) for path in protected_paths if path}
+
+	# Match on the file itself, not on how it was spelled. A hard link to the
+	# input has a different path and the same inode, so a realpath comparison
+	# alone would not recognize it.
+	_PROTECTED_IDS = set()
+	for path in _PROTECTED:
+		try:
+			info = os.stat(path)
+		except OSError:
+			continue
+		_PROTECTED_IDS.add((info.st_dev, info.st_ino))
+
 	_FREED_BYTES = 0
 
 
@@ -66,7 +90,32 @@ def keep_all():
 
 
 def is_protected(path):
-	return bool(path) and os.path.realpath(path) in _PROTECTED
+	"""True for a file the tool must never remove, however it was reached."""
+	if not path:
+		return False
+	if os.path.realpath(path) in _PROTECTED:
+		return True
+	try:
+		info = os.stat(path)
+	except OSError:
+		return False
+	return (info.st_dev, info.st_ino) in _PROTECTED_IDS
+
+
+def holds_protected(directory):
+	"""True when a protected file sits anywhere inside this directory.
+
+	Guards the recursive delete, which would otherwise reach a protected file by
+	removing the tree above it rather than by naming it.
+	"""
+	directory = os.path.realpath(directory)
+	for path in _PROTECTED:
+		try:
+			if os.path.commonpath([path, directory]) == directory:
+				return True
+		except ValueError:
+			continue
+	return False
 
 
 def _remove(path):
@@ -209,14 +258,35 @@ def cleanup_intermediate_files(config):
 	print("Removing everything except the HLA typing results...")
 
 	keep = os.path.realpath(config['hla_typing_dir'])
+	ours = set()
+	for key in ARTIFACT_DIR_KEYS:
+		directory = config.get(key)
+		if directory:
+			ours.add(os.path.realpath(directory))
 
+	unknown = []
 	for entry in os.scandir(config['output_dir']):
-		if os.path.realpath(entry.path) == keep:
+		real = os.path.realpath(entry.path)
+		if real == keep:
 			continue
+
+		# Only remove what this tool wrote.
+		if real not in ours:
+			unknown.append(entry.path)
+			continue
+
+		# Never take a tree down over the top of an input file.
+		if holds_protected(entry.path):
+			announce(f"WARNING: keeping {entry.path}, it holds an input file")
+			continue
+
 		if entry.is_dir(follow_symlinks=False):
 			shutil.rmtree(entry.path, ignore_errors=True)
 		else:
 			_remove(entry.path)
+
+	for path in unknown:
+		announce(f"WARNING: keeping {path}, hla_resolve did not write it")
 
 	print(f"HLA typing results retained in {config['hla_typing_dir']}")
 	print()

@@ -306,9 +306,10 @@ optional arguments:
   --read_group_string READ_GROUP_STRING
                         Override the parsed read group string (default: None)
   --clean_up            Keep only the HLA typing results and the run log.
-                        Everything else, including the haplotagged BAM, the
-                        VCFs, and the FASTA haplotypes, is removed at the end
-                        of the run (default: False)
+                        Everything else HLA-Resolve wrote, including the
+                        haplotagged BAM, the VCFs, and the FASTA haplotypes, is
+                        removed at the end of the run. Files it did not write
+                        are reported and left in place (default: False)
   --keep_all_intermediates
                         Retain every intermediate file, including the read
                         copies and superseded BAMs that are otherwise removed
