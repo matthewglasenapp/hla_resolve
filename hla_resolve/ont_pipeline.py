@@ -21,7 +21,7 @@ from .preprocess_methods import (
 	phase_genotypes_longphase,
 	merge_longphase_vcfs
 )
-from .cleanup import discard, discard_full_genome_bam
+from .cleanup import discard, discard_mapped_bam
 from .config import min_reads_sample
 
 def preprocess_ont_sample(config):
@@ -72,7 +72,7 @@ def preprocess_ont_sample(config):
 	)
 
 	# Every stage from here works on the de-duplicated MHC BAM.
-	discard_full_genome_bam(config)
+	discard_mapped_bam(config)
 	discard(
 		[config['raw_fastq'], trimmed_reads, config['hg38_bam_drb'], config['hg38_chr6_bam']],
 		"the read files superseded by the MHC BAM"

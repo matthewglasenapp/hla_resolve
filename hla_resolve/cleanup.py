@@ -228,8 +228,8 @@ def remove_stale_sort_temps(config):
 		print()
 
 
-def discard_full_genome_bam(config):
-	"""Remove the reference-genome BAM once reads are filtered to the MHC.
+def discard_mapped_bam(config):
+	"""Remove the mapped BAM once reads are filtered to the MHC.
 
 	Every stage after read filtering works on the MHC window, so the full
 	alignment is dead weight. It is the largest single file a run produces.
@@ -241,7 +241,7 @@ def discard_full_genome_bam(config):
 	freed = discard_temp(bam)
 
 	if freed:
-		announce(f"Discarded the reference-genome BAM, freed {_human(freed)}")
+		announce(f"Discarded the mapped BAM, freed {_human(freed)}")
 		detail(f"  {bam}")
 		detail("Pass --keep_full_bam to retain it.")
 

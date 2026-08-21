@@ -22,7 +22,7 @@ from .preprocess_methods import (
 	phase_genotypes_hiphase,
 	merge_hiphase_vcfs
 )
-from .cleanup import discard, discard_full_genome_bam, remove_stale_sort_temps
+from .cleanup import discard, discard_mapped_bam, remove_stale_sort_temps
 from .config import min_reads_sample, drb_region
 from .utils import stage
 
@@ -135,7 +135,7 @@ def preprocess_pacbio_sample(config):
 	# Every stage from here works on the MHC BAM. The reads that produced it, in
 	# whatever form they reached alignment, are dead weight. The user's own input
 	# file is protected and is never among them.
-	discard_full_genome_bam(config)
+	discard_mapped_bam(config)
 	discard(
 		[config['raw_fastq'], trimmed_reads, align_input, config['hg38_bam_drb']],
 		"the read files superseded by the MHC BAM"

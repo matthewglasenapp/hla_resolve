@@ -316,8 +316,8 @@ optional arguments:
                         as soon as a stage finishes with them. For debugging.
                         Uses several times the storage of a default run, so it
                         is a poor choice for a large cohort (default: False)
-  --keep_full_bam       Keep the reference-genome BAM. It is deleted by default
-                        once reads are filtered to the MHC (default: False)
+  --keep_full_bam       Keep the mapped BAM. It is deleted by default once
+                        reads are filtered to the MHC (default: False)
   --clair3_model CLAIR3_MODEL
                         Clair3 model name (bundled in SIF). Defaults to
                         r1041_e82_400bps_sup_v500 for ONT and hifi_revio for
