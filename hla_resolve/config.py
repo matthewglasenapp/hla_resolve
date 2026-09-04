@@ -492,6 +492,20 @@ def ensure_hla_xml():
         subprocess.run(["rm", "-rf", str(extract_tmp)], check=True)
         print(f"HLA XML database download complete! (IPD-IMGT/HLA {IMGT_RELEASE})")
 
+def ensure_xml_cache():
+    """Parse the IPD-IMGT/HLA XML once here, so no typing run has to.
+
+    The parse costs minutes and about 2 GB, and produces the same database for
+    every sample. hla_typer caches the parsed result, so doing it once during
+    setup keeps an array of jobs from each paying for it. The two flags are part
+    of the cache key, so they have to match the ones hla_typer.main() types with.
+    """
+    from .hla_typer import build_g_group_dict
+
+    print("Parsing the IPD-IMGT/HLA XML database (this takes a few minutes)...")
+    build_g_group_dict(IMGT_XML, ignore_unconfirmed=False, ignore_incomplete=True)
+
+
 def run_setup():
     """Download and build every external dependency once, up front.
 
@@ -507,6 +521,7 @@ def run_setup():
     ensure_hla_xml()
     ensure_deepvariant_sif()
     # ensure_clair3_sif()  # re-enable when ONT support lands
+    ensure_xml_cache()
     print("hla_resolve setup complete: all dependencies present.")
 
 # Download reference genome, Picard, longphase, rammap, HLA XML database, DeepVariant SIF, and Clair3 SIF on first import
