@@ -44,7 +44,9 @@ def main():
     """),
 )
     parser.add_argument("--version", action="version", version=f"%(prog)s {version('hla_resolve')}")
-    parser.add_argument("--input_file", required=True, help="Path to the raw sequencing reads file")
+    input_group = parser.add_mutually_exclusive_group(required=True)
+    input_group.add_argument("--input_file", help="Path to the raw sequencing reads file")
+    input_group.add_argument("--mapped_bam", help="Path to a coordinate-sorted BAM that an earlier run already trimmed, deduplicated, aligned, DRB paralog filtered, and cut to the MHC. Adapter trimming, duplicate marking, alignment, paralog filtering, and read filtering are skipped and the run starts at variant calling. The file is read where it sits and is never written to or removed")
     parser.add_argument("--sample_name", required=True, help="Name for this sample. Used for output filenames and the read group")
     parser.add_argument("--platform", choices=["pacbio", "ont"], required=True, help="Sequencing platform. Only pacbio is supported; ont is not yet available")
     parser.add_argument("--scheme", choices=["WGS", "WES", "hybrid_capture", "amplicon"], required=True, help="Sequencing scheme")
@@ -56,6 +58,8 @@ def main():
     parser.add_argument("--clean_up", action="store_true", help="Keep only the HLA typing results and the run log. Everything else HLA-Resolve wrote, including the haplotagged BAM, the VCFs, and the FASTA haplotypes, is removed at the end of the run. Files it did not write are reported and left in place")
     parser.add_argument("--keep_all_intermediates", action="store_true", help="Retain all intermediate files. Only use for debugging")
     parser.add_argument("--keep_full_bam", action="store_true", help="Keep the genome-wide mapped BAM. It is deleted by default once reads are filtered to the MHC")
+    parser.add_argument("--target_regions", action="store_true", help="Restrict variant calling, phasing, and typing to the eight typed genes plus a flank rather than the whole MHC window. Every stage below read filtering scales with the interval it is given, so this is much faster. Intended for parameter sweeps")
+    parser.add_argument("--min_ars_depth", type=float, default=None, help="Mean ARS depth a gene must reach before it is typed. Defaults to the built-in threshold. Pass 0 to type every gene whatever its depth, which separates a gene the tool declined from a gene it called wrong")
     parser.add_argument("--clair3_model", type=str, required=False, default=None, help="Clair3 model name (bundled in SIF). Defaults to r1041_e82_400bps_sup_v500 for ONT and hifi_revio for PacBio.")
     parser.add_argument("--verbose", action="store_true", help="Print intermediate file paths and detailed per-variant diagnostic output (overlap suppression, RefCall rescue, unphased het records, CDS sanity check)")
     parser.add_argument("--quiet", action="store_true", help="Print only stage headers, warnings, the final results tables, and the output file paths. The full log is still written to the log file")
@@ -76,6 +80,19 @@ def main():
     if args.clean_up and args.keep_all_intermediates:
         parser.error("--clean_up and --keep_all_intermediates ask for opposite things. Pass one or neither.")
 
+    if args.mapped_bam:
+        if not args.mapped_bam.endswith(".bam"):
+            parser.error("--mapped_bam takes a BAM file.")
+        # These act on the stages a mapped BAM has already been through.
+        for flag, value in (("--trim_adapters", args.trim_adapters),
+                            ("--adapter_file", args.adapter_file),
+                            ("--keep_full_bam", args.keep_full_bam)):
+            if value:
+                parser.error(f"{flag} has no effect with --mapped_bam. The run starts at variant calling.")
+
+    if args.min_ars_depth is not None and args.min_ars_depth < 0:
+        parser.error("--min_ars_depth must be zero or more")
+
     # Defer heavy imports until after argument parsing so that
     # `hla_resolve` (no args) prints help instantly.
     import time
@@ -91,7 +108,7 @@ def main():
 
     config.VERBOSE = args.verbose
     config.QUIET = args.quiet and not args.verbose
-    config.ACTIVE_STAGES = config.active_stages(args.scheme)
+    config.ACTIVE_STAGES = config.active_stages(args.scheme, mapped_bam=bool(args.mapped_bam))
 
     args.aligner = "rammap"
     if args.platform == "ont":
@@ -119,18 +136,21 @@ def main():
     # Check that all required tools are installed
     check_required_commands()
 
+    # One of the two is always set, and every path below reads whichever it was.
+    input_file = args.input_file or args.mapped_bam
+
     # Set the retention policy before anything writes. Several stages read the
     # user's input file in place rather than copying it, so it is marked
     # protected and no discard can reach it.
     set_policy(keep_all_intermediates=args.keep_all_intermediates,
-               protected_paths=[args.input_file])
+               protected_paths=[input_file])
     
     start_time = time.time()
     
     # A bad or too-small input is an expected outcome, not a crash. Report it the
     # same way as a run that fails later: a status line and exit 1.
     try:
-        sample = Samples(input_file=args.input_file, sample_name=args.sample_name, platform=args.platform, output_dir=args.output_dir, aligner=args.aligner, snp_caller=args.snp_caller, indel_caller=args.indel_caller, trim_adapters=args.trim_adapters, adapter_file=args.adapter_file, threads=args.threads, read_group_string=args.read_group_string, clean_up=args.clean_up, scheme=args.scheme, clair3_model=args.clair3_model, rescue_refcalls=args.rescue_refcalls, keep_full_bam=args.keep_full_bam, keep_all_intermediates=args.keep_all_intermediates)
+        sample = Samples(input_file=input_file, sample_name=args.sample_name, platform=args.platform, output_dir=args.output_dir, aligner=args.aligner, snp_caller=args.snp_caller, indel_caller=args.indel_caller, trim_adapters=args.trim_adapters, adapter_file=args.adapter_file, threads=args.threads, read_group_string=args.read_group_string, clean_up=args.clean_up, scheme=args.scheme, clair3_model=args.clair3_model, rescue_refcalls=args.rescue_refcalls, keep_full_bam=args.keep_full_bam, keep_all_intermediates=args.keep_all_intermediates, mapped_bam=args.mapped_bam, min_ars_depth=args.min_ars_depth, target_regions=args.target_regions)
     except (InsufficientReads, FileNotFoundError, OSError, ValueError) as err:
         status = "insufficient_reads" if isinstance(err, InsufficientReads) else "input_error"
         announce(f"ERROR: {err}")

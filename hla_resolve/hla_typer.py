@@ -140,12 +140,85 @@ def build_g_group_dict_from_web():
 #        ignore_incomplete: (bool) ignore XML entries missing ANY features
 # Outputs: g_groups: {allele: g_group}
 #          sequence_data: {allele: {feature: sequence}}
+# Parsing the IPD-IMGT/HLA XML costs about three minutes and 1.7 GB of memory,
+# and the result is the same for every sample. A cohort or a parameter sweep
+# would pay that once per run for nothing, so the parsed database is cached and
+# reused. The cache name carries the file it came from, its size and mtime, and
+# the two flags that change what the parse keeps, so a database update or a
+# different flag builds a new one instead of reading a stale one.
+CACHE_FORMAT = 1
+
+def _cache_path(xml_file, ignore_unconfirmed, ignore_incomplete):
+    stat = os.stat(xml_file)
+    name = (f"{os.path.basename(xml_file)}"
+            f".{stat.st_size}.{int(stat.st_mtime)}"
+            f".{int(bool(ignore_unconfirmed))}{int(bool(ignore_incomplete))}"
+            f".v{CACHE_FORMAT}.parsed.pickle")
+    directory = os.environ.get("HLA_RESOLVE_XML_CACHE") or os.path.dirname(os.path.abspath(xml_file))
+    return os.path.join(directory, name)
+
+def _load_parsed_database(xml_file, ignore_unconfirmed, ignore_incomplete):
+    """Return the cached parse, or None to parse the XML again.
+
+    A cache that is missing, unreadable, half-written, or written by another
+    version is not an error. The parse below reproduces it.
+    """
+    import pickle
+
+    try:
+        path = _cache_path(xml_file, ignore_unconfirmed, ignore_incomplete)
+        with open(path, "rb") as f:
+            cached = pickle.load(f)
+    except Exception:
+        return None
+
+    if not isinstance(cached, tuple) or len(cached) != 4:
+        return None
+
+    return cached
+
+def _store_parsed_database(xml_file, ignore_unconfirmed, ignore_incomplete, payload):
+    """Write the cache so the next run skips the parse.
+
+    Written to a temp file in the same directory and moved into place, so an
+    array job that starts while this is writing reads either the whole previous
+    cache or nothing, never a partial one.
+    """
+    import pickle
+    import tempfile
+
+    path = _cache_path(xml_file, ignore_unconfirmed, ignore_incomplete)
+    handle = None
+    try:
+        handle, temp_path = tempfile.mkstemp(dir=os.path.dirname(path), suffix=".partial")
+        with os.fdopen(handle, "wb") as f:
+            handle = None
+            pickle.dump(payload, f, protocol=pickle.HIGHEST_PROTOCOL)
+        os.replace(temp_path, path)
+        info("INFO: Wrote the parsed XML database cache to", path)
+    except Exception as err:
+        # A read-only install or a full disk costs the next run a re-parse and
+        # nothing else.
+        if handle is not None:
+            os.close(handle)
+        info("INFO: Could not write the parsed XML database cache:", err)
+
 @print_time_taken
 def build_g_group_dict(xml_file, ignore_unconfirmed=False, ignore_incomplete=False):
     # If None, pull from web
     # if xml_file == None:
     #     build_g_group_dict_from_web()
     #     xml_file = "./tmp/hla.xml"
+
+    cached = _load_parsed_database(xml_file, ignore_unconfirmed, ignore_incomplete)
+    if cached is not None:
+        g_groups, p_groups, sequence_data, ars_codon_offset = cached
+        # Populated as a side effect of the parse below, so it has to be restored
+        # with the rest of the database.
+        ARS_CODON_OFFSET.clear()
+        ARS_CODON_OFFSET.update(ars_codon_offset)
+        info("INFO: Reusing the parsed XML database cache")
+        return g_groups, p_groups, sequence_data
 
     # Parse metadata XML file
     info("INFO: Parsing metadata XML file")
@@ -246,6 +319,9 @@ def build_g_group_dict(xml_file, ignore_unconfirmed=False, ignore_incomplete=Fal
         if p_group_xml != None:
             p_group = p_group_xml.attrib[group_accessor]
             p_groups[name] = p_group
+
+    _store_parsed_database(xml_file, ignore_unconfirmed, ignore_incomplete,
+                           (g_groups, p_groups, sequence_data, dict(ARS_CODON_OFFSET)))
 
     return g_groups, p_groups, sequence_data
 

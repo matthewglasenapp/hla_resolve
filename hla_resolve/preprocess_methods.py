@@ -279,8 +279,82 @@ def filter_reads(input_file, output_file, drb_paralog_reads_file, threads):
 
 	return read_count
 	
+# Adopt a BAM that an earlier run already trimmed, deduplicated, aligned, DRB
+# paralog filtered, and cut to the MHC. Nothing here modifies or removes it.
+def adopt_mapped_bam(input_bam, threads):
+	print("Starting from the supplied mapped BAM...")
+	detail(f"Mapped BAM: {input_bam}")
+
+	read_count = int(subprocess.check_output(
+		f"samtools view -c -@ {region_threads(threads)} {input_bam}", shell=True).strip())
+
+	print(f"Found {read_count:,} BAM records in the MHC window")
+	print()
+
+	return read_count
+
+
+# Write the interval list --target_regions runs over: the full-gene row of each
+# typed gene, padded, then merged where the padding makes two genes touch.
+def write_target_regions_bed(regions_file, genes, flank, output_file):
+	intervals = []
+	with open(regions_file) as f:
+		for line in f:
+			fields = line.rstrip("\n").split("\t")
+			if len(fields) < 4:
+				continue
+			name = fields[3]
+			# Gene rows are `<gene>_<ensembl id>`; CDS and ARS rows are per-feature.
+			if name.endswith("_ARS") or "_CDS_" in name:
+				continue
+			gene = name.split("_")[0]
+			if gene not in genes:
+				continue
+			intervals.append((fields[0], max(0, int(fields[1]) - flank), int(fields[2]) + flank))
+
+	if len(intervals) != len(genes):
+		raise ValueError(
+			f"Expected one gene interval per typed gene in {regions_file}, "
+			f"found {len(intervals)} for {len(genes)} genes")
+
+	merged = []
+	for chrom, start, stop in sorted(intervals):
+		if merged and merged[-1][0] == chrom and start <= merged[-1][2]:
+			merged[-1][2] = max(merged[-1][2], stop)
+		else:
+			merged.append([chrom, start, stop])
+
+	with open(output_file, "w") as f:
+		for chrom, start, stop in merged:
+			f.write(f"{chrom}\t{start}\t{stop}\n")
+
+	span = sum(stop - start for _, start, stop in merged)
+	detail(f"Target regions: {len(merged)} intervals spanning {span:,} bp, written to {output_file}")
+
+	return output_file
+
+
+# Cut the MHC BAM down to the target intervals. Every stage below reads this BAM
+# and scales with what is in it.
+def restrict_bam_to_targets(input_bam, output_bam, regions_bed, threads):
+	print("Restricting the BAM to the typed gene intervals...")
+	detail(f"Samtools input file: {input_bam}")
+
+	samtools_threads = region_threads(threads)
+
+	# -M keeps a read once however many intervals it overlaps, so no record is
+	# duplicated where the padded genes sit close together.
+	run_quiet(f"samtools view -b -M -L {regions_bed} -@ {samtools_threads} -o {output_bam} {input_bam}")
+	run_quiet(f"samtools index {output_bam}")
+
+	detail(f"Restricted BAM written to: {output_bam}")
+	print()
+
+	return output_bam
+
+
 # Call SNV with DeepVariant
-def call_variants_deepvariant(input_bam, output_vcf, platform, deepvariant_sif, reference_fasta, genotypes_dir, mapped_bam_dir, sample_ID, threads):
+def call_variants_deepvariant(input_bam, output_vcf, platform, deepvariant_sif, reference_fasta, genotypes_dir, sample_ID, threads, regions_bed=None):
 	if platform == "PACBIO":
 		model_type = "PACBIO"
 	elif platform == "ONT":
@@ -289,9 +363,11 @@ def call_variants_deepvariant(input_bam, output_vcf, platform, deepvariant_sif, 
 	print("Calling SNVs and small indels with DeepVariant...")
 	detail(f"DeepVariant input file: {input_bam}")
 	
+	bam_dir = os.path.dirname(os.path.abspath(input_bam))
+
 	bind_paths = [
 		f"{genotypes_dir}:/data",
-		f"{mapped_bam_dir}:/input",
+		f"{bam_dir}:/input",
 		f"{os.path.dirname(reference_fasta)}:/reference"
 	]
 
@@ -299,13 +375,20 @@ def call_variants_deepvariant(input_bam, output_vcf, platform, deepvariant_sif, 
 
 	deepvariant_shards = min(threads, 8)
 
+	# --regions takes either an interval or a BED. The BED has to be inside a
+	# bound directory, and the target BED is written beside the BAM.
+	if regions_bed:
+		regions_flag = f"/input/{os.path.basename(regions_bed)}"
+	else:
+		regions_flag = f"chr6:{config.dv_region_start}-{config.dv_region_stop}"
+
 	deepvariant_cmd = f"""
 		singularity exec {bind_flags} {deepvariant_sif} /opt/deepvariant/bin/run_deepvariant \
 			--model_type={model_type} \
 			--ref=/reference/{os.path.basename(reference_fasta)} \
 			--reads=/input/{os.path.basename(input_bam)} \
 			--output_vcf=/data/{os.path.basename(output_vcf)} \
-			--regions chr6:{config.dv_region_start}-{config.dv_region_stop} \
+			--regions {regions_flag} \
 			--num_shards={deepvariant_shards}
 		"""
 
@@ -319,7 +402,7 @@ def call_variants_deepvariant(input_bam, output_vcf, platform, deepvariant_sif, 
 	detail(f"VCF written to: {output_vcf}")
 	print()
 
-def call_variants_clair3(input_bam, output_vcf, platform, clair3_sif, reference_fasta, threads, genotypes_dir, mapped_bam_dir, sample_ID, clair3_model):
+def call_variants_clair3(input_bam, output_vcf, platform, clair3_sif, reference_fasta, threads, genotypes_dir, sample_ID, clair3_model):
 	if platform == "ONT":
 		platform_type = "ont"
 	elif platform == "PACBIO":
@@ -332,9 +415,11 @@ def call_variants_clair3(input_bam, output_vcf, platform, clair3_sif, reference_
 	output_dir = os.path.join(genotypes_dir, sample_ID)
 	os.makedirs(output_dir, exist_ok=True)
 
+	bam_dir = os.path.dirname(os.path.abspath(input_bam))
+
 	bind_paths = [
 		f"{output_dir}:/output",
-		f"{mapped_bam_dir}:/input",
+		f"{bam_dir}:/input",
 		f"{os.path.dirname(reference_fasta)}:/reference"
 	]
 
@@ -366,7 +451,7 @@ def call_variants_clair3(input_bam, output_vcf, platform, clair3_sif, reference_
 	print()
 
 # Call SNV with bcftools
-def call_variants_bcftools(input_file, output_file, reference_fasta, platform, threads):
+def call_variants_bcftools(input_file, output_file, reference_fasta, platform, threads, regions_bed=None):
 	if platform == "PACBIO":
 		config = "pacbio-ccs-1.20"
 	elif platform == "ONT":
@@ -381,9 +466,11 @@ def call_variants_bcftools(input_file, output_file, reference_fasta, platform, t
 	pileup_threads = str(budget // 2)
 	call_threads = str(budget - budget // 2)
 
+	regions_flag = f"-R {regions_bed}" if regions_bed else "-r chr6:28000000-34000000"
+
 	bcftools_command = (
 		f"bcftools mpileup --config {config} --threads {pileup_threads} "
-		f"-f {reference_fasta} -d 1000000 -r chr6:28000000-34000000 "
+		f"-f {reference_fasta} -d 1000000 {regions_flag} "
 		f"-a FORMAT/DP,AD,ADF,ADR,SP {input_file} | "
 		f"bcftools call -mv -f GQ --threads {call_threads} -Ou | "
 		f"bcftools view -i 'FORMAT/DP>=2 && ((TYPE=\"snp\" && GQ>=20 && QUAL>=10) || (TYPE=\"indel\" && GQ>=20 && QUAL>=10))' "

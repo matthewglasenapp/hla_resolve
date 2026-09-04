@@ -109,7 +109,6 @@ def preprocess_ont_sample(config):
 					deepvariant_sif=config['deepvariant_sif'],
 					reference_fasta=config['reference_genome'],
 					genotypes_dir=config['genotypes_dir'],
-					mapped_bam_dir=config['mapped_bam_dir'],
 					sample_ID=config['sample_ID'],
 					threads=config['threads']
 				)
@@ -127,7 +126,6 @@ def preprocess_ont_sample(config):
 					reference_fasta=config['reference_genome'],
 					threads=config['threads'],
 					genotypes_dir=config['genotypes_dir'],
-					mapped_bam_dir=config['mapped_bam_dir'],
 					sample_ID=config['sample_ID'],
 					clair3_model=config['clair3_model']
 				)
@@ -158,7 +156,6 @@ def preprocess_ont_sample(config):
 					deepvariant_sif=config['deepvariant_sif'],
 					reference_fasta=config['reference_genome'],
 					genotypes_dir=config['genotypes_dir'],
-					mapped_bam_dir=config['mapped_bam_dir'],
 					sample_ID=config['sample_ID'],
 					threads=config['threads']
 				)
@@ -171,7 +168,6 @@ def preprocess_ont_sample(config):
 					reference_fasta=config['reference_genome'],
 					threads=config['threads'],
 					genotypes_dir=config['genotypes_dir'],
-					mapped_bam_dir=config['mapped_bam_dir'],
 					sample_ID=config['sample_ID'],
 					clair3_model=config['clair3_model']
 				)
@@ -192,7 +188,6 @@ def preprocess_ont_sample(config):
 					deepvariant_sif=config['deepvariant_sif'],
 					reference_fasta=config['reference_genome'],
 					genotypes_dir=config['genotypes_dir'],
-					mapped_bam_dir=config['mapped_bam_dir'],
 					sample_ID=config['sample_ID'],
 					threads=config['threads']
 				)
@@ -205,7 +200,6 @@ def preprocess_ont_sample(config):
 					reference_fasta=config['reference_genome'],
 					threads=config['threads'],
 					genotypes_dir=config['genotypes_dir'],
-					mapped_bam_dir=config['mapped_bam_dir'],
 					sample_ID=config['sample_ID'],
 					clair3_model=config['clair3_model']
 				)

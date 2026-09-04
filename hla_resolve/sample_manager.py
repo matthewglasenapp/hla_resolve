@@ -9,7 +9,7 @@ import json
 import pysam
 from Bio import SeqIO
 from Bio.Seq import Seq
-from .preprocess_methods import convert_bam_to_fastq
+from .preprocess_methods import convert_bam_to_fastq, write_target_regions_bed
 from .config import (
 	min_reads_sample, min_read_length,
 	longphase, clair3_sif, clair3_ont_model, clair3_hifi_model,
@@ -17,7 +17,8 @@ from .config import (
 	mhc_start, mhc_stop, genes_bed, genes_of_interest, genes_of_interest_extended,
 	hla_genes_regions_file, reference_genome_minimap2,
 	DNA_bases, stop_codons, IMGT_XML, gff_dir, ARS_dict, gene_dict, CDS_dict, CLASS_I_GENES, drb_multiallele_reference,
-	deepvariant_sif, tandem_repeat_bed, chr6_bed, pbtrgt_repeat_file, picard
+	deepvariant_sif, tandem_repeat_bed, chr6_bed, pbtrgt_repeat_file, picard,
+	target_region_flank
 )
 
 class InsufficientReads(ValueError):
@@ -36,7 +37,8 @@ class Samples:
                  aligner, snp_caller, indel_caller, trim_adapters=False, adapter_file=None,
                  threads=1, read_group_string=None, clean_up=False, scheme=None,
                  clair3_model=None, rescue_refcalls=False, keep_full_bam=False,
-                 keep_all_intermediates=False):
+                 keep_all_intermediates=False, mapped_bam=None, min_ars_depth=None,
+                 target_regions=False):
         
         # Original initialization code
         self.ORIGINAL_CWD = os.getcwd()
@@ -99,6 +101,12 @@ class Samples:
         self.clean_up = clean_up
         self.keep_full_bam = keep_full_bam
         self.keep_all_intermediates = keep_all_intermediates
+        self.mapped_bam = os.path.realpath(os.path.abspath(mapped_bam)) if mapped_bam else None
+        self.target_regions = target_regions
+        # The ARS depth a gene has to reach before it is typed at all. A depth
+        # titration wants to separate "the tool declined" from "the tool was
+        # wrong", so the gate is a run-level setting rather than a fixed constant.
+        self.min_ars_depth = ars_depth_thresh if min_ars_depth is None else min_ars_depth
         self.clair3_model = clair3_model if clair3_model else (clair3_ont_model if self.platform == "ONT" else clair3_hifi_model)
 
         output_dir_abs = os.path.realpath(os.path.abspath(os.path.join(output_dir, self.sample_ID)))
@@ -153,6 +161,20 @@ class Samples:
         # Define all file paths as properties to avoid os.path.join() in workflow functions
         self._define_file_paths()
 
+        # --mapped_bam replaces the BAM that read filtering would have produced.
+        # It stays where the user put it and is never written to or removed.
+        if self.mapped_bam:
+            self.verify_mapped_bam(self.mapped_bam)
+            self.hg38_rmdup_chr6_bam = self.mapped_bam
+
+        if self.target_regions:
+            write_target_regions_bed(
+                regions_file=hla_genes_regions_file,
+                genes=set(genes_of_interest),
+                flank=target_region_flank,
+                output_file=self.target_regions_bed
+            )
+
         parsed_rg = self.parse_input_file(self.input_file)
 
         if read_group_string is not None and str(read_group_string).strip():
@@ -173,7 +195,9 @@ class Samples:
 
         # WGS/WES PacBio aligns the uBAM directly with rammap (streamed to FASTQ
         # internally) — no separate up-front FASTQ conversion needed
-        if not (self.platform == "PACBIO" and self.scheme in ("WGS", "WES")):
+        if self.mapped_bam:
+            pass
+        elif not (self.platform == "PACBIO" and self.scheme in ("WGS", "WES")):
             self.prepare_raw_fastq()
 
     def parse_input_file(self, input_path):
@@ -225,6 +249,36 @@ class Samples:
         rg_string = f"@RG\\tID:{rg_id}\\tSM:{rg_sm}\\tPL:{rg_pl}\\tLB:{rg_lb}\\tPU:{rg_pu}"
 
         return rg_string
+
+    def verify_mapped_bam(self, bam_path):
+        """Check that a supplied mapped BAM can be read where the pipeline picks it up.
+
+        Every stage from variant calling on queries the BAM by coordinate, so an
+        unsorted or unindexed file has to be reported here rather than as a
+        failure inside a caller.
+        """
+        with pysam.AlignmentFile(bam_path, "rb", check_sq=False) as bamfile:
+            header = bamfile.header.to_dict()
+            if header.get("HD", {}).get("SO") != "coordinate":
+                raise ValueError(f"Mapped BAM is not coordinate-sorted: {bam_path}")
+            if not bamfile.header.references:
+                raise ValueError(f"Mapped BAM has no reference sequences in its header: {bam_path}")
+
+        if not any(os.path.exists(bam_path + suffix) for suffix in (".bai", ".csi")):
+            print(f"Index not found for {bam_path}. Indexing with samtools...")
+            subprocess.run(f"samtools index {bam_path}", shell=True, check=True)
+
+        # A haplotagged BAM carries HP and PS tags from an earlier phasing run.
+        # Phasing runs again below and writes its own, so the old tags describe
+        # nothing this run did. Report them rather than silently carrying them.
+        with pysam.AlignmentFile(bam_path, "rb") as bamfile:
+            for count, read in enumerate(bamfile.fetch(until_eof=True)):
+                if read.has_tag("HP"):
+                    print(f"WARNING: {bam_path} carries HP haplotype tags from an earlier run. "
+                          "Strip them with `samtools view -x HP -x PS` unless they are wanted.")
+                    break
+                if count >= 1000:
+                    break
 
     def verify_bam_integrity(self, bam_path):
         quickcheck_cmd = f"samtools quickcheck -u -v {bam_path}"
@@ -287,6 +341,11 @@ class Samples:
         self.hg38_chr6_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.hg38.chr6.bam")
         self.hg38_rmdup_chr6_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.hg38.rmdup.chr6.bam")
         self.hg38_rmdup_chr6_haplotag_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.hg38.rmdup.chr6.haplotag.bam")
+        self.hg38_targets_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.hg38.rmdup.targets.bam")
+
+        # --target_regions interval list. It sits beside the BAM because
+        # DeepVariant reads it from the same bound directory.
+        self.target_regions_bed = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.target_regions.bed")
         
         # Metrics files
         self.hg38_mrkdup_metrics = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.hg38.mrkdup.metrics.txt")
@@ -403,6 +462,10 @@ def build_workflow_config(sample):
 		'hg38_mrkdup_metrics': sample.hg38_mrkdup_metrics,
 		'hg38_rmdup_chr6_bam': sample.hg38_rmdup_chr6_bam,
 		'hg38_rmdup_chr6_haplotag_bam': sample.hg38_rmdup_chr6_haplotag_bam,
+		'hg38_targets_bam': sample.hg38_targets_bam,
+		'mapped_bam': sample.mapped_bam,
+		'target_regions': sample.target_regions,
+		'target_regions_bed': sample.target_regions_bed if sample.target_regions else None,
 		'snv_vcf': sample.snv_vcf,
 		'bcftools_snp_vcf': sample.bcftools_snp_vcf,
 		'dv_full_vcf': sample.dv_full_vcf,
@@ -451,7 +514,7 @@ def build_workflow_config(sample):
 		'cds_depth_thresh': cds_depth_thresh,
 		'cds_prop_20x_thresh': cds_prop_20x_thresh,
 		'cds_prop_30x_thresh': cds_prop_30x_thresh,
-		'ars_depth_thresh': ars_depth_thresh,
+		'ars_depth_thresh': sample.min_ars_depth,
 		'ars_prop_20x_thresh': ars_prop_20x_thresh,
 		'ars_prop_30x_thresh': ars_prop_30x_thresh,
 		'mhc_start': mhc_start,

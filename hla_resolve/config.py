@@ -23,6 +23,7 @@ QUIET = False
 # Stage names in run order. Numbering in the terminal comes from this list, so it
 # cannot drift from the workflow described in the README.
 STAGES = [
+    "Mapped BAM input",
     "Adapter trimming",
     "PCR duplicate removal",
     "Reference genome alignment",
@@ -43,8 +44,24 @@ STAGES = [
 # reaches, so the [N/M] counter never skips a number.
 ACTIVE_STAGES = list(STAGES)
 
-def active_stages(scheme):
+# The stages a run reaches only when it starts from raw reads. A run given an
+# already mapped BAM enters below all of them.
+PREPROCESSING_STAGES = [
+    "Adapter trimming",
+    "PCR duplicate removal",
+    "Reference genome alignment",
+    "HLA-DRB paralog filtering",
+    "Read filtering",
+]
+
+def active_stages(scheme, mapped_bam=False):
     stages = list(STAGES)
+    if mapped_bam:
+        for name in PREPROCESSING_STAGES:
+            stages.remove(name)
+        return stages
+
+    stages.remove("Mapped BAM input")
     # Adapters are trimmed on captured and amplified libraries only.
     if scheme not in ("hybrid_capture", "amplicon"):
         stages.remove("Adapter trimming")
@@ -602,6 +619,11 @@ ars_prop_30x_thresh = 0
 # Extended MHC coordinates
 mhc_start = 29555628
 mhc_stop = 33409896
+
+# Padding added to each typed gene interval under --target_regions. Wide enough to
+# hold the reads that span a gene and the promoter and 3' variants that phasing
+# links across it.
+target_region_flank = 10000
 
 # DeepVariant calling region. Kept tighter than the extended MHC to avoid a homopolymer
 # RefCall artifact near chr6 31354430 that the wider MHC bounds trigger for HG002 HLA-B.

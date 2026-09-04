@@ -20,18 +20,33 @@ from .preprocess_methods import (
 	call_structural_variants_pbsv,
 	genotype_tandem_repeats,
 	phase_genotypes_hiphase,
-	merge_hiphase_vcfs
+	merge_hiphase_vcfs,
+	adopt_mapped_bam,
+	restrict_bam_to_targets
 )
 from .cleanup import discard, discard_mapped_bam, remove_stale_sort_temps
 from .config import min_reads_sample, drb_region
 from .utils import stage
 
 def preprocess_pacbio_sample(config):
-	remove_stale_sort_temps(config)
-
 	trimmed_reads = None
 
-	if config['scheme'] in ("hybrid_capture", "amplicon"):
+	if config.get('mapped_bam'):
+		# --mapped_bam: the reads reached this BAM through the same trimming,
+		# duplicate marking, alignment, DRB paralog filtering, and MHC read
+		# filtering that the branch below performs, so all of it is skipped and
+		# the run starts at variant calling. Each of those stages is
+		# deterministic on the whole read set, so adopting the BAM is exact
+		# rather than approximate.
+		stage("Mapped BAM input")
+		chr6_read_count = adopt_mapped_bam(
+			input_bam=config['hg38_rmdup_chr6_bam'],
+			threads=config['threads']
+		)
+
+	elif config['scheme'] in ("hybrid_capture", "amplicon"):
+		remove_stale_sort_temps(config)
+
 		stage("Adapter trimming")
 		trimmed_reads = trim_adapters(
 			adapters=config['adapters'],
@@ -96,6 +111,8 @@ def preprocess_pacbio_sample(config):
 		)
 
 	elif config['scheme'] == "WGS" or config['scheme'] == "WES":
+		remove_stale_sort_temps(config)
+
 		# rammap (minimap2) aligns divergent DRB1 alleles (e.g. DRB1*04) through
 		# the exon-2 ARS instead of soft-clipping them as pbmm2 does, which is
 		# required to recover the second allele at DRB1. uBAM input is streamed to
@@ -134,12 +151,28 @@ def preprocess_pacbio_sample(config):
 
 	# Every stage from here works on the MHC BAM. The reads that produced it, in
 	# whatever form they reached alignment, are dead weight. The user's own input
-	# file is protected and is never among them.
-	discard_mapped_bam(config)
-	discard(
-		[config['raw_fastq'], trimmed_reads, align_input, config['hg38_bam_drb']],
-		"the read files superseded by the MHC BAM"
-	)
+	# file is protected and is never among them. A run that entered from a mapped
+	# BAM produced none of them.
+	if not config.get('mapped_bam'):
+		discard_mapped_bam(config)
+		discard(
+			[config['raw_fastq'], trimmed_reads, align_input, config['hg38_bam_drb']],
+			"the read files superseded by the MHC BAM"
+		)
+
+	# --target_regions: every stage below scales with the interval it is given, so
+	# cutting the BAM down to the typed genes is where the speedup comes from.
+	if config.get('target_regions'):
+		full_mhc_bam = config['hg38_rmdup_chr6_bam']
+		config['hg38_rmdup_chr6_bam'] = restrict_bam_to_targets(
+			input_bam=full_mhc_bam,
+			output_bam=config['hg38_targets_bam'],
+			regions_bed=config['target_regions_bed'],
+			threads=config['threads']
+		)
+		# Nothing reads the wider BAM again. A user-supplied one is protected and
+		# stays where it is.
+		discard([full_mhc_bam], "the MHC BAM superseded by the target-region BAM")
 
 	if chr6_read_count >= min_reads_sample:
 		stage("Small variant calling")
@@ -161,7 +194,8 @@ def preprocess_pacbio_sample(config):
 					output_file=config['snv_vcf'],
 					reference_fasta=config['reference_genome'],
 					threads=config['threads'],
-					platform=config['platform']
+					platform=config['platform'],
+					regions_bed=config.get('target_regions_bed')
 				)
 			elif snp_caller == "deepvariant":
 				dv_output = config['dv_full_vcf'] if config['rescue_refcalls'] else config['snv_vcf']
@@ -172,9 +206,9 @@ def preprocess_pacbio_sample(config):
 					deepvariant_sif=config['deepvariant_sif'],
 					reference_fasta=config['reference_genome'],
 					genotypes_dir=config['genotypes_dir'],
-					mapped_bam_dir=config['mapped_bam_dir'],
 					sample_ID=config['sample_ID'],
-					threads=config['threads']
+					threads=config['threads'],
+					regions_bed=config.get('target_regions_bed')
 				)
 				if config['rescue_refcalls']:
 					rescue_refcalls(
@@ -190,7 +224,6 @@ def preprocess_pacbio_sample(config):
 					reference_fasta=config['reference_genome'],
 					threads=config['threads'],
 					genotypes_dir=config['genotypes_dir'],
-					mapped_bam_dir=config['mapped_bam_dir'],
 					sample_ID=config['sample_ID'],
 					clair3_model=config['clair3_model']
 				)
@@ -211,7 +244,8 @@ def preprocess_pacbio_sample(config):
 					output_file=snp_intermediate,
 					reference_fasta=config['reference_genome'],
 					threads=config['threads'],
-					platform=config['platform']
+					platform=config['platform'],
+					regions_bed=config.get('target_regions_bed')
 				)
 			elif snp_caller == "deepvariant":
 				call_variants_deepvariant(
@@ -221,9 +255,9 @@ def preprocess_pacbio_sample(config):
 					deepvariant_sif=config['deepvariant_sif'],
 					reference_fasta=config['reference_genome'],
 					genotypes_dir=config['genotypes_dir'],
-					mapped_bam_dir=config['mapped_bam_dir'],
 					sample_ID=config['sample_ID'],
-					threads=config['threads']
+					threads=config['threads'],
+					regions_bed=config.get('target_regions_bed')
 				)
 			elif snp_caller == "clair3":
 				call_variants_clair3(
@@ -234,7 +268,6 @@ def preprocess_pacbio_sample(config):
 					reference_fasta=config['reference_genome'],
 					threads=config['threads'],
 					genotypes_dir=config['genotypes_dir'],
-					mapped_bam_dir=config['mapped_bam_dir'],
 					sample_ID=config['sample_ID'],
 					clair3_model=config['clair3_model']
 				)
@@ -245,7 +278,8 @@ def preprocess_pacbio_sample(config):
 					output_file=indel_intermediate,
 					reference_fasta=config['reference_genome'],
 					threads=config['threads'],
-					platform=config['platform']
+					platform=config['platform'],
+					regions_bed=config.get('target_regions_bed')
 				)
 			elif indel_caller == "deepvariant":
 				call_variants_deepvariant(
@@ -255,9 +289,9 @@ def preprocess_pacbio_sample(config):
 					deepvariant_sif=config['deepvariant_sif'],
 					reference_fasta=config['reference_genome'],
 					genotypes_dir=config['genotypes_dir'],
-					mapped_bam_dir=config['mapped_bam_dir'],
 					sample_ID=config['sample_ID'],
-					threads=config['threads']
+					threads=config['threads'],
+					regions_bed=config.get('target_regions_bed')
 				)
 			elif indel_caller == "clair3":
 				call_variants_clair3(
@@ -268,7 +302,6 @@ def preprocess_pacbio_sample(config):
 					reference_fasta=config['reference_genome'],
 					threads=config['threads'],
 					genotypes_dir=config['genotypes_dir'],
-					mapped_bam_dir=config['mapped_bam_dir'],
 					sample_ID=config['sample_ID'],
 					clair3_model=config['clair3_model']
 				)
