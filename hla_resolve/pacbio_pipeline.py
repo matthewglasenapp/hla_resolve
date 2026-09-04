@@ -174,7 +174,7 @@ def preprocess_pacbio_sample(config):
 		# stays where it is.
 		discard([full_mhc_bam], "the MHC BAM superseded by the target-region BAM")
 
-	if chr6_read_count >= min_reads_sample:
+	if chr6_read_count >= config.get('min_reads', min_reads_sample):
 		stage("Small variant calling")
 		snp_caller = config['snp_caller']
 		indel_caller = config['indel_caller']

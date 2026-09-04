@@ -79,7 +79,7 @@ def preprocess_ont_sample(config):
 	)
 
 	chr6_read_count = int(subprocess.check_output(f"samtools view -c {config['hg38_rmdup_chr6_bam']}", shell=True).strip())
-	if chr6_read_count >= min_reads_sample:
+	if chr6_read_count >= config.get('min_reads', min_reads_sample):
 		snp_caller = config['snp_caller']
 		indel_caller = config['indel_caller']
 

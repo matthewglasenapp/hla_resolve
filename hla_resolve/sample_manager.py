@@ -38,7 +38,7 @@ class Samples:
                  threads=1, read_group_string=None, clean_up=False, scheme=None,
                  clair3_model=None, rescue_refcalls=False, keep_full_bam=False,
                  keep_all_intermediates=False, mapped_bam=None, min_ars_depth=None,
-                 target_regions=False):
+                 target_regions=False, min_reads=None):
         
         # Original initialization code
         self.ORIGINAL_CWD = os.getcwd()
@@ -107,6 +107,11 @@ class Samples:
         # titration wants to separate "the tool declined" from "the tool was
         # wrong", so the gate is a run-level setting rather than a fixed constant.
         self.min_ars_depth = ars_depth_thresh if min_ars_depth is None else min_ars_depth
+        # How many reads the input must hold to be worth typing. The default suits
+        # a whole capture. A BAM restricted to the eight genes, or downsampled to a
+        # low depth, holds far fewer and is still worth calling, so this is a
+        # run-level setting rather than a fixed constant.
+        self.min_reads = min_reads_sample if min_reads is None else min_reads
         self.clair3_model = clair3_model if clair3_model else (clair3_ont_model if self.platform == "ONT" else clair3_hifi_model)
 
         output_dir_abs = os.path.realpath(os.path.abspath(os.path.join(output_dir, self.sample_ID)))
@@ -206,7 +211,7 @@ class Samples:
             self.verify_bam_integrity(input_path)
             read_count = self.count_bam_reads(input_path)
 
-            if read_count < min_reads_sample:
+            if read_count < self.min_reads:
                 raise InsufficientReads(f"Input BAM file {input_path} contains too few reads: {read_count:,}")
 
             with pysam.AlignmentFile(input_path, "rb", check_sq=False) as bamfile:
@@ -232,7 +237,7 @@ class Samples:
                 self.format = "FASTQ"
 
             read_count, mean_read_length = self.run_fastplong(input_path)
-            if read_count < min_reads_sample:
+            if read_count < self.min_reads:
                 raise InsufficientReads(f"Input fastq file {input_path} contains too few reads: {read_count:,}")
             if mean_read_length < min_read_length:
                 raise ValueError(f"Input fastq file {input_path} contains short-read data. Mean read length: {mean_read_length}")
@@ -515,6 +520,7 @@ def build_workflow_config(sample):
 		'cds_prop_20x_thresh': cds_prop_20x_thresh,
 		'cds_prop_30x_thresh': cds_prop_30x_thresh,
 		'ars_depth_thresh': sample.min_ars_depth,
+		'min_reads': sample.min_reads,
 		'ars_prop_20x_thresh': ars_prop_20x_thresh,
 		'ars_prop_30x_thresh': ars_prop_30x_thresh,
 		'mhc_start': mhc_start,

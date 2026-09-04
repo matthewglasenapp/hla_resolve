@@ -59,6 +59,7 @@ def main():
     parser.add_argument("--keep_all_intermediates", action="store_true", help="Retain all intermediate files. Only use for debugging")
     parser.add_argument("--keep_full_bam", action="store_true", help="Keep the genome-wide mapped BAM. It is deleted by default once reads are filtered to the MHC")
     parser.add_argument("--target_regions", action="store_true", help="Restrict variant calling, phasing, and typing to the eight typed genes plus a flank rather than the whole MHC window. Every stage below read filtering scales with the interval it is given, so this is much faster. Intended for parameter sweeps")
+    parser.add_argument("--min_reads", type=int, default=None, help="Number of reads the input must hold before the run proceeds to variant calling. Defaults to the built-in threshold. Lower it for a downsampled or gene-restricted BAM, which legitimately holds far fewer reads than a whole capture")
     parser.add_argument("--min_ars_depth", type=float, default=None, help="Mean ARS depth a gene must reach before it is typed. Defaults to the built-in threshold. Pass 0 to type every gene whatever its depth, which separates a gene the tool declined from a gene it called wrong")
     parser.add_argument("--clair3_model", type=str, required=False, default=None, help="Clair3 model name (bundled in SIF). Defaults to r1041_e82_400bps_sup_v500 for ONT and hifi_revio for PacBio.")
     parser.add_argument("--verbose", action="store_true", help="Print intermediate file paths and detailed per-variant diagnostic output (overlap suppression, RefCall rescue, unphased het records, CDS sanity check)")
@@ -92,6 +93,9 @@ def main():
 
     if args.min_ars_depth is not None and args.min_ars_depth < 0:
         parser.error("--min_ars_depth must be zero or more")
+
+    if args.min_reads is not None and args.min_reads < 1:
+        parser.error("--min_reads must be at least 1")
 
     # Defer heavy imports until after argument parsing so that
     # `hla_resolve` (no args) prints help instantly.
@@ -150,7 +154,7 @@ def main():
     # A bad or too-small input is an expected outcome, not a crash. Report it the
     # same way as a run that fails later: a status line and exit 1.
     try:
-        sample = Samples(input_file=input_file, sample_name=args.sample_name, platform=args.platform, output_dir=args.output_dir, aligner=args.aligner, snp_caller=args.snp_caller, indel_caller=args.indel_caller, trim_adapters=args.trim_adapters, adapter_file=args.adapter_file, threads=args.threads, read_group_string=args.read_group_string, clean_up=args.clean_up, scheme=args.scheme, clair3_model=args.clair3_model, rescue_refcalls=args.rescue_refcalls, keep_full_bam=args.keep_full_bam, keep_all_intermediates=args.keep_all_intermediates, mapped_bam=args.mapped_bam, min_ars_depth=args.min_ars_depth, target_regions=args.target_regions)
+        sample = Samples(input_file=input_file, sample_name=args.sample_name, platform=args.platform, output_dir=args.output_dir, aligner=args.aligner, snp_caller=args.snp_caller, indel_caller=args.indel_caller, trim_adapters=args.trim_adapters, adapter_file=args.adapter_file, threads=args.threads, read_group_string=args.read_group_string, clean_up=args.clean_up, scheme=args.scheme, clair3_model=args.clair3_model, rescue_refcalls=args.rescue_refcalls, keep_full_bam=args.keep_full_bam, keep_all_intermediates=args.keep_all_intermediates, mapped_bam=args.mapped_bam, min_ars_depth=args.min_ars_depth, target_regions=args.target_regions, min_reads=args.min_reads)
     except (InsufficientReads, FileNotFoundError, OSError, ValueError) as err:
         status = "insufficient_reads" if isinstance(err, InsufficientReads) else "input_error"
         announce(f"ERROR: {err}")
