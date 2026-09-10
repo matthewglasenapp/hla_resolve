@@ -243,6 +243,74 @@ def classify_DRB_reads(input_file, output_file, drb_paralog_reads_file, read_gro
 
 	_parse_drb_paralog_reads(output_file, drb_paralog_reads_file)
 
+def _parse_hla_y_reads(output_file, hla_y_reads_file):
+	"""
+	Parse the competitively mapped BAM to identify HLA-Y reads. Any read whose
+	best-matching allele is not an HLA-A allele is flagged for removal. Shared
+	helper for classify_HLA_A_reads.
+	"""
+	hla_y_read_ids = set()
+
+	with pysam.AlignmentFile(output_file, "rb") as bam:
+		for read in bam:
+			# Skip secondary, supplementary, and unmapped reads
+			if read.is_secondary or read.is_supplementary or read.is_unmapped:
+				continue
+
+			# IPD-style headers: HLA-A alleles are "A*XX:...", HLA-Y are "Y*XX:...".
+			if not read.reference_name.startswith("A*"):
+				hla_y_read_ids.add(read.query_name)
+
+	with open(hla_y_reads_file, "w") as f:
+		for read_id in sorted(hla_y_read_ids):
+			f.write(read_id + "\n")
+
+	print(f"Classified {len(hla_y_read_ids)} reads as HLA-Y")
+	print(f"HLA-Y read IDs written to: {hla_y_reads_file}")
+	print()
+
+def classify_HLA_A_reads(input_file, output_file, hla_y_reads_file, read_group_string, reference_fasta, platform, threads, region=None):
+	"""Identify HLA-Y pseudogene reads by competitive mapping against a
+	multi-allele HLA-A reference.
+
+	GRCh38 carries one HLA-A allele, so a read from a divergent allele can align
+	better to HLA-Y than to the reference allele, and HLA-Y reads land on HLA-A
+	because nothing closer exists. Mapping against the whole HLA-A allele range
+	plus the three HLA-Y alleles separates the two. Reads whose primary alignment
+	is not an HLA-A allele are written to hla_y_reads_file for removal by
+	filter_reads(). With `region`, only primary reads overlapping that interval
+	are mapped; otherwise the whole file is.
+	"""
+	print("Classifying HLA-A reads by multi-allele competitive mapping (rammap)...")
+
+	if platform == "PACBIO":
+		platform_string = "map-hifi"
+	elif platform == "ONT":
+		platform_string = "map-ont"
+
+	rammap_threads = max(1, int(threads * 2 / 3))
+	samtools_threads = threads - rammap_threads
+	rammap_rg_string = "'{}'".format(read_group_string.replace("\t", "\\t"))
+
+	# Restrict competitive mapping to primary reads already placed at HLA-A.
+	map_input = input_file
+	if region is not None:
+		map_input = output_file.replace(".bam", ".hla_a_region.fastq")
+		run_quiet(f"samtools view -b -F 0x900 -@ {samtools_threads} {input_file} {region} | samtools fastq -@ {samtools_threads} - > {map_input}")
+
+	rammap_cmd = f"{config.rammap} -Y -t {rammap_threads} -ax {platform_string} -R {rammap_rg_string} {reference_fasta} {map_input} | samtools sort {sort_memory_flag(samtools_threads)} -@ {samtools_threads} -o {output_file}"
+	index_bam = f"samtools index {output_file}"
+
+	try:
+		run_quiet(rammap_cmd)
+		run_quiet(index_bam)
+	finally:
+		# The extracted HLA-A reads exist only to be mapped competitively.
+		if map_input is not input_file:
+			discard_temp(map_input)
+
+	_parse_hla_y_reads(output_file, hla_y_reads_file)
+
 # Mark duplicates for ONT data or WGS PacBio data
 # pbmarkdup used for hybrid-capture PacBio data but does not scale well for WGS data
 def mark_duplicates_picard(input_file, output_file, metrics_file, temp_dir, picard):
@@ -256,14 +324,20 @@ def mark_duplicates_picard(input_file, output_file, metrics_file, temp_dir, pica
 	run_quiet(index_bam)
 
 # Filter reads that did not map to chromosome 6
-def filter_reads(input_file, output_file, drb_paralog_reads_file, threads):
+def filter_reads(input_file, output_file, drb_paralog_reads_file, threads, hla_y_reads_file=None):
 	print("Excluding BAM records that do not map to chromosome 6...")
 
 	detail(f"Samtools input file: {input_file}")
 
-	# Exclude DRB paralog reads (DRB3/4/5/6/7/8/9, identified by competitive mapping),
-	# restrict to the chr6 MHC window, and drop secondary/supplementary records.
-	samtools_cmd = f"samtools view -h -F 2304 -@ {threads} {input_file} chr6:28000000-34000000 | grep -v -F -f {drb_paralog_reads_file} -- | samtools view -b -o {output_file}"
+	# Exclude DRB paralog reads (DRB3/4/5/6/7/8/9) and HLA-Y reads, both identified
+	# by competitive mapping, restrict to the chr6 MHC window, and drop
+	# secondary/supplementary records. An empty kill-list is still a valid grep
+	# pattern file and removes nothing.
+	kill_lists = [drb_paralog_reads_file]
+	if hla_y_reads_file is not None:
+		kill_lists.append(hla_y_reads_file)
+	drop = " | ".join(f"grep -v -F -f {f} --" for f in kill_lists)
+	samtools_cmd = f"samtools view -h -F 2304 -@ {threads} {input_file} chr6:28000000-34000000 | {drop} | samtools view -b -o {output_file}"
 
 	index_cmd = f"samtools index {output_file}"
 

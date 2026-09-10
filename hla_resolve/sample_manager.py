@@ -16,7 +16,7 @@ from .config import (
 	cds_depth_thresh, cds_prop_20x_thresh, cds_prop_30x_thresh, ars_depth_thresh, ars_prop_20x_thresh, ars_prop_30x_thresh,
 	mhc_start, mhc_stop, genes_bed, genes_of_interest, genes_of_interest_extended,
 	hla_genes_regions_file, reference_genome_minimap2,
-	DNA_bases, stop_codons, IMGT_XML, gff_dir, ARS_dict, gene_dict, CDS_dict, CLASS_I_GENES, drb_multiallele_reference,
+	DNA_bases, stop_codons, IMGT_XML, gff_dir, ARS_dict, gene_dict, CDS_dict, CLASS_I_GENES, drb_multiallele_reference, hla_a_multiallele_reference,
 	deepvariant_sif, tandem_repeat_bed, chr6_bed, pbtrgt_repeat_file, picard
 )
 
@@ -284,6 +284,7 @@ class Samples:
         # BAM files
         self.hg38_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.hg38.bam")
         self.hg38_bam_drb = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.hg38.drb.bam")
+        self.hg38_bam_hla_a = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.hg38.hla_a.bam")
         self.hg38_chr6_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.hg38.chr6.bam")
         self.hg38_rmdup_chr6_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.hg38.rmdup.chr6.bam")
         self.hg38_rmdup_chr6_haplotag_bam = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.hg38.rmdup.chr6.haplotag.bam")
@@ -342,6 +343,9 @@ class Samples:
 
         # DRB paralog reads file (DRB3/4/5/6/9 reads flagged for removal)
         self.drb_paralog_reads_file = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.drb_paralog_reads.txt")
+
+        # HLA-Y reads file (pseudogene reads mismapped to HLA-A, flagged for removal)
+        self.hla_y_reads_file = os.path.join(self.mapped_bam_dir, f"{self.sample_ID}.hla_y_reads.txt")
         
 
 
@@ -398,8 +402,10 @@ def build_workflow_config(sample):
 		'trimmed_pbmarkdup_fastq_gz': sample.trimmed_pbmarkdup_fastq_gz,
 		'hg38_bam': sample.hg38_bam,
 		'hg38_bam_drb': sample.hg38_bam_drb,
+		'hg38_bam_hla_a': sample.hg38_bam_hla_a,
 		'hg38_chr6_bam': sample.hg38_chr6_bam,
 		'drb_paralog_reads_file': sample.drb_paralog_reads_file,
+		'hla_y_reads_file': sample.hla_y_reads_file,
 		'hg38_mrkdup_metrics': sample.hg38_mrkdup_metrics,
 		'hg38_rmdup_chr6_bam': sample.hg38_rmdup_chr6_bam,
 		'hg38_rmdup_chr6_haplotag_bam': sample.hg38_rmdup_chr6_haplotag_bam,
@@ -440,6 +446,7 @@ def build_workflow_config(sample):
 		# Reference files and tool paths (from Samples class and config.py)
 		'reference_genome': reference_genome,
 		'drb_multiallele_reference': drb_multiallele_reference,
+		'hla_a_multiallele_reference': hla_a_multiallele_reference,
 		'deepvariant_sif': Samples.deepvariant_sif,
 		'clair3_sif': Samples.clair3_sif,
 		'clair3_model': sample.clair3_model,

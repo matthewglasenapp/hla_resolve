@@ -11,6 +11,7 @@ from .preprocess_methods import (
 	align_to_reference_rammap,
 	filter_reads,
 	classify_DRB_reads,
+	classify_HLA_A_reads,
 	call_variants_bcftools,
 	call_variants_deepvariant,
 	call_variants_clair3,
@@ -23,7 +24,7 @@ from .preprocess_methods import (
 	merge_hiphase_vcfs
 )
 from .cleanup import discard, discard_mapped_bam, remove_stale_sort_temps
-from .config import min_reads_sample, drb_region
+from .config import min_reads_sample, drb_region, hla_a_region
 from .utils import stage
 
 def preprocess_pacbio_sample(config):
@@ -87,11 +88,24 @@ def preprocess_pacbio_sample(config):
 			region=drb_region
 		)
 
+		stage("HLA-Y paralog filtering")
+		classify_HLA_A_reads(
+			input_file=config['hg38_bam'],
+			output_file=config['hg38_bam_hla_a'],
+			hla_y_reads_file=config['hla_y_reads_file'],
+			read_group_string=config['read_group_string'],
+			reference_fasta=config['hla_a_multiallele_reference'],
+			platform=config['platform'],
+			threads=config['threads'],
+			region=hla_a_region
+		)
+
 		stage("Read filtering")
 		chr6_read_count = filter_reads(
 			input_file=config['hg38_bam'],
 			output_file=config['hg38_rmdup_chr6_bam'],
 			drb_paralog_reads_file=config['drb_paralog_reads_file'],
+			hla_y_reads_file=config['hla_y_reads_file'],
 			threads=config['threads']
 		)
 
@@ -124,11 +138,24 @@ def preprocess_pacbio_sample(config):
 			region=drb_region
 		)
 
+		stage("HLA-Y paralog filtering")
+		classify_HLA_A_reads(
+			input_file=config['hg38_bam'],
+			output_file=config['hg38_bam_hla_a'],
+			hla_y_reads_file=config['hla_y_reads_file'],
+			read_group_string=config['read_group_string'],
+			reference_fasta=config['hla_a_multiallele_reference'],
+			platform=config['platform'],
+			threads=config['threads'],
+			region=hla_a_region
+		)
+
 		stage("Read filtering")
 		chr6_read_count = filter_reads(
 			input_file=config['hg38_bam'],
 			output_file=config['hg38_rmdup_chr6_bam'],
 			drb_paralog_reads_file=config['drb_paralog_reads_file'],
+			hla_y_reads_file=config['hla_y_reads_file'],
 			threads=config['threads']
 		)
 
@@ -137,7 +164,8 @@ def preprocess_pacbio_sample(config):
 	# file is protected and is never among them.
 	discard_mapped_bam(config)
 	discard(
-		[config['raw_fastq'], trimmed_reads, align_input, config['hg38_bam_drb']],
+		[config['raw_fastq'], trimmed_reads, align_input, config['hg38_bam_drb'],
+		 config['hg38_bam_hla_a']],
 		"the read files superseded by the MHC BAM"
 	)
 

@@ -9,6 +9,7 @@ from .preprocess_methods import (
 	trim_adapters,
 	align_to_reference_rammap,
 	classify_DRB_reads,
+	classify_HLA_A_reads,
 	mark_duplicates_picard,
 	filter_reads,
 	call_variants_bcftools,
@@ -22,7 +23,7 @@ from .preprocess_methods import (
 	merge_longphase_vcfs
 )
 from .cleanup import discard, discard_mapped_bam
-from .config import min_reads_sample
+from .config import min_reads_sample, hla_a_region
 
 def preprocess_ont_sample(config):
 	trimmed_reads = trim_adapters(
@@ -56,10 +57,22 @@ def preprocess_ont_sample(config):
 		threads=config['threads']
 	)
 
+	classify_HLA_A_reads(
+		input_file=config['hg38_bam'],
+		output_file=config['hg38_bam_hla_a'],
+		hla_y_reads_file=config['hla_y_reads_file'],
+		read_group_string=config['read_group_string'],
+		reference_fasta=config['hla_a_multiallele_reference'],
+		platform=config['platform'],
+		threads=config['threads'],
+		region=hla_a_region
+	)
+
 	filter_reads(
 		input_file=config['hg38_bam'],
 		output_file=config['hg38_chr6_bam'],
 		drb_paralog_reads_file=config['drb_paralog_reads_file'],
+		hla_y_reads_file=config['hla_y_reads_file'],
 		threads=config['threads']
 	)
 	
@@ -74,7 +87,8 @@ def preprocess_ont_sample(config):
 	# Every stage from here works on the de-duplicated MHC BAM.
 	discard_mapped_bam(config)
 	discard(
-		[config['raw_fastq'], trimmed_reads, config['hg38_bam_drb'], config['hg38_chr6_bam']],
+		[config['raw_fastq'], trimmed_reads, config['hg38_bam_drb'],
+		 config['hg38_bam_hla_a'], config['hg38_chr6_bam']],
 		"the read files superseded by the MHC BAM"
 	)
 
