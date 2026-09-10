@@ -28,6 +28,7 @@ STAGES = [
     "PCR duplicate removal",
     "Reference genome alignment",
     "HLA-DRB paralog filtering",
+    "HLA-Y paralog filtering",
     "Read filtering",
     "Small variant calling",
     "Structural variant calling",
@@ -51,6 +52,7 @@ PREPROCESSING_STAGES = [
     "PCR duplicate removal",
     "Reference genome alignment",
     "HLA-DRB paralog filtering",
+    "HLA-Y paralog filtering",
     "Read filtering",
 ]
 
@@ -557,6 +559,25 @@ drb_multiallele_reference = os.path.join(_data_dir, "reference/DRB_reference.fa"
 # from the kill-list. Reads are selected by overlap, so a read starting inside
 # the window and extending past HLA-DRB1's 3' end is still classified.
 drb_region = "chr6:32439878-32589848"
+
+# Multi-allele HLA-A reference for competitive read classification.
+# 24 entries: one full-length genomic sequence per HLA-A allele group (21 groups)
+# plus the three HLA-Y alleles, all from IPD-IMGT/HLA. HLA-Y is a class I
+# pseudogene on a ~60 kb indel that GRCh38 does not carry, about 4% from HLA-A.
+# GRCh38 carries a single HLA-A allele (A*03:01), so a read from a divergent
+# allele such as A*33 or A*34 can align better to HLA-Y than to the reference
+# allele, and HLA-Y reads then pile onto HLA-A with nowhere better to go. That
+# miscalls the second allele at low depth. Mapping competitively against the
+# whole HLA-A allele range separates them: reads whose competitive primary is
+# anything other than A*XX are flagged for removal by filter_reads().
+# Used in classify_HLA_A_reads() of preprocess_methods.py.
+hla_a_multiallele_reference = os.path.join(_data_dir, "reference/HLA_A_reference.fa")
+
+# GRCh38 extent of HLA-A. As for the DR region, competitive classification is
+# restricted to primary reads already placed in this window rather than the whole
+# read set: we are reclassifying reads that mapped to HLA-A, not rehoming
+# unmapped reads.
+hla_a_region = "chr6:29941259-29949572"
 
 
 # Clair3 model names — bundled inside the Clair3 SIF at /opt/models/
