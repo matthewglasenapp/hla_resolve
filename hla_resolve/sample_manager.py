@@ -233,6 +233,23 @@ class Samples:
             raise ValueError(f"Input BAM is corrupt. Samtools quickcheck failed for {bam_path}:\n{result.stderr}")
 
     def count_bam_reads(self, bam_path):
+        """Count input records; on whole-genome input, only up to the gate.
+
+        The count exists to reject an input with too few reads, and a captured
+        or amplified library is small enough to count in full for the log. A
+        whole-genome uBAM runs to several hundred GB, and a full pass (samtools
+        view -c) takes hours on a shared filesystem before alignment reads the
+        file again, so there the count stops at min_reads_sample.
+        """
+        if self.scheme in ("WGS", "WES"):
+            count_cmd = f"samtools view -@ {self.threads} {bam_path} | head -n {min_reads_sample} | wc -l"
+            result = subprocess.run(count_cmd, shell=True, capture_output=True, text=True)
+            count = int(result.stdout.strip())
+            if count >= min_reads_sample:
+                print(f"Found at least {count:,} BAM records in {bam_path} (whole-genome input; not counted in full)")
+            else:
+                print(f"Found {count:,} total BAM records in {bam_path}")
+            return count
         count_cmd = f"samtools view -@ {self.threads} -c {bam_path}"
         result = subprocess.run(count_cmd, shell=True, capture_output=True, text=True, check=True)
         count = int(result.stdout.strip())
