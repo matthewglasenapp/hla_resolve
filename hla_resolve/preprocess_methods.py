@@ -594,6 +594,69 @@ _CALLER_DISPLAY = {
 	"freebayes": "FreeBayes",
 }
 
+def drop_snps_in_homozygous_deletions(vcf_path):
+	"""Remove SNP records that sit inside a homozygous deletion.
+
+	The SNP caller genotypes a site only from reads that carry a base there.
+	Reads whose alignment places a deletion across the site are not observations
+	of a base, so at a homozygous deletion the caller sees only the few reads
+	that lack the gap and can emit a confident SNP from them (e.g. 3 C / 3 T at
+	DP 6 in a 480x region). The record is internally consistent and wrong: the
+	base does not exist on either haplotype. Downstream, vcf2fasta applies the
+	deletion after the SNP and overwrites it, so the sequence is unaffected --
+	but a heterozygous artifact still counts as an unphased ARS het in the
+	phasing gate and can block typing of a homozygous gene, and any artifact
+	stops haploblock extension at its position.
+
+	Applied before phasing, so HiPhase, the gate, block extension and vcf2fasta
+	all see the clean VCF. Only homozygous-ALT deletions are used: their span is
+	deleted on both haplotypes, so no SNP inside it can be real. Heterozygous
+	deletions need phase to decide and are left alone here.
+
+	Rewrites vcf_path in place (bgzip + tabix). Returns the number dropped.
+	"""
+	vf = pysam.VariantFile(vcf_path)
+	sample = list(vf.header.samples)[0]
+	records = list(vf)
+	vf.close()
+
+	# (start, end) of bases removed by each homozygous-ALT deletion; a record
+	# REF=CG ALT=C at pos anchors on pos and removes pos+1 .. pos+len(REF)-1.
+	spans = []
+	for rec in records:
+		gt = rec.samples[sample].get("GT")
+		if gt is None or None in gt or len(set(gt)) != 1 or gt[0] == 0:
+			continue
+		alts = [a for a in (rec.alts or ()) if a and not a.startswith("<")]
+		longest = max((len(a) for a in alts), default=0)
+		if len(rec.ref) > 1 and longest < len(rec.ref):
+			spans.append((rec.pos + 1, rec.pos + len(rec.ref) - 1))
+	spans.sort()
+
+	def inside(pos):
+		for s, e in spans:
+			if s > pos:
+				break
+			if s <= pos <= e:
+				return True
+		return False
+
+	tmp = vcf_path + ".nosnpindel.tmp.vcf.gz"
+	dropped = 0
+	with pysam.VariantFile(vcf_path) as src, pysam.VariantFile(tmp, "wz", header=src.header) as out:
+		for rec in src:
+			is_snp = len(rec.ref) == 1 and all(len(a) == 1 for a in (rec.alts or ()))
+			if is_snp and inside(rec.pos):
+				dropped += 1
+				detail(f"Dropped SNP at {rec.chrom}:{rec.pos} {rec.ref}>{','.join(rec.alts or ())} inside a homozygous deletion")
+				continue
+			out.write(rec)
+	os.replace(tmp, vcf_path)
+	run_quiet(f"tabix -f -p vcf {vcf_path}")
+	print(f"Dropped {dropped} SNP record(s) inside homozygous deletions")
+	return dropped
+
+
 def merge_hybrid_vcfs(snp_vcf, indel_vcf, indel_only_vcf, merged_vcf, snp_caller, indel_caller, filter_indel_pass=True):
 	snp_name = _CALLER_DISPLAY.get(snp_caller, snp_caller)
 	indel_name = _CALLER_DISPLAY.get(indel_caller, indel_caller)
@@ -614,6 +677,11 @@ def merge_hybrid_vcfs(snp_vcf, indel_vcf, indel_only_vcf, merged_vcf, snp_caller
 	merge_cmd = f"bcftools concat -a {snp_only_vcf} {indel_only_vcf} | bcftools sort | bgzip > {merged_vcf}"
 	run_quiet(merge_cmd)
 	run_quiet(f"tabix -p vcf {merged_vcf}")
+
+	# The two callers describe the same reads independently, so a SNP the SNP
+	# caller emits inside a deletion the indel caller emits is a contradiction
+	# the merge has to resolve. Resolve it before phasing.
+	drop_snps_in_homozygous_deletions(merged_vcf)
 
 	# The SNP-only extract exists only to be concatenated. The merged VCF carries
 	# the same records.
