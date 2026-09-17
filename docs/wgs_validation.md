@@ -10,7 +10,7 @@ Allele calls were compared to two reference sets:
 - **1000 Genomes Project HLA panel** ([20181129_HLA_types_full_1000_Genomes_Project_panel.txt](https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/HLA_types/20181129_HLA_types_full_1000_Genomes_Project_panel.txt))
   - 87 samples, 94 libraries
   - HLA-A, -B, -C, -DQB1, -DRB1; two-field resolution
-  - Exome-based (IPD-IMGT/HLA 3.28); alternatives listed with `/` accepted as equivalent; exome-only flag (`*`) retained
+  - Exome-based (IPD-IMGT/HLA 3.28)
 
 The following command was used for each sample:
 
@@ -32,6 +32,8 @@ Concordance is reported among alleles called. An allele was evaluated at a given
 | Alleles called | 784 |
 | Call rate | 100.0% |
 
+Alleles evaluated is lower than alleles called because 1 reference allele was excluded: HG01358 DRB1*04:92# (`#` marks an uncertain call in Lai et al. and is not an IPD-IMGT/HLA designation).
+
 | Resolution | Concordance | Concordant alleles | Alleles evaluated |
 |---|---:|---:|---:|
 | 1-field | 99.9% | 782 | 783 |
@@ -46,6 +48,8 @@ Concordance is reported among alleles called. An allele was evaluated at a given
 | Total possible allele calls | 940 |
 | Alleles called | 940 |
 | Call rate | 100.0% |
+
+Alleles evaluated is lower than alleles called because the reference has no typing for 28 alleles at HLA-DQB1 (14 samples).
 
 | Resolution | Concordance | Concordant alleles | Alleles evaluated |
 |---|---:|---:|---:|
