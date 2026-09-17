@@ -4,10 +4,13 @@ HLA-Resolve v0.9.8 (IPD-IMGT/HLA release 3.64.0) was run on public whole-genome 
 
 Allele calls were compared to two reference sets:
 
-| Reference | Source | Samples | Libraries | Genes | Resolution | Notes |
-|---|---|---:|---:|---|---|---|
-| Lai et al. 2024 | [doi.org/10.1016/j.csbj.2024.03.030](https://doi.org/10.1016/j.csbj.2024.03.030), [Supplementary File 6](Lai_Supplementary-6.xlsx) | 42 | 49 | A, B, C, DPA1, DPB1, DQA1, DQB1, DRB1 | up to 4 fields | HPRC release 1 samples; typings derived from the phased assemblies |
-| 1000 Genomes Project HLA panel | [20181129_HLA_types_full_1000_Genomes_Project_panel.txt](https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/HLA_types/20181129_HLA_types_full_1000_Genomes_Project_panel.txt) | 87 | 94 | A, B, C, DQB1, DRB1 | 2 fields | Exome-based (IPD-IMGT/HLA 3.28); alternatives listed with `/` accepted as equivalent; exome-only flag (`*`) retained |
+- **Lai et al. 2024** ([doi.org/10.1016/j.csbj.2024.03.030](https://doi.org/10.1016/j.csbj.2024.03.030); [Supplementary File 6](Lai_Supplementary-6.xlsx))
+  - 42 HPRC release 1 samples, 49 libraries
+  - HLA-A, -B, -C, -DPA1, -DPB1, -DQA1, -DQB1, -DRB1; up to four-field resolution
+- **1000 Genomes Project HLA panel** ([20181129_HLA_types_full_1000_Genomes_Project_panel.txt](https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/HLA_types/20181129_HLA_types_full_1000_Genomes_Project_panel.txt))
+  - 87 samples, 94 libraries
+  - HLA-A, -B, -C, -DQB1, -DRB1; two-field resolution
+  - Exome-based (IPD-IMGT/HLA 3.28); alternatives listed with `/` accepted as equivalent; exome-only flag (`*`) retained
 
 The following command was used for each sample:
 
