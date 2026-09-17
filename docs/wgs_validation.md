@@ -1,11 +1,11 @@
 # WGS Validation
 
-HLA-Resolve v0.9.8 (IPD-IMGT/HLA release 3.64.0) was run on public whole-genome PacBio reads for **143 sequencing libraries from 129 samples**. All libraries were sequenced by the Human Pangenome Reference Consortium (HPRC; cohorts HPRC, HPRC_PLUS) except the two Genome in a Bottle (GIAB) HG002 libraries. Every library was typed independently. Libraries sequenced across multiple SMRT cells were combined to a target genome-wide coverage depth of 30×. Samples with two libraries appear twice as independent measurements.
+HLA-Resolve v0.9.8 (IPD-IMGT/HLA release 3.64.0) was run on public whole-genome PacBio reads for **146 sequencing libraries from 130 samples**. All libraries were sequenced by the Human Pangenome Reference Consortium (HPRC; cohorts HPRC, HPRC_PLUS) except the two Genome in a Bottle (GIAB) HG002 libraries. Every library was typed independently. Libraries sequenced across multiple SMRT cells were combined to a target genome-wide coverage depth of 30×. Samples with two libraries appear twice as independent measurements.
 
 Allele calls were compared to two reference sets:
 
 - **Lai et al. 2024** ([doi.org/10.1016/j.csbj.2024.03.030](https://doi.org/10.1016/j.csbj.2024.03.030); [Supplementary File 6](Lai_Supplementary-6.xlsx))
-  - 42 HPRC release 1 samples, 49 libraries
+  - 43 HPRC release 1 samples, 52 libraries
   - HLA-A, -B, -C, -DPA1, -DPB1, -DQA1, -DQB1, -DRB1
   - Resolution: up through four-field (full) resolution
 - **1000 Genomes Project HLA panel** ([20181129_HLA_types_full_1000_Genomes_Project_panel.txt](https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/HLA_types/20181129_HLA_types_full_1000_Genomes_Project_panel.txt))
@@ -26,20 +26,20 @@ hla_resolve --input_file <LIBRARY_uBAM> --sample_name <SAMPLE> \
 
 Concordance is reported among alleles called. An allele was evaluated at a given field resolution only if the reference specified it to that resolution. A call resolved to fewer fields than the reference is considered discordant at that level of resolution. By default, genes do not type if their antigen recognition site coverage depth sits below 8x, so call rate was measured as the proportion of total possible allele calls emitted by HLA-Resolve.
 
-## Lai et al. reference (49 libraries, 42 samples)
+## Lai et al. reference (52 libraries, 43 samples)
 
 | Metric | Value |
 |---|---:|
-| Total possible allele calls | 784 |
-| Alleles called | 784 |
+| Total possible allele calls | 832 |
+| Alleles called | 832 |
 | Call rate | 100.0% |
 
 | Resolution | Concordance | Concordant alleles | Alleles evaluated |
 |---|---:|---:|---:|
-| 1-field | 99.9% | 782 | 783 |
-| 2-field | 99.7% | 781 | 783 |
-| 3-field | 99.5% | 768 | 772 |
-| 4-field | 92.7% | 701 | 756 |
+| 1-field | 99.9% | 830 | 831 |
+| 2-field | 99.8% | 829 | 831 |
+| 3-field | 99.5% | 816 | 820 |
+| 4-field | 93.0% | 745 | 801 |
 
 Alleles evaluated is lower than alleles called because 1 uncertain reference allele was excluded (HG01358 DRB1*04:92#), and not all reference alleles have third and fourth field values.
 
@@ -60,27 +60,27 @@ Alleles evaluated is lower than alleles called because the reference has missing
 
 ## All libraries
 
-Both reference sets pooled, 143 libraries. The number of alleles evaluated falls with resolution because the 1000 Genomes panel stops at two fields and covers five genes, and because a reference allele is evaluated only at the fields it specifies.
+Both reference sets pooled, 146 libraries. The number of alleles evaluated falls with resolution because the 1000 Genomes panel stops at two fields and covers five genes, and because a reference allele is evaluated only at the fields it specifies.
 
 | Metric | Value |
 |---|---:|
-| Total possible allele calls | 1724 |
-| Alleles called | 1724 |
+| Total possible allele calls | 1772 |
+| Alleles called | 1772 |
 | Call rate | 100.0% |
 
 | Resolution | Concordance | Concordant alleles | Alleles evaluated |
 |---|---:|---:|---:|
-| 1-field | 99.9% | 1693 | 1695 |
-| 2-field | 99.4% | 1684 | 1695 |
-| 3-field | 99.5% | 768 | 772 |
-| 4-field | 92.7% | 701 | 756 |
+| 1-field | 99.9% | 1741 | 1743 |
+| 2-field | 99.4% | 1732 | 1743 |
+| 3-field | 99.5% | 816 | 820 |
+| 4-field | 93.0% | 745 | 801 |
 
 ## Results by library
 
 One row per sequencing library, grouped by sample.
 
 - The 3- and 4-field columns are blank where the reference is two-field.
-- HLA coverage is the mean depth across the eight classical HLA genes from the HLA-Resolve run log (all 143 libraries: mean 33.2×, median 34.0×, range 19.6–46.8×).
+- HLA coverage is the mean depth across the eight classical HLA genes from the HLA-Resolve run log (all 146 libraries: mean 33.1×, median 33.9×, range 19.6–46.8×).
 
 | Sample | Library | Cohort | Instrument | Reference | HLA&nbsp;coverage | Genes&nbsp;typed | Alleles&nbsp;called | 1-field | 2-field | 3-field | 4-field |
 |---|---|---|---|---|---:|---|---|---|---|---|---|
@@ -93,6 +93,9 @@ One row per sequencing library, grouped by sample.
 | HG00133 | PG00133.HFSS | HPRC | Revio | 1kGP | 26.6× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
 | HG00140 | HG00140_lib1 | HPRC | Sequel II | 1kGP | 33.4× | 8/8 | 16/16 | 8/8 | 8/8 |  |  |
 | HG00146 | HG00146_lib1 | HPRC | Revio | 1kGP | 37.5× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| HG002 | GIAB_230928_s3 | GIAB | Revio | Lai | 23.4× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 15/15 |
+| HG002 | GIAB_231005_s1 | GIAB | Revio | Lai | 26.3× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 14/15 |
+| HG002 | HPRC_PLUS_m84011 | HPRC_PLUS | Revio | Lai | 32.2× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 15/15 |
 | HG00232 | HG00232_lib1 | HPRC | Revio | 1kGP | 34.4× | 8/8 | 16/16 | 8/8 | 8/8 |  |  |
 | HG00235 | HG00235_PB1 | HPRC | Revio | 1kGP | 31.0× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
 | HG00253 | HG00253_PB1 | HPRC | Revio | 1kGP | 35.5× | 8/8 | 16/16 | 8/8 | 8/8 |  |  |
@@ -280,6 +283,9 @@ Some files sit one folder deeper (`primrose/`, `wMods/`). The manifest below giv
 | HG00133 | PG00133.HFSS | HPRC | m84046_230602_203207_s4.hifi_reads.bc2045.bam<br>m84046_230617_043254_s3.hifi_reads.bc2045.bam<br>m84046_230617_050400_s4.hifi_reads.bc2045.bam |
 | HG00140 | HG00140_lib1 | HPRC | m64043_220728_173215-bc1018.5mc.hifi_reads.bam<br>m64136_220715_182717-bc1018.5mc.hifi_reads.bam<br>m64136_220717_152248-bc1018.5mc.hifi_reads.bam<br>m64136_220719_122056-bc1018.5mc.hifi_reads.bam |
 | HG00146 | HG00146_lib1 | HPRC | m84081_230616_182824_s3.hifi_reads.bc2013.bam |
+| HG002 | GIAB_230928_s3 | GIAB | https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/AshkenazimTrio/HG002_NA24385_son/PacBio_HiFi-Revio_20231031/HG002_PacBio-Revio_m84039_230928_213653_s3.hifi_reads.bam |
+| HG002 | GIAB_231005_s1 | GIAB | https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/AshkenazimTrio/HG002_NA24385_son/PacBio_HiFi-Revio_20231031/HG002_PacBio-Revio_m84039_231005_222902_s1.hifi_reads.bam |
+| HG002 | HPRC_PLUS_m84011 | HPRC_PLUS | wMods/m84011_220902_175841_s1.hifi_reads.bam |
 | HG00232 | HG00232_lib1 | HPRC | m84081_230623_202140_s1.hifi_reads.bc2014.bam<br>m84081_230714_201817_s1.hifi_reads.bc2014.bam<br>m84081_230714_205519_s2.hifi_reads.bc2014.bam |
 | HG00235 | HG00235_PB1 | HPRC | m84091_230721_141900_s2.hifi_reads.bc1008.bam |
 | HG00253 | HG00253_PB1 | HPRC | m84091_230721_134835_s1.hifi_reads.bc1003.bam |
