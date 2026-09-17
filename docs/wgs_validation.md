@@ -68,8 +68,10 @@ Both reference sets pooled, 143 libraries. The number of alleles evaluated falls
 
 ## Results by library
 
-One row per sequencing library, grouped by sample. The 3- and 4-field columns are blank where the reference is two-field.
-Coverage depth is reported as the mean depth across the eight classical HLA genes from the HLA-Resolve run log. Across all 143 libraries: mean 33.2×, median 34.0×, range 19.6–46.8×.
+One row per sequencing library, grouped by sample.
+
+- The 3- and 4-field columns are blank where the reference is two-field.
+- HLA coverage is the mean depth across the eight classical HLA genes from the HLA-Resolve run log (all 143 libraries: mean 33.2×, median 34.0×, range 19.6–46.8×).
 
 | Sample | Library | Cohort | Instrument | Reference | HLA&nbsp;coverage | Genes&nbsp;typed | Alleles&nbsp;called | 1-field | 2-field | 3-field | 4-field |
 |---|---|---|---|---|---:|---|---|---|---|---|---|
