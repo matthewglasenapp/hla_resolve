@@ -1,15 +1,17 @@
 # WGS Validation
 
-HLA-Resolve v0.9.8 (IPD-IMGT/HLA release 3.64.0) was run on public whole-genome PacBio reads for **143 sequencing libraries from 129 samples**. All libraries were sequenced by the Human Pangenome Reference Consortium (HPRC; cohorts HPRC, HPRC_PLUS) except the two Genome in a Bottle (GIAB) HG002 libraries. Every library was typed independently. Libraries sequenced across multiple SMRT cells were combined to a target of 30× genome-wide coverage depth. Samples with two libraries appear twice as independent measurements.
+HLA-Resolve v0.9.8 (IPD-IMGT/HLA release 3.64.0) was run on public whole-genome PacBio reads for **143 sequencing libraries from 129 samples**. All libraries were sequenced by the Human Pangenome Reference Consortium (HPRC; cohorts HPRC, HPRC_PLUS) except the two Genome in a Bottle (GIAB) HG002 libraries. Every library was typed independently. Libraries sequenced across multiple SMRT cells were combined to a target genome-wide coverage depth of 30×. Samples with two libraries appear twice as independent measurements.
 
 Allele calls were compared to two reference sets:
 
 - **Lai et al. 2024** ([doi.org/10.1016/j.csbj.2024.03.030](https://doi.org/10.1016/j.csbj.2024.03.030); [Supplementary File 6](Lai_Supplementary-6.xlsx))
   - 42 HPRC release 1 samples, 49 libraries
-  - HLA-A, -B, -C, -DPA1, -DPB1, -DQA1, -DQB1, -DRB1; up to four-field resolution
+  - HLA-A, -B, -C, -DPA1, -DPB1, -DQA1, -DQB1, -DRB1
+  - Up to four-field resolution
 - **1000 Genomes Project HLA panel** ([20181129_HLA_types_full_1000_Genomes_Project_panel.txt](https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/HLA_types/20181129_HLA_types_full_1000_Genomes_Project_panel.txt))
   - 87 samples, 94 libraries
-  - HLA-A, -B, -C, -DQB1, -DRB1; two-field resolution
+  - HLA-A, -B, -C, -DQB1, -DRB1
+  - Two-field resolution
   - Exome-based (IPD-IMGT/HLA 3.28)
 
 The following command was used for each sample:
@@ -32,14 +34,14 @@ Concordance is reported among alleles called. An allele was evaluated at a given
 | Alleles called | 784 |
 | Call rate | 100.0% |
 
-Alleles evaluated is lower than alleles called because 1 reference allele was excluded: HG01358 DRB1*04:92# (`#` marks an uncertain call in Lai et al. and is not an IPD-IMGT/HLA designation).
-
 | Resolution | Concordance | Concordant alleles | Alleles evaluated |
 |---|---:|---:|---:|
 | 1-field | 99.9% | 782 | 783 |
 | 2-field | 99.7% | 781 | 783 |
 | 3-field | 99.5% | 768 | 772 |
 | 4-field | 92.7% | 701 | 756 |
+
+Alleles evaluated is lower than alleles called because 1 uncertain reference allele was excluded (HG01358 DRB1*04:92#), and not all reference alleles have third and fourth field values.
 
 ## 1000 Genomes panel (94 libraries, 87 samples)
 
@@ -49,12 +51,12 @@ Alleles evaluated is lower than alleles called because 1 reference allele was ex
 | Alleles called | 940 |
 | Call rate | 100.0% |
 
-Alleles evaluated is lower than alleles called because the reference has no typing for 28 alleles at HLA-DQB1 (14 samples).
-
 | Resolution | Concordance | Concordant alleles | Alleles evaluated |
 |---|---:|---:|---:|
 | 1-field | 99.9% | 911 | 912 |
 | 2-field | 99.0% | 903 | 912 |
+
+Alleles evaluated is lower than alleles called because the reference has missing HLA-DQB1 calls for 14 samples (28 alleles).
 
 ## All libraries
 
