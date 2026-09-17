@@ -7,11 +7,11 @@ Allele calls were compared to two reference sets:
 - **Lai et al. 2024** ([doi.org/10.1016/j.csbj.2024.03.030](https://doi.org/10.1016/j.csbj.2024.03.030); [Supplementary File 6](Lai_Supplementary-6.xlsx))
   - 42 HPRC release 1 samples, 49 libraries
   - HLA-A, -B, -C, -DPA1, -DPB1, -DQA1, -DQB1, -DRB1
-  - Up to four-field resolution
+  - Resolution: up through four-field (full) resolution
 - **1000 Genomes Project HLA panel** ([20181129_HLA_types_full_1000_Genomes_Project_panel.txt](https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/HLA_types/20181129_HLA_types_full_1000_Genomes_Project_panel.txt))
   - 87 samples, 94 libraries
   - HLA-A, -B, -C, -DQB1, -DRB1
-  - Two-field resolution
+  - Resolution: two-field resolution
   - Exome-based (IPD-IMGT/HLA 3.28)
 
 The following command was used for each sample:
