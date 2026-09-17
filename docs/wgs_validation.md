@@ -231,24 +231,6 @@ One row per sequencing library, grouped by sample.
 | NA21144 | NA21144_lib1 | HPRC | Revio | 1kGP | 40.0× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
 | NA21309 | NA21309:untagged | HPRC_PLUS | Sequel II | Lai | 37.2× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 15/15 |
 
-## Discordant alleles
-
-Gene × library combinations discordant at 1 or 2 or 3 fields, with the shallowest discordant field, the gene's mean ARS depth, the calls and the reference alleles.
-
-| Sample | Library | Gene | Field | ARS&nbsp;depth | Called | Reference | Note |
-|---|---|---|---|---:|---|---|---|
-| HG01361 | HG01361.HFSS3 | DRB1 | 1 | 18.0× | DRB1*15:01:32 / DRB1*11:34 | DRB1*11:02:01:02 / DRB1*07:01:01:01 | ARS depth under 20x |
-| NA19338 | NA19338_PB2 | DRB1 | 1 | 16.0× | DRB1*15:03:01:03 / DRB1*15:03:01:03 | DRB1*13:02 / DRB1*15:03 | ARS depth under 20x |
-| HG02040 | HG02040.HFSS2 | A | 2 | 24.0× | A*02:03:01:01 / A*29:01:01:01 | A*02:148/A*02:281/A*02:370/A*02:427/A*02:544/A*02:595/A*02:634 / A*29:01 |  |
-| HG02976 | HG02976_lib1 | DRB1 | 2 | 23.0× | DRB1*15:03:01:03 / DRB1*11:01:02:03 | DRB1*11:10 / DRB1*15:03 |  |
-| HG03195 | HG03195_lib1 | B | 2 | 18.4× | B*35:598 / B*15:03:01:02 | B*15:03 / B*35:01 | ARS depth under 20x |
-| HG03742 | HG03742_PB1 | B | 2 | 30.0× | B*52:01:01:09 / B*37:110 | B*37:01 / B*52:01 |  |
-| NA18620 | NA18620_PB1 | C | 2 | 47.0× | C*04:82:01 / C*07:02:01:15 | C*04:01 / C*07:02 |  |
-| NA19159 | NA19159_PB1 | DRB1 | 2 | 25.9× | DRB1*07:01:01:01 / DRB1*13:01:01:04 | DRB1*13:177 / DRB1*07:01 | panel allele flagged exome-only (*) |
-| NA19185 | NA19185_PB1 | C | 2 | 27.6× | C*17:01:01:02 / C*16:01:01:01 | C*16:01 / C*17:03 |  |
-| NA20799 | NA20799_PB1 | DRB1 | 2 | 31.3× | DRB1*11:11:01 / DRB1*01:02:01:01 | DRB1*01:02 / DRB1*11:01 |  |
-| HG01928 | HG01928_lib1 | A | 3 | 24.0× | A*02:01:52 / A*02:01:52 | A*02:01:01:01 / A*02:01:01:01 |  |
-
 ## Input files
 
 Each library was typed from one unaligned BAM made by concatenating the files listed. HPRC files are public on the AWS Open Data registry and need no credential. Build a path by substituting the Cohort, Sample and Files values from the table into:
@@ -283,8 +265,6 @@ Some files sit one folder deeper (`primrose/`, `wMods/`). The manifest below giv
 | HG00133 | PG00133.HFSS | HPRC | m84046_230602_203207_s4.hifi_reads.bc2045.bam<br>m84046_230617_043254_s3.hifi_reads.bc2045.bam<br>m84046_230617_050400_s4.hifi_reads.bc2045.bam |
 | HG00140 | HG00140_lib1 | HPRC | m64043_220728_173215-bc1018.5mc.hifi_reads.bam<br>m64136_220715_182717-bc1018.5mc.hifi_reads.bam<br>m64136_220717_152248-bc1018.5mc.hifi_reads.bam<br>m64136_220719_122056-bc1018.5mc.hifi_reads.bam |
 | HG00146 | HG00146_lib1 | HPRC | m84081_230616_182824_s3.hifi_reads.bc2013.bam |
-| HG002 | GIAB_230928_s3 | GIAB | https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/AshkenazimTrio/HG002_NA24385_son/PacBio_HiFi-Revio_20231031/HG002_PacBio-Revio_m84039_230928_213653_s3.hifi_reads.bam |
-| HG002 | GIAB_231005_s1 | GIAB | https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/AshkenazimTrio/HG002_NA24385_son/PacBio_HiFi-Revio_20231031/HG002_PacBio-Revio_m84039_231005_222902_s1.hifi_reads.bam |
 | HG002 | HPRC_PLUS_m84011 | HPRC_PLUS | wMods/m84011_220902_175841_s1.hifi_reads.bam |
 | HG00232 | HG00232_lib1 | HPRC | m84081_230623_202140_s1.hifi_reads.bc2014.bam<br>m84081_230714_201817_s1.hifi_reads.bc2014.bam<br>m84081_230714_205519_s2.hifi_reads.bc2014.bam |
 | HG00235 | HG00235_PB1 | HPRC | m84091_230721_141900_s2.hifi_reads.bc1008.bam |
@@ -420,4 +400,20 @@ Some files sit one folder deeper (`primrose/`, `wMods/`). The manifest below giv
 | NA21110 | NA21110_PB1 | HPRC | m84091_230710_165908_s1.hifi_reads.bc1011.bam<br>m84091_230719_165228_s3.hifi_reads.bc1011.bam |
 | NA21144 | NA21144_lib1 | HPRC | m84081_230629_184915_s1.hifi_reads.bc2018.bam |
 | NA21309 | NA21309:untagged | HPRC_PLUS | m64043_191210_201113.ccs.bam<br>m64043_191213_191857.ccs.bam<br>m64043_191215_014401.ccs.bam<br>m64043_191219_192900.ccs.bam |
+
+### Genome in a Bottle
+
+The GIAB HG002 libraries are on the NCBI FTP site:
+
+**HG002 GIAB_230928_s3**
+
+```
+https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/AshkenazimTrio/HG002_NA24385_son/PacBio_HiFi-Revio_20231031/HG002_PacBio-Revio_m84039_230928_213653_s3.hifi_reads.bam
+```
+
+**HG002 GIAB_231005_s1**
+
+```
+https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/AshkenazimTrio/HG002_NA24385_son/PacBio_HiFi-Revio_20231031/HG002_PacBio-Revio_m84039_231005_222902_s1.hifi_reads.bam
+```
 
