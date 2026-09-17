@@ -4,8 +4,8 @@ HLA-Resolve v0.9.8 (IPD-IMGT/HLA release 3.64.0) was run on public whole-genome 
 
 Allele calls were compared to two reference sets:
 
-- **Lai et al. 2024** ([doi.org/10.1016/j.csbj.2024.03.030](https://doi.org/10.1016/j.csbj.2024.03.030)) for 42 HPRC release 1 samples (49 libraries).
-- **1000 Genomes Project HLA panel** ([20181129_HLA_types_full_1000_Genomes_Project_panel.txt](https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/HLA_types/20181129_HLA_types_full_1000_Genomes_Project_panel.txt)) for 87 samples (94 libraries): HLA-A, -B, -C, -DQB1 and -DRB1 up through two-field resolution. 
+- **Lai et al. 2024** ([doi.org/10.1016/j.csbj.2024.03.030](https://doi.org/10.1016/j.csbj.2024.03.030); [Supplementary File 6](Lai_Supplementary-6.xlsx)) for 42 HPRC release 1 samples (49 libraries).
+- **1000 Genomes Project HLA panel** ([20181129_HLA_types_full_1000_Genomes_Project_panel.txt](https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/HLA_types/20181129_HLA_types_full_1000_Genomes_Project_panel.txt)) for 87 samples (94 libraries): HLA-A, -B, -C, -DQB1 and -DRB1 up through two-field resolution. The panel is exome-based (IPD-IMGT/HLA 3.28); alternatives it lists with `/` were accepted as equivalent and its exome-only flag (`*`) was retained.
 
 The following command was used for each sample:
 
@@ -17,9 +17,9 @@ hla_resolve --input_file <LIBRARY_uBAM> --sample_name <SAMPLE> \
 
 ## Scoring
 
-Concordance is reported among alleles called. An allele was evaluated at a given field resolution only if the reference specified it to that resolution. A call resolved to fewer fields than the reference is considered discordant at that level of resolution. By default, genes do not type if their antigen recognition site coverage depth sits below 8x, so call rate was measured as the proportion of total possible allele calls emitted by HLA-Resolve. 
+Concordance is reported among alleles called. An allele was evaluated at a given field resolution only if the reference specified it to that resolution. A call resolved to fewer fields than the reference is considered discordant at that level of resolution. By default, genes do not type if their antigen recognition site coverage depth sits below 8x, so call rate was measured as the proportion of total possible allele calls emitted by HLA-Resolve.
 
-Coverage depth is reported the mean depth across the eight classical HLA genes from the HLA-Resolve run log. Across all 143 libraries: mean 33.2×, median 34.0×, range 19.6–46.8×.
+Coverage depth is reported as the mean depth across the eight classical HLA genes from the HLA-Resolve run log. Across all 143 libraries: mean 33.2×, median 34.0×, range 19.6–46.8×.
 
 ## Lai et al. reference (49 libraries, 42 samples)
 
@@ -49,14 +49,22 @@ Coverage depth is reported the mean depth across the eight classical HLA genes f
 | 1-field | 99.9% | 911 | 912 |
 | 2-field | 99.0% | 903 | 912 |
 
-## All libraries, HLA-A, -B, -C, -DQB1, -DRB1
+## All libraries
 
-The five genes both references cover, over all 143 libraries, at one and two fields.
+Both reference sets pooled, 143 libraries. The number of alleles evaluated falls with resolution because the 1000 Genomes panel stops at two fields and covers five genes, and because a reference allele is evaluated only at the fields it specifies.
+
+| Metric | Value |
+|---|---:|
+| Total possible allele calls | 1724 |
+| Alleles called | 1724 |
+| Call rate | 100.0% |
 
 | Resolution | Concordance | Concordant alleles | Alleles evaluated |
 |---|---:|---:|---:|
-| 1-field | 99.9% | 1399 | 1401 |
-| 2-field | 99.2% | 1390 | 1401 |
+| 1-field | 99.9% | 1693 | 1695 |
+| 2-field | 99.4% | 1684 | 1695 |
+| 3-field | 99.5% | 768 | 772 |
+| 4-field | 92.7% | 701 | 756 |
 
 ## Results by library
 
@@ -64,149 +72,167 @@ One row per sequencing library, grouped by sample. The 3- and 4-field columns ar
 
 | Sample | Library | Cohort | Instrument | Reference | HLA&nbsp;coverage | Genes&nbsp;typed | Alleles&nbsp;called | 1-field | 2-field | 3-field | 4-field |
 |---|---|---|---|---|---:|---|---|---|---|---|---|
-| HG00097 | PG00097.HFSS | HPRC | Revio | [1kGP][kgp] | 41.3× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| HG00099 | PG00099_1.HFSS | HPRC | Revio + Sequel II | [1kGP][kgp] | 37.4× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| HG00099 | PG00099_2.HFSS | HPRC | Sequel II | [1kGP][kgp] | 31.2× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| HG00126 | PG00126.HFSS | HPRC | Revio | [1kGP][kgp] | 27.2× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| HG00128 | PG00128.HFSS | HPRC | Revio | [1kGP][kgp] | 33.5× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| HG00128 | PG00128.HFSS2 | HPRC | Revio | [1kGP][kgp] | 25.6× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| HG00133 | PG00133.HFSS | HPRC | Revio | [1kGP][kgp] | 26.6× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| HG00140 | HG00140_lib1 | HPRC | Sequel II | [1kGP][kgp] | 33.4× | 8/8 | 16/16 | 8/8 | 8/8 |  |  |
-| HG00146 | HG00146_lib1 | HPRC | Revio | [1kGP][kgp] | 37.5× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| HG00232 | HG00232_lib1 | HPRC | Revio | [1kGP][kgp] | 34.4× | 8/8 | 16/16 | 8/8 | 8/8 |  |  |
-| HG00235 | HG00235_PB1 | HPRC | Revio | [1kGP][kgp] | 31.0× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| HG00253 | HG00253_PB1 | HPRC | Revio | [1kGP][kgp] | 35.5× | 8/8 | 16/16 | 8/8 | 8/8 |  |  |
-| HG00272 | PG00272.HFSS | HPRC | Revio | [1kGP][kgp] | 42.3× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| HG00280 | PG00280.HFSS | HPRC | Sequel II | [1kGP][kgp] | 26.1× | 8/8 | 16/16 | 8/8 | 8/8 |  |  |
-| HG00290 | PG00290.HFSS | HPRC | Revio | [1kGP][kgp] | 33.7× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| HG00320 | HG00320_lib1 | HPRC | Revio | [1kGP][kgp] | 30.3× | 8/8 | 16/16 | 8/8 | 8/8 |  |  |
-| HG00321 | HG00321_lib1 | HPRC | Revio | [1kGP][kgp] | 33.1× | 8/8 | 16/16 | 8/8 | 8/8 |  |  |
-| HG00323 | HG00323_lib1 | HPRC | Sequel II | [1kGP][kgp] | 32.7× | 8/8 | 16/16 | 8/8 | 8/8 |  |  |
-| HG00344 | PG00344.HFSS2 | HPRC | Revio | [1kGP][kgp] | 20.7× | 8/8 | 16/16 | 8/8 | 8/8 |  |  |
-| HG00350 | PG00350.HFSS | HPRC | Revio | [1kGP][kgp] | 27.8× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| HG00438 | HG00438_lib1 | HPRC | Sequel II | [Lai][lai] | 29.1× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 15/16 |
-| HG00621 | HG00621_lib1 | HPRC | Sequel II | [Lai][lai] | 39.4× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 15/16 |
-| HG00673 | HG00673_lib1 | HPRC | Sequel II | [Lai][lai] | 40.0× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 14/16 |
-| HG00733 | HG00733.HFSS | HPRC_PLUS | Sequel II | [Lai][lai] | 39.7× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 14/16 |
-| HG00733 | HG00733:untagged | HPRC_PLUS | Sequel II | [Lai][lai] | 37.1× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 15/16 |
-| HG00735 | HG00735_lib1 | HPRC | Sequel II | [Lai][lai] | 28.6× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 15/16 |
-| HG00741 | HG00741_lib1 | HPRC | Sequel II | [Lai][lai] | 35.9× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 14/16 |
-| HG01071 | HG01071_lib1 | HPRC | Sequel II | [Lai][lai] | 27.6× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 15/16 |
-| HG01106 | HG01106_lib1 | HPRC | Sequel II | [Lai][lai] | 32.4× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 15/16 |
-| HG01109 | HG01109:untagged | HPRC_PLUS | Sequel II | [Lai][lai] | 38.1× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 15/16 |
-| HG01167 | HG01167_PB1 | HPRC | Revio | [1kGP][kgp] | 33.1× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| HG01175 | HG01175_lib1 | HPRC | Sequel II | [Lai][lai] | 36.0× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 15/16 |
-| HG01243 | HG01243:untagged | HPRC_PLUS | Sequel II | [Lai][lai] | 35.6× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 15/16 |
-| HG01258 | HG01258.HiFiEx_f1 | HPRC | Sequel II | [Lai][lai] | 41.6× | 8/8 | 16/16 | 16/16 | 16/16 | 15/15 | 14/15 |
-| HG01358 | HG01358_HiFiEx_f1 | HPRC | Sequel II | [Lai][lai] | 37.0× | 8/8 | 16/16 | 15/15 | 15/15 | 15/15 | 14/14 |
-| HG01361 | HG01361.HFSS3 | HPRC | Revio | [Lai][lai] | 24.0× | 8/8 | 16/16 | 15/16 | 14/16 | 14/16 | 12/15 |
-| HG01361 | HG01361.HiFiEx_f2 | HPRC | Sequel II | [Lai][lai] | 33.2× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 13/15 |
-| HG01530 | HG01530_PB1 | HPRC | Sequel II | [1kGP][kgp] | 30.3× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| HG01784 | HG01784_PB1 | HPRC | Sequel II | [1kGP][kgp] | 33.7× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| HG01784 | HG01784_PB2 | HPRC | Revio | [1kGP][kgp] | 20.7× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| HG01786 | HG01786_lib1 | HPRC | Revio | [1kGP][kgp] | 37.9× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| HG01891 | HG01891.HFSS | HPRC | Revio | [Lai][lai] | 24.5× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 15/16 |
-| HG01891 | HG01891.HiFiEx_f2 | HPRC | Sequel II | [Lai][lai] | 38.8× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 15/16 |
-| HG01928 | HG01928_lib1 | HPRC | Sequel II | [Lai][lai] | 29.1× | 8/8 | 16/16 | 16/16 | 16/16 | 13/15 | 12/15 |
-| HG01952 | HG01952_lib1 | HPRC | Sequel II | [Lai][lai] | 29.6× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 13/14 |
-| HG01978 | HG01978_lib1 | HPRC | Sequel II | [Lai][lai] | 33.1× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 14/15 |
-| HG02040 | HG02040.HFSS2 | HPRC | Sequel II | [1kGP][kgp] | 25.8× | 8/8 | 16/16 | 10/10 | 9/10 |  |  |
-| HG02055 | HG02055_Revio_validated | HPRC_PLUS | Revio | [Lai][lai] | 34.0× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 15/16 |
-| HG02080 | HG02080_ELF2_480c6e | HPRC_PLUS | Sequel II | [Lai][lai] | 36.1× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 16/16 |
-| HG02109 | HG02109_Revio_validated | HPRC_PLUS | Revio | [Lai][lai] | 35.5× | 8/8 | 16/16 | 16/16 | 16/16 | 14/14 | 14/14 |
-| HG02145 | HG02145_Revio_validated | HPRC_PLUS | Revio | [Lai][lai] | 33.1× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 13/16 |
-| HG02148 | HG02148_lib1 | HPRC | Sequel II | [Lai][lai] | 27.6× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 15/16 |
-| HG02155 | HG02155_lib1 | HPRC | Sequel II | [1kGP][kgp] | 34.2× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| HG02165 | PG02165.HFSS2 | HPRC | Sequel II | [1kGP][kgp] | 30.4× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| HG02178 | HG02178_PB1 | HPRC | Revio | [1kGP][kgp] | 34.1× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| HG02257 | HG02257.HFSS | HPRC | Revio | [Lai][lai] | 22.4× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 14/15 |
-| HG02257 | HG02257.HiFiEx_f2 | HPRC | Sequel II | [Lai][lai] | 37.0× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 14/15 |
-| HG02391 | HG02391_PB1 | HPRC | Sequel II | [1kGP][kgp] | 30.0× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| HG02392 | HG02392_PB1 | HPRC | Revio | [1kGP][kgp] | 32.1× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| HG02572 | HG02572.HFSS3 | HPRC | Revio | [Lai][lai] | 24.3× | 8/8 | 16/16 | 16/16 | 16/16 | 15/15 | 12/14 |
-| HG02572 | HG02572.HiFiEx_f2 | HPRC | Sequel II | [Lai][lai] | 27.6× | 8/8 | 16/16 | 16/16 | 16/16 | 15/15 | 12/14 |
-| HG02583 | HG02583_PB1 | HPRC | Revio | [1kGP][kgp] | 33.5× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| HG02622 | HG02622_lib1 | HPRC | Sequel II | [Lai][lai] | 32.8× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 13/16 |
-| HG02630 | HG02630_lib1 | HPRC | Sequel II | [Lai][lai] | 37.2× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 15/16 |
-| HG02717 | HG02717_lib1 | HPRC | Sequel II | [Lai][lai] | 33.5× | 8/8 | 16/16 | 16/16 | 16/16 | 15/15 | 11/15 |
-| HG02723 | HG02723_Revio_validated | HPRC_PLUS | Revio | [Lai][lai] | 34.4× | 8/8 | 16/16 | 16/16 | 16/16 | 15/15 | 14/15 |
-| HG02723 | HG02723:untagged | HPRC_PLUS | Sequel II | [Lai][lai] | 43.4× | 8/8 | 16/16 | 16/16 | 16/16 | 15/15 | 14/15 |
-| HG02818 | HG02818:untagged | HPRC_PLUS | Sequel II | [Lai][lai] | 37.1× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 15/16 |
-| HG02886 | HG02886_lib1 | HPRC | Sequel II | [Lai][lai] | 35.2× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 14/16 |
-| HG02922 | PG02922.HFSS2 | HPRC | Revio + Sequel II | [1kGP][kgp] | 33.4× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| HG02965 | HG02965_lib1 | HPRC | Sequel II | [1kGP][kgp] | 34.5× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| HG02976 | HG02976_lib1 | HPRC | Sequel II | [1kGP][kgp] | 27.6× | 8/8 | 16/16 | 10/10 | 9/10 |  |  |
-| HG03098 | HG03098_Fraction2_Fraction3_480cnp | HPRC_PLUS | Sequel II | [Lai][lai] | 35.0× | 8/8 | 16/16 | 16/16 | 16/16 | 15/15 | 15/15 |
-| HG03130 | HG03130.HFSS | HPRC | Sequel II | [1kGP][kgp] | 39.6× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| HG03139 | HG03139.HFSS | HPRC | Revio + Sequel II | [1kGP][kgp] | 33.6× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| HG03195 | HG03195_lib1 | HPRC | Sequel II | [1kGP][kgp] | 32.1× | 8/8 | 16/16 | 10/10 | 9/10 |  |  |
-| HG03209 | HG03209.HFSS | HPRC | Sequel II | [1kGP][kgp] | 34.6× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| HG03225 | HG03225_lib1 | HPRC | Sequel II | [1kGP][kgp] | 36.5× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| HG03270 | HG03270_PB1 | HPRC | Revio | [1kGP][kgp] | 37.5× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| HG03369 | HG03369_PB1 | HPRC | Revio | [1kGP][kgp] | 32.9× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| HG03453 | HG03453_lib1 | HPRC | Sequel II | [Lai][lai] | 38.7× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 14/15 |
-| HG03470 | HG03470_PB1 | HPRC | Revio + Sequel II | [1kGP][kgp] | 35.1× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| HG03486 | HG03486:untagged | HPRC_PLUS | Sequel II | [Lai][lai] | 39.5× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 16/16 |
-| HG03492 | HG03492_ELF2_ELF3_480c6f | HPRC_PLUS | Sequel II | [Lai][lai] | 37.0× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 15/15 |
-| HG03516 | HG03516.HFSS | HPRC | Revio | [Lai][lai] | 24.4× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 16/16 |
-| HG03516 | HG03516_HiFiEx_mix | HPRC | Sequel II | [Lai][lai] | 39.7× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 15/16 |
-| HG03521 | PG03521.HFSS2 | HPRC | Revio | [1kGP][kgp] | 36.6× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| HG03540 | HG03540_lib1 | HPRC | Sequel II | [Lai][lai] | 41.7× | 8/8 | 16/16 | 16/16 | 16/16 | 15/15 | 14/14 |
-| HG03579 | HG03579_lib1 | HPRC | Sequel II | [Lai][lai] | 39.8× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 16/16 |
-| HG03583 | HG03583_PB1 | HPRC | Revio | [1kGP][kgp] | 30.1× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| HG03742 | HG03742_PB1 | HPRC | Sequel II | [1kGP][kgp] | 26.5× | 8/8 | 16/16 | 10/10 | 9/10 |  |  |
-| HG03784 | HG03784_lib1 | HPRC | Revio | [1kGP][kgp] | 35.7× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| HG03874 | HG03874_PB1 | HPRC | Revio | [1kGP][kgp] | 27.0× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| NA18505 | NA18505_PB1 | HPRC | Revio | [1kGP][kgp] | 36.2× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| NA18508 | PG18508.HFSS2 | HPRC | Revio | [1kGP][kgp] | 20.6× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| NA18522 | NA18522.HFSS | HPRC | Revio + Sequel II | [1kGP][kgp] | 34.0× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| NA18565 | NA18565_lib1 | HPRC | Revio | [1kGP][kgp] | 34.6× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| NA18570 | NA18570_PB1 | HPRC | Sequel II | [1kGP][kgp] | 28.8× | 8/8 | 16/16 | 8/8 | 8/8 |  |  |
-| NA18608 | NA18608_lib1 | HPRC | Revio | [1kGP][kgp] | 44.0× | 8/8 | 16/16 | 8/8 | 8/8 |  |  |
-| NA18620 | NA18620_PB1 | HPRC | Revio | [1kGP][kgp] | 36.6× | 8/8 | 16/16 | 8/8 | 7/8 |  |  |
-| NA18747 | PG18747_1.HFSS | HPRC | Revio + Sequel II | [1kGP][kgp] | 38.0× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| NA18747 | PG18747_2.HFSS | HPRC | Sequel II | [1kGP][kgp] | 20.3× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| NA18879 | PG18879.HFSS | HPRC | Revio | [1kGP][kgp] | 32.7× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| NA18906 | NA18906:untagged | HPRC_PLUS | Sequel II | [Lai][lai] | 46.8× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 15/15 |
-| NA18952 | NA18952_lib1 | HPRC | Revio | [1kGP][kgp] | 35.9× | 8/8 | 16/16 | 8/8 | 8/8 |  |  |
-| NA18971 | NA18971_lib1 | HPRC | Sequel II | [1kGP][kgp] | 35.7× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| NA18974 | NA18974_lib1 | HPRC | Revio | [1kGP][kgp] | 40.1× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| NA18976 | NA18976_lib1 | HPRC | Revio | [1kGP][kgp] | 38.1× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| NA18983 | PG18983.HFSS2 | HPRC | Sequel II | [1kGP][kgp] | 25.0× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| NA19036 | NA19036_PB1 | HPRC | Revio | [1kGP][kgp] | 34.9× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| NA19043 | PG19043.HFSS | HPRC | Revio + Sequel II | [1kGP][kgp] | 38.1× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| NA19087 | NA19087_PB1 | HPRC | Sequel II | [1kGP][kgp] | 25.1× | 8/8 | 16/16 | 8/8 | 8/8 |  |  |
-| NA19159 | NA19159_PB1 | HPRC | Revio + Sequel II | [1kGP][kgp] | 34.7× | 8/8 | 16/16 | 10/10 | 9/10 |  |  |
-| NA19185 | NA19185_PB1 | HPRC | Sequel II | [1kGP][kgp] | 29.5× | 8/8 | 16/16 | 10/10 | 9/10 |  |  |
-| NA19240 | NA19240:untagged | HPRC_PLUS | Sequel II | [Lai][lai] | 41.8× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 15/16 |
-| NA19338 | NA19338_PB1 | HPRC | Sequel II | [1kGP][kgp] | 35.2× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| NA19338 | NA19338_PB2 | HPRC | Revio | [1kGP][kgp] | 19.6× | 8/8 | 16/16 | 9/10 | 9/10 |  |  |
-| NA19391 | NA19391_PB1 | HPRC | Sequel II | [1kGP][kgp] | 31.3× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| NA19391 | NA19391_PB3 | HPRC | Revio | [1kGP][kgp] | 22.0× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| NA19443 | PG19443.HFSS | HPRC | Revio | [1kGP][kgp] | 34.0× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| NA19468 | NA19468_PB1 | HPRC | Sequel II | [1kGP][kgp] | 30.9× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| NA19682 | PG19682.HFSS | HPRC | Revio | [1kGP][kgp] | 30.6× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| NA19700 | PG19700.HFSS | HPRC | Revio | [1kGP][kgp] | 32.2× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| NA19776 | PG19776.HFSS | HPRC | Revio | [1kGP][kgp] | 21.6× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| NA19835 | NA19835_PB1 | HPRC | Revio | [1kGP][kgp] | 31.0× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| NA19909 | NA19909_Fraction2_Fraction3 | HPRC | Revio | [1kGP][kgp] | 35.0× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| NA20129 | NA20129:untagged | HPRC_PLUS | Sequel II | [Lai][lai] | 38.2× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 15/15 |
-| NA20282 | NA20282_lib1 | HPRC | Revio | [1kGP][kgp] | 35.8× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| NA20346 | NA20346_lib1 | HPRC | Revio | [1kGP][kgp] | 27.5× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| NA20752 | PG20752.HFSS | HPRC | Sequel II | [1kGP][kgp] | 34.0× | 8/8 | 16/16 | 8/8 | 8/8 |  |  |
-| NA20799 | NA20799_PB1 | HPRC | Sequel II | [1kGP][kgp] | 28.4× | 8/8 | 16/16 | 10/10 | 9/10 |  |  |
-| NA20799 | NA20799_PB2 | HPRC | Revio | [1kGP][kgp] | 24.8× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| NA20805 | NA20805_lib1 | HPRC | Sequel II | [1kGP][kgp] | 40.4× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| NA20809 | NA20809_lib1 | HPRC | Revio | [1kGP][kgp] | 32.0× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| NA20850 | PG20850.HFSS | HPRC | Revio | [1kGP][kgp] | 23.1× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| NA20870 | NA20870_PB1 | HPRC | Revio | [1kGP][kgp] | 38.8× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| NA20905 | PG20905.HFSS | HPRC | Revio + Sequel II | [1kGP][kgp] | 36.4× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| NA21093 | PG21093.HFSS | HPRC | Revio | [1kGP][kgp] | 36.3× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| NA21102 | NA21102_lib1 | HPRC | Revio | [1kGP][kgp] | 31.6× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| NA21106 | PG21106.HFSS | HPRC | Revio | [1kGP][kgp] | 42.4× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| NA21110 | NA21110_PB1 | HPRC | Revio | [1kGP][kgp] | 34.8× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| NA21144 | NA21144_lib1 | HPRC | Revio | [1kGP][kgp] | 40.0× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
-| NA21309 | NA21309:untagged | HPRC_PLUS | Sequel II | [Lai][lai] | 37.2× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 15/15 |
+| HG00097 | PG00097.HFSS | HPRC | Revio | 1kGP | 41.3× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| HG00099 | PG00099_1.HFSS | HPRC | Revio + Sequel II | 1kGP | 37.4× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| HG00099 | PG00099_2.HFSS | HPRC | Sequel II | 1kGP | 31.2× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| HG00126 | PG00126.HFSS | HPRC | Revio | 1kGP | 27.2× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| HG00128 | PG00128.HFSS | HPRC | Revio | 1kGP | 33.5× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| HG00128 | PG00128.HFSS2 | HPRC | Revio | 1kGP | 25.6× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| HG00133 | PG00133.HFSS | HPRC | Revio | 1kGP | 26.6× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| HG00140 | HG00140_lib1 | HPRC | Sequel II | 1kGP | 33.4× | 8/8 | 16/16 | 8/8 | 8/8 |  |  |
+| HG00146 | HG00146_lib1 | HPRC | Revio | 1kGP | 37.5× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| HG00232 | HG00232_lib1 | HPRC | Revio | 1kGP | 34.4× | 8/8 | 16/16 | 8/8 | 8/8 |  |  |
+| HG00235 | HG00235_PB1 | HPRC | Revio | 1kGP | 31.0× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| HG00253 | HG00253_PB1 | HPRC | Revio | 1kGP | 35.5× | 8/8 | 16/16 | 8/8 | 8/8 |  |  |
+| HG00272 | PG00272.HFSS | HPRC | Revio | 1kGP | 42.3× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| HG00280 | PG00280.HFSS | HPRC | Sequel II | 1kGP | 26.1× | 8/8 | 16/16 | 8/8 | 8/8 |  |  |
+| HG00290 | PG00290.HFSS | HPRC | Revio | 1kGP | 33.7× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| HG00320 | HG00320_lib1 | HPRC | Revio | 1kGP | 30.3× | 8/8 | 16/16 | 8/8 | 8/8 |  |  |
+| HG00321 | HG00321_lib1 | HPRC | Revio | 1kGP | 33.1× | 8/8 | 16/16 | 8/8 | 8/8 |  |  |
+| HG00323 | HG00323_lib1 | HPRC | Sequel II | 1kGP | 32.7× | 8/8 | 16/16 | 8/8 | 8/8 |  |  |
+| HG00344 | PG00344.HFSS2 | HPRC | Revio | 1kGP | 20.7× | 8/8 | 16/16 | 8/8 | 8/8 |  |  |
+| HG00350 | PG00350.HFSS | HPRC | Revio | 1kGP | 27.8× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| HG00438 | HG00438_lib1 | HPRC | Sequel II | Lai | 29.1× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 15/16 |
+| HG00621 | HG00621_lib1 | HPRC | Sequel II | Lai | 39.4× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 15/16 |
+| HG00673 | HG00673_lib1 | HPRC | Sequel II | Lai | 40.0× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 14/16 |
+| HG00733 | HG00733.HFSS | HPRC_PLUS | Sequel II | Lai | 39.7× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 14/16 |
+| HG00733 | HG00733:untagged | HPRC_PLUS | Sequel II | Lai | 37.1× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 15/16 |
+| HG00735 | HG00735_lib1 | HPRC | Sequel II | Lai | 28.6× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 15/16 |
+| HG00741 | HG00741_lib1 | HPRC | Sequel II | Lai | 35.9× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 14/16 |
+| HG01071 | HG01071_lib1 | HPRC | Sequel II | Lai | 27.6× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 15/16 |
+| HG01106 | HG01106_lib1 | HPRC | Sequel II | Lai | 32.4× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 15/16 |
+| HG01109 | HG01109:untagged | HPRC_PLUS | Sequel II | Lai | 38.1× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 15/16 |
+| HG01167 | HG01167_PB1 | HPRC | Revio | 1kGP | 33.1× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| HG01175 | HG01175_lib1 | HPRC | Sequel II | Lai | 36.0× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 15/16 |
+| HG01243 | HG01243:untagged | HPRC_PLUS | Sequel II | Lai | 35.6× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 15/16 |
+| HG01258 | HG01258.HiFiEx_f1 | HPRC | Sequel II | Lai | 41.6× | 8/8 | 16/16 | 16/16 | 16/16 | 15/15 | 14/15 |
+| HG01358 | HG01358_HiFiEx_f1 | HPRC | Sequel II | Lai | 37.0× | 8/8 | 16/16 | 15/15 | 15/15 | 15/15 | 14/14 |
+| HG01361 | HG01361.HFSS3 | HPRC | Revio | Lai | 24.0× | 8/8 | 16/16 | 15/16 | 14/16 | 14/16 | 12/15 |
+| HG01361 | HG01361.HiFiEx_f2 | HPRC | Sequel II | Lai | 33.2× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 13/15 |
+| HG01530 | HG01530_PB1 | HPRC | Sequel II | 1kGP | 30.3× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| HG01784 | HG01784_PB1 | HPRC | Sequel II | 1kGP | 33.7× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| HG01784 | HG01784_PB2 | HPRC | Revio | 1kGP | 20.7× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| HG01786 | HG01786_lib1 | HPRC | Revio | 1kGP | 37.9× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| HG01891 | HG01891.HFSS | HPRC | Revio | Lai | 24.5× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 15/16 |
+| HG01891 | HG01891.HiFiEx_f2 | HPRC | Sequel II | Lai | 38.8× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 15/16 |
+| HG01928 | HG01928_lib1 | HPRC | Sequel II | Lai | 29.1× | 8/8 | 16/16 | 16/16 | 16/16 | 13/15 | 12/15 |
+| HG01952 | HG01952_lib1 | HPRC | Sequel II | Lai | 29.6× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 13/14 |
+| HG01978 | HG01978_lib1 | HPRC | Sequel II | Lai | 33.1× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 14/15 |
+| HG02040 | HG02040.HFSS2 | HPRC | Sequel II | 1kGP | 25.8× | 8/8 | 16/16 | 10/10 | 9/10 |  |  |
+| HG02055 | HG02055_Revio_validated | HPRC_PLUS | Revio | Lai | 34.0× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 15/16 |
+| HG02080 | HG02080_ELF2_480c6e | HPRC_PLUS | Sequel II | Lai | 36.1× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 16/16 |
+| HG02109 | HG02109_Revio_validated | HPRC_PLUS | Revio | Lai | 35.5× | 8/8 | 16/16 | 16/16 | 16/16 | 14/14 | 14/14 |
+| HG02145 | HG02145_Revio_validated | HPRC_PLUS | Revio | Lai | 33.1× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 13/16 |
+| HG02148 | HG02148_lib1 | HPRC | Sequel II | Lai | 27.6× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 15/16 |
+| HG02155 | HG02155_lib1 | HPRC | Sequel II | 1kGP | 34.2× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| HG02165 | PG02165.HFSS2 | HPRC | Sequel II | 1kGP | 30.4× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| HG02178 | HG02178_PB1 | HPRC | Revio | 1kGP | 34.1× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| HG02257 | HG02257.HFSS | HPRC | Revio | Lai | 22.4× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 14/15 |
+| HG02257 | HG02257.HiFiEx_f2 | HPRC | Sequel II | Lai | 37.0× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 14/15 |
+| HG02391 | HG02391_PB1 | HPRC | Sequel II | 1kGP | 30.0× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| HG02392 | HG02392_PB1 | HPRC | Revio | 1kGP | 32.1× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| HG02572 | HG02572.HFSS3 | HPRC | Revio | Lai | 24.3× | 8/8 | 16/16 | 16/16 | 16/16 | 15/15 | 12/14 |
+| HG02572 | HG02572.HiFiEx_f2 | HPRC | Sequel II | Lai | 27.6× | 8/8 | 16/16 | 16/16 | 16/16 | 15/15 | 12/14 |
+| HG02583 | HG02583_PB1 | HPRC | Revio | 1kGP | 33.5× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| HG02622 | HG02622_lib1 | HPRC | Sequel II | Lai | 32.8× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 13/16 |
+| HG02630 | HG02630_lib1 | HPRC | Sequel II | Lai | 37.2× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 15/16 |
+| HG02717 | HG02717_lib1 | HPRC | Sequel II | Lai | 33.5× | 8/8 | 16/16 | 16/16 | 16/16 | 15/15 | 11/15 |
+| HG02723 | HG02723_Revio_validated | HPRC_PLUS | Revio | Lai | 34.4× | 8/8 | 16/16 | 16/16 | 16/16 | 15/15 | 14/15 |
+| HG02723 | HG02723:untagged | HPRC_PLUS | Sequel II | Lai | 43.4× | 8/8 | 16/16 | 16/16 | 16/16 | 15/15 | 14/15 |
+| HG02818 | HG02818:untagged | HPRC_PLUS | Sequel II | Lai | 37.1× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 15/16 |
+| HG02886 | HG02886_lib1 | HPRC | Sequel II | Lai | 35.2× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 14/16 |
+| HG02922 | PG02922.HFSS2 | HPRC | Revio + Sequel II | 1kGP | 33.4× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| HG02965 | HG02965_lib1 | HPRC | Sequel II | 1kGP | 34.5× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| HG02976 | HG02976_lib1 | HPRC | Sequel II | 1kGP | 27.6× | 8/8 | 16/16 | 10/10 | 9/10 |  |  |
+| HG03098 | HG03098_Fraction2_Fraction3_480cnp | HPRC_PLUS | Sequel II | Lai | 35.0× | 8/8 | 16/16 | 16/16 | 16/16 | 15/15 | 15/15 |
+| HG03130 | HG03130.HFSS | HPRC | Sequel II | 1kGP | 39.6× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| HG03139 | HG03139.HFSS | HPRC | Revio + Sequel II | 1kGP | 33.6× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| HG03195 | HG03195_lib1 | HPRC | Sequel II | 1kGP | 32.1× | 8/8 | 16/16 | 10/10 | 9/10 |  |  |
+| HG03209 | HG03209.HFSS | HPRC | Sequel II | 1kGP | 34.6× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| HG03225 | HG03225_lib1 | HPRC | Sequel II | 1kGP | 36.5× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| HG03270 | HG03270_PB1 | HPRC | Revio | 1kGP | 37.5× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| HG03369 | HG03369_PB1 | HPRC | Revio | 1kGP | 32.9× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| HG03453 | HG03453_lib1 | HPRC | Sequel II | Lai | 38.7× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 14/15 |
+| HG03470 | HG03470_PB1 | HPRC | Revio + Sequel II | 1kGP | 35.1× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| HG03486 | HG03486:untagged | HPRC_PLUS | Sequel II | Lai | 39.5× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 16/16 |
+| HG03492 | HG03492_ELF2_ELF3_480c6f | HPRC_PLUS | Sequel II | Lai | 37.0× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 15/15 |
+| HG03516 | HG03516.HFSS | HPRC | Revio | Lai | 24.4× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 16/16 |
+| HG03516 | HG03516_HiFiEx_mix | HPRC | Sequel II | Lai | 39.7× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 15/16 |
+| HG03521 | PG03521.HFSS2 | HPRC | Revio | 1kGP | 36.6× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| HG03540 | HG03540_lib1 | HPRC | Sequel II | Lai | 41.7× | 8/8 | 16/16 | 16/16 | 16/16 | 15/15 | 14/14 |
+| HG03579 | HG03579_lib1 | HPRC | Sequel II | Lai | 39.8× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 16/16 |
+| HG03583 | HG03583_PB1 | HPRC | Revio | 1kGP | 30.1× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| HG03742 | HG03742_PB1 | HPRC | Sequel II | 1kGP | 26.5× | 8/8 | 16/16 | 10/10 | 9/10 |  |  |
+| HG03784 | HG03784_lib1 | HPRC | Revio | 1kGP | 35.7× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| HG03874 | HG03874_PB1 | HPRC | Revio | 1kGP | 27.0× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| NA18505 | NA18505_PB1 | HPRC | Revio | 1kGP | 36.2× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| NA18508 | PG18508.HFSS2 | HPRC | Revio | 1kGP | 20.6× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| NA18522 | NA18522.HFSS | HPRC | Revio + Sequel II | 1kGP | 34.0× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| NA18565 | NA18565_lib1 | HPRC | Revio | 1kGP | 34.6× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| NA18570 | NA18570_PB1 | HPRC | Sequel II | 1kGP | 28.8× | 8/8 | 16/16 | 8/8 | 8/8 |  |  |
+| NA18608 | NA18608_lib1 | HPRC | Revio | 1kGP | 44.0× | 8/8 | 16/16 | 8/8 | 8/8 |  |  |
+| NA18620 | NA18620_PB1 | HPRC | Revio | 1kGP | 36.6× | 8/8 | 16/16 | 8/8 | 7/8 |  |  |
+| NA18747 | PG18747_1.HFSS | HPRC | Revio + Sequel II | 1kGP | 38.0× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| NA18747 | PG18747_2.HFSS | HPRC | Sequel II | 1kGP | 20.3× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| NA18879 | PG18879.HFSS | HPRC | Revio | 1kGP | 32.7× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| NA18906 | NA18906:untagged | HPRC_PLUS | Sequel II | Lai | 46.8× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 15/15 |
+| NA18952 | NA18952_lib1 | HPRC | Revio | 1kGP | 35.9× | 8/8 | 16/16 | 8/8 | 8/8 |  |  |
+| NA18971 | NA18971_lib1 | HPRC | Sequel II | 1kGP | 35.7× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| NA18974 | NA18974_lib1 | HPRC | Revio | 1kGP | 40.1× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| NA18976 | NA18976_lib1 | HPRC | Revio | 1kGP | 38.1× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| NA18983 | PG18983.HFSS2 | HPRC | Sequel II | 1kGP | 25.0× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| NA19036 | NA19036_PB1 | HPRC | Revio | 1kGP | 34.9× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| NA19043 | PG19043.HFSS | HPRC | Revio + Sequel II | 1kGP | 38.1× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| NA19087 | NA19087_PB1 | HPRC | Sequel II | 1kGP | 25.1× | 8/8 | 16/16 | 8/8 | 8/8 |  |  |
+| NA19159 | NA19159_PB1 | HPRC | Revio + Sequel II | 1kGP | 34.7× | 8/8 | 16/16 | 10/10 | 9/10 |  |  |
+| NA19185 | NA19185_PB1 | HPRC | Sequel II | 1kGP | 29.5× | 8/8 | 16/16 | 10/10 | 9/10 |  |  |
+| NA19240 | NA19240:untagged | HPRC_PLUS | Sequel II | Lai | 41.8× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 15/16 |
+| NA19338 | NA19338_PB1 | HPRC | Sequel II | 1kGP | 35.2× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| NA19338 | NA19338_PB2 | HPRC | Revio | 1kGP | 19.6× | 8/8 | 16/16 | 9/10 | 9/10 |  |  |
+| NA19391 | NA19391_PB1 | HPRC | Sequel II | 1kGP | 31.3× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| NA19391 | NA19391_PB3 | HPRC | Revio | 1kGP | 22.0× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| NA19443 | PG19443.HFSS | HPRC | Revio | 1kGP | 34.0× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| NA19468 | NA19468_PB1 | HPRC | Sequel II | 1kGP | 30.9× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| NA19682 | PG19682.HFSS | HPRC | Revio | 1kGP | 30.6× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| NA19700 | PG19700.HFSS | HPRC | Revio | 1kGP | 32.2× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| NA19776 | PG19776.HFSS | HPRC | Revio | 1kGP | 21.6× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| NA19835 | NA19835_PB1 | HPRC | Revio | 1kGP | 31.0× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| NA19909 | NA19909_Fraction2_Fraction3 | HPRC | Revio | 1kGP | 35.0× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| NA20129 | NA20129:untagged | HPRC_PLUS | Sequel II | Lai | 38.2× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 15/15 |
+| NA20282 | NA20282_lib1 | HPRC | Revio | 1kGP | 35.8× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| NA20346 | NA20346_lib1 | HPRC | Revio | 1kGP | 27.5× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| NA20752 | PG20752.HFSS | HPRC | Sequel II | 1kGP | 34.0× | 8/8 | 16/16 | 8/8 | 8/8 |  |  |
+| NA20799 | NA20799_PB1 | HPRC | Sequel II | 1kGP | 28.4× | 8/8 | 16/16 | 10/10 | 9/10 |  |  |
+| NA20799 | NA20799_PB2 | HPRC | Revio | 1kGP | 24.8× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| NA20805 | NA20805_lib1 | HPRC | Sequel II | 1kGP | 40.4× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| NA20809 | NA20809_lib1 | HPRC | Revio | 1kGP | 32.0× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| NA20850 | PG20850.HFSS | HPRC | Revio | 1kGP | 23.1× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| NA20870 | NA20870_PB1 | HPRC | Revio | 1kGP | 38.8× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| NA20905 | PG20905.HFSS | HPRC | Revio + Sequel II | 1kGP | 36.4× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| NA21093 | PG21093.HFSS | HPRC | Revio | 1kGP | 36.3× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| NA21102 | NA21102_lib1 | HPRC | Revio | 1kGP | 31.6× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| NA21106 | PG21106.HFSS | HPRC | Revio | 1kGP | 42.4× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| NA21110 | NA21110_PB1 | HPRC | Revio | 1kGP | 34.8× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| NA21144 | NA21144_lib1 | HPRC | Revio | 1kGP | 40.0× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| NA21309 | NA21309:untagged | HPRC_PLUS | Sequel II | Lai | 37.2× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 15/15 |
+
+## Discordant alleles
+
+Gene × library combinations discordant at 1 or 2 or 3 fields, with the shallowest discordant field, the gene's mean ARS depth, the calls and the reference alleles.
+
+| Sample | Library | Gene | Field | ARS&nbsp;depth | Called | Reference | Note |
+|---|---|---|---|---:|---|---|---|
+| HG01361 | HG01361.HFSS3 | DRB1 | 1 | 18.0× | DRB1*15:01:32 / DRB1*11:34 | DRB1*11:02:01:02 / DRB1*07:01:01:01 | ARS depth under 20x |
+| NA19338 | NA19338_PB2 | DRB1 | 1 | 16.0× | DRB1*15:03:01:03 / DRB1*15:03:01:03 | DRB1*13:02 / DRB1*15:03 | ARS depth under 20x |
+| HG02040 | HG02040.HFSS2 | A | 2 | 24.0× | A*02:03:01:01 / A*29:01:01:01 | A*02:148/A*02:281/A*02:370/A*02:427/A*02:544/A*02:595/A*02:634 / A*29:01 |  |
+| HG02976 | HG02976_lib1 | DRB1 | 2 | 23.0× | DRB1*15:03:01:03 / DRB1*11:01:02:03 | DRB1*11:10 / DRB1*15:03 |  |
+| HG03195 | HG03195_lib1 | B | 2 | 18.4× | B*35:598 / B*15:03:01:02 | B*15:03 / B*35:01 | ARS depth under 20x |
+| HG03742 | HG03742_PB1 | B | 2 | 30.0× | B*52:01:01:09 / B*37:110 | B*37:01 / B*52:01 |  |
+| NA18620 | NA18620_PB1 | C | 2 | 47.0× | C*04:82:01 / C*07:02:01:15 | C*04:01 / C*07:02 |  |
+| NA19159 | NA19159_PB1 | DRB1 | 2 | 25.9× | DRB1*07:01:01:01 / DRB1*13:01:01:04 | DRB1*13:177 / DRB1*07:01 | panel allele flagged exome-only (*) |
+| NA19185 | NA19185_PB1 | C | 2 | 27.6× | C*17:01:01:02 / C*16:01:01:01 | C*16:01 / C*17:03 |  |
+| NA20799 | NA20799_PB1 | DRB1 | 2 | 31.3× | DRB1*11:11:01 / DRB1*01:02:01:01 | DRB1*01:02 / DRB1*11:01 |  |
+| HG01928 | HG01928_lib1 | A | 3 | 24.0× | A*02:01:52 / A*02:01:52 | A*02:01:01:01 / A*02:01:01:01 |  |
 
 ## Input files
 
@@ -216,19 +242,18 @@ Each library was typed from one unaligned BAM made by concatenating the files li
 s3://human-pangenomics/working/<COHORT>/<SAMPLE>/raw_data/PacBio_HiFi/<FILE>
 ```
 
-For example, the first file listed for HG00438 (cohort HPRC) is at:
+For example, the first file listed for HG00097 (cohort HPRC) is at:
 
 ```
-s3://human-pangenomics/working/HPRC/HG00438/raw_data/PacBio_HiFi/m64043_200710_174426.ccs.bam
+s3://human-pangenomics/working/HPRC/HG00097/raw_data/PacBio_HiFi/m84046_230716_051716_s3.hifi_reads.bc2086.bam
 ```
 
 Files are public and need no credentials:
 
 ```bash
 aws s3 cp --no-sign-request \
-  s3://human-pangenomics/working/HPRC/HG00438/raw_data/PacBio_HiFi/m64043_200710_174426.ccs.bam .
+  s3://human-pangenomics/working/HPRC/HG00097/raw_data/PacBio_HiFi/m84046_230716_051716_s3.hifi_reads.bc2086.bam .
 ```
-
 
 Some files sit one folder deeper (`primrose/`, `wMods/`). The manifest below gives the exact key.
 
@@ -377,7 +402,4 @@ Some files sit one folder deeper (`primrose/`, `wMods/`). The manifest below giv
 | NA21110 | NA21110_PB1 | HPRC | m84091_230710_165908_s1.hifi_reads.bc1011.bam<br>m84091_230719_165228_s3.hifi_reads.bc1011.bam |
 | NA21144 | NA21144_lib1 | HPRC | m84081_230629_184915_s1.hifi_reads.bc2018.bam |
 | NA21309 | NA21309:untagged | HPRC_PLUS | m64043_191210_201113.ccs.bam<br>m64043_191213_191857.ccs.bam<br>m64043_191215_014401.ccs.bam<br>m64043_191219_192900.ccs.bam |
-
-[lai]: https://doi.org/10.1016/j.csbj.2024.03.030
-[kgp]: https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/HLA_types/20181129_HLA_types_full_1000_Genomes_Project_panel.txt
 
