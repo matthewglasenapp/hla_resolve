@@ -4,8 +4,10 @@ HLA-Resolve v0.9.8 (IPD-IMGT/HLA release 3.64.0) was run on public whole-genome 
 
 Allele calls were compared to two reference sets:
 
-- **Lai et al. 2024** ([doi.org/10.1016/j.csbj.2024.03.030](https://doi.org/10.1016/j.csbj.2024.03.030); [Supplementary File 6](Lai_Supplementary-6.xlsx)) for 42 HPRC release 1 samples (49 libraries).
-- **1000 Genomes Project HLA panel** ([20181129_HLA_types_full_1000_Genomes_Project_panel.txt](https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/HLA_types/20181129_HLA_types_full_1000_Genomes_Project_panel.txt)) for 87 samples (94 libraries): HLA-A, -B, -C, -DQB1 and -DRB1 up through two-field resolution. The panel is exome-based (IPD-IMGT/HLA 3.28); alternatives it lists with `/` were accepted as equivalent and its exome-only flag (`*`) was retained.
+| Reference | Source | Samples | Libraries | Genes | Resolution | Notes |
+|---|---|---:|---:|---|---|---|
+| Lai et al. 2024 | [doi.org/10.1016/j.csbj.2024.03.030](https://doi.org/10.1016/j.csbj.2024.03.030), [Supplementary File 6](Lai_Supplementary-6.xlsx) | 42 | 49 | A, B, C, DPA1, DPB1, DQA1, DQB1, DRB1 | up to 4 fields | HPRC release 1 samples; typings derived from the phased assemblies |
+| 1000 Genomes Project HLA panel | [20181129_HLA_types_full_1000_Genomes_Project_panel.txt](https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/HLA_types/20181129_HLA_types_full_1000_Genomes_Project_panel.txt) | 87 | 94 | A, B, C, DQB1, DRB1 | 2 fields | Exome-based (IPD-IMGT/HLA 3.28); alternatives listed with `/` accepted as equivalent; exome-only flag (`*`) retained |
 
 The following command was used for each sample:
 
@@ -18,8 +20,6 @@ hla_resolve --input_file <LIBRARY_uBAM> --sample_name <SAMPLE> \
 ## Scoring
 
 Concordance is reported among alleles called. An allele was evaluated at a given field resolution only if the reference specified it to that resolution. A call resolved to fewer fields than the reference is considered discordant at that level of resolution. By default, genes do not type if their antigen recognition site coverage depth sits below 8x, so call rate was measured as the proportion of total possible allele calls emitted by HLA-Resolve.
-
-Coverage depth is reported as the mean depth across the eight classical HLA genes from the HLA-Resolve run log. Across all 143 libraries: mean 33.2×, median 34.0×, range 19.6–46.8×.
 
 ## Lai et al. reference (49 libraries, 42 samples)
 
@@ -69,6 +69,7 @@ Both reference sets pooled, 143 libraries. The number of alleles evaluated falls
 ## Results by library
 
 One row per sequencing library, grouped by sample. The 3- and 4-field columns are blank where the reference is two-field.
+Coverage depth is reported as the mean depth across the eight classical HLA genes from the HLA-Resolve run log. Across all 143 libraries: mean 33.2×, median 34.0×, range 19.6–46.8×.
 
 | Sample | Library | Cohort | Instrument | Reference | HLA&nbsp;coverage | Genes&nbsp;typed | Alleles&nbsp;called | 1-field | 2-field | 3-field | 4-field |
 |---|---|---|---|---|---:|---|---|---|---|---|---|
