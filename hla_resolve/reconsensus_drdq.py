@@ -30,6 +30,13 @@ _BIG = 10 ** 9
 # no-starvation behavior.
 _PHASING_DROP_MAPQ = 30
 
+# Same-lineage het locus: if either HP tag has fewer primary reads than this in
+# the gene region, the HP split cannot produce two usable consensuses (one slot
+# is skipped, and the un-pooling gate below needs both). Pool instead. Seen on
+# NA24695 DRB1 after artifact hets were removed: HP tags 3/0, hap 1 kept the raw
+# vcf2fasta reconstruction.
+_MIN_HP_READS = 10
+
 
 def _run(cmd):
     subprocess.run(cmd, shell=True, check=True, capture_output=True, text=True)
@@ -261,6 +268,18 @@ def _gene_region(gene, phased_vcf, gene_dict, pad=3000):
     return f"{chrom}:{max(1, start)}-{stop}"
 
 
+def _hp_read_counts(bam, region):
+    counts = {}
+    for hp in (1, 2):
+        result = subprocess.run(f"samtools view -c -F 0x900 -d HP:{hp} {bam} {region}",
+                                shell=True, capture_output=True, text=True)
+        try:
+            counts[hp] = int(result.stdout.strip())
+        except ValueError:
+            counts[hp] = 0
+    return counts
+
+
 def _has_pass_phased_het_genotype(phased_vcf):
     # True only if the gene VCF carries at least one PASS-filter, phased,
     # heterozygous genotype. This is the trigger for un-pooling: a same-lineage
@@ -480,6 +499,18 @@ def _refine_one_gene(sample_ID, gene, name1, name2, results, query_seqs,
         bam = ctx["bam"]
         mode = ctx.get("mode", "hp_tag")
 
+        # A same-lineage locus whose phased hets tagged almost no reads to one
+        # HP has nothing to split on; the per-HP consensus would come from a
+        # handful of reads and the un-pooling gate needs both slots. Pool.
+        if not pooled and same_lineage and mode == "hp_tag":
+            hp_counts = _hp_read_counts(bam, region)
+            if min(hp_counts.values()) < _MIN_HP_READS:
+                pooled = True
+                if logfile is not None:
+                    logfile.writelines(
+                        f"For {sample_ID} {gene}, HP tags {hp_counts[1]}/{hp_counts[2]} "
+                        f"reads (< {_MIN_HP_READS} on one side): pooled instead of HP split\n")
+
         workdir = tempfile.mkdtemp(prefix=f"reconsensus_{sample_ID}_{gene.replace('HLA-', '')}_")
         try:
             refined = {}
@@ -640,6 +671,30 @@ def _refine_one_gene(sample_ID, gene, name1, name2, results, query_seqs,
                         logfile.writelines(
                             f"For {sample_ID} {gene}, un-pooled het rejected (kept "
                             f"homozygous): split residual {split_pen} >= pooled {pooled_pen}\n")
+            elif same_lineage:
+                # Same lineage but only one slot produced a consensus (the other
+                # HP had no reads, or its scaffold was missing). A one-sided
+                # split cannot be judged against the pooled alternative, so take
+                # the pooled consensus for both slots.
+                shared_allele = (best_guess_1 if _num_fields(best_guess_1) >= 4
+                                 else best_guess_2)
+                shared_seq = _full_sequence(sequence_data, shared_allele)
+                pooled_cons, pooled_ref = _pooled_alternative(
+                    bam, region, shared_seq, lineage_1, gene, sequence_data,
+                    core_cache, workdir)
+                if pooled_ref and pooled_cons:
+                    allele, _, tie = pooled_ref
+                    assign[1] = assign[2] = (allele, pooled_cons, tie, shared_allele)
+                    present = [1, 2]
+                    refined_q = 2 * pooled_ref[1]
+                    if logfile is not None:
+                        logfile.writelines(
+                            f"For {sample_ID} {gene}, one HP slot only: pooled "
+                            f"consensus assigned to both haplotypes\n")
+                else:
+                    for i in present:
+                        assign[i] = (refined[i][0], cons_of[i], refined[i][2],
+                                     scaffold_of.get(i))
             else:
                 for i in present:
                     assign[i] = (refined[i][0], cons_of[i], refined[i][2],
