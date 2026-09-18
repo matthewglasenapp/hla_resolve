@@ -47,8 +47,8 @@ Alleles evaluated is lower than alleles called because 1 uncertain reference all
 
 | Metric | Value |
 |---|---:|
-| Total possible allele calls | 940 |
-| Alleles called | 940 |
+| Total possible allele calls | 1504 |
+| Alleles called | 1504 |
 | Call rate | 100.0% |
 
 | Resolution | Concordance | Concordant alleles | Alleles evaluated |
@@ -56,7 +56,7 @@ Alleles evaluated is lower than alleles called because 1 uncertain reference all
 | 1-field | 99.9% | 911 | 912 |
 | 2-field | 99.0% | 903 | 912 |
 
-Alleles evaluated is lower than alleles called because the reference has missing HLA-DQB1 calls for 14 samples (28 alleles).
+Alleles evaluated is lower than alleles called because the panel covers five of the eight genes, and the reference has missing HLA-DQB1 calls for 14 samples (28 alleles).
 
 ## All libraries
 
@@ -64,8 +64,8 @@ Both reference sets pooled, 146 libraries. The number of alleles evaluated falls
 
 | Metric | Value |
 |---|---:|
-| Total possible allele calls | 1772 |
-| Alleles called | 1772 |
+| Total possible allele calls | 2336 |
+| Alleles called | 2336 |
 | Call rate | 100.0% |
 
 | Resolution | Concordance | Concordant alleles | Alleles evaluated |
