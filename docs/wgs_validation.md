@@ -1,6 +1,6 @@
 # HLA-Resolve concordance on whole-genome PacBio libraries
 
-HLA-Resolve v0.9.8 (IPD-IMGT/HLA release 3.64.0) was run on public whole-genome PacBio reads for **146 sequencing libraries from 130 samples**. All libraries were sequenced by the Human Pangenome Reference Consortium (HPRC; cohorts HPRC, HPRC_PLUS) except the two Genome in a Bottle (GIAB) HG002 libraries. Every library was typed independently. Libraries sequenced across multiple SMRT cells were combined to a target genome-wide coverage depth of 30×. Samples with two libraries appear twice as independent measurements.
+HLA-Resolve v0.9.9 (IPD-IMGT/HLA release 3.64.0) was run on public whole-genome PacBio reads for **146 sequencing libraries from 130 samples**. All libraries were sequenced by the Human Pangenome Reference Consortium (HPRC; cohorts HPRC, HPRC_PLUS) except the two Genome in a Bottle (GIAB) HG002 libraries. Every library was typed independently. Libraries sequenced across multiple SMRT cells were combined to a target genome-wide coverage depth of 30×. Samples with two libraries appear twice as independent measurements.
 
 Allele calls were compared to two reference sets:
 
