@@ -71,7 +71,7 @@ DEEPVARIANT_VERSION = "1.6.1"
 # Dockerfile (google/deepvariant issue #830). The image IS 1.6.1; do NOT "correct"
 # the pin to 1.6.0. Verify identity by manifest digest (below), not by --version.
 DEEPVARIANT_DIGEST = "sha256:ccab95548e6c3ec28c75232987f31209ff1392027d67732435ce1ba3d0b55c68"
-CLAIR3_VERSION = "latest"  # NOTE: a moving tag — filename can't detect upstream :latest updates
+CLAIR3_VERSION = "v2.0.0"
 # IPD-IMGT/HLA database release. Keep in sync with the active (uncommented) db_url
 # in ensure_hla_xml() below; verify_download_versions.sh checks the installed
 # hla.xml's <release version="..."> header against this.
