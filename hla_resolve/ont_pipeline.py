@@ -24,7 +24,7 @@ from .preprocess_methods import (
 	merge_hiphase_vcfs
 )
 from .cleanup import discard, discard_mapped_bam
-from .config import min_reads_sample, hla_a_region
+from .config import min_reads_sample, drb_region, hla_a_region
 
 def preprocess_ont_sample(config):
 	trimmed_reads = trim_adapters(
@@ -48,14 +48,17 @@ def preprocess_ont_sample(config):
 		threads=config['threads']
 	)
 
+	# Only the primary reads already placed in the DR region are mapped
+	# competitively, as for PacBio.
 	classify_DRB_reads(
-		input_file=trimmed_reads,
+		input_file=config['hg38_bam'],
 		output_file=config['hg38_bam_drb'],
 		drb_paralog_reads_file=config['drb_paralog_reads_file'],
 		read_group_string=config['read_group_string'],
 		reference_fasta=config['drb_multiallele_reference'],
 		platform=config['platform'],
-		threads=config['threads']
+		threads=config['threads'],
+		region=drb_region
 	)
 
 	classify_HLA_A_reads(
