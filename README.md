@@ -42,7 +42,7 @@
 
 HLA-Resolve is a command-line tool for high-resolution HLA typing from high-coverage PacBio or Oxford Nanopore (ONT) sequencing reads. It reconstructs phased, coding and full-gene sequences for the eight classical HLA loci (HLA-A, -B, -C, -DPA1, -DPB1, -DQA1, -DQB1, -DRB1) and queries the [IPD-IMGT/HLA database](https://www.ebi.ac.uk/ipd/imgt/hla/) to assign HLA allele calls at four different levels of resolution (G group, P group, three-field, and four-field)
 
-HLA-Resolve was designed for and fully validated on PacBio hybrid-capture libraries (read N50 ~4 kb). WGS support has been validated on PacBio whole-genome sequencing reads from the GIAB and HPRC benchmarks (see [Benchmarks](#benchmarks)). HLA-Resolve has not been tested on amplicon sequencing data yet. 
+HLA-Resolve was designed for PacBio hybrid-capture libraries (read N50 ~4 kb). It has been validated on both PacBio Revio and ONT PromethION R10.4.1 hybrid-capture libraries (see the [hybrid capture validation](docs/capture_validation.md)). WGS support has been validated on PacBio whole-genome sequencing reads from the GIAB and HPRC benchmarks (see [Benchmarks](#benchmarks)). HLA-Resolve has not been tested on amplicon sequencing data yet. 
 
 > [!IMPORTANT]
 > 1. HLA-Resolve is pre-release software in active development. It is intended for high-coverage PacBio or ONT reads. A gene is typed only if its peptide-binding domain reaches at least 8× mean coverage depth.
