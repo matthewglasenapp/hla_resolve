@@ -361,9 +361,10 @@ def resolve_alleles(config):
 	# DR/DQ read re-consensus context (PacBio only; gated by config flag).
 	from .reconsensus_drdq import DRDQ_GENES
 	reconsensus_ctx = None
-	if getattr(hla_config, "reconsensus_drdq", False) and config['platform'] == "PACBIO":
+	if getattr(hla_config, "reconsensus_drdq", False):
 		reconsensus_ctx = {
 			"enabled": True,
+			"platform": config['platform'],
 			"mode": getattr(hla_config, "reconsensus_read_assignment", "hp_tag"),
 			"bam": config['hg38_rmdup_chr6_haplotag_bam'],
 			"gene_vcfs": {gene: gene_filtered_vcfs.get(gene) for gene in DRDQ_GENES},

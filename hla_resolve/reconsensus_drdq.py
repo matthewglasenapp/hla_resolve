@@ -4,7 +4,7 @@
 # See LICENSE.txt for license details.
 
 # 4th-field read re-consensus refinement for HLA-DRB1/DQA1/DQB1 only.
-# Gated by config.reconsensus_drdq; wired in for PacBio via resolve_alleles_pipeline.
+# Gated by config.reconsensus_drdq; wired in via resolve_alleles_pipeline.
 
 import os
 import re
@@ -36,6 +36,19 @@ _PHASING_DROP_MAPQ = 30
 # NA24695 DRB1 after artifact hets were removed: HP tags 3/0, hap 1 kept the raw
 # vcf2fasta reconstruction.
 _MIN_HP_READS = 10
+
+# Read mapping preset and samtools consensus options for each platform. ONT uses
+# the R10.4.1 SUP consensus model, which also corrects homopolymer lengths.
+_PLATFORM_OPTIONS = {
+    "PACBIO": ("map-hifi", ""),
+    "ONT": ("map-ont", "-X r10.4_sup "),
+}
+_map_preset, _consensus_opts = _PLATFORM_OPTIONS["PACBIO"]
+
+
+def _set_platform(platform):
+    global _map_preset, _consensus_opts
+    _map_preset, _consensus_opts = _PLATFORM_OPTIONS[platform]
 
 
 def _run(cmd):
@@ -320,9 +333,9 @@ def _extract_reads_fastq(bam, region, out_fq, hp=None):
 def _consensus_on_scaffold(scaffold_fa, reads_fq, workdir, tag):
     aln = os.path.join(workdir, f"{tag}.aln.bam")
     cons = os.path.join(workdir, f"{tag}.cons.fa")
-    _run(f"{config.rammap} -a -x map-hifi {scaffold_fa} {reads_fq} | "
+    _run(f"{config.rammap} -a -x {_map_preset} {scaffold_fa} {reads_fq} | "
          f"samtools sort -o {aln} - && samtools index {aln}")
-    _run(f"samtools consensus -a -f fasta {aln} > {cons}")
+    _run(f"samtools consensus {_consensus_opts}-a -f fasta {aln} > {cons}")
     return _read_fasta_seq(cons)
 
 
@@ -332,20 +345,20 @@ def _consensus_self_sort(scaffold_seq_1, scaffold_seq_2, reads_fq, workdir):
         fh.write(f">sc1\n{scaffold_seq_1}\n>sc2\n{scaffold_seq_2}\n")
     aln = os.path.join(workdir, "sort.aln.bam")
     prim = os.path.join(workdir, "sort.prim.bam")
-    _run(f"{config.rammap} -a -x map-hifi {ref} {reads_fq} | "
+    _run(f"{config.rammap} -a -x {_map_preset} {ref} {reads_fq} | "
          f"samtools sort -o {aln} - && samtools index {aln}")
     _run(f"samtools view -b -F 0x900 {aln} > {prim} && samtools index {prim}")
     cons1 = os.path.join(workdir, "sort.cons1.fa")
     cons2 = os.path.join(workdir, "sort.cons2.fa")
-    _run(f"samtools consensus -a -f fasta -r sc1 {prim} > {cons1}")
-    _run(f"samtools consensus -a -f fasta -r sc2 {prim} > {cons2}")
+    _run(f"samtools consensus {_consensus_opts}-a -f fasta -r sc1 {prim} > {cons1}")
+    _run(f"samtools consensus {_consensus_opts}-a -f fasta -r sc2 {prim} > {cons2}")
     return _read_fasta_seq(cons1), _read_fasta_seq(cons2)
 
 
 def _align_and_count(reads_fq, ref_fa, workdir, tag):
     aln = os.path.join(workdir, f"{tag}.aln.bam")
     prim = os.path.join(workdir, f"{tag}.prim.bam")
-    _run(f"{config.rammap} -a -x map-hifi {ref_fa} {reads_fq} | "
+    _run(f"{config.rammap} -a -x {_map_preset} {ref_fa} {reads_fq} | "
          f"samtools sort -o {aln} - && samtools index {aln}")
     _run(f"samtools view -b -F 0x900 {aln} > {prim} && samtools index {prim}")
     result = subprocess.run(f"samtools idxstats {prim}", shell=True, check=True,
@@ -371,7 +384,7 @@ def _retained_reads_fastq(prim_bam, own_contig, out_fq, min_mapq=_PHASING_DROP_M
 
 def _consensus_region(prim_bam, contig, workdir, tag):
     cons = os.path.join(workdir, f"{tag}.cons.fa")
-    _run(f"samtools consensus -a -f fasta -r {contig} {prim_bam} > {cons}")
+    _run(f"samtools consensus {_consensus_opts}-a -f fasta -r {contig} {prim_bam} > {cons}")
     return _read_fasta_seq(cons)
 
 
@@ -742,6 +755,7 @@ def refine_drdq(results, query_seqs, sequence_data, ctx, logfile=None, cds_out=N
     # Refine the DRDQ result tuples (allele + metrics + tie set) in place.
     if not ctx or not ctx.get("bam") or not os.path.isfile(ctx["bam"]):
         return
+    _set_platform(ctx.get("platform", "PACBIO"))
 
     core_cache = {}
     overrides = {}
