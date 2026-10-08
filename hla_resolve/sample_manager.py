@@ -172,8 +172,14 @@ class Samples:
         print()
 
         # WGS/WES PacBio aligns the uBAM directly with rammap (streamed to FASTQ
-        # internally) — no separate up-front FASTQ conversion needed
-        if not (self.platform == "PACBIO" and self.scheme in ("WGS", "WES")):
+        # internally) — no separate up-front FASTQ conversion needed. An ONT BAM
+        # is streamed the same way, into cutadapt or rammap. Only fastplong
+        # still needs the FASTQ on disk.
+        ont_streams_bam = (self.platform == "ONT" and self.format == "BAM"
+                           and not (self.adapters and not self.adapter_file))
+        if ont_streams_bam:
+            self.raw_fastq = self.input_file
+        elif not (self.platform == "PACBIO" and self.scheme in ("WGS", "WES")):
             self.prepare_raw_fastq()
 
     def parse_input_file(self, input_path):

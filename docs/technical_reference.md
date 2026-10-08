@@ -16,7 +16,7 @@ Detailed documentation on the algorithms, decision logic, and tools used by HLA-
 
 ## 1. Workflow and Dependencies
 
-HLA-Resolve takes raw PacBio reads (FASTQ or uBAM) as input and executes the following steps to produce four-field HLA allele assignments.
+HLA-Resolve takes raw PacBio or ONT reads (FASTQ or BAM) as input and executes the following steps to produce four-field HLA allele assignments. The ONT workflow follows the same steps, except where an **ONT** note below says otherwise.
 
 ```mermaid
 flowchart TD
@@ -52,11 +52,13 @@ When two adapters are given, HLA-Resolve checks whether the 3' adapter is the re
 ### 1.2 PCR Duplicate Removal
 PCR duplicates are identified and removed from the trimmed reads using [pbmarkdup](https://github.com/PacificBiosciences/pbmarkdup).
 
+**ONT:** PCR duplicates are removed after alignment with [Picard MarkDuplicates](https://broadinstitute.github.io/picard/).
+
 ### 1.3 Reference Genome Alignment
 Deduplicated reads are aligned to a modified GRCh38 reference genome (no-alt analysis set) using [rammap](https://doi.org/10.64898/2026.05.26.726289) (Wang and Li, 2026), a memory-safe Rust reimplementation of [minimap2](https://doi.org/10.1093/bioinformatics/bty191) that produces identical alignments. The modified reference includes an additional scaffold containing the HLA-Y/HLA-OLI insertion to prevent mismapping of HLA-Y reads to HLA-A.
 
 ### 1.4 HLA-DRB Paralog Filtering
-A separate alignment step maps reads against a multi-allele HLA-DRB bait (`DRB_reference.fa`) of 33 sequences. These are 13 HLA-DRB1, 3 HLA-DRB3, and 1 HLA-DRB4 allele from IPD-IMGT/HLA, the HLA-DRB5, -DRB6, and -DRB9 sequences from GRCh38, HLA-DRB7 and -DRB8 from the SSTO haplotype, one element from CM089004.1, and 10 paralog and intergenic blocks lifted from HPRC assemblies, most with their own HLA-DRB1 copy masked so that they compete only for paralog reads. Reads whose primary alignment lands on anything other than an HLA-DRB1 allele are flagged for removal. On every PacBio scheme the bait is applied to the reads already placed in the DR cluster (chr6:32439878-32589848) by the GRCh38 alignment, not to the whole read set. The aim is to reclassify reads that mapped into the DR region, not to rehome unmapped reads, and the restriction keeps genome-wide homology noise out of the kill list. Because a read is selected whenever it overlaps that window, every read capable of contributing to HLA-DRB1 variant calling is classified.
+A separate alignment step maps reads against a multi-allele HLA-DRB bait (`DRB_reference.fa`) of 33 sequences. These are 13 HLA-DRB1, 3 HLA-DRB3, and 1 HLA-DRB4 allele from IPD-IMGT/HLA, the HLA-DRB5, -DRB6, and -DRB9 sequences from GRCh38, HLA-DRB7 and -DRB8 from the SSTO haplotype, one element from CM089004.1, and 10 paralog and intergenic blocks lifted from HPRC assemblies, most with their own HLA-DRB1 copy masked so that they compete only for paralog reads. Reads whose primary alignment lands on anything other than an HLA-DRB1 allele are flagged for removal. On every platform and scheme the bait is applied to the reads already placed in the DR cluster (chr6:32439878-32589848) by the GRCh38 alignment, not to the whole read set. The aim is to reclassify reads that mapped into the DR region, not to rehome unmapped reads, and the restriction keeps genome-wide homology noise out of the kill list. Because a read is selected whenever it overlaps that window, every read capable of contributing to HLA-DRB1 variant calling is classified.
 
 ### 1.5 Read Filtering
 Aligned reads are filtered to the MHC window on chromosome 6 (chr6:28000000-34000000), keeping only primary alignments. Reads flagged as HLA-DRB1 paralogs in step 4 are removed.
@@ -64,14 +66,22 @@ Aligned reads are filtered to the MHC window on chromosome 6 (chr6:28000000-3400
 ### 1.6 Small Variant Calling
 SNVs are called with [bcftools](https://doi.org/10.1093/bioinformatics/btr509) and indels are called with [DeepVariant](https://doi.org/10.1038/nbt.4235). DeepVariant is run over chr6:29900000-33150000 rather than all of chromosome 6. The window spans all eight typed genes with margin. Because DeepVariant supplies only the indels, RefCall rescue is applied to indel records: they are rescued at DP ≥ 30 with alt allele depth ≥ 10, and reclassified as heterozygous at VAF 0.3 to 0.7 or homozygous ALT above 0.7.
 
+**ONT:** SNVs are called with bcftools and indels with [Clair3](https://doi.org/10.1038/s43588-022-00387-x).
+
 ### 1.7 Structural Variant Calling
 Structural variants are called from the aligned reads using [pbsv](https://github.com/PacificBiosciences/pbsv).
+
+**ONT:** Structural variants are called with [Sniffles2](https://doi.org/10.1038/s41587-023-02024-y).
 
 ### 1.8 Tandem Repeat Genotyping
 Tandem repeats within the HLA region are genotyped using [TRGT](https://doi.org/10.1038/s41587-023-02057-3).
 
+**ONT:** Tandem repeats are not genotyped separately.
+
 ### 1.9 Joint Phasing
 Small variants, structural variants, and tandem repeat genotypes are jointly phased with [HiPhase](https://doi.org/10.1093/bioinformatics/btae042), producing haplotagged BAMs, phased VCFs, and haplotype block coordinates.
+
+**ONT:** Small variants and structural variants are phased jointly with HiPhase.
 
 ### 1.10 Coverage Assessment
 Per-gene coverage depth and breadth are calculated with [mosdepth](https://doi.org/10.1093/bioinformatics/btx699). Genes failing minimum coverage thresholds are excluded from HLA typing.
@@ -149,7 +159,7 @@ The HLA Class II regions contains a cluster of HLA-DRB paralogs with high sequen
 
 2. **Multi-allele competitive classifier** (`classify_DRB_reads()` in `preprocess_methods.py`). Reads are re-aligned against `DRB_reference.fa`, a bait of 33 sequences. These are 13 HLA-DRB1, 3 HLA-DRB3, and 1 HLA-DRB4 allele from IPD-IMGT/HLA, HLA-DRB5, -DRB6, and -DRB9 from GRCh38, HLA-DRB7 and -DRB8 from the SSTO haplotype, one element from CM089004.1, and 10 paralog and intergenic blocks lifted from HPRC assemblies. Most of the HPRC blocks carry their own HLA-DRB1 copy masked, so that they compete only for paralog reads. Any read whose primary alignment is not to a `DRB1*` sequence is flagged for removal by `filter_reads()`.
 
-    On every PacBio scheme the classifier is applied only to primary reads already placed in the DR cluster (`drb_region`, chr6:32439878-32589848) by the GRCh38 alignment, never to the whole read set. The goal is to reclassify reads that mapped into the DR region, not to rehome unmapped reads, and the restriction keeps genome-wide homology noise out of the kill-list.
+    On every platform and scheme the classifier is applied only to primary reads already placed in the DR cluster (`drb_region`, chr6:32439878-32589848) by the GRCh38 alignment, never to the whole read set. The goal is to reclassify reads that mapped into the DR region, not to rehome unmapped reads, and the restriction keeps genome-wide homology noise out of the kill-list.
 
     The window ends at the 3' end of HLA-DRB1. This is not a coverage gap: reads are selected by overlap, so a read that begins inside the window and extends past it is still classified, and a read lying entirely downstream cannot contribute to HLA-DRB1 variant calling in the first place. The kill-list itself is applied genome-wide within the MHC by `filter_reads()`, so a flagged read is removed everywhere, not only where it was classified.
 
@@ -506,7 +516,7 @@ Sanity checks ensure consistency between G-group definitions and peptide-binding
 
 ## 7. DR/DQ Read Re-consensus
 
-HLA-DQA1, HLA-DQB1, and HLA-DRB1 reconstruct poorly enough in their intronic and UTR sequence that the pass 3 full-gene comparison often lands on the wrong fourth field. For these three genes only, the fourth field is re-derived from the reads themselves. The three-field lineage from pass 2 is never changed, and no other gene is touched. The step is implemented in `reconsensus_drdq.py`, gated by `reconsensus_drdq` in `config.py`, and runs for PacBio only.
+HLA-DQA1, HLA-DQB1, and HLA-DRB1 reconstruct poorly enough in their intronic and UTR sequence that the pass 3 full-gene comparison often lands on the wrong fourth field. For these three genes only, the fourth field is re-derived from the reads themselves. The three-field lineage from pass 2 is never changed, and no other gene is touched. The step is implemented in `reconsensus_drdq.py`, gated by `reconsensus_drdq` in `config.py`, and runs for both platforms.
 
 For each gene the pipeline takes the two pass 3 calls, pulls the reads over the gene window from the haplotagged BAM, and rebuilds a consensus for each haplotype against an IPD-IMGT/HLA reference sequence. Each consensus is then re-matched by edit distance against every fourth-field option inside its own three-field group, using the exon plus intron core rather than the full sequence, so that unreliable UTR reconstruction cannot decide the call.
 

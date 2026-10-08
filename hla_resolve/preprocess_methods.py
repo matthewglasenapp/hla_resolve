@@ -85,6 +85,10 @@ def trim_adapters(adapters, input_file, output_file, sample_ID, threads, adapter
 				print("Adapters are asymmetric: scanning reverse complement (--revcomp)")
 
 			cutadapt_cmd = f"cutadapt -j {threads} --quiet -n 2 --minimum-length 100 {revcomp_flag}{' '.join(adapter_flags)} -o {output_file} {input_file}"
+			# An ONT BAM is not converted up front. Stream it into cutadapt.
+			if input_file.endswith(".bam"):
+				cutadapt_cmd = (f"samtools fastq -@ 2 {input_file} | "
+				                f"cutadapt -j {threads} --quiet -n 2 --minimum-length 100 {revcomp_flag}{' '.join(adapter_flags)} -o {output_file} -")
 
 			run_quiet(cutadapt_cmd)
 
