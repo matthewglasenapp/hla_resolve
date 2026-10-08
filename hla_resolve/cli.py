@@ -96,7 +96,9 @@ def main():
 
     args.aligner = "rammap"
     if args.platform == "ont":
-        args.snp_caller = "clair3"
+        # bcftools calls SNVs in the dense DR/DQ exon 2 het clusters where Clair3
+        # drops or homozygous-calls them. Clair3 still calls the indels.
+        args.snp_caller = "bcftools"
         args.indel_caller = "clair3"
         args.rescue_refcalls = False
     else:
