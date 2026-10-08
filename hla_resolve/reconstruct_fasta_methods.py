@@ -289,7 +289,7 @@ def filter_vcf_gene(input_vcf, gene, filter_region, symbolic_vcf, pass_vcf, fail
 
 	# ========== WHITELIST LOGIC (RESTORED) ==========
 	def is_unphased_het(rec):
-		"""True for a heterozygous genotype left unphased by HiPhase/LongPhase.
+		"""True for a heterozygous genotype left unphased by HiPhase.
 
 		Tested on the parsed genotype so multiallelic hets (0/2, 1/3, ...) are
 		caught, not just the common 0/1 and 1/2 forms.

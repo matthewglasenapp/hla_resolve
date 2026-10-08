@@ -5,6 +5,7 @@
 
 import textwrap
 import argparse
+import os
 import shlex
 import sys
 from importlib.metadata import version
@@ -67,7 +68,8 @@ def main():
 
     args = parser.parse_args()
 
-    if args.platform == "ont":
+    # HLA_RESOLVE_ALLOW_ONT=1 lets validation runs through before ONT is released.
+    if args.platform == "ont" and os.environ.get("HLA_RESOLVE_ALLOW_ONT") != "1":
         parser.error("ONT support is not yet available; only --platform pacbio is supported.")
 
     if args.threads < 1:

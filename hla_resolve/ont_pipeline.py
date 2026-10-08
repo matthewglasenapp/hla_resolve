@@ -19,8 +19,9 @@ from .preprocess_methods import (
 	merge_hybrid_vcfs,
 	rescue_refcalls,
 	call_structural_variants_sniffles,
-	phase_genotypes_longphase,
-	merge_longphase_vcfs
+	harmonize_vcf_header,
+	phase_genotypes_hiphase,
+	merge_hiphase_vcfs
 )
 from .cleanup import discard, discard_mapped_bam
 from .config import min_reads_sample, hla_a_region
@@ -250,33 +251,48 @@ def preprocess_ont_sample(config):
 			chr6_bed=config['chr6_bed'],
 			tandem_repeat_bed=config['tandem_repeat_bed']
 		)
-		phase_genotypes_longphase(
+		harmonize_vcf_header(config['snv_vcf'], config['hiphase_input_snv_vcf'],
+		                     config['reference_genome'], config['sample_ID'])
+		harmonize_vcf_header(config['sv_vcf'], config['hiphase_input_sv_vcf'],
+		                     config['reference_genome'], config['sample_ID'])
+
+		# Joint phasing of small variants and SVs, as for PacBio but without TRGT.
+		phase_genotypes_hiphase(
 			input_bam=config['hg38_rmdup_chr6_bam'],
-			input_SNV_vcf=config['snv_vcf'],
-			input_SV_vcf=config['sv_vcf'],
-			output_blocks_file=config['phased_haploblocks'],
-			output_gtf_file=config['phased_haploblocks_gtf'],
-			phased_vcf=config['longphase_vcf'],
-			phased_SV_vcf=config['longphase_sv_vcf'],
-			haplotagged_bam=config['hg38_rmdup_chr6_haplotag_bam'],
-			longphase=config['longphase'],
-			reference_fasta=config['reference_genome'],
+			input_snv=config['hiphase_input_snv_vcf'],
+			input_SV=config['hiphase_input_sv_vcf'],
+			input_TR=None,
+			output_bam=config['hg38_rmdup_chr6_haplotag_bam'],
+			output_snv=config['hiphase_snv_vcf'],
+			output_SV=config['hiphase_sv_vcf'],
+			output_TR=None,
+			output_summary_file=config['phased_summary'],
+			output_blocks_file=config['phased_blocks'],
+			output_stats_file=config['phased_stats'],
 			threads=config['threads'],
-			phased_vcf_dir=config['phased_vcf_dir'],
-			sample_ID=config['sample_ID']
-		)
-		merge_longphase_vcfs(
-			phased_vcf=config['longphase_vcf'],
-			phased_SV_vcf=config['longphase_sv_vcf'],
-			merged_vcf=config['longphase_merged_vcf'],
 			reference_fasta=config['reference_genome'],
 			phased_vcf_dir=config['phased_vcf_dir'],
 			sample_ID=config['sample_ID']
 		)
 
+		merge_hiphase_vcfs(
+			input_snv=config['hiphase_snv_vcf'],
+			input_SV=config['hiphase_sv_vcf'],
+			input_TR=None,
+			output_vcf=config['hiphase_joint_vcf'],
+			reference_fasta=config['reference_genome']
+		)
+
 		# The haplotagged BAM carries the same reads and serves every later stage.
 		if os.path.exists(config['hg38_rmdup_chr6_haplotag_bam']):
 			discard([config['hg38_rmdup_chr6_bam']], "the untagged MHC BAM")
+
+		# Everything downstream reads the merged VCF.
+		if os.path.exists(config['hiphase_joint_vcf']):
+			discard([config['hiphase_input_snv_vcf'], config['hiphase_input_sv_vcf'],
+			         config['hiphase_snv_vcf'], config['hiphase_sv_vcf'],
+			         os.path.join(config['phased_vcf_dir'], config['sample_ID'] + ".hiphase.log")],
+			        "the per-class phased VCFs")
 	
 	else:
 		print("Insufficient reads for variant calling")

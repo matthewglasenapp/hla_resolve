@@ -10,7 +10,7 @@ from . import config
 from .utils import detail
 
 # Get list of haploblock intervals for MHC
-def parse_haploblocks(input_vcf, input_haploblock_file, platform,sample_ID, mhc_start, mhc_stop):
+def parse_haploblocks(input_vcf, input_haploblock_file, sample_ID, mhc_start, mhc_stop):
 	heterozygous_sites = []
 	haploblock_list = []
 
@@ -49,11 +49,7 @@ def parse_haploblocks(input_vcf, input_haploblock_file, platform,sample_ID, mhc_
 	for line in haploblocks[1:]:
 		fields = line.split("\t")
 		
-		# HiPhase and Longphase have slightly differently formatted haploblock tsv files. 
-		if platform == "PACBIO":
-			chromosome, start, stop = "chr6", int(fields[4]), int(fields[5])
-		elif platform == "ONT":
-			chromosome, start, stop = "chr6", int(fields[3]), int(fields[4])
+		chromosome, start, stop = "chr6", int(fields[4]), int(fields[5])
 
 		if chromosome == "chr6" and stop > mhc_start:
 			haploblock_list.append([start,stop])

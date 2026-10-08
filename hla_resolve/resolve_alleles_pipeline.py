@@ -198,13 +198,10 @@ def resolve_alleles(config):
 	         os.path.join(config['mosdepth_dir'], config['sample_ID'] + ".mosdepth.summary.txt")],
 	        "the mosdepth coverage output")
 
-	if config['platform'] == "PACBIO":
-		phased_vcf = config['hiphase_joint_vcf']
-		haploblock_file = config['phased_blocks']
-	elif config['platform'] == "ONT":
-		phased_vcf = config['longphase_vcf']
-		haploblock_file = config['phased_haploblocks']
-	
+	# HiPhase phases both platforms.
+	phased_vcf = config['hiphase_joint_vcf']
+	haploblock_file = config['phased_blocks']
+
 	# The unphased calls that went into phasing are carried, record for record,
 	# by the phased VCFs that came out. Drop them once the phased set is on disk.
 	if os.path.exists(phased_vcf):
@@ -214,7 +211,6 @@ def resolve_alleles(config):
 	heterozygous_sites, haploblock_list = parse_haploblocks(
 		input_vcf=phased_vcf,
 		input_haploblock_file=haploblock_file,
-		platform=config['platform'],
 		sample_ID=config['sample_ID'],
 		mhc_start=config['mhc_start'],
 		mhc_stop=config['mhc_stop']
@@ -250,10 +246,7 @@ def resolve_alleles(config):
 		print(f"CDS-rescued genes: {', '.join(tiers)}")
 	print()
 	
-	if config['platform'] == "PACBIO":
-		input_vcf = config['hiphase_joint_vcf']
-	elif config['platform'] == "ONT":
-		input_vcf = config['longphase_merged_vcf']
+	input_vcf = config['hiphase_joint_vcf']
 
 	stage("Variant filtering and redundancy removal")
 	# Filter phased VCF by gene region

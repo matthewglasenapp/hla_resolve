@@ -64,7 +64,6 @@ _data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 # saw a generic name (e.g. picard.jar) and a version bump would silently keep
 # the stale artifact on existing installs.
 PICARD_VERSION = "2.27.4"
-LONGPHASE_VERSION = "v2.0"
 RAMMAP_VERSION = "v1.0.0"
 DEEPVARIANT_VERSION = "1.6.1"
 # WARNING: the official google/deepvariant:1.6.1 image self-reports "1.6.0" via
@@ -285,48 +284,6 @@ def ensure_reference_genome():
         finally:
             os.chdir(original_cwd)
 
-def ensure_longphase():
-    """Download and extract longphase if not present"""
-    longphase_dir = Path(_data_dir) / "longphase"
-    longphase_bin = longphase_dir / f"longphase_linux-x64_{LONGPHASE_VERSION}"
-    tar_file = longphase_dir / f"longphase_linux-x64_{LONGPHASE_VERSION}.tar.xz"
-
-    if longphase_bin.exists():
-        return str(longphase_bin)
-
-    with _setup_lock(longphase_dir):
-        if not longphase_bin.exists():
-            print(f"Longphase {LONGPHASE_VERSION} not found! Downloading longphase...")
-
-            # Download
-            subprocess.run([
-                "wget",
-                f"https://github.com/twolinin/longphase/releases/download/{LONGPHASE_VERSION}/longphase_linux-x64.tar.xz",
-                "-O", str(tar_file)
-            ], check=True)
-
-            # Extract into a temp dir, then atomically move the binary into place,
-            # so a crash mid-extract can't leave a partial binary that a later run
-            # mistakes for complete.
-            print("Extracting longphase...")
-            extract_tmp = longphase_dir / ".extract.tmp"
-            subprocess.run(["rm", "-rf", str(extract_tmp)], check=True)
-            extract_tmp.mkdir(parents=True)
-            subprocess.run([
-                "tar", "-xJf", str(tar_file), "-C", str(extract_tmp)
-            ], check=True)
-
-            extracted_bin = extract_tmp / "longphase_linux-x64"
-            subprocess.run(["chmod", "+x", str(extracted_bin)], check=True)
-            os.replace(extracted_bin, longphase_bin)
-
-            # Clean up the tarball and temp extraction dir
-            tar_file.unlink()
-            subprocess.run(["rm", "-rf", str(extract_tmp)], check=True)
-            print("Longphase download complete")
-
-    return str(longphase_bin)
-
 def ensure_rammap():
     """Download rammap binary if not present"""
     rammap_dir = Path(_data_dir) / "rammap"
@@ -486,22 +443,20 @@ def run_setup():
     """
     ensure_reference_genome()
     ensure_picard()
-    ensure_longphase()
     ensure_rammap()
     ensure_hla_xml()
     ensure_deepvariant_sif()
-    # ensure_clair3_sif()  # re-enable when ONT support lands
+    ensure_clair3_sif()
     print("hla_resolve setup complete: all dependencies present.")
 
-# Download reference genome, Picard, longphase, rammap, HLA XML database, DeepVariant SIF, and Clair3 SIF on first import
+# Download reference genome, Picard, rammap, HLA XML database and DeepVariant SIF on first import.
+# The Clair3 SIF is pulled on first ONT use (call_variants_clair3) or by `hla_resolve setup`.
 ensure_reference_genome()
 picard = ensure_picard()
-longphase = ensure_longphase()
 rammap = ensure_rammap()
 ensure_hla_xml()
 deepvariant_sif = ensure_deepvariant_sif()
-# clair3_sif = ensure_clair3_sif()  # TODO: re-enable when running ONT
-clair3_sif = None
+clair3_sif = str(Path(_data_dir) / "clair3_sif" / f"clair3_{CLAIR3_VERSION}.sif")
 
 # HLA genes of interest for HLA typing
 genes_of_interest = ("HLA-A", "HLA-B", "HLA-C", "HLA-DPA1", "HLA-DPB1", "HLA-DQA1", "HLA-DQB1", "HLA-DRB1")

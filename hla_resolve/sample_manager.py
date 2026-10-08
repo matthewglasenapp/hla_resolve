@@ -12,7 +12,7 @@ from Bio.Seq import Seq
 from .preprocess_methods import convert_bam_to_fastq
 from .config import (
 	min_reads_sample, min_read_length,
-	longphase, clair3_sif, clair3_ont_model, clair3_hifi_model,
+	clair3_sif, clair3_ont_model, clair3_hifi_model,
 	cds_depth_thresh, cds_prop_20x_thresh, cds_prop_30x_thresh, ars_depth_thresh, ars_prop_20x_thresh, ars_prop_30x_thresh,
 	mhc_start, mhc_stop, genes_bed, genes_of_interest, genes_of_interest_extended,
 	hla_genes_regions_file, reference_genome_minimap2,
@@ -327,17 +327,14 @@ class Samples:
         self.hiphase_tr_vcf = os.path.join(self.phased_vcf_dir, f"{self.sample_ID}.hiphase.TR.vcf.gz")
         self.hiphase_joint_vcf = os.path.join(self.phased_vcf_dir, f"{self.sample_ID}.hiphase.joint.vcf.gz")
         
-        # LongPhase VCF files (for ONT)
-        self.longphase_vcf = os.path.join(self.phased_vcf_dir, f"{self.sample_ID}.longphase.vcf.gz")
-        self.longphase_sv_vcf = os.path.join(self.phased_vcf_dir, f"{self.sample_ID}.longphase_SV.vcf.gz")
-        self.longphase_merged_vcf = os.path.join(self.phased_vcf_dir, f"{self.sample_ID}.longphase.merged.vcf.gz")
+        # ONT HiPhase inputs with headers rewritten from the reference .fai
+        self.hiphase_input_snv_vcf = os.path.join(self.phased_vcf_dir, f"{self.sample_ID}.hiphase_input.vcf.gz")
+        self.hiphase_input_sv_vcf = os.path.join(self.phased_vcf_dir, f"{self.sample_ID}.hiphase_input.SV.vcf.gz")
         
         # Phasing output files
         self.phased_summary = os.path.join(self.phased_vcf_dir, f"{self.sample_ID}.phased.summary.txt")
         self.phased_stats = os.path.join(self.phased_vcf_dir, f"{self.sample_ID}.phased.stats.txt")
         self.phased_blocks = os.path.join(self.phased_vcf_dir, f"{self.sample_ID}.phased.blocks.txt")
-        self.phased_haploblocks = os.path.join(self.phased_vcf_dir, f"{self.sample_ID}.phased.haploblocks.txt")
-        self.phased_haploblocks_gtf = os.path.join(self.phased_vcf_dir, f"{self.sample_ID}.phased.haploblocks.gtf")
         
         # Filtered VCF files
         self.pass_vcf = os.path.join(self.phased_vcf_dir, f"{self.sample_ID}_PASS.vcf.gz")
@@ -440,14 +437,11 @@ def build_workflow_config(sample):
 		'hiphase_sv_vcf': sample.hiphase_sv_vcf,
 		'hiphase_tr_vcf': sample.hiphase_tr_vcf,
 		'hiphase_joint_vcf': sample.hiphase_joint_vcf,
-		'longphase_vcf': sample.longphase_vcf,
-		'longphase_sv_vcf': sample.longphase_sv_vcf,
-		'longphase_merged_vcf': sample.longphase_merged_vcf,
+		'hiphase_input_snv_vcf': sample.hiphase_input_snv_vcf,
+		'hiphase_input_sv_vcf': sample.hiphase_input_sv_vcf,
 		'phased_summary': sample.phased_summary,
 		'phased_stats': sample.phased_stats,
 		'phased_blocks': sample.phased_blocks,
-		'phased_haploblocks': sample.phased_haploblocks,
-		'phased_haploblocks_gtf': sample.phased_haploblocks_gtf,
 		'pass_vcf': sample.pass_vcf,
 		'fail_vcf': sample.fail_vcf,
 		'pass_unphased_vcf': sample.pass_unphased_vcf,
@@ -470,7 +464,6 @@ def build_workflow_config(sample):
 		'chr6_bed': Samples.chr6_bed,
 		'tandem_repeat_bed': Samples.tandem_repeat_bed,
 		'pbtrgt_repeat_file': Samples.pbtrgt_repeat_file,
-		'longphase': longphase,
 		'picard': picard,
 		'cds_depth_thresh': cds_depth_thresh,
 		'cds_prop_20x_thresh': cds_prop_20x_thresh,

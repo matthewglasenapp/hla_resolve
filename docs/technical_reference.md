@@ -118,7 +118,7 @@ DeepVariant is conservative in the HLA region and filters real variants as RefCa
 
 ### Preparing the phased VCF
 
-Following phasing with HiPhase or longphase, the SNV and SV VCFs are merged and normalized with bcftools. The following steps are taken to prepare the VCF records for use with vcf2fasta.
+Following phasing with HiPhase, the SNV and SV VCFs are merged and normalized with bcftools. The following steps are taken to prepare the VCF records for use with vcf2fasta.
 1. Filter the joint phased VCF by gene. The gene coordinates are defined by the GRCh38 GFF3 records.
 
 2. Send all symbolic variants to SAMPLE_GENE.symbolic.vcf.gz. These variant types (e.g., TRID, BND, DUP, INV) are not currently compatible with vcf2fasta. These variants will not participate in quality filtering or be used downstream, but are kept for record.

@@ -6,7 +6,6 @@
 # source of truth), and each download is checked against what it reports about
 # itself:
 #   - picard      : version embedded in the jar manifest
-#   - longphase   : --version
 #   - rammap      : --version
 #   - deepvariant : MANIFEST DIGEST of the pinned docker tag, NOT --version.
 #                   The google/deepvariant:1.6.1 image self-reports "1.6.0"
@@ -23,7 +22,7 @@ DATA="$PKG/data"; CONFIG="$PKG/config.py"
 
 # Pull EXPECTED values from config.py constants (not from filenames).
 ver() { grep -oE "^$1 = \"[^\"]+\"" "$CONFIG" | sed -E 's/.*"([^"]+)".*/\1/'; }
-PICARD_V=$(ver PICARD_VERSION);     LONGPHASE_V=$(ver LONGPHASE_VERSION)
+PICARD_V=$(ver PICARD_VERSION)
 RAMMAP_V=$(ver RAMMAP_VERSION);     DV_V=$(ver DEEPVARIANT_VERSION)
 DV_DIGEST=$(ver DEEPVARIANT_DIGEST); IMGT_V=$(ver IMGT_RELEASE)
 
@@ -43,10 +42,7 @@ if [[ -f "$JAR" ]]; then
   check_substr picard "$PICARD_V" "$(unzip -p "$JAR" META-INF/MANIFEST.MF 2>/dev/null | tr -d '\r')"
 else bad "picard: MISSING $JAR"; fi
 
-# longphase / rammap — best-effort --version (strip leading 'v'; binaries print '2.0')
-LP="$DATA/longphase/longphase_linux-x64_${LONGPHASE_V}"
-if [[ -x "$LP" ]]; then check_substr longphase "${LONGPHASE_V#v}" "$("$LP" --version 2>&1 || true)"
-else bad "longphase: MISSING $LP"; fi
+# rammap — best-effort --version (strip leading 'v')
 RM="$DATA/rammap/rammap_${RAMMAP_V}"
 if [[ -x "$RM" ]]; then check_substr rammap "${RAMMAP_V#v}" "$("$RM" --version 2>&1 || "$RM" -h 2>&1 || true)"
 else bad "rammap: MISSING $RM"; fi

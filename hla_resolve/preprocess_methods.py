@@ -394,6 +394,8 @@ def call_variants_deepvariant(input_bam, output_vcf, platform, deepvariant_sif, 
 	print()
 
 def call_variants_clair3(input_bam, output_vcf, platform, clair3_sif, reference_fasta, threads, genotypes_dir, mapped_bam_dir, sample_ID, clair3_model):
+	# Pulled on first use, so PacBio installs never download it.
+	clair3_sif = config.ensure_clair3_sif()
 	if platform == "ONT":
 		platform_type = "ont"
 	elif platform == "PACBIO":
@@ -806,7 +808,7 @@ def phase_genotypes_hiphase(input_bam, input_snv, input_SV, input_TR, output_bam
 		missing_files.append(f"SNV VCF: {input_snv}")
 	if not os.path.exists(input_SV):
 		missing_files.append(f"SV VCF: {input_SV}")
-	if not os.path.exists(input_TR):
+	if input_TR is not None and not os.path.exists(input_TR):
 		missing_files.append(f"TR VCF: {input_TR}")
 	
 	if missing_files:
@@ -816,7 +818,9 @@ def phase_genotypes_hiphase(input_bam, input_snv, input_SV, input_TR, output_bam
 		print("Skipping HiPhase phasing step.")
 		return
 	
-	hiphase_cmd = f"hiphase --threads {region_threads(threads)} --ignore-read-groups --reference {reference_fasta} --bam {input_bam} --output-bam {output_bam} --vcf {input_snv} --output-vcf {output_snv} --vcf {input_SV} --output-vcf {output_SV} --vcf {input_TR} --output-vcf {output_TR} --stats-file {output_stats_file} --blocks-file {output_blocks_file} --summary-file {output_summary_file}"
+	# ONT has no TRGT calls, so the TR pair is optional.
+	tr_args = f" --vcf {input_TR} --output-vcf {output_TR}" if input_TR is not None else ""
+	hiphase_cmd = f"hiphase --threads {region_threads(threads)} --ignore-read-groups --reference {reference_fasta} --bam {input_bam} --output-bam {output_bam} --vcf {input_snv} --output-vcf {output_snv} --vcf {input_SV} --output-vcf {output_SV}{tr_args} --stats-file {output_stats_file} --blocks-file {output_blocks_file} --summary-file {output_summary_file}"
 	
 	# Log HiPhase in own output file so it doesn't clog up STDOUT
 	hiphase_log = os.path.join(phased_vcf_dir, sample_ID + ".hiphase.log")
@@ -827,20 +831,23 @@ def phase_genotypes_hiphase(input_bam, input_snv, input_SV, input_TR, output_bam
 
 	detail(f"HiPhase phased SNV VCF: {output_snv}")
 	detail(f"HiPhase phased SV VCF: {output_SV}")
-	detail(f"HiPhase phased TR VCF: {output_TR}")
+	if input_TR is not None:
+		detail(f"HiPhase phased TR VCF: {output_TR}")
 	detail(f"HiPhase haplotagged BAM written to: {output_bam}")
 	detail(f"HiPhase phasing summary written to: {output_summary_file}")
 	detail(f"HiPhase phasing stats written to: {output_stats_file}")
 	detail(f"HiPhase phase blocks written to: {output_blocks_file}")
 	print()
 
-# Merge phased SNV (DeepVariant), tandem repeat (TRGT), and structural variant (pbsv) VCFs with bcftools concat
+# Merge the phased small variant, structural variant (pbsv or Sniffles2) and,
+# for PacBio, tandem repeat (TRGT) VCFs with bcftools concat
 def merge_hiphase_vcfs(input_snv, input_SV, input_TR, output_vcf, reference_fasta):
-	print("Merging phased small variant, pbsv, and TRGT VCF files...")
+	print("Merging phased VCF files...")
 
 	detail(f"Small variant input file: {input_snv}")
-	detail(f"pbsv input file: {input_SV}")
-	detail(f"TRGT input file: {input_TR}")
+	detail(f"SV input file: {input_SV}")
+	if input_TR is not None:
+		detail(f"TRGT input file: {input_TR}")
 
 	# Merge SNV + SV with bcftools norm (normalizes indels, removes dups).
 	# TR records are concatenated WITHOUT norm to preserve explicit allele sequences
@@ -853,6 +860,13 @@ def merge_hiphase_vcfs(input_snv, input_SV, input_TR, output_vcf, reference_fast
 	norm_cmd = f"bcftools concat --allow-overlaps {input_snv} {input_SV} | grep -vE 'chrX|chrY' | grep -vE 'SVTYPE=BND|SVTYPE=INV|SVTYPE=DUP' | bcftools norm -d none --fasta-ref {reference_fasta} | bcftools sort | bgzip > {snv_sv_normed}"
 	run_quiet(norm_cmd)
 	run_quiet(f"tabix {snv_sv_normed}")
+
+	if input_TR is None:
+		os.replace(snv_sv_normed, output_vcf)
+		os.replace(snv_sv_normed + ".tbi", output_vcf + ".tbi")
+		detail(f"Merged VCF written to: {output_vcf}")
+		print()
+		return
 
 	# Step 2: Filter TR VCF (remove chrX/chrY) without norm
 	tr_filtered = os.path.join(output_dir, "tr_filtered.tmp.vcf.gz")
@@ -873,89 +887,17 @@ def merge_hiphase_vcfs(input_snv, input_SV, input_TR, output_vcf, reference_fast
 	detail(f"Merged VCF written to: {output_vcf}")
 	print()
 
-def phase_genotypes_longphase(input_bam, input_SNV_vcf, input_SV_vcf, output_blocks_file, output_gtf_file, phased_vcf, phased_SV_vcf, haplotagged_bam, longphase, reference_fasta, threads, phased_vcf_dir, sample_ID):
-	print("Phasing genotypes with LongPhase...")
+# HiPhase needs one sample name and one contig set across all of its VCFs.
+# Clair3 and Sniffles2 differ on both (Sniffles2 names the sample "SAMPLE"), so
+# rewrite each header from the reference .fai before ONT phasing.
+def harmonize_vcf_header(input_vcf, output_vcf, reference_fasta, sample_ID):
+	name_file = output_vcf + ".sample.txt"
+	with open(name_file, "w") as f:
+		f.write(sample_ID + "\n")
 
-	detail(f"Input BAM: {input_bam}")
-	detail(f"Input SNV VCF: {input_SNV_vcf}")
-	detail(f"Input SV VCF: {input_SV_vcf}")
-
-	phased_vcf_prefix = phased_vcf.split(".vcf.gz")[0]
-	longphase_phase_cmd = f"{longphase} phase -s {input_SNV_vcf} --sv-file {input_SV_vcf} -b {input_bam} -r {reference_fasta} -t {threads} -o {phased_vcf_prefix} --ont --indels"
-
-	# Compress and index SNV VCF
-	compress_cmd = f"bgzip -f {phased_vcf_prefix}.vcf"
-	index_cmd = f"bcftools index {phased_vcf_prefix + '.vcf.gz'}"
-	tabix_cmd = f"tabix {phased_vcf_prefix + '.vcf.gz'}"
-
-	# Compress and index SV VCF
-	SV_prefix = phased_vcf_prefix + "_SV"
-	compress_SV_cmd = f"bgzip -f {SV_prefix}.vcf"
-	index_SV_cmd = f"bcftools index {phased_SV_vcf}"
-	tabix_SV_cmd = f"tabix {phased_SV_vcf}"
-
-	haplotagged_bam_prefix = haplotagged_bam.rsplit(".bam", 1)[0]
-	longphase_haplotag_cmd = f"{longphase} haplotag -r {reference_fasta} -s {phased_vcf} --sv-file {phased_SV_vcf} -b {input_bam} -t {threads} -o {haplotagged_bam_prefix}"
-
-	whatshap_stats_cmd = f"whatshap stats --block-list={output_blocks_file} --gtf={output_gtf_file} {phased_vcf}"
-
-	# Log WhatsHap in own output file so it doesn't clog up STDOUT
-	longphase_log = os.path.join(phased_vcf_dir, sample_ID + ".longphase.log")
-
-	with open(longphase_log, "w") as log_file:
-		log_file.write("\n==== Running LongPhase Phase ====\n")
-		subprocess.run(longphase_phase_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
-		subprocess.run(compress_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
-		subprocess.run(index_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
-		subprocess.run(tabix_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
-		subprocess.run(compress_SV_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
-		subprocess.run(index_SV_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
-		subprocess.run(tabix_SV_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
-		log_file.write("\n==== Running LongPhase Haplotag ====\n")
-		subprocess.run(longphase_haplotag_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
-		log_file.write("\n==== Running WhatsHap Stats ====\n")
-		subprocess.run(whatshap_stats_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
-
-	detail(f"LongPhase phased VCF written to: {phased_vcf}")
-	detail(f"LongPhase haplotagged BAM written to: {haplotagged_bam}")
-	detail(f"LongPhase phase block gtf written to: {output_gtf_file}")
-	detail(f"LongPhase phase blocks written to: {output_blocks_file}")
-	print()
-
-def merge_longphase_vcfs(phased_vcf, phased_SV_vcf, merged_vcf, reference_fasta, phased_vcf_dir, sample_ID):
-	print("Merging LongPhase SNV and SV VCFs with bcftools...")
-
-	reheadered_SV_vcf = phased_SV_vcf.replace(".vcf.gz", ".reheader.vcf.gz")
-
-	header_file = os.path.join(phased_vcf_dir, sample_ID + ".header.txt")
-	merge_log = os.path.join(phased_vcf_dir, sample_ID + ".merge.log")
-
-	with open(header_file, "w") as hf:
-		hf.write(f"SAMPLE\t{sample_ID}\n")
-
-	reheader_cmd = f"bcftools reheader -s {header_file} {phased_SV_vcf} -o {reheadered_SV_vcf}"
-	index_sv_cmd = f"bcftools index {reheadered_SV_vcf}"
-
-	merge_cmd = (
-		f"bcftools concat --allow-overlaps -a {phased_vcf} {reheadered_SV_vcf} | "
-		f"bcftools norm -d none -f {reference_fasta} | "
-		f"bcftools sort -Oz -o {merged_vcf} -"
-	)
-	index_merged_cmd = f"bcftools index {merged_vcf}"
-
-	with open(merge_log, "w") as log_file:
-		log_file.write("==== Reheadering SV VCF ====\n")
-		subprocess.run(reheader_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
-		subprocess.run(index_sv_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
-
-		log_file.write("\n==== Merging SNV and SV VCFs ====\n")
-		subprocess.run(merge_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
-
-		log_file.write("\n==== Indexing Merged VCF ====\n")
-		subprocess.run(index_merged_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
-
-	detail(f" Merged VCF written to: {merged_vcf}")
-	print()
+	run_quiet(f"bcftools reheader --fai {reference_fasta}.fai -s {name_file} -o {output_vcf} {input_vcf}")
+	run_quiet(f"tabix -f -p vcf {output_vcf}")
+	os.remove(name_file)
 
 def run_mosdepth(input_file, output_dir, sample_ID, regions_file, threads):
 	detail(f"Running mosdepth on {input_file}")
