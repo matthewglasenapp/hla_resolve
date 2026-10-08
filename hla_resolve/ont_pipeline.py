@@ -27,20 +27,29 @@ from .cleanup import discard, discard_mapped_bam
 from .config import min_reads_sample, drb_region, hla_a_region
 
 def preprocess_ont_sample(config):
-	trimmed_reads = trim_adapters(
-		adapters=config['adapters'],
-		input_file=config['raw_fastq'],
-		output_file=config['trimmed_fastq'],
-		sample_ID=config['sample_ID'],
-		threads=config['threads'],
-		adapter_file=config['adapter_file'],
-		five_prime_adapter=config['five_prime_adapter'],
-		three_prime_adapter=config['three_prime_adapter'],
-		revcomp=config['revcomp']
-	)
-	
+	# Whole-genome and exome reads are aligned as they are, with no adapter
+	# trimming or duplicate marking, as for PacBio.
+	whole_genome = config['scheme'] in ("WGS", "WES")
+
+	if whole_genome:
+		trimmed_reads = None
+		align_input = config['input_file']
+	else:
+		align_input = trim_adapters(
+			adapters=config['adapters'],
+			input_file=config['raw_fastq'],
+			output_file=config['trimmed_fastq'],
+			sample_ID=config['sample_ID'],
+			threads=config['threads'],
+			adapter_file=config['adapter_file'],
+			five_prime_adapter=config['five_prime_adapter'],
+			three_prime_adapter=config['three_prime_adapter'],
+			revcomp=config['revcomp']
+		)
+		trimmed_reads = align_input
+
 	align_to_reference_rammap(
-		input_file=trimmed_reads,
+		input_file=align_input,
 		output_file=config['hg38_bam'],
 		read_group_string=config['read_group_string'],
 		reference_fasta=config['reference_genome'],
@@ -74,19 +83,20 @@ def preprocess_ont_sample(config):
 
 	filter_reads(
 		input_file=config['hg38_bam'],
-		output_file=config['hg38_chr6_bam'],
+		output_file=config['hg38_rmdup_chr6_bam'] if whole_genome else config['hg38_chr6_bam'],
 		drb_paralog_reads_file=config['drb_paralog_reads_file'],
 		hla_y_reads_file=config['hla_y_reads_file'],
 		threads=config['threads']
 	)
-	
-	mark_duplicates_picard(
-		input_file=config['hg38_chr6_bam'],
-		output_file=config['hg38_rmdup_chr6_bam'],
-		metrics_file=config['hg38_mrkdup_metrics'],
-		temp_dir=os.path.join(config['mapped_bam_dir'], "mark_duplicates"),
-		picard=config['picard']
-	)
+
+	if not whole_genome:
+		mark_duplicates_picard(
+			input_file=config['hg38_chr6_bam'],
+			output_file=config['hg38_rmdup_chr6_bam'],
+			metrics_file=config['hg38_mrkdup_metrics'],
+			temp_dir=os.path.join(config['mapped_bam_dir'], "mark_duplicates"),
+			picard=config['picard']
+		)
 
 	# Every stage from here works on the de-duplicated MHC BAM.
 	discard_mapped_bam(config)
