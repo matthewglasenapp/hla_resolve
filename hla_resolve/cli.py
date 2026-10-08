@@ -81,7 +81,6 @@ def main():
     # Defer heavy imports until after argument parsing so that
     # `hla_resolve` (no args) prints help instantly.
     import time
-    import os
     import subprocess
     from . import config
     from .sample_manager import InsufficientReads, Samples, build_workflow_config
