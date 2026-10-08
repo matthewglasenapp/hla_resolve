@@ -6,7 +6,7 @@
     <img src="images/hla_resolve_light.png" alt="HLA-RESOLVE Logo" width="340"/>
   </picture>
   <br/>
-  <b>HLA Typing from PacBio Reads</b>
+  <b>HLA Typing from PacBio and Nanopore Reads</b>
 </p>
 
 <p align="center">
@@ -40,13 +40,13 @@
 
 ## Introduction
 
-HLA-Resolve is a command-line tool for high-resolution HLA typing from high-coverage PacBio sequencing reads. It reconstructs phased, coding and full-gene sequences for the eight classical HLA loci (HLA-A, -B, -C, -DPA1, -DPB1, -DQA1, -DQB1, -DRB1) and queries the [IPD-IMGT/HLA database](https://www.ebi.ac.uk/ipd/imgt/hla/) to assign HLA allele calls at four different levels of resolution (G group, P group, three-field, and four-field)
+HLA-Resolve is a command-line tool for high-resolution HLA typing from high-coverage PacBio or Oxford Nanopore (ONT) sequencing reads. It reconstructs phased, coding and full-gene sequences for the eight classical HLA loci (HLA-A, -B, -C, -DPA1, -DPB1, -DQA1, -DQB1, -DRB1) and queries the [IPD-IMGT/HLA database](https://www.ebi.ac.uk/ipd/imgt/hla/) to assign HLA allele calls at four different levels of resolution (G group, P group, three-field, and four-field)
 
 HLA-Resolve was designed for and fully validated on PacBio hybrid-capture libraries (read N50 ~4 kb). WGS support has been validated on PacBio whole-genome sequencing reads from the GIAB and HPRC benchmarks (see [Benchmarks](#benchmarks)). HLA-Resolve has not been tested on amplicon sequencing data yet. 
 
 > [!IMPORTANT]
-> 1. HLA-Resolve is pre-release software in active development. It is intended for high-coverage PacBio reads. A gene is typed only if its peptide-binding domain reaches at least 8× mean coverage depth.
-> 2. ONT support is still in development, and `--platform ont` is rejected at runtime until it lands.
+> 1. HLA-Resolve is pre-release software in active development. It is intended for high-coverage PacBio or ONT reads. A gene is typed only if its peptide-binding domain reaches at least 8× mean coverage depth.
+> 2. ONT support is new and still being benchmarked.
 > 3. The software is for research use only and not for use in diagnostic procedures. The HLA-Resolve [manuscript](https://doi.org/10.64898/2026.03.27.26349549) is under peer review.
 
 <br/>
@@ -174,9 +174,10 @@ hla_resolve setup
 | rammap binary | v1.0.0 | GitHub |
 | hla.xml ([IPD-IMGT/HLA database](https://github.com/ANHIG/IMGTHLA)) | 3.64.0 | IMGTHLA |
 | DeepVariant Singularity image | 1.6.1 | Docker Hub |
+| Clair3 Singularity image | 2.0.0 | Docker Hub |
 
 > [!NOTE]
-> Setup needs about **9 GB** free in the install directory while it runs, and leaves about **6 GB** in place once it finishes. The Singularity image pull also needs temporary space, so set `SINGULARITY_TMPDIR` if `/tmp` is small on your nodes.
+> Setup needs about **10 GB** free in the install directory while it runs, and leaves about **7 GB** in place once it finishes. The Singularity image pull also needs temporary space, so set `SINGULARITY_TMPDIR` if `/tmp` is small on your nodes.
 
 **Updating an existing installation**
 
@@ -286,8 +287,7 @@ optional arguments:
                         Name for this sample. Used for output filenames and the
                         read group (default: None)
   --platform {pacbio,ont}
-                        Sequencing platform. Only pacbio is supported; ont is
-                        not yet available (default: None)
+                        Sequencing platform (default: None)
   --scheme {WGS,WES,hybrid_capture,amplicon}
                         Sequencing scheme (default: None)
   --output_dir OUTPUT_DIR
@@ -366,7 +366,9 @@ The [Technical Reference](https://github.com/matthewglasenapp/hla_resolve/blob/m
 
 ### Hybrid Capture
 
-HLA-Resolve was run on PacBio hybrid capture reads for 31 samples, at a mean coverage of 365× across the eight classical HLA genes. Every gene in every sample was typed (496/496 alleles). Concordance was measured for the 27 samples that carry a reference typing, 15 from the International Histocompatibility Working Group (IHWG) and 12 from the Human Pangenome Reference Consortium (HPRC). The HPRC reference typings are from [Lai et al. 2024](https://doi.org/10.1016/j.csbj.2024.03.030).
+HLA-Resolve was run on hybrid capture reads for 31 samples, sequenced on both PacBio and ONT. On each platform, every gene in every sample was typed (496/496 alleles). Concordance was measured for the 27 samples that carry a reference typing, 15 from the International Histocompatibility Working Group (IHWG) and 12 from the Human Pangenome Reference Consortium (HPRC). The HPRC reference typings are from [Lai et al. 2024](https://doi.org/10.1016/j.csbj.2024.03.030).
+
+**PacBio**
 
 | Resolution | IHWG | HPRC | Combined |
 |------------|------|------|----------|
@@ -374,6 +376,15 @@ HLA-Resolve was run on PacBio hybrid capture reads for 31 samples, at a mean cov
 | Two field | 98.6% (219/222) | 100% (192/192) | 99.3% (411/414) |
 | Three field | 99.0% (196/198) | 100% (190/190) | 99.5% (386/388) |
 | Four field | 83.3% (135/162) | 96.8% (180/186) | 90.5% (315/348) |
+
+**ONT**
+
+| Resolution | IHWG | HPRC | Combined |
+|------------|------|------|----------|
+| One field | 97.8% (225/230) | 99.5% (191/192) | 98.6% (416/422) |
+| Two field | 98.2% (218/222) | 99.5% (191/192) | 98.8% (409/414) |
+| Three field | 98.5% (195/198) | 99.5% (189/190) | 99.0% (384/388) |
+| Four field | 84.0% (136/162) | 93.5% (174/186) | 89.1% (310/348) |
 
 **[Browse the full benchmark →](docs/capture_validation.md)**
 

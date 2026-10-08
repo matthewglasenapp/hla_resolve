@@ -47,7 +47,7 @@ def main():
     parser.add_argument("--version", action="version", version=f"%(prog)s {version('hla_resolve')}")
     parser.add_argument("--input_file", required=True, help="Path to the raw sequencing reads file")
     parser.add_argument("--sample_name", required=True, help="Name for this sample. Used for output filenames and the read group")
-    parser.add_argument("--platform", choices=["pacbio", "ont"], required=True, help="Sequencing platform. Only pacbio is supported; ont is not yet available")
+    parser.add_argument("--platform", choices=["pacbio", "ont"], required=True, help="Sequencing platform")
     parser.add_argument("--scheme", choices=["WGS", "WES", "hybrid_capture", "amplicon"], required=True, help="Sequencing scheme")
     parser.add_argument("--output_dir", required=True, help="Output directory. Results are written to <output_dir>/<sample_name>/")
     parser.add_argument("--trim_adapters", action="store_true", help="Enable adapter trimming before processing")
@@ -67,10 +67,6 @@ def main():
         parser.exit()
 
     args = parser.parse_args()
-
-    # HLA_RESOLVE_ALLOW_ONT=1 lets validation runs through before ONT is released.
-    if args.platform == "ont" and os.environ.get("HLA_RESOLVE_ALLOW_ONT") != "1":
-        parser.error("ONT support is not yet available; only --platform pacbio is supported.")
 
     if args.threads < 1:
         parser.error("--threads must be at least 1")
