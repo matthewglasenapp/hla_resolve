@@ -27,7 +27,7 @@ from .cleanup import discard, discard_mapped_bam
 from .indel_recount import split_collapsed_indels
 from .config import min_reads_sample, drb_region, hla_a_region
 
-def preprocess_ont_sample(config):
+def _make_mhc_bam(config):
 	# Whole-genome and exome reads are aligned as they are, with no adapter
 	# trimming or duplicate marking, as for PacBio.
 	whole_genome = config['scheme'] in ("WGS", "WES")
@@ -106,6 +106,25 @@ def preprocess_ont_sample(config):
 		 config['hg38_bam_hla_a'], config['hg38_chr6_bam']],
 		"the read files superseded by the MHC BAM"
 	)
+
+
+def _use_existing_mhc_bam(config, mhc_bam):
+	"""Test only: take the MHC BAM of an earlier run in place of trimming,
+	alignment, paralog filtering and duplicate marking. The haplotag tags of
+	that run are dropped so phasing starts fresh."""
+	print(f"Using the existing MHC BAM {mhc_bam} (HLA_RESOLVE_MHC_BAM); alignment and read filtering skipped.")
+	subprocess.run(f"samtools view -b -x HP -x PS -x PC -o {config['hg38_rmdup_chr6_bam']} {mhc_bam}",
+	               shell=True, check=True)
+	subprocess.run(f"samtools index {config['hg38_rmdup_chr6_bam']}", shell=True, check=True)
+	print()
+
+
+def preprocess_ont_sample(config):
+	mhc_bam = os.environ.get("HLA_RESOLVE_MHC_BAM")
+	if mhc_bam:
+		_use_existing_mhc_bam(config, mhc_bam)
+	else:
+		_make_mhc_bam(config)
 
 	chr6_read_count = int(subprocess.check_output(f"samtools view -c {config['hg38_rmdup_chr6_bam']}", shell=True).strip())
 	if chr6_read_count >= min_reads_sample:

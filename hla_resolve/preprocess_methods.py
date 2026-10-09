@@ -745,9 +745,23 @@ def call_structural_variants_pbsv(input_bam, output_svsig, output_vcf, threads, 
 def call_structural_variants_sniffles(input_bam, output_vcf, threads, reference_fasta, chr6_bed, tandem_repeat_bed):
 	print("Calling structural variants with Sniffles2...")
 
+	# Under test, off unless HLA_RESOLVE_SNIFFLES_NO_SA is set: strip SA tags
+	# as for pbsv, so split reads cannot be joined into large SVs that cross
+	# paralogs, such as a 14 kb deletion into DRB1 on DR4 haplotypes.
+	sa_stripped_bam = None
+	if os.environ.get("HLA_RESOLVE_SNIFFLES_NO_SA"):
+		sa_stripped_bam = input_bam.replace(".bam", ".sniffles_nosa.bam")
+		run_quiet(f"samtools view -h -x SA -b -@ {threads} -o {sa_stripped_bam} {input_bam}")
+		run_quiet(f"samtools index {sa_stripped_bam}")
+		input_bam = sa_stripped_bam
+
 	sniffles_cmd = f"sniffles --output-rnames --allow-overwrite -t 1 --reference {reference_fasta} --regions {chr6_bed} -i {input_bam} -v {output_vcf} --tandem-repeats {tandem_repeat_bed}"
 
-	run_quiet(sniffles_cmd)
+	try:
+		run_quiet(sniffles_cmd)
+	finally:
+		if sa_stripped_bam:
+			discard_temp(sa_stripped_bam, sa_stripped_bam + ".bai")
 
 	detail(f"Sniffles2 SV VCF written to: {output_vcf}")
 	print()
