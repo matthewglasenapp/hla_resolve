@@ -111,6 +111,9 @@ def split_collapsed_indels(input_vcf, output_vcf, bam_path):
 
 		rec.alts = (alt, second)
 		rec.samples[sample]["GT"] = (1, 2)
+		# AD has one value per allele, so it needs the second ALT's count too.
+		if "AD" in rec.format:
+			rec.samples[sample]["AD"] = (counts["ref"], counts[called], n)
 		out.write(rec)
 		rewritten += 1
 		print(f"  {rec.chrom}:{rec.pos} {rec.ref}>{alt} 1/1 (AF {af:.2f}) -> {alt},{second} 1/2 "
