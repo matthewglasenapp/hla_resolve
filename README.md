@@ -381,9 +381,9 @@ HLA-Resolve was run on hybrid capture reads for 31 samples, sequenced on both Pa
 
 | Resolution | IHWG | HPRC | Combined |
 |------------|------|------|----------|
-| One field | 97.8% (225/230) | 99.5% (191/192) | 98.6% (416/422) |
-| Two field | 98.2% (218/222) | 99.5% (191/192) | 98.8% (409/414) |
-| Three field | 98.5% (195/198) | 99.5% (189/190) | 99.0% (384/388) |
+| One field | 98.7% (227/230) | 99.5% (191/192) | 99.1% (418/422) |
+| Two field | 98.6% (219/222) | 99.5% (191/192) | 99.0% (410/414) |
+| Three field | 99.0% (196/198) | 99.5% (189/190) | 99.2% (385/388) |
 | Four field | 84.0% (136/162) | 93.5% (174/186) | 89.1% (310/348) |
 
 **[Browse the full benchmark →](docs/capture_validation.md)**
