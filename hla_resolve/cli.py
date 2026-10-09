@@ -68,7 +68,8 @@ def main():
 
     args = parser.parse_args()
 
-    if args.platform == "ont" and args.scheme in ("WGS", "WES"):
+    if (args.platform == "ont" and args.scheme in ("WGS", "WES")
+            and not os.environ.get("HLA_RESOLVE_ALLOW_ONT_WGS")):
         parser.error("--platform ont is not yet available with --scheme WGS or WES.")
 
     if args.threads < 1:

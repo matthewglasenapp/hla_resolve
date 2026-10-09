@@ -24,23 +24,33 @@ from .preprocess_methods import (
 	merge_hiphase_vcfs
 )
 from .cleanup import discard, discard_mapped_bam
+from .indel_recount import split_collapsed_indels
 from .config import min_reads_sample, drb_region, hla_a_region
 
-def preprocess_ont_sample(config):
-	trimmed_reads = trim_adapters(
-		adapters=config['adapters'],
-		input_file=config['raw_fastq'],
-		output_file=config['trimmed_fastq'],
-		sample_ID=config['sample_ID'],
-		threads=config['threads'],
-		adapter_file=config['adapter_file'],
-		five_prime_adapter=config['five_prime_adapter'],
-		three_prime_adapter=config['three_prime_adapter'],
-		revcomp=config['revcomp']
-	)
-	
+def _make_mhc_bam(config):
+	# Whole-genome and exome reads are aligned as they are, with no adapter
+	# trimming or duplicate marking, as for PacBio.
+	whole_genome = config['scheme'] in ("WGS", "WES")
+
+	if whole_genome:
+		trimmed_reads = None
+		align_input = config['input_file']
+	else:
+		align_input = trim_adapters(
+			adapters=config['adapters'],
+			input_file=config['raw_fastq'],
+			output_file=config['trimmed_fastq'],
+			sample_ID=config['sample_ID'],
+			threads=config['threads'],
+			adapter_file=config['adapter_file'],
+			five_prime_adapter=config['five_prime_adapter'],
+			three_prime_adapter=config['three_prime_adapter'],
+			revcomp=config['revcomp']
+		)
+		trimmed_reads = align_input
+
 	align_to_reference_rammap(
-		input_file=trimmed_reads,
+		input_file=align_input,
 		output_file=config['hg38_bam'],
 		read_group_string=config['read_group_string'],
 		reference_fasta=config['reference_genome'],
@@ -74,19 +84,20 @@ def preprocess_ont_sample(config):
 
 	filter_reads(
 		input_file=config['hg38_bam'],
-		output_file=config['hg38_chr6_bam'],
+		output_file=config['hg38_rmdup_chr6_bam'] if whole_genome else config['hg38_chr6_bam'],
 		drb_paralog_reads_file=config['drb_paralog_reads_file'],
 		hla_y_reads_file=config['hla_y_reads_file'],
 		threads=config['threads']
 	)
-	
-	mark_duplicates_picard(
-		input_file=config['hg38_chr6_bam'],
-		output_file=config['hg38_rmdup_chr6_bam'],
-		metrics_file=config['hg38_mrkdup_metrics'],
-		temp_dir=os.path.join(config['mapped_bam_dir'], "mark_duplicates"),
-		picard=config['picard']
-	)
+
+	if not whole_genome:
+		mark_duplicates_picard(
+			input_file=config['hg38_chr6_bam'],
+			output_file=config['hg38_rmdup_chr6_bam'],
+			metrics_file=config['hg38_mrkdup_metrics'],
+			temp_dir=os.path.join(config['mapped_bam_dir'], "mark_duplicates"),
+			picard=config['picard']
+		)
 
 	# Every stage from here works on the de-duplicated MHC BAM.
 	discard_mapped_bam(config)
@@ -95,6 +106,25 @@ def preprocess_ont_sample(config):
 		 config['hg38_bam_hla_a'], config['hg38_chr6_bam']],
 		"the read files superseded by the MHC BAM"
 	)
+
+
+def _use_existing_mhc_bam(config, mhc_bam):
+	"""Test only: take the MHC BAM of an earlier run in place of trimming,
+	alignment, paralog filtering and duplicate marking. The haplotag tags of
+	that run are dropped so phasing starts fresh."""
+	print(f"Using the existing MHC BAM {mhc_bam} (HLA_RESOLVE_MHC_BAM); alignment and read filtering skipped.")
+	subprocess.run(f"samtools view -b -x HP -x PS -x PC -o {config['hg38_rmdup_chr6_bam']} {mhc_bam}",
+	               shell=True, check=True)
+	subprocess.run(f"samtools index {config['hg38_rmdup_chr6_bam']}", shell=True, check=True)
+	print()
+
+
+def preprocess_ont_sample(config):
+	mhc_bam = os.environ.get("HLA_RESOLVE_MHC_BAM")
+	if mhc_bam:
+		_use_existing_mhc_bam(config, mhc_bam)
+	else:
+		_make_mhc_bam(config)
 
 	chr6_read_count = int(subprocess.check_output(f"samtools view -c {config['hg38_rmdup_chr6_bam']}", shell=True).strip())
 	if chr6_read_count >= min_reads_sample:
@@ -235,6 +265,15 @@ def preprocess_ont_sample(config):
 					indels_only=True
 				)
 				indel_intermediate = config['dv_rescued_vcf']
+
+			# Restore the second allele of 1/2 indels that Clair3 calls 1/1.
+			if indel_caller == "clair3":
+				recounted = indel_intermediate.replace(".vcf.gz", ".recount.vcf.gz")
+				print("Recounting homozygous indel calls with a low allele fraction...")
+				n = split_collapsed_indels(indel_intermediate, recounted, config['hg38_rmdup_chr6_bam'])
+				print(f"Rewrote {n} indel call(s) as 1/2.")
+				print()
+				indel_intermediate = recounted
 
 			merge_hybrid_vcfs(
 				snp_vcf=snp_intermediate,
