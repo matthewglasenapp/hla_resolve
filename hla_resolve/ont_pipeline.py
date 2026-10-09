@@ -24,6 +24,7 @@ from .preprocess_methods import (
 	merge_hiphase_vcfs
 )
 from .cleanup import discard, discard_mapped_bam
+from .indel_recount import split_collapsed_indels
 from .config import min_reads_sample, drb_region, hla_a_region
 
 def preprocess_ont_sample(config):
@@ -245,6 +246,16 @@ def preprocess_ont_sample(config):
 					indels_only=True
 				)
 				indel_intermediate = config['dv_rescued_vcf']
+
+			# Under test, off unless HLA_RESOLVE_INDEL_RECOUNT is set: restore
+			# the second allele of 1/2 indels that Clair3 calls 1/1.
+			if indel_caller == "clair3" and os.environ.get("HLA_RESOLVE_INDEL_RECOUNT"):
+				recounted = indel_intermediate.replace(".vcf.gz", ".recount.vcf.gz")
+				print("Recounting homozygous indel calls with a low allele fraction...")
+				n = split_collapsed_indels(indel_intermediate, recounted, config['hg38_rmdup_chr6_bam'])
+				print(f"Rewrote {n} indel call(s) as 1/2.")
+				print()
+				indel_intermediate = recounted
 
 			merge_hybrid_vcfs(
 				snp_vcf=snp_intermediate,
