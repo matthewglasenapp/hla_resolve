@@ -420,12 +420,6 @@ def call_variants_clair3(input_bam, output_vcf, platform, clair3_sif, reference_
 
 	bind_flags = " ".join(f"--bind {path}" for path in bind_paths)
 
-	# Call only the MHC window DeepVariant uses, not all of chr6. Every HLA gene
-	# lies inside it, and on WGS input the rest of chr6 is most of the work.
-	region_bed = os.path.join(output_dir, "clair3_region.bed")
-	with open(region_bed, "w") as fh:
-		fh.write(f"chr6\t{config.dv_region_start - 1}\t{config.dv_region_stop}\n")
-
 	clair3_cmd = f"""
 		singularity exec {bind_flags} {clair3_sif} /opt/bin/run_clair3.sh \
 			--bam_fn=/input/{os.path.basename(input_bam)} \
@@ -435,8 +429,7 @@ def call_variants_clair3(input_bam, output_vcf, platform, clair3_sif, reference_
 			--model_path=/opt/models/{clair3_model} \
 			--output=/output \
 			--sample_name={sample_ID} \
-			--ctg_name=chr6 \
-			--bed_fn=/output/clair3_region.bed
+			--ctg_name=chr6
 		"""
 
 	clair3_log = os.path.join(genotypes_dir, sample_ID + ".clair3.log")
@@ -752,23 +745,19 @@ def call_structural_variants_pbsv(input_bam, output_svsig, output_vcf, threads, 
 def call_structural_variants_sniffles(input_bam, output_vcf, threads, reference_fasta, chr6_bed, tandem_repeat_bed):
 	print("Calling structural variants with Sniffles2...")
 
-	# Under test, off unless HLA_RESOLVE_SNIFFLES_NO_SA is set: strip SA tags
-	# as for pbsv, so split reads cannot be joined into large SVs that cross
-	# paralogs, such as a 14 kb deletion into DRB1 on DR4 haplotypes.
-	sa_stripped_bam = None
-	if os.environ.get("HLA_RESOLVE_SNIFFLES_NO_SA"):
-		sa_stripped_bam = input_bam.replace(".bam", ".sniffles_nosa.bam")
-		run_quiet(f"samtools view -h -x SA -b -@ {threads} -o {sa_stripped_bam} {input_bam}")
-		run_quiet(f"samtools index {sa_stripped_bam}")
-		input_bam = sa_stripped_bam
+	# Strip SA tags, as for pbsv, so split reads cannot be joined into large SVs
+	# that cross paralogs, such as a 14 kb deletion into DRB1 on DR4 haplotypes.
+	sa_stripped_bam = input_bam.replace(".bam", ".sniffles_nosa.bam")
+	run_quiet(f"samtools view -h -x SA -b -@ {threads} -o {sa_stripped_bam} {input_bam}")
+	run_quiet(f"samtools index {sa_stripped_bam}")
+	input_bam = sa_stripped_bam
 
 	sniffles_cmd = f"sniffles --output-rnames --allow-overwrite -t 1 --reference {reference_fasta} --regions {chr6_bed} -i {input_bam} -v {output_vcf} --tandem-repeats {tandem_repeat_bed}"
 
 	try:
 		run_quiet(sniffles_cmd)
 	finally:
-		if sa_stripped_bam:
-			discard_temp(sa_stripped_bam, sa_stripped_bam + ".bai")
+		discard_temp(sa_stripped_bam, sa_stripped_bam + ".bai")
 
 	detail(f"Sniffles2 SV VCF written to: {output_vcf}")
 	print()
