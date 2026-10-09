@@ -420,6 +420,12 @@ def call_variants_clair3(input_bam, output_vcf, platform, clair3_sif, reference_
 
 	bind_flags = " ".join(f"--bind {path}" for path in bind_paths)
 
+	# Call only the MHC window DeepVariant uses, not all of chr6. Every HLA gene
+	# lies inside it, and on WGS input the rest of chr6 is most of the work.
+	region_bed = os.path.join(output_dir, "clair3_region.bed")
+	with open(region_bed, "w") as fh:
+		fh.write(f"chr6\t{config.dv_region_start - 1}\t{config.dv_region_stop}\n")
+
 	clair3_cmd = f"""
 		singularity exec {bind_flags} {clair3_sif} /opt/bin/run_clair3.sh \
 			--bam_fn=/input/{os.path.basename(input_bam)} \
@@ -429,7 +435,8 @@ def call_variants_clair3(input_bam, output_vcf, platform, clair3_sif, reference_
 			--model_path=/opt/models/{clair3_model} \
 			--output=/output \
 			--sample_name={sample_ID} \
-			--ctg_name=chr6
+			--ctg_name=chr6 \
+			--bed_fn=/output/clair3_region.bed
 		"""
 
 	clair3_log = os.path.join(genotypes_dir, sample_ID + ".clair3.log")
