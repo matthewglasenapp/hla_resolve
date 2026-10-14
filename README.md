@@ -42,7 +42,7 @@
 
 HLA-Resolve is a command-line tool for high-resolution HLA typing from high-coverage PacBio and Oxford Nanopore sequencing reads. Support for ONT R10 chemistry was added in v0.10.0. HLA-Resolve reconstructs phased coding and full-gene sequences for the eight classical HLA loci (HLA-A, -B, -C, -DPA1, -DPB1, -DQA1, -DQB1, -DRB1) and queries the [IPD-IMGT/HLA database](https://www.ebi.ac.uk/ipd/imgt/hla/) to assign HLA allele calls at four levels of resolution (G group, P group, three-field, and four-field).
 
-HLA-Resolve was designed for high-coverage hybrid capture libraries (read N50 ~4 kb). It was first validated on hybrid capture libraries from PacBio Revio and ONT PromethION R10.4.1 sequencing runs. It has since been benchmarked on whole-genome sequencing libraries from both platforms (see [Benchmarks](#benchmarks)).
+HLA-Resolve was designed for high-coverage hybrid capture libraries (read N50 ~4 kb). It was first validated on hybrid capture libraries from PacBio Revio and ONT PromethION R10.4.1 sequencing runs. It has since been benchmarked on whole-genome sequencing libraries from PacBio Revio and Sequel II and ONT PromethION R10.4.1 sequencing runs (see [Benchmarks](#benchmarks)).
 
 > [!IMPORTANT]
 > 1. HLA-Resolve is pre-release software in active development. It is intended for high-coverage PacBio or ONT (R10 chemistry, new in v0.10.0) reads. A gene is typed only if its peptide-binding domain reaches at least 8× mean coverage depth.
@@ -390,7 +390,7 @@ Raw reads are available under BioProject [PRJNA1417783](https://www.ncbi.nlm.nih
 
 HLA-Resolve was run on public whole-genome sequencing reads, and concordance was measured against two reference sets, the four-field typings of [Lai et al. 2024](https://doi.org/10.1016/j.csbj.2024.03.030) and the two-field 1000 Genomes Project (1kGP) HLA panel. Every allele was called on both platforms (100% call rate).
 
-- **PacBio:** 146 libraries from 130 samples. All libraries were sequenced by the Human Pangenome Reference Consortium (HPRC) except the two Genome in a Bottle (GIAB) HG002 libraries.
+- **PacBio:** 146 libraries from 130 samples, sequenced on Revio (68), Sequel II (69) or both (9). All libraries were sequenced by the Human Pangenome Reference Consortium (HPRC) except the two Genome in a Bottle (GIAB) HG002 libraries.
 - **ONT:** 72 R10.4.1 libraries from 72 samples, all sequenced by the HPRC on PromethION flow cells.
 
 | Resolution | PacBio (146 libraries) | ONT (72 libraries) |
