@@ -109,23 +109,8 @@ def _make_mhc_bam(config):
 	)
 
 
-def _use_existing_mhc_bam(config, mhc_bam):
-	"""Test only: take the MHC BAM of an earlier run in place of trimming,
-	alignment, paralog filtering and duplicate marking. The haplotag tags of
-	that run are dropped so phasing starts fresh."""
-	print(f"Using the existing MHC BAM {mhc_bam} (HLA_RESOLVE_MHC_BAM); alignment and read filtering skipped.")
-	subprocess.run(f"samtools view -b -x HP -x PS -x PC -o {config['hg38_rmdup_chr6_bam']} {mhc_bam}",
-	               shell=True, check=True)
-	subprocess.run(f"samtools index {config['hg38_rmdup_chr6_bam']}", shell=True, check=True)
-	print()
-
-
 def preprocess_ont_sample(config):
-	mhc_bam = os.environ.get("HLA_RESOLVE_MHC_BAM")
-	if mhc_bam:
-		_use_existing_mhc_bam(config, mhc_bam)
-	else:
-		_make_mhc_bam(config)
+	_make_mhc_bam(config)
 
 	if config['scheme'] == "WGS":
 		n = rescue_hla_a_copies(config['hg38_rmdup_chr6_bam'], config['reference_genome'],
