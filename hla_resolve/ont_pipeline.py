@@ -25,6 +25,7 @@ from .preprocess_methods import (
 )
 from .cleanup import discard, discard_mapped_bam
 from .indel_recount import split_collapsed_indels
+from .hla_a_rescue import rescue_hla_a_copies
 from .config import min_reads_sample, drb_region, hla_a_region
 
 def _make_mhc_bam(config):
@@ -125,6 +126,12 @@ def preprocess_ont_sample(config):
 		_use_existing_mhc_bam(config, mhc_bam)
 	else:
 		_make_mhc_bam(config)
+
+	if config['scheme'] == "WGS":
+		n = rescue_hla_a_copies(config['hg38_rmdup_chr6_bam'], config['reference_genome'],
+		                        config['hla_a_multiallele_reference'], config['threads'])
+		print(f"Recovered {n} HLA-A {'read' if n == 1 else 'reads'}.")
+		print()
 
 	chr6_read_count = int(subprocess.check_output(f"samtools view -c {config['hg38_rmdup_chr6_bam']}", shell=True).strip())
 	if chr6_read_count >= min_reads_sample:
