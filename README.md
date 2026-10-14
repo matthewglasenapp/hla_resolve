@@ -46,7 +46,7 @@ HLA-Resolve was designed for high-coverage hybrid capture libraries (read N50 ~4
 
 > [!IMPORTANT]
 > 1. HLA-Resolve is pre-release software in active development. It is intended for high-coverage PacBio or ONT (R10 chemistry, new in v0.10.0) reads. A gene is typed only if its peptide-binding domain reaches at least 8× mean coverage depth.
-> 2. ONT R10.4.1 data is supported for hybrid capture and WGS libraries. WGS support is new and is still being tested and refined. ONT R9.4.1 data has not been evaluated yet, and an evaluation is planned.
+> 2. ONT R10.4.1 data is supported for hybrid capture and WGS libraries. ONT WGS support is new and is still being tested and refined. ONT R9.4.1 data has not been evaluated yet, and an evaluation is planned.
 > 3. `--scheme WES` is supported, but it has not been tested on PacBio or ONT whole-exome sequencing libraries. In theory it should perform well, because the coverage profile of exome libraries should be similar to that of hybrid capture libraries. Amplicon data has not been tested on either sequencing platform.
 > 4. The software is for research use only and not for use in diagnostic procedures. The HLA-Resolve [manuscript](https://doi.org/10.64898/2026.03.27.26349549) is under peer review.
 
@@ -369,23 +369,14 @@ The [Technical Reference](https://github.com/matthewglasenapp/hla_resolve/blob/m
 
 HLA-Resolve was run on hybrid capture reads for 31 samples, sequenced on both PacBio and ONT. On each platform, every gene in every sample was typed (496/496 alleles). Concordance was measured for the 27 samples that carry a reference typing, 15 from the International Histocompatibility Working Group (IHWG) and 12 from the Human Pangenome Reference Consortium (HPRC). The HPRC reference typings are from [Lai et al. 2024](https://doi.org/10.1016/j.csbj.2024.03.030).
 
-**PacBio**
+| Resolution | PacBio | ONT |
+|------------|--------|-----|
+| One field | 99.3% (419/422) | 99.1% (418/422) |
+| Two field | 99.3% (411/414) | 99.0% (410/414) |
+| Three field | 99.5% (386/388) | 99.2% (385/388) |
+| Four field | 90.5% (315/348) | 89.1% (310/348) |
 
-| Resolution | IHWG | HPRC | Combined |
-|------------|------|------|----------|
-| One field | 98.7% (227/230) | 100% (192/192) | 99.3% (419/422) |
-| Two field | 98.6% (219/222) | 100% (192/192) | 99.3% (411/414) |
-| Three field | 99.0% (196/198) | 100% (190/190) | 99.5% (386/388) |
-| Four field | 83.3% (135/162) | 96.8% (180/186) | 90.5% (315/348) |
-
-**ONT**
-
-| Resolution | IHWG | HPRC | Combined |
-|------------|------|------|----------|
-| One field | 98.7% (227/230) | 99.5% (191/192) | 99.1% (418/422) |
-| Two field | 98.6% (219/222) | 99.5% (191/192) | 99.0% (410/414) |
-| Three field | 99.0% (196/198) | 99.5% (189/190) | 99.2% (385/388) |
-| Four field | 84.0% (136/162) | 93.5% (174/186) | 89.1% (310/348) |
+Both cohorts are pooled. The full benchmark splits them.
 
 **[Browse the full benchmark →](docs/capture_validation.md)**
 
@@ -399,33 +390,21 @@ Raw reads are available under BioProject [PRJNA1417783](https://www.ncbi.nlm.nih
 
 HLA-Resolve was run on public whole-genome sequencing reads, and concordance was measured against two reference sets, the four-field typings of [Lai et al. 2024](https://doi.org/10.1016/j.csbj.2024.03.030) and the two-field 1000 Genomes Project (1kGP) HLA panel. Every allele was called on both platforms (100% call rate).
 
-**PacBio**
+- **PacBio:** 146 libraries from 130 samples. All libraries were sequenced by the Human Pangenome Reference Consortium (HPRC) except the two Genome in a Bottle (GIAB) HG002 libraries.
+- **ONT:** 72 R10.4.1 libraries from 72 samples, all sequenced by the HPRC on PromethION flow cells.
 
-146 libraries from 130 samples. All libraries were sequenced by the Human Pangenome Reference Consortium (HPRC) except the two Genome in a Bottle (GIAB) HG002 libraries.
+| Resolution | PacBio (146 libraries) | ONT (72 libraries) |
+|------------|------------------------|--------------------|
+| One field | 99.9% (1741/1743) | 100% (728/728) |
+| Two field | 99.4% (1732/1743) | 99.5% (724/728) |
+| Three field | 99.5% (816/820) | 100% (96/96) |
+| Four field | 93.0% (745/801) | 84.9% (79/93) |
 
-| Resolution | Lai et al. | 1kGP | Combined |
-|------------|------|------|----------|
-| One field | 99.9% (830/831) | 99.9% (911/912) | 99.9% (1741/1743) |
-| Two field | 99.8% (829/831) | 99.0% (903/912) | 99.4% (1732/1743) |
-| Three field | 99.5% (816/820) | – | 99.5% (816/820) |
-| Four field | 93.0% (745/801) | – | 93.0% (745/801) |
+Both reference sets are pooled. The three- and four-field rows count only the Lai et al. samples, because the 1kGP panel is two-field.
 
-**[Browse the full PacBio benchmark →](docs/wgs_validation_pacbio.md)**
+**[Browse the PacBio benchmark →](docs/wgs_validation_pacbio.md)** · **[Browse the ONT benchmark →](docs/wgs_validation_ont.md)**
 
-**ONT**
-
-72 R10.4.1 libraries from 72 samples, all sequenced by the HPRC on PromethION flow cells.
-
-| Resolution | Lai et al. | 1kGP | Combined |
-|------------|------|------|----------|
-| One field | 100% (96/96) | 100% (632/632) | 100% (728/728) |
-| Two field | 100% (96/96) | 99.4% (628/632) | 99.5% (724/728) |
-| Three field | 100% (96/96) | – | 100% (96/96) |
-| Four field | 84.9% (79/93) | – | 84.9% (79/93) |
-
-**[Browse the full ONT benchmark →](docs/wgs_validation_ont.md)**
-
-Each full benchmark lists, by library:
+Each WGS benchmark lists, by library:
 
 - Concordance by field of resolution
 - Mean HLA coverage depth
