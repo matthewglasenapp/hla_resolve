@@ -92,7 +92,7 @@ def rescue_hla_a_copies(mhc_bam, reference_fasta, panel_fasta, threads):
 
 	work = mhc_bam + ".hla_a_rescue"
 	window_fa, reads_fq, sam = work + ".window.fa", work + ".fq", work + ".sam"
-	added, merged = work + ".added.bam", work + ".merged.bam"
+	added, kept, merged = work + ".added.bam", work + ".kept.bam", work + ".merged.bam"
 	try:
 		with open(window_fa, "w") as fh:
 			fh.write(">window\n")
@@ -131,10 +131,15 @@ def rescue_hla_a_copies(mhc_bam, reference_fasta, panel_fasta, threads):
 		with pysam.AlignmentFile(added, "wb", header=header) as dst:
 			for rec in records:
 				dst.write(rec)
-		subprocess.run(f"samtools merge -f -c -p {merged} {mhc_bam} {added}", shell=True, check=True,
+		originals = {r.query_name[:-5] for r in records}
+		with pysam.AlignmentFile(mhc_bam) as src, pysam.AlignmentFile(kept, "wb", header=header) as dst:
+			for rec in src.fetch(until_eof=True):
+				if rec.query_name not in originals:
+					dst.write(rec)
+		subprocess.run(f"samtools merge -f -c -p {merged} {kept} {added}", shell=True, check=True,
 		               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 		os.replace(merged, mhc_bam)
 		subprocess.run(f"samtools index {mhc_bam}", shell=True, check=True)
 		return len(records)
 	finally:
-		discard_temp(window_fa, reads_fq, sam, added, merged)
+		discard_temp(window_fa, reads_fq, sam, added, kept, merged)
