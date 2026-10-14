@@ -42,7 +42,7 @@
 
 HLA-Resolve is a command-line tool for high-resolution HLA typing from high-coverage PacBio and Oxford Nanopore sequencing reads. Support for ONT R10 chemistry was added in v0.10.0. HLA-Resolve reconstructs phased coding and full-gene sequences for the eight classical HLA loci (HLA-A, -B, -C, -DPA1, -DPB1, -DQA1, -DQB1, -DRB1) and queries the [IPD-IMGT/HLA database](https://www.ebi.ac.uk/ipd/imgt/hla/) to assign HLA allele calls at four levels of resolution (G group, P group, three-field, and four-field).
 
-HLA-Resolve was designed for high-coverage hybrid capture libraries (read N50 ~4 kb). It was first validated on hybrid capture libraries from PacBio Revio and ONT PromethION R10.4.1 sequencing runs (see the [hybrid capture validation](docs/capture_validation.md)). It has since been benchmarked on whole-genome sequencing libraries from both platforms (see the WGS validation for [PacBio](docs/wgs_validation.md) and [ONT](docs/wgs_validation_ont.md)).
+HLA-Resolve was designed for high-coverage hybrid capture libraries (read N50 ~4 kb). It was first validated on hybrid capture libraries from PacBio Revio and ONT PromethION R10.4.1 sequencing runs. It has since been benchmarked on whole-genome sequencing libraries from both platforms (see [Benchmarks](#benchmarks)).
 
 > [!IMPORTANT]
 > 1. HLA-Resolve is pre-release software in active development. It is intended for high-coverage PacBio or ONT (R10 chemistry, new in v0.10.0) reads. A gene is typed only if its peptide-binding domain reaches at least 8× mean coverage depth.
@@ -82,7 +82,7 @@ HLA-Resolve was designed for high-coverage hybrid capture libraries (read N50 ~4
 ### Input
 
 <table>
-<tr><td><b>Reads</b></td><td>A raw, single-sample (demultiplexed) PacBio sequencing file</td></tr>
+<tr><td><b>Reads</b></td><td>A raw, single-sample (demultiplexed) PacBio or ONT sequencing file</td></tr>
 <tr><td><b>Format</b></td><td>FASTQ or unmapped BAM, compressed or uncompressed</td></tr>
 </table>
 
@@ -199,7 +199,7 @@ bash update.sh
 hla_resolve \
   --input_file <reads.fastq.gz | reads.bam> \
   --sample_name <sample_name> \
-  --platform pacbio \
+  --platform <pacbio | ont> \
   --scheme <WGS | WES | hybrid_capture | amplicon> \
   --output_dir <output_dir>
 ```
@@ -397,13 +397,39 @@ Raw reads are available under BioProject [PRJNA1417783](https://www.ncbi.nlm.nih
 
 ### Whole Genome Sequencing
 
-HLA-Resolve was run on whole-genome PacBio sequencing reads for 39 HPRC samples, at a mean coverage of 35.2× across the eight classical HLA genes. Concordance with the reference typings of Lai et al. was **100% at one- through three-field resolution** (610/610 alleles) and **92.8% at four-field resolution** (555/598), with a call rate of 99.4% (620/624).
+HLA-Resolve was run on public whole-genome sequencing reads, and concordance was measured against two reference sets, the four-field typings of [Lai et al. 2024](https://doi.org/10.1016/j.csbj.2024.03.030) and the two-field 1000 Genomes Project (1kGP) HLA panel. Every allele was called on both platforms (100% call rate).
 
-**[Browse the full benchmark →](docs/wgs_validation.md)**
+**PacBio**
 
-- Per-sample concordance by field of resolution
-- Mean HLA coverage depth by sample
-- The raw PacBio input file(s) used for each sample
+146 libraries from 130 samples. All libraries were sequenced by the Human Pangenome Reference Consortium (HPRC) except the two Genome in a Bottle (GIAB) HG002 libraries.
+
+| Resolution | Lai et al. | 1kGP | Combined |
+|------------|------|------|----------|
+| One field | 99.9% (830/831) | 99.9% (911/912) | 99.9% (1741/1743) |
+| Two field | 99.8% (829/831) | 99.0% (903/912) | 99.4% (1732/1743) |
+| Three field | 99.5% (816/820) | – | 99.5% (816/820) |
+| Four field | 93.0% (745/801) | – | 93.0% (745/801) |
+
+**[Browse the full PacBio benchmark →](docs/wgs_validation_pacbio.md)**
+
+**ONT**
+
+72 R10.4.1 libraries from 72 samples, all sequenced by the HPRC on PromethION flow cells.
+
+| Resolution | Lai et al. | 1kGP | Combined |
+|------------|------|------|----------|
+| One field | 100% (96/96) | 100% (632/632) | 100% (728/728) |
+| Two field | 100% (96/96) | 99.4% (628/632) | 99.5% (724/728) |
+| Three field | 100% (96/96) | – | 100% (96/96) |
+| Four field | 84.9% (79/93) | – | 84.9% (79/93) |
+
+**[Browse the full ONT benchmark →](docs/wgs_validation_ont.md)**
+
+Each full benchmark lists, by library:
+
+- Concordance by field of resolution
+- Mean HLA coverage depth
+- The raw input file(s)
 
 All inputs are publicly available, so the benchmark can be reproduced end to end.
 
@@ -413,9 +439,8 @@ All inputs are publicly available, so the benchmark can be reproduced end to end
 
 | | Feature |
 |---|---------|
-| 1 | HLA typing at P-group resolution |
-| 2 | HLA typing for additional HLA Class I protein-coding genes and pseudogenes<br>(HLA-E, HLA-F, HLA-G; HLA-H, HLA-J, HLA-K, HLA-L, HLA-S, HLA-V, HLA-W) |
-| 3 | HLA typing for additional HLA Class II protein-coding genes<br>(HLA-DRB3, HLA-DRB4, HLA-DRB5) |
+| 1 | HLA typing for additional HLA Class I protein-coding genes and pseudogenes<br>(HLA-E, HLA-F, HLA-G; HLA-H, HLA-J, HLA-K, HLA-L, HLA-S, HLA-V, HLA-W) |
+| 2 | HLA typing for additional HLA Class II protein-coding genes<br>(HLA-DRB3, HLA-DRB4, HLA-DRB5) |
 
 ---
 
