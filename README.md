@@ -402,7 +402,7 @@ HLA-Resolve was run on public whole-genome sequencing reads, and concordance was
 
 Both reference sets are pooled. The three- and four-field rows count only the Lai et al. samples, because the 1kGP panel is two-field.
 
-**[Browse the PacBio benchmark →](docs/wgs_validation_pacbio.md)** · **[Browse the ONT benchmark →](docs/wgs_validation_ont.md)**
+**Browse the full benchmarks →** **[PacBio WGS](docs/wgs_validation_pacbio.md)** &nbsp;•&nbsp; **[ONT WGS](docs/wgs_validation_ont.md)**
 
 Each WGS benchmark lists, by library:
 
