@@ -46,7 +46,7 @@ HLA-Resolve was designed for high-coverage hybrid capture libraries (read N50 ~4
 
 > [!IMPORTANT]
 > 1. HLA-Resolve is pre-release software in active development. It is intended for high-coverage PacBio or ONT (R10 chemistry, new in v0.10.0) reads. A gene is typed only if its peptide-binding domain reaches at least 8× mean coverage depth.
-> 2. ONT R10.4.1 data is supported for hybrid capture and WGS libraries. ONT WGS support is new and is still being tested and refined. ONT R9.4.1 data has not been evaluated yet, and an evaluation is planned.
+> 2. For ONT, HLA-Resolve has been validated only on R10.4.1 hybrid capture and WGS libraries basecalled with a Dorado super-accuracy (sup) model. ONT WGS support is new and is still being tested and refined. Please do not run HLA-Resolve on R9.4.1 data, or on reads from a fast or high-accuracy (hac) basecalling model, until a later release adds support for them.
 > 3. `--scheme WES` is supported, but it has not been tested on PacBio or ONT whole-exome sequencing libraries. In theory it should perform well, because the coverage profile of exome libraries should be similar to that of hybrid capture libraries. Amplicon data has not been tested on either sequencing platform.
 > 4. The software is for research use only and not for use in diagnostic procedures. The HLA-Resolve [manuscript](https://doi.org/10.64898/2026.03.27.26349549) is under peer review.
 
