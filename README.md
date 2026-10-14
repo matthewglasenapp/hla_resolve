@@ -6,7 +6,7 @@
     <img src="images/hla_resolve_light.png" alt="HLA-RESOLVE Logo" width="340"/>
   </picture>
   <br/>
-  <b>HLA Typing from PacBio and Nanopore Reads (Nanopore new in v0.10.0)</b>
+  <b>HLA Typing from Long Reads</b>
 </p>
 
 <p align="center">
@@ -134,7 +134,7 @@ Four output files hold the same calls at different levels of resolution.
 
 The Best Guess file forces a single best guess for every allele. The Ambiguities Reported file gives the calls as genotype list strings when multiple candidate alleles cannot be distinguished at the sequence level.
 
-P and G groups are read from the reconstructed sequence rather than looked up from the allele call. A P group is identity of the protein encoded by the peptide-binding domain, exon 2 for class II and exons 2 and 3 for class I, excluding the codons split across an exon border. A G group is identity of the same region at the nucleotide level. Where neither is observed, the three-field call is reported instead, so a name ending in P or G is a group and anything else is an allele.
+P and G groups are read from the reconstructed sequence rather than looked up from the allele call. A P group is defined by the identity of the protein encoded by the peptide-binding domain, exon 2 for class II and exons 2 and 3 for class I, excluding the codons split across an exon border. A G group is defined by the identity of the same region at the nucleotide level. Where neither is observed, the three-field call is reported instead, so a name ending in P or G is a group and anything else is an allele.
 
 #### Supporting Files
 
