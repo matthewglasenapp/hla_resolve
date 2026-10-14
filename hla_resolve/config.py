@@ -501,6 +501,9 @@ hla_a_multiallele_reference = os.path.join(_data_dir, "reference/HLA_A_reference
 # unmapped reads.
 hla_a_region = "chr6:29941259-29949572"
 
+# Used in hla_a_rescue.py.
+hla_h_region = "chr6:29887455-29890956"
+
 
 # Clair3 model names — bundled inside the Clair3 SIF at /opt/models/
 # Users can override the ONT model via --clair3_model at the command line
