@@ -68,9 +68,6 @@ def main():
 
     args = parser.parse_args()
 
-    if args.platform == "ont" and args.scheme == "WES":
-        parser.error("--platform ont is not yet available with --scheme WES.")
-
     if args.threads < 1:
         parser.error("--threads must be at least 1")
 
