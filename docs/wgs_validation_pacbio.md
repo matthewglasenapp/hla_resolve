@@ -1,6 +1,6 @@
 # HLA-Resolve concordance on whole-genome PacBio libraries
 
-HLA-Resolve v0.9.9 (IPD-IMGT/HLA release 3.64.0) was run on public whole-genome PacBio reads for **146 sequencing libraries from 130 samples**. All libraries were sequenced by the Human Pangenome Reference Consortium (HPRC; cohorts HPRC, HPRC_PLUS) except the two Genome in a Bottle (GIAB) HG002 libraries. Every library was typed independently. Libraries sequenced across multiple SMRT cells were combined to a target genome-wide coverage depth of 30×. Samples with two libraries appear twice as independent measurements.
+HLA-Resolve v0.9.9 (IPD-IMGT/HLA release 3.64.0) was run on public whole-genome PacBio reads for **146 sequencing libraries from 130 samples**. All libraries were sequenced by the Human Pangenome Reference Consortium (HPRC; cohorts HPRC, HPRC_PLUS) except the two Genome in a Bottle (GIAB) HG002 libraries. Every library was typed independently. SMRT cells were left out of 101 of the 146 libraries to bring each library to about 30×, so that accuracy reflects typical WGS depth. Samples with two libraries appear twice as independent measurements.
 
 Allele calls were compared to two reference sets:
 
@@ -21,6 +21,21 @@ hla_resolve --input_file <LIBRARY_uBAM> --sample_name <SAMPLE> \
             --platform pacbio --scheme WGS \
             --output_dir <OUTPUT_DIR> --threads <THREADS>
 ```
+
+## Coverage depth
+
+Mean depth across the antigen recognition site of each gene, over all 146 libraries.
+
+| Gene | Mean | Median | Range |
+|------|------|--------|-------|
+| HLA-A | 31.9× | 32.5× | 14.6 to 47.7× |
+| HLA-B | 33.5× | 33.9× | 13.9 to 53.3× |
+| HLA-C | 33.0× | 32.5× | 14.9 to 53.8× |
+| HLA-DPA1 | 32.9× | 33.7× | 12.0 to 56.9× |
+| HLA-DPB1 | 34.7× | 34.0× | 8.1 to 51.6× |
+| HLA-DQA1 | 31.8× | 30.9× | 14.9 to 50.0× |
+| HLA-DQB1 | 37.3× | 37.0× | 13.0 to 63.9× |
+| HLA-DRB1 | 33.2× | 33.0× | 14.0 to 59.2× |
 
 ## Scoring
 

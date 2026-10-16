@@ -1,6 +1,6 @@
 # HLA-Resolve concordance on whole-genome ONT libraries
 
-HLA-Resolve v0.12.0 (IPD-IMGT/HLA release 3.64.0) was run on public whole-genome ONT PromethION R10.4.1 reads for **72 sequencing libraries from 72 samples**. All libraries were sequenced by the Human Pangenome Reference Consortium (HPRC; cohorts HPP, HPRC, HPRC_PLUS). Every library was typed independently. Libraries sequenced across multiple flow cells were combined to a target genome-wide coverage depth of 30×.
+HLA-Resolve v0.12.0 (IPD-IMGT/HLA release 3.64.0) was run on public whole-genome ONT PromethION R10.4.1 reads for **72 sequencing libraries from 72 samples**. All libraries were sequenced by the Human Pangenome Reference Consortium (HPRC; cohorts HPP, HPRC, HPRC_PLUS). Every library was typed independently. Each sample had 43 to 99× of R10.4.1 reads. Flow cells were left out to bring each library to about 30× (21 to 39×), so that accuracy reflects typical WGS depth.
 
 Allele calls were compared to two reference sets:
 
@@ -23,6 +23,21 @@ hla_resolve --input_file <LIBRARY_uBAM> --sample_name <SAMPLE> \
 ```
 
 Libraries basecalled with Dorado sup v4.1.0 were run with `--clair3_model r1041_e82_400bps_sup_v410`, and libraries basecalled with v4.3.0 with `r1041_e82_400bps_sup_v500`, the default.
+
+## Coverage depth
+
+Mean depth across the antigen recognition site of each gene, over all 72 libraries.
+
+| Gene | Mean | Median | Range |
+|------|------|--------|-------|
+| HLA-A | 30.2× | 29.4× | 15.9 to 50.6× |
+| HLA-B | 31.0× | 30.5× | 16.8 to 53.8× |
+| HLA-C | 30.9× | 30.9× | 12.8 to 54.6× |
+| HLA-DPA1 | 31.5× | 31.6× | 17.6 to 50.4× |
+| HLA-DPB1 | 31.5× | 30.6× | 16.0 to 50.1× |
+| HLA-DQA1 | 29.0× | 27.8× | 15.5 to 47.6× |
+| HLA-DQB1 | 30.5× | 29.8× | 13.7 to 51.7× |
+| HLA-DRB1 | 23.7× | 23.8× | 11.7 to 48.1× |
 
 ## Scoring
 
