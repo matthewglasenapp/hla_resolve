@@ -388,7 +388,7 @@ Raw reads are available under BioProject [PRJNA1417783](https://www.ncbi.nlm.nih
 
 ### Whole Genome Sequencing
 
-HLA-Resolve was run on public whole-genome sequencing reads, and concordance was measured against two reference sets, the four-field typings of [Lai et al. 2024](https://doi.org/10.1016/j.csbj.2024.03.030) and the two-field 1000 Genomes Project (1kGP) HLA panel. Every allele was called on both platforms (100% call rate).
+HLA-Resolve was run on public whole-genome sequencing reads, limited to about 30× so that accuracy reflects typical WGS depth. Mean HLA coverage was 33.1× for PacBio and 29.5× for ONT. Concordance was measured against two reference sets, the four-field typings of [Lai et al. 2024](https://doi.org/10.1016/j.csbj.2024.03.030) and the two-field 1000 Genomes Project (1kGP) HLA panel. Every allele was called on both platforms (100% call rate).
 
 - **PacBio:** 146 libraries from 130 samples, sequenced on Revio (68), Sequel II (69) or both (9). All libraries were sequenced by the Human Pangenome Reference Consortium (HPRC) except the two Genome in a Bottle (GIAB) HG002 libraries.
 - **ONT:** 72 R10.4.1 libraries from 72 samples, all sequenced by the HPRC on PromethION flow cells.
