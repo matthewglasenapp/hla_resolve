@@ -1,11 +1,11 @@
 # HLA-Resolve concordance on whole-genome ONT libraries
 
-HLA-Resolve v0.12.0 (IPD-IMGT/HLA release 3.64.0) was run on public whole-genome ONT PromethION R10.4.1 reads for **72 sequencing libraries from 72 samples**. All libraries were sequenced by the Human Pangenome Reference Consortium (HPRC; cohorts HPP, HPRC, HPRC_PLUS). Every library was typed independently. Each sample had 43 to 99× of R10.4.1 reads. Flow cells were left out to bring each library to about 30× (21 to 39×), so that accuracy reflects typical WGS depth.
+HLA-Resolve v0.12.0 (IPD-IMGT/HLA release 3.64.0) was run on public whole-genome ONT PromethION R10.4.1 reads for **107 sequencing libraries from 107 samples**. All libraries were sequenced by the Human Pangenome Reference Consortium (HPRC; cohorts HPP, HPRC, HPRC_PLUS). Every library was typed independently. Flow cells were left out of 106 of the 107 libraries to bring each library to about 30× (21 to 41×), so that accuracy reflects typical WGS depth.
 
 Allele calls were compared to two reference sets:
 
 - **Lai et al. 2024** ([doi.org/10.1016/j.csbj.2024.03.030](https://doi.org/10.1016/j.csbj.2024.03.030); [Supplementary File 6](Lai_Supplementary-6.xlsx))
-  - 6 HPRC release 1 samples, 6 libraries
+  - 41 HPRC release 1 samples, 41 libraries
   - HLA-A, -B, -C, -DPA1, -DPB1, -DQA1, -DQB1, -DRB1
   - Resolution: up through four-field (full) resolution
 - **1000 Genomes Project HLA panel** ([20181129_HLA_types_full_1000_Genomes_Project_panel.txt](https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/HLA_types/20181129_HLA_types_full_1000_Genomes_Project_panel.txt))
@@ -22,43 +22,43 @@ hla_resolve --input_file <LIBRARY_uBAM> --sample_name <SAMPLE> \
             --output_dir <OUTPUT_DIR> --threads <THREADS>
 ```
 
-Libraries basecalled with Dorado sup v4.1.0 were run with `--clair3_model r1041_e82_400bps_sup_v410`, and libraries basecalled with v4.3.0 with `r1041_e82_400bps_sup_v500`, the default.
+Libraries basecalled with Dorado sup v4.1.0 were run with `--clair3_model r1041_e82_400bps_sup_v410`, and libraries basecalled with v4.3.0, v5.0.0 or v5.2.0 with `r1041_e82_400bps_sup_v500`, the default.
 
 ## Coverage depth
 
-Mean depth across the antigen recognition site of each gene, over all 72 libraries.
+Mean depth across the antigen recognition site of each gene, over all 107 libraries.
 
 | Gene | Mean | Median | Range |
 |------|------|--------|-------|
-| HLA-A | 30.2× | 29.4× | 15.9 to 50.6× |
-| HLA-B | 31.0× | 30.5× | 16.8 to 53.8× |
-| HLA-C | 30.9× | 30.9× | 12.8 to 54.6× |
-| HLA-DPA1 | 31.5× | 31.6× | 17.6 to 50.4× |
-| HLA-DPB1 | 31.5× | 30.6× | 16.0 to 50.1× |
-| HLA-DQA1 | 29.0× | 27.8× | 15.5 to 47.6× |
-| HLA-DQB1 | 30.5× | 29.8× | 13.7 to 51.7× |
-| HLA-DRB1 | 23.7× | 23.8× | 11.7 to 48.1× |
+| HLA-A | 30.7× | 31.1× | 15.9 to 50.6× |
+| HLA-B | 31.9× | 31.2× | 13.9 to 53.8× |
+| HLA-C | 31.8× | 31.3× | 12.8 to 54.6× |
+| HLA-DPA1 | 32.1× | 31.8× | 16.1 to 52.4× |
+| HLA-DPB1 | 31.9× | 31.3× | 16.0 to 54.3× |
+| HLA-DQA1 | 28.0× | 27.3× | 9.8 to 47.6× |
+| HLA-DQB1 | 29.9× | 28.7× | 13.7 to 51.7× |
+| HLA-DRB1 | 22.9× | 22.8× | 11.7 to 48.1× |
 
 ## Scoring
 
 Concordance is reported among alleles called. An allele was evaluated at a given field resolution only if the reference specified it to that resolution. A call resolved to fewer fields than the reference is considered discordant at that level of resolution. By default, genes do not type if their antigen recognition site coverage depth sits below 8x, so call rate was measured as the proportion of total possible allele calls emitted by HLA-Resolve.
 
-## Lai et al. reference (6 libraries, 6 samples)
+## Lai et al. reference (41 libraries, 41 samples)
 
 | Metric | Value |
 |---|---:|
-| Total possible allele calls | 96 |
-| Alleles called | 96 |
+| Total possible allele calls | 656 |
+| Alleles called | 656 |
 | Call rate | 100.0% |
 
 | Resolution | Concordance | Concordant alleles | Alleles evaluated |
 |---|---:|---:|---:|
-| 1-field | 100.0% | 96 | 96 |
-| 2-field | 100.0% | 96 | 96 |
-| 3-field | 100.0% | 96 | 96 |
-| 4-field | 84.9% | 79 | 93 |
+| 1-field | 99.4% | 651 | 655 |
+| 2-field | 99.2% | 650 | 655 |
+| 3-field | 99.2% | 641 | 646 |
+| 4-field | 87.0% | 551 | 633 |
 
-Alleles evaluated is lower than alleles called because not all reference alleles have third and fourth field values.
+Alleles evaluated is lower than alleles called because 1 uncertain reference allele was excluded (HG01358 DRB1*04:92#), and not all reference alleles have third and fourth field values.
 
 ## 1000 Genomes panel (66 libraries, 66 samples)
 
@@ -77,27 +77,27 @@ Alleles evaluated is lower than alleles called because the panel covers five of 
 
 ## All libraries
 
-Both reference sets pooled, 72 libraries. The number of alleles evaluated falls with resolution because the 1000 Genomes panel stops at two fields and covers five genes, and because a reference allele is evaluated only at the fields it specifies.
+Both reference sets pooled, 107 libraries. The number of alleles evaluated falls with resolution because the 1000 Genomes panel stops at two fields and covers five genes, and because a reference allele is evaluated only at the fields it specifies.
 
 | Metric | Value |
 |---|---:|
-| Total possible allele calls | 1152 |
-| Alleles called | 1152 |
+| Total possible allele calls | 1712 |
+| Alleles called | 1712 |
 | Call rate | 100.0% |
 
 | Resolution | Concordance | Concordant alleles | Alleles evaluated |
 |---|---:|---:|---:|
-| 1-field | 100.0% | 728 | 728 |
-| 2-field | 99.5% | 724 | 728 |
-| 3-field | 100.0% | 96 | 96 |
-| 4-field | 84.9% | 79 | 93 |
+| 1-field | 99.7% | 1283 | 1287 |
+| 2-field | 99.3% | 1278 | 1287 |
+| 3-field | 99.2% | 641 | 646 |
+| 4-field | 87.0% | 551 | 633 |
 
 ## Results by library
 
 One row per sequencing library, grouped by sample.
 
 - The 3- and 4-field columns are blank where the reference is two-field.
-- HLA coverage is the mean depth across the eight classical HLA genes from the HLA-Resolve run log (all 72 libraries: mean 29.5×, median 28.0×, range 19.0–42.4×).
+- HLA coverage is the mean depth across the eight classical HLA genes from the HLA-Resolve run log (all 107 libraries: mean 29.6×, median 28.0×, range 19.0–42.4×).
 
 | Sample | Library | Cohort | Instrument | Reference | HLA&nbsp;coverage | Genes&nbsp;typed | Alleles&nbsp;called | 1-field | 2-field | 3-field | 4-field |
 |---|---|---|---|---|---:|---|---|---|---|---|---|
@@ -116,16 +116,51 @@ One row per sequencing library, grouped by sample.
 | HG00329 | 10_24_23_R1041_HPRC_HG00329_1 | HPRC | PromethION | 1kGP | 25.8× | 8/8 | 16/16 | 8/8 | 8/8 |  |  |
 | HG00344 | 10_31_23_R1041_HPRC_HG00344_1 | HPRC | PromethION | 1kGP | 36.5× | 8/8 | 16/16 | 8/8 | 8/8 |  |  |
 | HG00350 | 10_24_23_R1041_HPRC_HG00350_1 | HPRC | PromethION | 1kGP | 22.3× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| HG00438 | 09_16_24_R1041_UL_HPRC_HG00438_1 | HPRC | PromethION | Lai | 35.1× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 14/16 |
+| HG00621 | 09_16_24_R1041_UL_HPRC_HG00621_1 | HPRC | PromethION | Lai | 37.4× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 14/16 |
+| HG00673 | 09_16_24_R1041_UL_HPRC_HG00673_1 | HPRC | PromethION | Lai | 39.7× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 13/16 |
+| HG00733 | 08_18_2025_R1041_UL_HPRCPLUS_HG00733_1 | HPRC_PLUS | PromethION | Lai | 24.1× | 8/8 | 16/16 | 15/16 | 15/16 | 15/16 | 13/16 |
+| HG00735 | 09_16_24_R1041_UL_HPRC_HG00735_1 | HPRC | PromethION | Lai | 25.2× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 14/16 |
+| HG00741 | 09_16_24_R1041_UL_HPRC_HG00741_1 | HPRC | PromethION | Lai | 28.0× | 8/8 | 16/16 | 16/16 | 15/16 | 15/16 | 13/16 |
+| HG01071 | 09_16_24_R1041_UL_HPRC_HG01071_1 | HPRC | PromethION | Lai | 36.8× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 14/16 |
+| HG01106 | 09_16_24_R1041_UL_HPRC_HG01106_1 | HPRC | PromethION | Lai | 36.4× | 8/8 | 16/16 | 15/16 | 15/16 | 15/16 | 12/16 |
+| HG01109 | 08_18_2025_R1041_UL_HPRCPLUS_HG01109_1 | HPRC_PLUS | PromethION | Lai | 37.4× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 16/16 |
 | HG01167 | 08_29_23_R1041_HPRC_HG01167_1 | HPRC | PromethION | 1kGP | 23.2× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| HG01175 | 09_16_24_R1041_UL_HPRC_HG01175_1 | HPRC | PromethION | Lai | 27.4× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 13/16 |
+| HG01258 | 08_26_24_R1041_UL_HPRC_HG01258_1 | HPRC | PromethION | Lai | 35.5× | 8/8 | 16/16 | 16/16 | 16/16 | 15/15 | 14/15 |
+| HG01358 | 08_26_24_R1041_UL_HPRC_HG01358_1 | HPRC | PromethION | Lai | 32.1× | 8/8 | 16/16 | 15/15 | 15/15 | 15/15 | 14/14 |
+| HG01361 | 08_26_24_R1041_UL_HPRC_HG01361_1 | HPRC | PromethION | Lai | 23.0× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 13/15 |
 | HG01786 | 11_28_23_R1041_HPRC_HG01786_1 | HPRC | PromethION | 1kGP | 25.5× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| HG01891 | 08_26_24_R1041_UL_HPRC_HG01891_1 | HPRC | PromethION | Lai | 20.2× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 13/16 |
+| HG01928 | 09_16_24_R1041_UL_HPRC_HG01928_1 | HPRC | PromethION | Lai | 24.7× | 8/8 | 16/16 | 16/16 | 16/16 | 15/15 | 13/15 |
+| HG01952 | 09_16_24_R1041_UL_HPRC_HG01952_1 | HPRC | PromethION | Lai | 32.1× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 12/14 |
+| HG01978 | 09_16_24_R1041_UL_HPRC_HG01978_1 | HPRC | PromethION | Lai | 33.4× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 13/15 |
+| HG02055 | 08_25_25_R1041_UL_HPRCPLUS_HG02055_1 | HPRC_PLUS | PromethION | Lai | 34.6× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 14/16 |
+| HG02080 | 08_18_2025_R1041_UL_HPRCPLUS_HG02080_1 | HPRC_PLUS | PromethION | Lai | 28.0× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 15/16 |
+| HG02109 | 07_21_25_R1041_UL_HPRCPLUS_HG02109_1 | HPRC_PLUS | PromethION | Lai | 22.9× | 8/8 | 16/16 | 16/16 | 16/16 | 14/14 | 13/14 |
+| HG02145 | 07_21_25_R1041_UL_HPRCPLUS_HG02145_1 | HPRC_PLUS | PromethION | Lai | 40.2× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 13/16 |
+| HG02148 | 09_16_24_R1041_UL_HPRC_HG02148_1 | HPRC | PromethION | Lai | 26.9× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 15/16 |
 | HG02178 | 12_12_23_R1041_HPRC_HG02178_1 | HPRC | PromethION | 1kGP | 39.4× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| HG02257 | 08_26_24_R1041_UL_HPRC_HG02257_1 | HPRC | PromethION | Lai | 21.1× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 13/15 |
 | HG02392 | 10_31_23_R1041_HPRC_HG02392_1 | HPRC | PromethION | 1kGP | 29.3× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| HG02572 | 09_16_24_R1041_UL_HPRC_HG02572_1 | HPRC | PromethION | Lai | 30.8× | 8/8 | 16/16 | 15/16 | 15/16 | 14/15 | 11/14 |
 | HG02583 | 01_16_24_R1041_HPRC_HG02583_1 | HPRC | PromethION | 1kGP | 27.9× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| HG02622 | 09_16_24_R1041_UL_HPRC_HG02622_1 | HPRC | PromethION | Lai | 28.7× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 12/16 |
+| HG02630 | 09_16_24_R1041_UL_HPRC_HG02630_1 | HPRC | PromethION | Lai | 23.9× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 15/16 |
+| HG02717 | 09_16_24_R1041_UL_HPRC_HG02717_1 | HPRC | PromethION | Lai | 28.0× | 8/8 | 16/16 | 15/16 | 15/16 | 14/15 | 10/15 |
+| HG02723 | 07_21_25_R1041_UL_HPRCPLUS_HG02723_1 | HPRC_PLUS | PromethION | Lai | 31.2× | 8/8 | 16/16 | 16/16 | 16/16 | 15/15 | 14/15 |
 | HG02818 | 02_22_23_R1041_HG02818_1_dorado0.7.2_sup4.1.0_5mCG_5hmCG | HPRC_PLUS | PromethION | Lai | 35.2× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 12/16 |
+| HG02886 | 09_16_24_R1041_UL_HPRC_HG02886_1 | HPRC | PromethION | Lai | 31.8× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 15/16 |
+| HG03098 | 08_18_2025_R1041_UL_HPRCPLUS_HG03098_1 | HPRC_PLUS | PromethION | Lai | 28.4× | 8/8 | 16/16 | 16/16 | 16/16 | 15/15 | 15/15 |
 | HG03270 | 10_24_23_R1041_HPRC_HG03270_2 | HPRC | PromethION | 1kGP | 21.9× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
 | HG03369 | 10_10_23_R1041_HPRC_HG03369_1 | HPRC | PromethION | 1kGP | 35.3× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| HG03453 | 09_16_24_R1041_UL_HPRC_HG03453_1 | HPRC | PromethION | Lai | 24.0× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 14/15 |
 | HG03486 | 02_15_23_R1041_HG03486_1_dorado0.7.2_sup4.1.0_5mCG_5hmCG | HPRC_PLUS | PromethION | Lai | 27.6× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 15/16 |
+| HG03492 | 07_21_25_R1041_UL_HPRCPLUS_HG03492_1 | HPRC_PLUS | PromethION | Lai | 27.1× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 14/15 |
+| HG03516 | 09_16_24_R1041_UL_HPRC_HG03516_1 | HPRC | PromethION | Lai | 35.9× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 14/16 |
 | HG03521 | 10_24_23_R1041_HPRC_HG03521_1 | HPRC | PromethION | 1kGP | 29.1× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
+| HG03540 | 09_16_24_R1041_UL_HPRC_HG03540_1 | HPRC | PromethION | Lai | 24.1× | 8/8 | 16/16 | 16/16 | 16/16 | 15/15 | 12/14 |
+| HG03579 | 09_16_24_R1041_UL_HPRC_HG03579_1 | HPRC | PromethION | Lai | 27.1× | 8/8 | 16/16 | 16/16 | 16/16 | 16/16 | 15/16 |
 | HG03583 | 10_31_23_R1041_HPRC_HG03583_1 | HPRC | PromethION | 1kGP | 22.1× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
 | HG03784 | 10_17_23_R1041_HPRC_HG03784_1 | HPRC | PromethION | 1kGP | 39.1× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
 | HG03874 | 01_23_24_R1041_HPRC_HG03874_1 | HPRC | PromethION | 1kGP | 28.0× | 8/8 | 16/16 | 10/10 | 10/10 |  |  |
@@ -214,16 +249,51 @@ Each file sits in a folder named after its basecaller version, which the Files c
 | HG00329 | 10_24_23_R1041_HPRC_HG00329_1 | HPRC | dorado0.6.0_sup4.3.0_5mCG_5hmCG/10_24_23_R1041_HPRC_HG00329_1_dorado0.6.0_sup4.3.0_5mCG_5hmCG.bam |
 | HG00344 | 10_31_23_R1041_HPRC_HG00344_1 | HPRC | dorado0.6.0_sup4.3.0_5mCG_5hmCG/10_31_23_R1041_HPRC_HG00344_1_dorado0.6.0_sup4.3.0_5mCG_5hmCG.bam<br>dorado0.6.0_sup4.3.0_5mCG_5hmCG/10_31_23_R1041_HPRC_HG00344_2_dorado0.6.0_sup4.3.0_5mCG_5hmCG.bam |
 | HG00350 | 10_24_23_R1041_HPRC_HG00350_1 | HPRC | dorado0.6.0_sup4.3.0_5mCG_5hmCG/10_24_23_R1041_HPRC_HG00350_1_dorado0.6.0_sup4.3.0_5mCG_5hmCG.bam |
+| HG00438 | 09_16_24_R1041_UL_HPRC_HG00438_1 | HPRC | sup5.0.0_5mCG_5hmCG/09_16_24_R1041_UL_HPRC_HG00438_1_dorado1.0.0_sup5.0.0_5mCG_5hmCG.bam |
+| HG00621 | 09_16_24_R1041_UL_HPRC_HG00621_1 | HPRC | sup5.0.0_5mCG_5hmCG/09_16_24_R1041_UL_HPRC_HG00621_1_dorado1.0.0_sup5.0.0_5mCG_5hmCG.bam |
+| HG00673 | 09_16_24_R1041_UL_HPRC_HG00673_1 | HPRC | sup5.0.0_5mCG_5hmCG/09_16_24_R1041_UL_HPRC_HG00673_1_dorado1.0.0_sup5.0.0_5mCG_5hmCG.bam |
+| HG00733 | 08_18_2025_R1041_UL_HPRCPLUS_HG00733_1 | HPRC_PLUS | sup5.2.0_5mCG_5hmCG/08_18_2025_R1041_UL_HPRCPLUS_HG00733_1_dorado1.0.0_supv5.2.0_5mCG_5hmCG.bam |
+| HG00735 | 09_16_24_R1041_UL_HPRC_HG00735_1 | HPRC | sup5.0.0_5mCG_5hmCG/09_16_24_R1041_UL_HPRC_HG00735_1_dorado1.0.0_sup5.0.0_5mCG_5hmCG.bam |
+| HG00741 | 09_16_24_R1041_UL_HPRC_HG00741_1 | HPRC | sup5.0.0_5mCG_5hmCG/09_16_24_R1041_UL_HPRC_HG00741_1_dorado1.0.0_sup5.0.0_5mCG_5hmCG.bam |
+| HG01071 | 09_16_24_R1041_UL_HPRC_HG01071_1 | HPRC | sup5.0.0_5mCG_5hmCG/09_16_24_R1041_UL_HPRC_HG01071_1_dorado1.0.0_sup5.0.0_5mCG_5hmCG.bam |
+| HG01106 | 09_16_24_R1041_UL_HPRC_HG01106_1 | HPRC | sup5.0.0_5mCG_5hmCG/09_16_24_R1041_UL_HPRC_HG01106_1_dorado1.0.0_sup5.0.0_5mCG_5hmCG.bam |
+| HG01109 | 08_18_2025_R1041_UL_HPRCPLUS_HG01109_1 | HPRC_PLUS | sup5.2.0_5mCG_5hmCG/08_18_2025_R1041_UL_HPRCPLUS_HG01109_1_dorado1.0.0_supv5.2.0_5mCG_5hmCG.bam<br>sup5.2.0_5mCG_5hmCG/08_25_25_R1041_UL_HPRCPLUS_HG01109_1_dorado1.0.0_supv5.2.0_5mCG_5hmCG.bam |
 | HG01167 | 08_29_23_R1041_HPRC_HG01167_1 | HPRC | dorado0.6.0_sup4.3.0_5mCG_5hmCG/08_29_23_R1041_HPRC_HG01167_1_dorado0.6.0_sup4.3.0_5mCG_5hmCG.bam |
+| HG01175 | 09_16_24_R1041_UL_HPRC_HG01175_1 | HPRC | sup5.0.0_5mCG_5hmCG/09_16_24_R1041_UL_HPRC_HG01175_1_dorado1.0.0_sup5.0.0_5mCG_5hmCG.bam |
+| HG01258 | 08_26_24_R1041_UL_HPRC_HG01258_1 | HPRC | sup5.0.0_5mCG_5hmCG/08_26_24_R1041_UL_HPRC_HG01258_1_dorado1.0.0_sup5.0.0_5mCG_5hmCG.bam<br>sup5.0.0_5mCG_5hmCG/08_26_24_R1041_UL_HPRC_HG01258_2_dorado1.0.0_sup5.0.0_5mCG_5hmCG.bam |
+| HG01358 | 08_26_24_R1041_UL_HPRC_HG01358_1 | HPRC | sup5.0.0_5mCG_5hmCG/08_26_24_R1041_UL_HPRC_HG01358_1_dorado1.0.0_sup5.0.0_5mCG_5hmCG.bam |
+| HG01361 | 08_26_24_R1041_UL_HPRC_HG01361_1 | HPRC | sup5.0.0_5mCG_5hmCG/08_26_24_R1041_UL_HPRC_HG01361_1_dorado1.0.0_sup5.0.0_5mCG_5hmCG.bam |
 | HG01786 | 11_28_23_R1041_HPRC_HG01786_1 | HPRC | dorado0.6.0_sup4.3.0_5mCG_5hmCG/11_28_23_R1041_HPRC_HG01786_1_dorado0.6.0_sup4.3.0_5mCG_5hmCG.bam |
+| HG01891 | 08_26_24_R1041_UL_HPRC_HG01891_1 | HPRC | sup5.0.0_5mCG_5hmCG/08_26_24_R1041_UL_HPRC_HG01891_1_dorado1.0.0_sup5.0.0_5mCG_5hmCG.bam |
+| HG01928 | 09_16_24_R1041_UL_HPRC_HG01928_1 | HPRC | sup5.0.0_5mCG_5hmCG/09_16_24_R1041_UL_HPRC_HG01928_1_dorado1.0.0_sup5.0.0_5mCG_5hmCG.bam |
+| HG01952 | 09_16_24_R1041_UL_HPRC_HG01952_1 | HPRC | sup5.0.0_5mCG_5hmCG/09_16_24_R1041_UL_HPRC_HG01952_1_dorado1.0.0_sup5.0.0_5mCG_5hmCG.bam |
+| HG01978 | 09_16_24_R1041_UL_HPRC_HG01978_1 | HPRC | sup5.0.0_5mCG_5hmCG/09_16_24_R1041_UL_HPRC_HG01978_1_dorado1.0.0_sup5.0.0_5mCG_5hmCG.bam |
+| HG02055 | 08_25_25_R1041_UL_HPRCPLUS_HG02055_1 | HPRC_PLUS | sup5.2.0_5mCG_5hmCG/08_25_25_R1041_UL_HPRCPLUS_HG02055_1_dorado1.0.0_supv5.2.0_5mCG_5hmCG.bam<br>sup5.2.0_5mCG_5hmCG/08_25_25_R1041_UL_HPRCPLUS_HG02055_2_dorado1.0.0_supv5.2.0_5mCG_5hmCG.bam<br>sup5.2.0_5mCG_5hmCG/09_29_25_R1041_UL_HPRCPLUS_HG02055_1_dorado1.1.1_supv5.2.0_5mCG_5hmCG.bam |
+| HG02080 | 08_18_2025_R1041_UL_HPRCPLUS_HG02080_1 | HPRC_PLUS | sup5.2.0_5mCG_5hmCG/08_18_2025_R1041_UL_HPRCPLUS_HG02080_1_dorado1.0.0_supv5.2.0_5mCG_5hmCG.bam<br>sup5.2.0_5mCG_5hmCG/08_18_2025_R1041_UL_HPRCPLUS_HG02080_2_dorado1.0.0_supv5.2.0_5mCG_5hmCG.bam |
+| HG02109 | 07_21_25_R1041_UL_HPRCPLUS_HG02109_1 | HPRC_PLUS | sup5.2.0_5mCG_5hmCG/07_21_25_R1041_UL_HPRCPLUS_HG02109_1_dorado1.0.0_supv5.2.0_5mCG_5hmCG.bam |
+| HG02145 | 07_21_25_R1041_UL_HPRCPLUS_HG02145_1 | HPRC_PLUS | sup5.2.0_5mCG_5hmCG/07_21_25_R1041_UL_HPRCPLUS_HG02145_1_dorado1.0.0_supv5.2.0_5mCG_5hmCG.bam<br>sup5.2.0_5mCG_5hmCG/07_21_25_R1041_UL_HPRCPLUS_HG02145_2_dorado1.0.0_supv5.2.0_5mCG_5hmCG.bam |
+| HG02148 | 09_16_24_R1041_UL_HPRC_HG02148_1 | HPRC | sup5.0.0_5mCG_5hmCG/09_16_24_R1041_UL_HPRC_HG02148_1_dorado1.0.0_sup5.0.0_5mCG_5hmCG.bam |
 | HG02178 | 12_12_23_R1041_HPRC_HG02178_1 | HPRC | dorado0.6.0_sup4.3.0_5mCG_5hmCG/12_12_23_R1041_HPRC_HG02178_1_dorado0.6.0_sup4.3.0_5mCG_5hmCG.bam<br>dorado0.6.0_sup4.3.0_5mCG_5hmCG/12_12_23_R1041_HPRC_HG02178_2_dorado0.6.0_sup4.3.0_5mCG_5hmCG.bam |
+| HG02257 | 08_26_24_R1041_UL_HPRC_HG02257_1 | HPRC | sup5.0.0_5mCG_5hmCG/08_26_24_R1041_UL_HPRC_HG02257_1_dorado1.0.0_sup5.0.0_5mCG_5hmCG.bam |
 | HG02392 | 10_31_23_R1041_HPRC_HG02392_1 | HPRC | dorado0.6.0_sup4.3.0_5mCG_5hmCG/10_31_23_R1041_HPRC_HG02392_1_dorado0.6.0_sup4.3.0_5mCG_5hmCG.bam |
+| HG02572 | 09_16_24_R1041_UL_HPRC_HG02572_1 | HPRC | sup5.0.0_5mCG_5hmCG/09_16_24_R1041_UL_HPRC_HG02572_1_dorado1.0.0_sup5.0.0_5mCG_5hmCG.bam |
 | HG02583 | 01_16_24_R1041_HPRC_HG02583_1 | HPRC | dorado0.6.0_sup4.3.0_5mCG_5hmCG/01_16_24_R1041_HPRC_HG02583_1_dorado0.6.0_sup4.3.0_5mCG_5hmCG.bam<br>dorado0.6.0_sup4.3.0_5mCG_5hmCG/11_7_23_R1041_HPRC_HG02583_1_dorado0.6.0_sup4.3.0_5mCG_5hmCG.bam<br>dorado0.6.0_sup4.3.0_5mCG_5hmCG/11_7_23_R1041_HPRC_HG02583_2_dorado0.6.0_sup4.3.0_5mCG_5hmCG.bam<br>dorado0.6.0_sup4.3.0_5mCG_5hmCG/11_7_23_R1041_HPRC_HG02583_3_dorado0.6.0_sup4.3.0_5mCG_5hmCG.bam |
+| HG02622 | 09_16_24_R1041_UL_HPRC_HG02622_1 | HPRC | sup5.0.0_5mCG_5hmCG/09_16_24_R1041_UL_HPRC_HG02622_1_dorado1.0.0_sup5.0.0_5mCG_5hmCG.bam |
+| HG02630 | 09_16_24_R1041_UL_HPRC_HG02630_1 | HPRC | sup5.0.0_5mCG_5hmCG/09_16_24_R1041_UL_HPRC_HG02630_1_dorado1.0.0_sup5.0.0_5mCG_5hmCG.bam |
+| HG02717 | 09_16_24_R1041_UL_HPRC_HG02717_1 | HPRC | sup5.0.0_5mCG_5hmCG/09_16_24_R1041_UL_HPRC_HG02717_1_dorado1.0.0_sup5.0.0_5mCG_5hmCG.bam |
+| HG02723 | 07_21_25_R1041_UL_HPRCPLUS_HG02723_1 | HPRC_PLUS | sup5.2.0_5mCG_5hmCG/07_21_25_R1041_UL_HPRCPLUS_HG02723_1_dorado1.0.0_supv5.2.0_5mCG_5hmCG.bam<br>sup5.2.0_5mCG_5hmCG/07_30_25_R1041_UL_HPRCPLUS_HG02723_1_dorado1.0.0_supv5.2.0_5mCG_5hmCG.bam |
 | HG02818 | 02_22_23_R1041_HG02818_1_dorado0.7.2_sup4.1.0_5mCG_5hmCG | HPRC_PLUS | dorado0.7.2_sup4.1.0_5mCG_5hmCG/02_22_23_R1041_HG02818_1_dorado0.7.2_sup4.1.0_5mCG_5hmCG.bam<br>dorado0.7.2_sup4.1.0_5mCG_5hmCG/02_22_23_R1041_HG02818_2_dorado0.7.2_sup4.1.0_5mCG_5hmCG.bam |
+| HG02886 | 09_16_24_R1041_UL_HPRC_HG02886_1 | HPRC | sup5.0.0_5mCG_5hmCG/09_16_24_R1041_UL_HPRC_HG02886_1_dorado1.0.0_sup5.0.0_5mCG_5hmCG.bam |
+| HG03098 | 08_18_2025_R1041_UL_HPRCPLUS_HG03098_1 | HPRC_PLUS | sup5.2.0_5mCG_5hmCG/08_18_2025_R1041_UL_HPRCPLUS_HG03098_1_dorado1.0.0_supv5.2.0_5mCG_5hmCG.bam<br>sup5.2.0_5mCG_5hmCG/08_18_2025_R1041_UL_HPRCPLUS_HG03098_2_dorado1.0.0_supv5.2.0_5mCG_5hmCG.bam |
 | HG03270 | 10_24_23_R1041_HPRC_HG03270_2 | HPRC | dorado0.6.0_sup4.3.0_5mCG_5hmCG/10_24_23_R1041_HPRC_HG03270_2_dorado0.6.0_sup4.3.0_5mCG_5hmCG.bam |
 | HG03369 | 10_10_23_R1041_HPRC_HG03369_1 | HPRC | dorado0.6.0_sup4.3.0_5mCG_5hmCG/10_10_23_R1041_HPRC_HG03369_1_dorado0.6.0_sup4.3.0_5mCG_5hmCG.bam<br>dorado0.6.0_sup4.3.0_5mCG_5hmCG/10_10_23_R1041_HPRC_HG03369_2_dorado0.6.0_sup4.3.0_5mCG_5hmCG.bam |
+| HG03453 | 09_16_24_R1041_UL_HPRC_HG03453_1 | HPRC | sup5.0.0_5mCG_5hmCG/09_16_24_R1041_UL_HPRC_HG03453_1_dorado1.0.0_sup5.0.0_5mCG_5hmCG.bam<br>sup5.0.0_5mCG_5hmCG/09_16_24_R1041_UL_HPRC_HG03453_3_dorado1.0.0_sup5.0.0_5mCG_5hmCG.bam |
 | HG03486 | 02_15_23_R1041_HG03486_1_dorado0.7.2_sup4.1.0_5mCG_5hmCG | HPRC_PLUS | dorado0.7.2_sup4.1.0_5mCG_5hmCG/02_15_23_R1041_HG03486_1_dorado0.7.2_sup4.1.0_5mCG_5hmCG.bam<br>dorado0.7.2_sup4.1.0_5mCG_5hmCG/02_15_23_R1041_HG03486_2_dorado0.7.2_sup4.1.0_5mCG_5hmCG.bam |
+| HG03492 | 07_21_25_R1041_UL_HPRCPLUS_HG03492_1 | HPRC_PLUS | sup5.2.0_5mCG_5hmCG/07_21_25_R1041_UL_HPRCPLUS_HG03492_1_dorado1.0.0_supv5.2.0_5mCG_5hmCG.bam<br>sup5.2.0_5mCG_5hmCG/07_21_25_R1041_UL_HPRCPLUS_HG03492_2_dorado1.0.0_supv5.2.0_5mCG_5hmCG.bam |
+| HG03516 | 09_16_24_R1041_UL_HPRC_HG03516_1 | HPRC | sup5.0.0_5mCG_5hmCG/09_16_24_R1041_UL_HPRC_HG03516_1_dorado1.0.0_sup5.0.0_5mCG_5hmCG.bam |
 | HG03521 | 10_24_23_R1041_HPRC_HG03521_1 | HPRC | dorado0.6.0_sup4.3.0_5mCG_5hmCG/10_24_23_R1041_HPRC_HG03521_1_dorado0.6.0_sup4.3.0_5mCG_5hmCG.bam |
+| HG03540 | 09_16_24_R1041_UL_HPRC_HG03540_1 | HPRC | sup5.0.0_5mCG_5hmCG/09_16_24_R1041_UL_HPRC_HG03540_1_dorado1.0.0_sup5.0.0_5mCG_5hmCG.bam |
+| HG03579 | 09_16_24_R1041_UL_HPRC_HG03579_1 | HPRC | sup5.0.0_5mCG_5hmCG/09_16_24_R1041_UL_HPRC_HG03579_1_dorado1.0.0_sup5.0.0_5mCG_5hmCG.bam |
 | HG03583 | 10_31_23_R1041_HPRC_HG03583_1 | HPRC | dorado0.6.0_sup4.3.0_5mCG_5hmCG/10_31_23_R1041_HPRC_HG03583_1_dorado0.6.0_sup4.3.0_5mCG_5hmCG.bam<br>dorado0.6.0_sup4.3.0_5mCG_5hmCG/10_31_23_R1041_HPRC_HG03583_2_dorado0.6.0_sup4.3.0_5mCG_5hmCG.bam |
 | HG03784 | 10_17_23_R1041_HPRC_HG03784_1 | HPRC | dorado0.6.0_sup4.3.0_5mCG_5hmCG/10_17_23_R1041_HPRC_HG03784_1_dorado0.6.0_sup4.3.0_5mCG_5hmCG.bam<br>dorado0.6.0_sup4.3.0_5mCG_5hmCG/10_17_23_R1041_HPRC_HG03784_3_dorado0.6.0_sup4.3.0_5mCG_5hmCG.bam |
 | HG03874 | 01_23_24_R1041_HPRC_HG03874_1 | HPRC | dorado0.6.0_sup4.3.0_5mCG_5hmCG/01_23_24_R1041_HPRC_HG03874_1_dorado0.6.0_sup4.3.0_5mCG_5hmCG.bam<br>dorado0.6.0_sup4.3.0_5mCG_5hmCG/11_14_23_R1041_HPRC_HG03874_1_dorado0.6.0_sup4.3.0_5mCG_5hmCG.bam |

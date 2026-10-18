@@ -388,17 +388,17 @@ Raw reads are available under BioProject [PRJNA1417783](https://www.ncbi.nlm.nih
 
 ### Whole Genome Sequencing
 
-HLA-Resolve was run on public whole-genome sequencing reads, limited to about 30× so that accuracy reflects typical WGS depth. Mean HLA coverage was 33.1× for PacBio and 29.5× for ONT. Concordance was measured against two reference sets, the four-field typings of [Lai et al. 2024](https://doi.org/10.1016/j.csbj.2024.03.030) and the two-field 1000 Genomes Project (1kGP) HLA panel. Every allele was called on both platforms (100% call rate).
+HLA-Resolve was run on public whole-genome sequencing reads, limited to about 30× so that accuracy reflects typical WGS depth. Mean HLA coverage was 33.1× for PacBio and 29.6× for ONT. Concordance was measured against two reference sets, the four-field typings of [Lai et al. 2024](https://doi.org/10.1016/j.csbj.2024.03.030) and the two-field 1000 Genomes Project (1kGP) HLA panel. Every allele was called on both platforms (100% call rate).
 
 - **PacBio:** 146 libraries from 130 samples, sequenced on Revio (68), Sequel II (69) or both (9). All libraries were sequenced by the Human Pangenome Reference Consortium (HPRC) except the two Genome in a Bottle (GIAB) HG002 libraries.
-- **ONT:** 72 R10.4.1 libraries from 72 samples, all sequenced by the HPRC on PromethION flow cells.
+- **ONT:** 107 R10.4.1 libraries from 107 samples, all sequenced by the HPRC on PromethION flow cells.
 
-| Resolution | PacBio (146 libraries) | ONT (72 libraries) |
+| Resolution | PacBio (146 libraries) | ONT (107 libraries) |
 |------------|------------------------|--------------------|
-| One field | 99.9% (1741/1743) | 100% (728/728) |
-| Two field | 99.4% (1732/1743) | 99.5% (724/728) |
-| Three field | 99.5% (816/820) | 100% (96/96) |
-| Four field | 93.0% (745/801) | 84.9% (79/93) |
+| One field | 99.9% (1741/1743) | 99.7% (1283/1287) |
+| Two field | 99.4% (1732/1743) | 99.3% (1278/1287) |
+| Three field | 99.5% (816/820) | 99.2% (641/646) |
+| Four field | 93.0% (745/801) | 87.0% (551/633) |
 
 Both reference sets are pooled. The three- and four-field rows count only the Lai et al. samples, because the 1kGP panel is two-field.
 
