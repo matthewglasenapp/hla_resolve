@@ -6,8 +6,12 @@
 
 import os
 import re
+import sys
 
-gff_dir = os.path.join(os.path.dirname(__file__), "..", "hla_resolve", "data", "hla_gff")
+# Folder of raw per-gene GFF3s to process. Defaults to the human set; pass a
+# folder path as the first argument to use another species (e.g. rhesus).
+default_gff_dir = os.path.join(os.path.dirname(__file__), "..", "hla_resolve", "data", "hla_gff")
+gff_dir = sys.argv[1] if len(sys.argv) > 1 else default_gff_dir
 
 # Gene intervals padded where the GRCh38 model carries less UTR than the
 # IPD-IMGT/HLA reference alleles. Values are (low_pad, high_pad) in reference

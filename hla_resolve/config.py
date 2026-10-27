@@ -284,6 +284,49 @@ def ensure_reference_genome():
         finally:
             os.chdir(original_cwd)
 
+def ensure_rhesus_reference():
+                                                                       
+    ref_dir = Path(_data_dir) / "reference"                                  
+    ref_file = ref_dir / "GCF_049350105.2_T2T-MMU8v2.0_genomic.fna"          
+    ref_fai = ref_dir / "GCF_049350105.2_T2T-MMU8v2.0_genomic.fna.fai"     
+
+    # Fast path (no lock): an indexed rhesus reference already exists.        
+    if ref_file.exists() and ref_fai.exists():                                
+        return                                                                
+
+    with _setup_lock(ref_dir):                                               
+        # Re-check inside the lock: another process may have built it while we
+        # were waiting, in which case there is nothing left to do.           
+        if ref_file.exists() and ref_fai.exists():                           
+            return                                                           
+
+        original_cwd = os.getcwd()                                            
+        os.chdir(ref_dir)                                                     
+
+        try:                                                                  
+            # Download+decompress to temp names and atomically rename, so an
+            # interrupted fetch never leaves a partial .fna that a later run
+            # would mistake for complete.                                    
+            print("Downloading rhesus macaque reference genome (T2T-MMU8v2.0)...")  
+            tmp_gz = ref_dir / "rhesus.tmp.fna.gz"                            
+            tmp_fna = ref_dir / "rhesus.tmp.fna"                             
+            subprocess.run([                                                  
+                "wget",                                                       
+                "https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/049/350/105/GCF_049350105.2_T2T-MMU8v2.0/GCF_049350105.2_T2T-MMU8v2.0_genomic.fna.gz",  
+                "-O", str(tmp_gz)                                            
+            ], check=True)                                                   
+            subprocess.run(["gunzip", str(tmp_gz)], check=True)               
+
+            # Index under the temp name, then atomically publish the reference and
+            # its index together, so ref_file only appears fully built and indexed.   
+            subprocess.run(["samtools", "faidx", str(tmp_fna)], check=True)   
+            os.replace(tmp_fna, ref_file)                                    
+            os.replace(str(tmp_fna) + ".fai", ref_fai)                     
+            print(f"Reference ready: {ref_file}")                             
+        finally:                                                             
+            os.chdir(original_cwd)                                           
+            
+
 def ensure_rammap():
     """Download rammap binary if not present"""
     rammap_dir = Path(_data_dir) / "rammap"
