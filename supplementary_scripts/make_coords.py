@@ -3,10 +3,11 @@
 # ("Regents"). All Rights Reserved.
 #
 # See LICENSE.txt for license details.
-
 import os
+import sys
 
-indir = os.path.join(os.path.dirname(__file__), "..", "hla_resolve", "data", "hla_gff")
+default_indir = os.path.join(os.path.dirname(__file__), "..", "hla_resolve", "data", "hla_gff")
+indir = sys.argv[1] if len(sys.argv) > 1 else default_indir
 
 def parse_gff3(filename, feature_type):
     coords = []
