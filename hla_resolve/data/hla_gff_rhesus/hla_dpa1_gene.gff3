@@ -1,0 +1,10 @@
+##gff-version 3
+#!gff-spec-version 1.21
+#!processor NCBI annotwriter
+#!genome-build T2T-MMU8v2.0
+#!genome-build-accession NCBI_Assembly:GCF_049350105.2
+#!annotation-date 08/25/2025
+#!annotation-source NCBI RefSeq GCF_049350105.2-RS_2025_08
+##species https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9544
+##sequence-region NC_133409.1 1 183173882
+NC_133409.1	BestRefSeq%2CGnomon	gene	149216628	149225845	.	+	.	ID=gene-MAMU-DPA;Dbxref=GeneID:717992;Name=MAMU-DPA;description=major histocompatibility complex%2C class II%2C DP alpha;gbkey=Gene;gene=MAMU-DPA;gene_biotype=protein_coding;gene_synonym=Mamu-DPA1

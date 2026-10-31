@@ -1,0 +1,14 @@
+##gff-version 3
+#!gff-spec-version 1.21
+#!processor NCBI annotwriter
+#!genome-build T2T-MMU8v2.0
+#!genome-build-accession NCBI_Assembly:GCF_049350105.2
+#!annotation-date 08/25/2025
+#!annotation-source NCBI RefSeq GCF_049350105.2-RS_2025_08
+##species https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9544
+##sequence-region NC_133409.1 1 183173882
+NC_133409.1	Gnomon	CDS	149204765	149204784	.	-	2	ID=cds-XP_028698427.2;Parent=rna-XM_028842594.2;Dbxref=GeneID:114675357,GenBank:XP_028698427.2;Name=XP_028698427.2;gbkey=CDS;gene=LOC114675357;product=HLA class II histocompatibility antigen%2C DP beta 1 chain isoform X3;protein_id=XP_028698427.2
+NC_133409.1	Gnomon	CDS	149205115	149205225	.	-	2	ID=cds-XP_028698427.2;Parent=rna-XM_028842594.2;Dbxref=GeneID:114675357,GenBank:XP_028698427.2;Name=XP_028698427.2;gbkey=CDS;gene=LOC114675357;product=HLA class II histocompatibility antigen%2C DP beta 1 chain isoform X3;protein_id=XP_028698427.2
+NC_133409.1	Gnomon	CDS	149205757	149206038	.	-	2	ID=cds-XP_028698427.2;Parent=rna-XM_028842594.2;Dbxref=GeneID:114675357,GenBank:XP_028698427.2;Name=XP_028698427.2;gbkey=CDS;gene=LOC114675357;product=HLA class II histocompatibility antigen%2C DP beta 1 chain isoform X3;protein_id=XP_028698427.2
+NC_133409.1	Gnomon	CDS	149210068	149210331	.	-	2	ID=cds-XP_028698427.2;Parent=rna-XM_028842594.2;Dbxref=GeneID:114675357,GenBank:XP_028698427.2;Name=XP_028698427.2;gbkey=CDS;gene=LOC114675357;product=HLA class II histocompatibility antigen%2C DP beta 1 chain isoform X3;protein_id=XP_028698427.2
+NC_133409.1	Gnomon	CDS	149214142	149214241	.	-	0	ID=cds-XP_028698427.2;Parent=rna-XM_028842594.2;Dbxref=GeneID:114675357,GenBank:XP_028698427.2;Name=XP_028698427.2;gbkey=CDS;gene=LOC114675357;product=HLA class II histocompatibility antigen%2C DP beta 1 chain isoform X3;protein_id=XP_028698427.2

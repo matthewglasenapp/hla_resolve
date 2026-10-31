@@ -1,0 +1,14 @@
+##gff-version 3
+#!gff-spec-version 1.21
+#!processor NCBI annotwriter
+#!genome-build T2T-MMU8v2.0
+#!genome-build-accession NCBI_Assembly:GCF_049350105.2
+#!annotation-date 08/25/2025
+#!annotation-source NCBI RefSeq GCF_049350105.2-RS_2025_08
+##species https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9544
+##sequence-region NC_133409.1 1 183173882
+NC_133409.1	Gnomon	CDS	149612502	149612610	.	+	0	ID=cds-XP_077856448.1;Parent=rna-XM_078000322.1;Dbxref=GeneID:716823,GenBank:XP_077856448.1;Name=XP_077856448.1;gbkey=CDS;gene=MAMU-DQB1;product=major histocompatibility complex%2C class II%2C DQ beta 1 isoform X3;protein_id=XP_077856448.1
+NC_133409.1	Gnomon	CDS	149614039	149614308	.	+	2	ID=cds-XP_077856448.1;Parent=rna-XM_078000322.1;Dbxref=GeneID:716823,GenBank:XP_077856448.1;Name=XP_077856448.1;gbkey=CDS;gene=MAMU-DQB1;product=major histocompatibility complex%2C class II%2C DQ beta 1 isoform X3;protein_id=XP_077856448.1
+NC_133409.1	Gnomon	CDS	149616816	149617097	.	+	2	ID=cds-XP_077856448.1;Parent=rna-XM_078000322.1;Dbxref=GeneID:716823,GenBank:XP_077856448.1;Name=XP_077856448.1;gbkey=CDS;gene=MAMU-DQB1;product=major histocompatibility complex%2C class II%2C DQ beta 1 isoform X3;protein_id=XP_077856448.1
+NC_133409.1	Gnomon	CDS	149617607	149617717	.	+	2	ID=cds-XP_077856448.1;Parent=rna-XM_078000322.1;Dbxref=GeneID:716823,GenBank:XP_077856448.1;Name=XP_077856448.1;gbkey=CDS;gene=MAMU-DQB1;product=major histocompatibility complex%2C class II%2C DQ beta 1 isoform X3;protein_id=XP_077856448.1
+NC_133409.1	Gnomon	CDS	149618834	149618847	.	+	2	ID=cds-XP_077856448.1;Parent=rna-XM_078000322.1;Dbxref=GeneID:716823,GenBank:XP_077856448.1;Name=XP_077856448.1;gbkey=CDS;gene=MAMU-DQB1;product=major histocompatibility complex%2C class II%2C DQ beta 1 isoform X3;protein_id=XP_077856448.1

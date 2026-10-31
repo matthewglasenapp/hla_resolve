@@ -1,0 +1,10 @@
+##gff-version 3
+#!gff-spec-version 1.21
+#!processor NCBI annotwriter
+#!genome-build T2T-MMU8v2.0
+#!genome-build-accession NCBI_Assembly:GCF_049350105.2
+#!annotation-date 08/25/2025
+#!annotation-source NCBI RefSeq GCF_049350105.2-RS_2025_08
+##species https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=9544
+##sequence-region NC_133409.1 1 183173882
+NC_133409.1	Gnomon	gene	149204236	149214306	.	-	.	ID=gene-LOC114675357;Dbxref=GeneID:114675357;Name=LOC114675357;description=HLA class II histocompatibility antigen%2C DP beta 1 chain;gbkey=Gene;gene=LOC114675357;gene_biotype=protein_coding
