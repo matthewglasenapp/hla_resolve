@@ -24,7 +24,7 @@ def parse_haploblocks(input_vcf, input_haploblock_file, sample_ID, mhc_start, mh
 	sample_name = vcf_samples[0]
 
 	for record in vcf:
-		if record.chrom != "chr6":
+		if record.chrom != config.mhc_chrom:
 			continue
 		if record.pos < mhc_start or record.pos > mhc_stop:
 			continue
@@ -49,9 +49,9 @@ def parse_haploblocks(input_vcf, input_haploblock_file, sample_ID, mhc_start, mh
 	for line in haploblocks[1:]:
 		fields = line.split("\t")
 		
-		chromosome, start, stop = "chr6", int(fields[4]), int(fields[5])
+		chromosome, start, stop = config.mhc_chrom, int(fields[4]), int(fields[5])
 
-		if chromosome == "chr6" and stop > mhc_start:
+		if chromosome == config.mhc_chrom and stop > mhc_start:
 			haploblock_list.append([start,stop])
 
 	return heterozygous_sites, haploblock_list

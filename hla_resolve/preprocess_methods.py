@@ -14,6 +14,9 @@ from . import config
 from .utils import detail, run_quiet
 from .cleanup import discard_temp
 
+MHC_CHROM = config.mhc_chrom
+MHC_REGION = f"{config.mhc_chrom}:{config.mhc_window[0]}-{config.mhc_window[1]}"
+
 # samtools sort takes -m per thread and defaults to 768M, so a high --threads
 # silently multiplies its footprint (20 threads reserves 15 GB). Hold the total
 # near this budget instead, whatever the thread count.
@@ -341,7 +344,7 @@ def filter_reads(input_file, output_file, drb_paralog_reads_file, threads, hla_y
 	if hla_y_reads_file is not None:
 		kill_lists.append(hla_y_reads_file)
 	drop = " | ".join(f"grep -v -F -f {f} --" for f in kill_lists)
-	samtools_cmd = f"samtools view -h -F 2304 -@ {threads} {input_file} chr6:28000000-34000000 | {drop} | samtools view -b -o {output_file}"
+	samtools_cmd = f"samtools view -h -F 2304 -@ {threads} {input_file} {MHC_REGION} | {drop} | samtools view -b -o {output_file}"
 
 	index_cmd = f"samtools index {output_file}"
 
@@ -383,7 +386,7 @@ def call_variants_deepvariant(input_bam, output_vcf, platform, deepvariant_sif, 
 			--ref=/reference/{os.path.basename(reference_fasta)} \
 			--reads=/input/{os.path.basename(input_bam)} \
 			--output_vcf=/data/{os.path.basename(output_vcf)} \
-			--regions chr6:{config.dv_region_start}-{config.dv_region_stop} \
+			--regions {MHC_CHROM}:{config.dv_region_start}-{config.dv_region_stop} \
 			--num_shards={deepvariant_shards}
 		"""
 
@@ -429,7 +432,7 @@ def call_variants_clair3(input_bam, output_vcf, platform, clair3_sif, reference_
 			--model_path=/opt/models/{clair3_model} \
 			--output=/output \
 			--sample_name={sample_ID} \
-			--ctg_name=chr6
+			--ctg_name={MHC_CHROM}
 		"""
 
 	clair3_log = os.path.join(genotypes_dir, sample_ID + ".clair3.log")
@@ -463,7 +466,7 @@ def call_variants_bcftools(input_file, output_file, reference_fasta, platform, t
 
 	bcftools_command = (
 		f"bcftools mpileup --config {config} --threads {pileup_threads} "
-		f"-f {reference_fasta} -d 1000000 -r chr6:28000000-34000000 "
+		f"-f {reference_fasta} -d 1000000 -r {MHC_REGION} "
 		f"-a FORMAT/DP,AD,ADF,ADR,SP {input_file} | "
 		f"bcftools call -mv -f GQ --threads {call_threads} -Ou | "
 		f"bcftools view -i 'FORMAT/DP>=2 && ((TYPE=\"snp\" && GQ>=20 && QUAL>=10) || (TYPE=\"indel\" && GQ>=20 && QUAL>=10))' "
@@ -483,7 +486,7 @@ def call_variants_freebayes(input_bam, output_vcf, reference_fasta):
 	freebayes_cmd = (
 		f"freebayes "
 		f"-f {reference_fasta} "
-		f"-r chr6:28000000-34000000 "
+		f"-r {MHC_REGION} "
 		f"--genotype-qualities "
 		f"{input_bam} | "
 		f"bcftools view -i 'FORMAT/DP>=2 && ((INFO/TYPE=\"snp\" && GQ>=20 && QUAL>=10) || (INFO/TYPE!=\"snp\" && GQ>=20 && QUAL>=10))' | "
@@ -715,7 +718,7 @@ def call_structural_variants_pbsv(input_bam, output_svsig, output_vcf, threads, 
 	
 	# -a Don't downsample
 	# -q Don't filter by MapQ
-	pbsv_discover_cmd = f"pbsv discover -a 0 -q 0 --region chr6 --tandem-repeats {tandem_repeat_bed} {input_bam} {output_svsig}"
+	pbsv_discover_cmd = f"pbsv discover -a 0 -q 0 --region {MHC_CHROM} --tandem-repeats {tandem_repeat_bed} {input_bam} {output_svsig}"
 
 	try:
 		run_quiet(pbsv_discover_cmd)
@@ -724,7 +727,7 @@ def call_structural_variants_pbsv(input_bam, output_svsig, output_vcf, threads, 
 
 		run_quiet(index_svsig_cmd)
 
-		pbsv_call_cmd = f"pbsv call -j {region_threads(threads)} --min-sv-length 20 --region chr6 --hifi {reference_fasta} {output_svsig} {output_vcf}"
+		pbsv_call_cmd = f"pbsv call -j {region_threads(threads)} --min-sv-length 20 --region {MHC_CHROM} --hifi {reference_fasta} {output_svsig} {output_vcf}"
 
 		run_quiet(pbsv_call_cmd)
 
