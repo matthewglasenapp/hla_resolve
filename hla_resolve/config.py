@@ -743,3 +743,9 @@ if SPECIES == "rhesus":
         'HLA-DQA1': [[149629246, 149629400], [149629749, 149630030], [149630443, 149630691], [149634522, 149634606]],
         'HLA-DQB1': [[149612502, 149612610], [149614039, 149614308], [149616816, 149617097], [149617607, 149617717], [149618834, 149618847]]
     }
+
+      # Rhesus versions of the human chr6 BED files
+    hla_genes_regions_file = os.path.join(_data_dir, "mosdepth/hla_genes_rhesus.bed")
+    genes_bed = os.path.join(_data_dir, "reference/parse_haploblocks_rhesus.bed")
+    chr6_bed = os.path.join(_data_dir, "reference/mhc_rhesus.bed")
+    genes_of_interest_extended = genes_of_interest
