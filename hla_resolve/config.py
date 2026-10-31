@@ -19,6 +19,7 @@ from contextlib import contextmanager
 # bind the False value at import time).
 VERBOSE = False
 QUIET = False
+SPECIES = "rhesus"
 
 # Stage names in run order. Numbering in the terminal comes from this list, so it
 # cannot drift from the workflow described in the README.
@@ -623,6 +624,9 @@ ars_prop_30x_thresh = 0
 # Extended MHC coordinates
 mhc_start = 29555628
 mhc_stop = 33409896
+# Extended MHC coordinates
+mhc_chrom = "chr6"
+mhc_window = (28000000, 34000000)
 
 # DeepVariant calling region. Kept tighter than the extended MHC to avoid a homopolymer
 # RefCall artifact near chr6 31354430 that the wider MHC bounds trigger for HG002 HLA-B.
@@ -694,3 +698,47 @@ CDS_dict = {
 	'HLA-DQB1': [[32660236, 32660249], [32660859, 32660882], [32661347, 32661457], [32661967, 32662248], [32664798, 32665067], [32666499, 32666607]], 
 	'HLA-DRB1': [[32579091, 32579104], [32580247, 32580270], [32580746, 32580856], [32581557, 32581838], [32584109, 32584378], [32589643, 32589742]]
 }
+
+if SPECIES == "rhesus":
+    # First run: genes with a clear gene model only (Mamu-B and DRB later)
+    genes_of_interest = ("HLA-A", "HLA-DPA1", "HLA-DPB1", "HLA-DQA1", "HLA-DQB1")
+    CLASS_I_GENES = {"HLA-A"}
+
+    # Hardcoded paths for now (per Matt); download/install handled later
+    reference_genome_minimap2 = "/mnt/beegfs/cluster/scratch/jsheh/hla/rhesus_ref/GCF_049350105.2_T2T-MMU8v2.0_genomic.fna"
+    gff_dir = os.path.join(_data_dir, "hla_gff_rhesus")
+
+    mhc_chrom = "NC_133409.1"
+    # Placeholders around the typed genes (149.20-153.12 Mb); to be refined
+    mhc_window = (148000000, 155000000)
+    mhc_start = 149000000
+    mhc_stop = 153700000
+    dv_region_start = 149100000
+    dv_region_stop = 153250000
+
+    # DR/DQ re-consensus has "chr6" hardcoded (reconsensus_drdq.py:256); off for now
+    reconsensus_drdq = False
+
+    ARS_dict = {
+        "HLA-A": "NC_133409.1:153122775-153123562",
+        "HLA-DPA1": "NC_133409.1:149220580-149220825",
+        "HLA-DPB1": "NC_133409.1:149210068-149210331",
+        "HLA-DQA1": "NC_133409.1:149630443-149630691",
+        "HLA-DQB1": "NC_133409.1:149614039-149614308"
+    }
+
+    gene_dict = {
+        "HLA-A":    (153112005, 153123787),
+        "HLA-DPA1": (149216628, 149225845),
+        "HLA-DPB1": (149204236, 149214306),
+        "HLA-DQA1": (149626323, 149648429),
+        "HLA-DQB1": (149612432, 149619201)
+    }
+
+    CDS_dict = {
+        'HLA-A': [[153120851, 153120855], [153121023, 153121070], [153121213, 153121245], [153121684, 153121800], [153121903, 153122178], [153122775, 153123050], [153123293, 153123562], [153123693, 153123765]],
+        'HLA-DPA1': [[149216715, 149216814], [149220580, 149220825], [149221171, 149221452], [149221666, 149221820]],
+        'HLA-DPB1': [[149204765, 149204784], [149205115, 149205225], [149205757, 149206038], [149210068, 149210331], [149214142, 149214241]],
+        'HLA-DQA1': [[149629246, 149629400], [149629749, 149630030], [149630443, 149630691], [149634522, 149634606]],
+        'HLA-DQB1': [[149612502, 149612610], [149614039, 149614308], [149616816, 149617097], [149617607, 149617717], [149618834, 149618847]]
+    }
