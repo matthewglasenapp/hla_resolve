@@ -26,7 +26,7 @@ from .preprocess_methods import (
 from .cleanup import discard, discard_mapped_bam
 from .indel_recount import split_collapsed_indels
 from .hla_a_rescue import rescue_hla_a_copies
-from .config import min_reads_sample, drb_region, hla_a_region
+from .config import min_reads_sample, drb_region, hla_a_region, SPECIES
 
 def _make_mhc_bam(config):
 	# Whole-genome and exome reads are aligned as they are, with no adapter
@@ -112,7 +112,7 @@ def _make_mhc_bam(config):
 def preprocess_ont_sample(config):
 	_make_mhc_bam(config)
 
-	if config['scheme'] == "WGS":
+	if config['scheme'] == "WGS" and SPECIES != "rhesus":
 		n = rescue_hla_a_copies(config['hg38_rmdup_chr6_bam'], config['reference_genome'],
 		                        config['hla_a_multiallele_reference'], config['threads'])
 		print(f"Recovered {n} HLA-A {'read' if n == 1 else 'reads'}.")
