@@ -219,6 +219,13 @@ def classify_DRB_reads(input_file, output_file, drb_paralog_reads_file, read_gro
 	to drb_paralog_reads_file for removal by filter_reads(). With `region`, only
 	primary reads overlapping that interval are mapped; otherwise the whole file is.
 	"""
+
+	if config.SPECIES == "rhesus":
+		open(drb_paralog_reads_file, "w").close()
+		print("Skipping HLA-DRB paralog filtering (human-only reference, SPECIES = rhesus)")
+		print()
+		return
+
 	print("Classifying DRB reads by multi-allele competitive mapping (rammap)...")
 
 	if platform == "PACBIO":
@@ -288,6 +295,13 @@ def classify_HLA_A_reads(input_file, output_file, hla_y_reads_file, read_group_s
 	filter_reads(). With `region`, only primary reads overlapping that interval
 	are mapped; otherwise the whole file is.
 	"""
+
+	if config.SPECIES == "rhesus":
+		open(hla_y_reads_file, "w").close()
+		print("Skipping HLA-Y paralog filtering (human-only reference, SPECIES = rhesus)")
+		print()
+		return
+	
 	print("Classifying HLA-A reads by multi-allele competitive mapping (rammap)...")
 
 	if platform == "PACBIO":
