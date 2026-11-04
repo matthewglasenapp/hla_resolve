@@ -769,7 +769,10 @@ def call_structural_variants_sniffles(input_bam, output_vcf, threads, reference_
 	run_quiet(f"samtools index {sa_stripped_bam}")
 	input_bam = sa_stripped_bam
 
-	sniffles_cmd = f"sniffles --output-rnames --allow-overwrite -t 1 --reference {reference_fasta} --regions {chr6_bed} -i {input_bam} -v {output_vcf} --tandem-repeats {tandem_repeat_bed}"
+	# Rhesus: tandem_repeat_bed only lists human chr contigs, and Sniffles2 exits with an
+	# error when none of its contigs match the BAM, so leave the optional hint out.
+	tr_flag = "" if config.SPECIES == "rhesus" else f" --tandem-repeats {tandem_repeat_bed}"
+	sniffles_cmd = f"sniffles --output-rnames --allow-overwrite -t 1 --reference {reference_fasta} --regions {chr6_bed} -i {input_bam} -v {output_vcf}{tr_flag}"
 
 	try:
 		run_quiet(sniffles_cmd)
