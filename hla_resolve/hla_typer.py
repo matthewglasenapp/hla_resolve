@@ -55,6 +55,10 @@ def get_gene(sample_name, asterisk = True):
 def locus_matches(hla_gene, key):
     if key.startswith("HLA-"):
         key = key[4:]
+    elif key.startswith("Mamu-"):
+        key = key[5:]
+        if key.startswith("A1*"):
+            key = "A*" + key[3:]
     return key.startswith(hla_gene)
 
 # Get sample ID from sample name
