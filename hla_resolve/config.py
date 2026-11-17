@@ -709,6 +709,10 @@ if SPECIES == "rhesus":
     reference_genome_minimap2 = "/mnt/beegfs/cluster/scratch/jsheh/hla/rhesus_ref/GCF_049350105.2_T2T-MMU8v2.0_genomic.upper.fna"
     gff_dir = os.path.join(_data_dir, "hla_gff_rhesus")
 
+    IMGT_XML = os.path.join(_data_dir, "IPD_MHC_RHESUS/mhc_rhesus.xml")
+    
+    hla_genes_regions_file = os.path.join(_data_dir, "mosdepth/hla_genes_rhesus.bed")
+
     mhc_chrom = "NC_133409.1"
     # Placeholders around the typed genes (149.20-153.12 Mb); to be refined
     mhc_window = (148000000, 155000000)
