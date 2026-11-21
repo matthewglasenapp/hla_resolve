@@ -732,7 +732,8 @@ def call_structural_variants_pbsv(input_bam, output_svsig, output_vcf, threads, 
 	
 	# -a Don't downsample
 	# -q Don't filter by MapQ
-	pbsv_discover_cmd = f"pbsv discover -a 0 -q 0 --region {MHC_CHROM} --tandem-repeats {tandem_repeat_bed} {input_bam} {output_svsig}"
+	tr_flag = "" if config.SPECIES == "rhesus" else f" --tandem-repeats {tandem_repeat_bed}"
+	pbsv_discover_cmd = f"pbsv discover -a 0 -q 0 --region {MHC_CHROM}{tr_flag} {input_bam} {output_svsig}"
 
 	try:
 		run_quiet(pbsv_discover_cmd)
