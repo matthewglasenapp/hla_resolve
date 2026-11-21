@@ -24,7 +24,7 @@ from .preprocess_methods import (
 	merge_hiphase_vcfs
 )
 from .cleanup import discard, discard_mapped_bam, remove_stale_sort_temps
-from .config import min_reads_sample, drb_region, hla_a_region
+from .config import min_reads_sample, drb_region, hla_a_region, SPECIES
 from .utils import stage
 
 def preprocess_pacbio_sample(config):
@@ -344,28 +344,34 @@ def preprocess_pacbio_sample(config):
 			reference_fasta=config['reference_genome']
 		)
 
-		stage("Tandem repeat genotyping")
-		genotype_tandem_repeats(
-			input_bam=config['hg38_rmdup_chr6_bam'],
-			output_vcf=config['tr_vcf'],
-			pbtrgt_dir=config['pbtrgt_dir'],
-			threads=config['threads'],
-			reference_fasta=config['reference_genome'],
-			pbtrgt_repeat_file=config['pbtrgt_repeat_file'],
-			original_cwd=config['ORIGINAL_CWD'],
-			scheme=config['scheme']
-		)
+		if SPECIES == "rhesus":
+			tr_vcf = None
+			hiphase_tr_vcf = None
+		else:
+			stage("Tandem repeat calling")
+			genotype_tandem_repeats(
+				input_bam=config['hg38_rmdup_chr6_bam'],
+				output_vcf=config['tr_vcf'],
+				pbtrgt_dir=config['pbtrgt_dir'],
+				threads=config['threads'],
+				reference_fasta=config['reference_genome'],
+				pbtrgt_repeat_file=config['pbtrgt_repeat_file'],
+				original_cwd=config['ORIGINAL_CWD'],
+				scheme=config['scheme']
+			)
+			tr_vcf = config['tr_vcf']
+			hiphase_tr_vcf = config['hiphase_tr_vcf']
 		
 		stage("Joint phasing")
 		phase_genotypes_hiphase(
 			input_bam=config['hg38_rmdup_chr6_bam'],
 			input_snv=config['snv_vcf'],
 			input_SV=config['sv_vcf'],
-			input_TR=config['tr_vcf'],
+			input_TR=tr_vcf,
 			output_bam=config['hg38_rmdup_chr6_haplotag_bam'],
 			output_snv=config['hiphase_snv_vcf'],
 			output_SV=config['hiphase_sv_vcf'],
-			output_TR=config['hiphase_tr_vcf'],
+			output_TR=hiphase_tr_vcf,
 			output_summary_file=config['phased_summary'],
 			output_blocks_file=config['phased_blocks'],
 			output_stats_file=config['phased_stats'],
@@ -378,7 +384,7 @@ def preprocess_pacbio_sample(config):
 		merge_hiphase_vcfs(
 			input_snv=config['hiphase_snv_vcf'],
 			input_SV=config['hiphase_sv_vcf'],
-			input_TR=config['hiphase_tr_vcf'],
+			input_TR=hiphase_tr_vcf,
 			output_vcf=config['hiphase_joint_vcf'],
 			reference_fasta=config['reference_genome']
 		)
