@@ -706,7 +706,7 @@ if SPECIES == "rhesus":
     CLASS_I_GENES = {"HLA-A"}
 
     # Hardcoded paths for now (per Matt); download/install handled later
-    reference_genome_minimap2 = "/mnt/beegfs/cluster/scratch/jsheh/hla/rhesus_ref/GCF_049350105.2_T2T-MMU8v2.0_genomic.upper.fna"
+    reference_genome_minimap2 = "/mnt/beegfs/cluster/scratch/jsheh/hla/rhesus_ref/GCF_049350105.2_T2T-MMU8v2.0_genomic.upper.fa"
     gff_dir = os.path.join(_data_dir, "hla_gff_rhesus")
 
     IMGT_XML = os.path.join(_data_dir, "IPD_MHC_RHESUS/mhc_rhesus.xml")
